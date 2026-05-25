@@ -4,6 +4,7 @@ import { PresenceState, RoomType } from '@shared'
 import { isGreenroomSessionState } from '@shared'
 import type { RoomUser } from '@/types/room'
 import { useStore } from '@/state/store'
+import { useShallow } from 'zustand/shallow'
 import { getUserDMOverride, type AudioDMOverridesByUser } from '@/utils/audioOverrides'
 import { isGreenRoomName, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
 import { LeftRailSummary } from './LeftRailSummary'
@@ -71,8 +72,13 @@ export function LeftRailPanel({
 }: LeftRailPanelProps) {
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
-  const liveKitSpeakingUsers = useStore(
-    (state) => state.livekitSpeakingBySession[sessionId] ?? EMPTY_SPEAKING_MAP
+  // Unified speaking map: merges WS-presence (mock) speakers and LiveKit real speakers.
+  // useShallow provides stable output — only triggers re-render when actual speaker set changes.
+  const allSpeakingUsers = useStore(
+    useShallow((state) => ({
+      ...(state.presenceLkSpeakingBySession[sessionId] ?? {}),
+      ...(state.presenceSpeakingBySession[sessionId] ?? {}),
+    }))
   )
   const userMuteState = useStore((state) => state.userMuteState[sessionId] ?? EMPTY_USER_MUTE_MAP)
 
@@ -113,25 +119,18 @@ export function LeftRailPanel({
 
   // Include current user in speaking list if they're transmitting audio
   // LiveKit's activeSpeakers might not include the local participant (publisher),
-  // so we need to detect this locally based on whether the user has their mic on
-  // and has active voice activity
+  // so we detect this locally from whether the user has their mic on with active VAD.
   const isCurrentUserSpeaking = !localUserMuted && device.isSpeaking
 
-  const liveKitSpeakingUsersWithLocal = useMemo(() => {
-    const speaking: Record<UUID, true> = {
-      ...(liveKitSpeakingUsers as Record<UUID, true>),
-    }
-
-    // Add current user if they're transmitting.
-    // Keep this independent from remote active-speaker payload availability.
+  const allSpeakingUsersWithLocal = useMemo(() => {
+    const speaking: Record<UUID, true> = { ...allSpeakingUsers }
     if (isCurrentUserSpeaking) {
       speaking[currentUserId] = true
     } else {
       delete speaking[currentUserId]
     }
-
     return speaking
-  }, [liveKitSpeakingUsers, isCurrentUserSpeaking, currentUserId])
+  }, [allSpeakingUsers, isCurrentUserSpeaking, currentUserId])
 
   const hasNamedGreenRoom = rooms.some((room) => isGreenRoomName(room.name))
 
@@ -233,13 +232,13 @@ export function LeftRailPanel({
                 const dmMuted = overrideMuted
                 const isMutedCombined = userOwnMuted || dmMuted
 
-                // Speaking indicator: only show as speaking if NOT muted, AND (LiveKit says speaking OR presence says speaking)
+                // Speaking indicator: only show as speaking if NOT muted, AND any source
+                // (LiveKit or WS presence activity) says speaking. allSpeakingUsersWithLocal
+                // merges both lightweight slices without touching roomMembers/sessionPresence.
                 const isActivelySpeaking =
                   room.type === RoomType.PRIVATE
                     ? false
-                    : (Boolean(liveKitSpeakingUsersWithLocal?.[member.userId]) ||
-                        member.presenceState === PresenceState.SPEAKING) &&
-                      !isMutedCombined
+                    : Boolean(allSpeakingUsersWithLocal[member.userId]) && !isMutedCombined
 
                 return {
                   userId: member.userId,

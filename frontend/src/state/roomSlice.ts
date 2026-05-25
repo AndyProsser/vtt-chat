@@ -268,6 +268,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       }))
 
       get().clearSessionPresence()
+      get().clearPresenceSessionActivity()
       return
     }
 
@@ -292,6 +293,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     })
 
     get().clearSessionPresence(sessionId)
+    get().clearPresenceSessionActivity(sessionId)
   },
 
   handleRoomCreated: (event) => {
@@ -458,6 +460,33 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     const existingPresence = get().sessionPresence[event.sessionId]?.[payload.userId]
     const previousRoomId = existingPresence?.primaryRoomId
     const roomId = payload.roomId || previousRoomId
+
+    // Fast path: pure voice-activity transitions (SPEAKING ↔ ONLINE/IDLE) with no room
+    // change. Route to the lightweight presenceSpeakingBySession slice instead of doing
+    // expensive roomMembers + sessionPresence spreads that cascade re-renders across the
+    // entire workspace. This is the primary cause of speaking-indicator memory pressure.
+    const isVoiceActivityTransition =
+      roomId === previousRoomId &&
+      !payload.username &&
+      (nextPresence === PresenceState.SPEAKING ||
+        ((nextPresence === PresenceState.ONLINE || nextPresence === PresenceState.IDLE) &&
+          (existingPresence?.state === PresenceState.SPEAKING ||
+            existingPresence?.state === PresenceState.TYPING)))
+
+    if (isVoiceActivityTransition) {
+      get().setPresenceSpeakingActivity(
+        event.sessionId,
+        payload.userId,
+        nextPresence === PresenceState.SPEAKING
+      )
+      return
+    }
+
+    // When a user stops being the "active speaker" via a structural presence event
+    // (e.g. room change), also clear them from the speaking activity tracker.
+    if (nextPresence !== PresenceState.SPEAKING) {
+      get().setPresenceSpeakingActivity(event.sessionId, payload.userId, false)
+    }
 
     set((state) => {
       const existingMember = roomId

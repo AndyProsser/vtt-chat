@@ -139,9 +139,7 @@ export function ChatWindow({
   const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
     | Record<UUID, Message>
     | undefined
-  const sessionTypingIndicators = useStore(
-    (state) => (state.typingIndicators as any)[sessionId]
-  ) as Array<{ userId: UUID; username: string; roomId?: UUID; until: number }> | undefined
+  const sessionTypingIndicators = useStore((state) => state.presenceTypingBySession[sessionId])
   const sessionPresence = useStore((state) => (state.sessionPresence as any)[sessionId]) as
     | Record<
         UUID,

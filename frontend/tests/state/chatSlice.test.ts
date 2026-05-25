@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { EventEnvelope } from '@shared'
 import type { UUID } from '@shared'
 import { useStore } from '../../src/state/store'
-import type { Message, TypingIndicator } from '@/types/chat'
+import type { Message } from '@/types/chat'
 
 const SESSION_A = '11111111-1111-4111-8111-111111111111' as UUID
 const SESSION_B = '22222222-2222-4222-8222-222222222222' as UUID
@@ -121,24 +121,6 @@ describe('chatSlice', () => {
     })
   })
 
-  describe('setTypingIndicators', () => {
-    it('sets typing indicators for a session', () => {
-      const indicators: TypingIndicator[] = [
-        { userId: USER_ID, username: 'alice', until: NOW + 5000 },
-      ]
-      useStore.getState().setTypingIndicators(SESSION_A, indicators)
-      expect(useStore.getState().typingIndicators[SESSION_A]).toEqual(indicators)
-    })
-
-    it('replaces existing indicators', () => {
-      const first: TypingIndicator[] = [{ userId: USER_ID, username: 'alice', until: NOW + 5000 }]
-      const second: TypingIndicator[] = []
-      useStore.getState().setTypingIndicators(SESSION_A, first)
-      useStore.getState().setTypingIndicators(SESSION_A, second)
-      expect(useStore.getState().typingIndicators[SESSION_A]).toHaveLength(0)
-    })
-  })
-
   describe('clearMessages', () => {
     it('clears a specific session', () => {
       useStore.getState().addMessage(SESSION_A, SAMPLE_MESSAGE)
@@ -153,7 +135,6 @@ describe('chatSlice', () => {
       useStore.getState().addMessage(SESSION_B, { ...SAMPLE_MESSAGE, id: MSG_ID_2 })
       useStore.getState().clearMessages()
       expect(useStore.getState().messages).toEqual({})
-      expect(useStore.getState().typingIndicators).toEqual({})
     })
   })
 
@@ -233,15 +214,15 @@ describe('chatSlice', () => {
     })
   })
 
-  describe('handleTypingStarted', () => {
+  describe('handlePresenceTypingStarted', () => {
     it('adds a typing indicator for the user', () => {
       const event = makeEvent('CHAT:TYPING_STARTED', SESSION_A, {
         userId: USER_ID,
         username: 'alice',
         roomId: ROOM_ID_A,
       })
-      useStore.getState().handleTypingStarted(event)
-      const indicators = useStore.getState().typingIndicators[SESSION_A]
+      useStore.getState().handlePresenceTypingStarted(event)
+      const indicators = useStore.getState().presenceTypingBySession[SESSION_A]
       expect(indicators).toHaveLength(1)
       expect(indicators![0]!.username).toBe('alice')
       expect(indicators![0]!.roomId).toBe(ROOM_ID_A)
@@ -253,24 +234,24 @@ describe('chatSlice', () => {
         userId: USER_ID,
         username: 'alice',
       })
-      useStore.getState().handleTypingStarted(event)
-      useStore.getState().handleTypingStarted(event)
-      expect(useStore.getState().typingIndicators[SESSION_A]).toHaveLength(1)
+      useStore.getState().handlePresenceTypingStarted(event)
+      useStore.getState().handlePresenceTypingStarted(event)
+      expect(useStore.getState().presenceTypingBySession[SESSION_A]).toHaveLength(1)
     })
   })
 
-  describe('handleTypingStopped', () => {
+  describe('handlePresenceTypingStopped', () => {
     it('removes typing indicator for user', () => {
       const startEvent = makeEvent('CHAT:TYPING_STARTED', SESSION_A, {
         userId: USER_ID,
         username: 'alice',
       })
-      useStore.getState().handleTypingStarted(startEvent)
-      expect(useStore.getState().typingIndicators[SESSION_A]).toHaveLength(1)
+      useStore.getState().handlePresenceTypingStarted(startEvent)
+      expect(useStore.getState().presenceTypingBySession[SESSION_A]).toHaveLength(1)
 
       const stopEvent = makeEvent('CHAT:TYPING_STOPPED', SESSION_A, { userId: USER_ID })
-      useStore.getState().handleTypingStopped(stopEvent)
-      expect(useStore.getState().typingIndicators[SESSION_A]).toHaveLength(0)
+      useStore.getState().handlePresenceTypingStopped(stopEvent)
+      expect(useStore.getState().presenceTypingBySession[SESSION_A] ?? []).toHaveLength(0)
     })
   })
 

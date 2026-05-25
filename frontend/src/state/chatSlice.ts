@@ -1,6 +1,7 @@
 /**
  * Chat Slice (Zustand)
- * Manages chat messages, typing indicators, and message state.
+ * Manages chat messages and outgoing message queue.
+ * Typing indicators have moved to presenceSlice (presenceTypingBySession).
  * Reference: docs/architecture/ARCHITECTURE.md
  */
 
@@ -10,10 +11,8 @@ import type { EventEnvelope } from '@shared'
 import {
   CHAT_SESSION_CACHE_MAX_MESSAGES,
   CHAT_SESSION_CACHE_RETAIN_MESSAGES,
-  TYPING_INDICATOR_TTL_MS,
-  TYPING_RENEW_MIN_EXTENSION_MS,
 } from '@/constants/chatPresence.constants'
-import type { Message, TypingIndicator } from '@/types/chat'
+import type { Message } from '@/types/chat'
 
 export type { Message, TypingIndicator } from '@/types/chat'
 
@@ -39,35 +38,6 @@ const SESSION_BOOKEND_PREFIXES = [
 ] as const
 
 const SESSION_BOOKEND_DEDUPE_WINDOW_MS = 10_000
-
-function pruneTypingIndicators(indicators: TypingIndicator[], now: number): TypingIndicator[] {
-  if (indicators.length === 0) {
-    return indicators
-  }
-
-  return indicators.filter((indicator) => indicator.until > now)
-}
-
-function areTypingIndicatorsEqual(a: TypingIndicator[], b: TypingIndicator[]): boolean {
-  if (a.length !== b.length) {
-    return false
-  }
-
-  for (let index = 0; index < a.length; index += 1) {
-    const left = a[index]
-    const right = b[index]
-    if (
-      left.userId !== right.userId ||
-      left.username !== right.username ||
-      left.roomId !== right.roomId ||
-      left.until !== right.until
-    ) {
-      return false
-    }
-  }
-
-  return true
-}
 
 function isSessionBookend(message: Message): boolean {
   return (
@@ -110,7 +80,6 @@ function pruneSessionMessageCache(sessionMessages: Record<UUID, Message>): Recor
 export interface ChatSlice {
   // State
   messages: Record<UUID, Record<UUID, Message>> // keyed by sessionId, then messageId
-  typingIndicators: Record<UUID, TypingIndicator[]> // keyed by sessionId
   outgoingQueue: Record<UUID, OutgoingChatMessage[]> // keyed by sessionId
   isLoading: boolean
 
@@ -119,7 +88,6 @@ export interface ChatSlice {
   addMessages: (sessionId: UUID, messages: Message[]) => void
   updateMessage: (sessionId: UUID, messageId: UUID, updates: Partial<Message>) => void
   deleteMessage: (sessionId: UUID, messageId: UUID) => void
-  setTypingIndicators: (sessionId: UUID, indicators: TypingIndicator[]) => void
   enqueueOutgoingMessage: (sessionId: UUID, message: OutgoingChatMessage) => void
   updateOutgoingMessage: (
     sessionId: UUID,
@@ -135,14 +103,11 @@ export interface ChatSlice {
   handleMessageEdited: (event: EventEnvelope) => void
   handleMessageDeleted: (event: EventEnvelope) => void
   handleRoomContextCleared: (event: EventEnvelope) => void
-  handleTypingStarted: (event: EventEnvelope) => void
-  handleTypingStopped: (event: EventEnvelope) => void
 }
 
 export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   // State
   messages: {},
-  typingIndicators: {},
   outgoingQueue: {},
   isLoading: false,
 
@@ -234,33 +199,6 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       }
     }),
 
-  setTypingIndicators: (sessionId, indicators) =>
-    set((state) => {
-      const nextIndicators = pruneTypingIndicators(indicators, Date.now())
-      const currentIndicators = state.typingIndicators[sessionId] || []
-
-      if (nextIndicators.length === 0) {
-        if (!state.typingIndicators[sessionId]) {
-          return state
-        }
-
-        const nextTyping = { ...state.typingIndicators }
-        delete nextTyping[sessionId]
-        return { typingIndicators: nextTyping }
-      }
-
-      if (areTypingIndicatorsEqual(currentIndicators, nextIndicators)) {
-        return state
-      }
-
-      return {
-        typingIndicators: {
-          ...state.typingIndicators,
-          [sessionId]: nextIndicators,
-        },
-      }
-    }),
-
   enqueueOutgoingMessage: (sessionId, message) =>
     set((state) => ({
       outgoingQueue: {
@@ -296,19 +234,16 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
   clearMessages: (sessionId) =>
     set((state) => {
       if (!sessionId) {
-        return { messages: {}, typingIndicators: {}, outgoingQueue: {} }
+        return { messages: {}, outgoingQueue: {} }
       }
 
       const newMessages = { ...state.messages }
       delete newMessages[sessionId]
-      const newTyping = { ...state.typingIndicators }
-      delete newTyping[sessionId]
       const newOutgoingQueue = { ...state.outgoingQueue }
       delete newOutgoingQueue[sessionId]
 
       return {
         messages: newMessages,
-        typingIndicators: newTyping,
         outgoingQueue: newOutgoingQueue,
       }
     }),
@@ -440,78 +375,6 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
         messages: {
           ...state.messages,
           [event.sessionId]: nextSessionMessages,
-        },
-      }
-    })
-  },
-
-  handleTypingStarted: (event) => {
-    const payload = event.payload as { userId: UUID; username: string; roomId?: UUID }
-
-    set((state) => {
-      const currentIndicators = pruneTypingIndicators(
-        state.typingIndicators[event.sessionId] || [],
-        event.timestamp
-      )
-      const existing = currentIndicators.find((indicator) => indicator.userId === payload.userId)
-      const nextUntil = event.timestamp + TYPING_INDICATOR_TTL_MS
-
-      if (
-        existing &&
-        existing.username === payload.username &&
-        existing.roomId === payload.roomId &&
-        (existing.until >= nextUntil || nextUntil - existing.until < TYPING_RENEW_MIN_EXTENSION_MS)
-      ) {
-        return state
-      }
-
-      const nextIndicators = currentIndicators.filter(
-        (indicator) => indicator.userId !== payload.userId
-      )
-      nextIndicators.push({
-        userId: payload.userId,
-        username: payload.username,
-        roomId: payload.roomId,
-        until: nextUntil,
-      })
-
-      return {
-        typingIndicators: {
-          ...state.typingIndicators,
-          [event.sessionId]: nextIndicators,
-        },
-      }
-    })
-  },
-
-  handleTypingStopped: (event) => {
-    const payload = event.payload as { userId: UUID }
-
-    set((state) => {
-      const indicators = pruneTypingIndicators(
-        state.typingIndicators[event.sessionId] || [],
-        event.timestamp
-      )
-      const nextIndicators = indicators.filter((indicator) => indicator.userId !== payload.userId)
-
-      if (nextIndicators.length === indicators.length) {
-        return state
-      }
-
-      if (nextIndicators.length === 0) {
-        if (!state.typingIndicators[event.sessionId]) {
-          return state
-        }
-
-        const nextTyping = { ...state.typingIndicators }
-        delete nextTyping[event.sessionId]
-        return { typingIndicators: nextTyping }
-      }
-
-      return {
-        typingIndicators: {
-          ...state.typingIndicators,
-          [event.sessionId]: nextIndicators,
         },
       }
     })

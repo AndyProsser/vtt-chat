@@ -1,9 +1,36 @@
 import type { UUID } from '@shared'
 import { PresenceState } from '@shared'
 import type { EventEnvelope } from '@shared'
-import { PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS } from '@/constants/chatPresence.constants'
+import {
+  PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS,
+  TYPING_INDICATOR_TTL_MS,
+  TYPING_RENEW_MIN_EXTENSION_MS,
+} from '@/constants/chatPresence.constants'
 import type { SessionPresence } from '@/types/room'
+import type { TypingIndicator } from '@/types/chat'
 import type { StateCreator } from 'zustand'
+
+function pruneTypingIndicators(indicators: TypingIndicator[], now: number): TypingIndicator[] {
+  if (indicators.length === 0) return indicators
+  return indicators.filter((indicator) => indicator.until > now)
+}
+
+function areTypingIndicatorsEqual(a: TypingIndicator[], b: TypingIndicator[]): boolean {
+  if (a.length !== b.length) return false
+  for (let index = 0; index < a.length; index += 1) {
+    const left = a[index]!
+    const right = b[index]!
+    if (
+      left.userId !== right.userId ||
+      left.username !== right.username ||
+      left.roomId !== right.roomId ||
+      left.until !== right.until
+    ) {
+      return false
+    }
+  }
+  return true
+}
 
 export interface SessionStatsSnapshot {
   connectedPlayersWithDm: number
@@ -16,6 +43,23 @@ export interface SessionStatsSnapshot {
 export interface PresenceSlice {
   sessionPresence: Record<UUID, Record<UUID, SessionPresence>>
   sessionStatsBySessionId: Record<UUID, SessionStatsSnapshot>
+  /**
+   * Lightweight WS-presence speaking tracker (individual add/remove).
+   * Updated by PRESENCE:STATE_CHANGED SPEAKING/ONLINE transitions without
+   * touching sessionPresence or roomMembers, preventing cascade re-renders.
+   */
+  presenceSpeakingBySession: Record<UUID, Record<UUID, true>>
+  /**
+   * Lightweight LiveKit speaking tracker (batch replace from activeSpeakers).
+   * Separate field so LiveKit batch-replaces never stomp WS-sourced mock speakers.
+   */
+  presenceLkSpeakingBySession: Record<UUID, Record<UUID, true>>
+  /**
+   * Transient typing indicators, keyed by sessionId → indicator array.
+   * Lightweight alternative to chatSlice.typingIndicators — both sources
+   * (CHAT:TYPING_STARTED / CHAT:TYPING_STOPPED) are handled here.
+   */
+  presenceTypingBySession: Record<UUID, TypingIndicator[]>
 
   replaceSessionPresenceMap: (
     sessionId: UUID,
@@ -86,11 +130,22 @@ export interface PresenceSlice {
     targetState: PresenceState
     changedAt: number
   }) => void
+  setPresenceSpeakingActivity: (sessionId: UUID, userId: UUID, isSpeaking: boolean) => void
+  /** Batch-replace the LiveKit speaker set for a session. Separate from
+   * setPresenceSpeakingActivity so real-user LiveKit events don't stomp
+   * WS-sourced mock speakers (different userId populations in dev). */
+  setPresenceSpeakingUsers: (sessionId: UUID, userIds: UUID[]) => void
+  handlePresenceTypingStarted: (event: EventEnvelope) => void
+  handlePresenceTypingStopped: (event: EventEnvelope) => void
+  clearPresenceSessionActivity: (sessionId?: UUID) => void
 }
 
 export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
   sessionPresence: {},
   sessionStatsBySessionId: {},
+  presenceSpeakingBySession: {},
+  presenceLkSpeakingBySession: {},
+  presenceTypingBySession: {},
 
   replaceSessionPresenceMap: (sessionId, presenceByUser) =>
     set((state) => ({
@@ -394,6 +449,181 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
             },
           },
         },
+      }
+    }),
+
+  setPresenceSpeakingActivity: (sessionId, userId, isSpeaking) =>
+    set((state) => {
+      const current = state.presenceSpeakingBySession[sessionId]
+      const currentlySpeaking = Boolean(current?.[userId])
+      if (currentlySpeaking === isSpeaking) {
+        return state
+      }
+      if (!isSpeaking) {
+        if (!current) return state
+        const next = { ...current }
+        delete next[userId]
+        const nextBySession = { ...state.presenceSpeakingBySession }
+        if (Object.keys(next).length === 0) {
+          delete nextBySession[sessionId]
+        } else {
+          nextBySession[sessionId] = next
+        }
+        return { presenceSpeakingBySession: nextBySession }
+      }
+      return {
+        presenceSpeakingBySession: {
+          ...state.presenceSpeakingBySession,
+          [sessionId]: { ...current, [userId]: true },
+        },
+      }
+    }),
+
+  setPresenceSpeakingUsers: (sessionId, userIds) =>
+    set((state) => {
+      const currentSet = state.presenceLkSpeakingBySession[sessionId]
+
+      if (userIds.length === 0) {
+        if (!currentSet) return state
+        const next = { ...state.presenceLkSpeakingBySession }
+        delete next[sessionId]
+        return { presenceLkSpeakingBySession: next }
+      }
+
+      const nextSet: Record<UUID, true> = {}
+      for (const userId of userIds) nextSet[userId] = true
+
+      if (currentSet) {
+        const curKeys = Object.keys(currentSet)
+        const nxtKeys = Object.keys(nextSet)
+        if (curKeys.length === nxtKeys.length && nxtKeys.every((k) => currentSet[k])) {
+          return state
+        }
+      }
+
+      return {
+        presenceLkSpeakingBySession: {
+          ...state.presenceLkSpeakingBySession,
+          [sessionId]: nextSet,
+        },
+      }
+    }),
+
+  handlePresenceTypingStarted: (event) => {
+    const payload = event.payload as { userId: UUID; username: string; roomId?: UUID }
+
+    set((state) => {
+      const currentIndicators = pruneTypingIndicators(
+        state.presenceTypingBySession[event.sessionId] || [],
+        event.timestamp
+      )
+      const existing = currentIndicators.find((indicator) => indicator.userId === payload.userId)
+      const nextUntil = event.timestamp + TYPING_INDICATOR_TTL_MS
+
+      if (
+        existing &&
+        existing.username === payload.username &&
+        existing.roomId === payload.roomId &&
+        (existing.until >= nextUntil || nextUntil - existing.until < TYPING_RENEW_MIN_EXTENSION_MS)
+      ) {
+        return state
+      }
+
+      const nextIndicators = currentIndicators.filter(
+        (indicator) => indicator.userId !== payload.userId
+      )
+      nextIndicators.push({
+        userId: payload.userId,
+        username: payload.username,
+        roomId: payload.roomId,
+        until: nextUntil,
+      })
+
+      return {
+        presenceTypingBySession: {
+          ...state.presenceTypingBySession,
+          [event.sessionId]: nextIndicators,
+        },
+      }
+    })
+  },
+
+  handlePresenceTypingStopped: (event) => {
+    const payload = event.payload as { userId: UUID }
+
+    set((state) => {
+      const indicators = pruneTypingIndicators(
+        state.presenceTypingBySession[event.sessionId] || [],
+        event.timestamp
+      )
+      const nextIndicators = indicators.filter((indicator) => indicator.userId !== payload.userId)
+
+      if (nextIndicators.length === indicators.length) {
+        return state
+      }
+
+      if (nextIndicators.length === 0) {
+        if (!state.presenceTypingBySession[event.sessionId]) {
+          return state
+        }
+        const next = { ...state.presenceTypingBySession }
+        delete next[event.sessionId]
+        return { presenceTypingBySession: next }
+      }
+
+      return {
+        presenceTypingBySession: {
+          ...state.presenceTypingBySession,
+          [event.sessionId]: nextIndicators,
+        },
+      }
+    })
+  },
+
+  clearPresenceSessionActivity: (sessionId) =>
+    set((state) => {
+      if (!sessionId) {
+        return {
+          presenceSpeakingBySession: {},
+          presenceLkSpeakingBySession: {},
+          presenceTypingBySession: {},
+        }
+      }
+
+      const hasWs = Boolean(state.presenceSpeakingBySession[sessionId])
+      const hasLk = Boolean(state.presenceLkSpeakingBySession[sessionId])
+      const hasTyping = Boolean(state.presenceTypingBySession[sessionId])
+
+      if (!hasWs && !hasLk && !hasTyping) return state
+
+      const nextWs = hasWs
+        ? (() => {
+            const n = { ...state.presenceSpeakingBySession }
+            delete n[sessionId]
+            return n
+          })()
+        : state.presenceSpeakingBySession
+
+      const nextLk = hasLk
+        ? (() => {
+            const n = { ...state.presenceLkSpeakingBySession }
+            delete n[sessionId]
+            return n
+          })()
+        : state.presenceLkSpeakingBySession
+
+      const nextTyping = hasTyping
+        ? (() => {
+            const n = { ...state.presenceTypingBySession }
+            delete n[sessionId]
+            return n
+          })()
+        : state.presenceTypingBySession
+
+      return {
+        presenceSpeakingBySession: nextWs,
+        presenceLkSpeakingBySession: nextLk,
+        presenceTypingBySession: nextTyping,
       }
     }),
 

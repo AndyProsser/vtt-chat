@@ -101,7 +101,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const initializeAudio = useStore((state) => state.initializeAudio)
   const togglePTT = useStore((state) => state.togglePTT)
   const currentUser = useStore((state) => state.currentUser)
-  const setLiveKitSpeakingUsers = useStore((state) => state.setLiveKitSpeakingUsers)
+  const setPresenceSpeakingUsers = useStore((state) => state.setPresenceSpeakingUsers)
   const sharedLiveKitState = useStore(
     (state) => state.livekitConnections[buildLiveKitConnectionKey(sessionId, roomId, 'room')]
   )
@@ -188,7 +188,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     const activeRoom = livekit.room
 
     if (!activeRoom) {
-      setLiveKitSpeakingUsers(sessionId, [])
+      setPresenceSpeakingUsers(sessionId, [])
       return
     }
 
@@ -197,7 +197,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         .map((participant) => participant.identity as UUID)
         .filter((identity) => Boolean(identity))
 
-      setLiveKitSpeakingUsers(sessionId, speakingUsers)
+      setPresenceSpeakingUsers(sessionId, speakingUsers)
     }
 
     syncActiveSpeakers()
@@ -205,9 +205,9 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
     return () => {
       activeRoom.off(RoomEvent.ActiveSpeakersChanged, syncActiveSpeakers)
-      setLiveKitSpeakingUsers(sessionId, [])
+      setPresenceSpeakingUsers(sessionId, [])
     }
-  }, [livekit.room, sessionId, setLiveKitSpeakingUsers])
+  }, [livekit.room, sessionId, setPresenceSpeakingUsers])
 
   useEffect(() => {
     if (effectiveRole !== Role.DM) {

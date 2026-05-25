@@ -11,8 +11,7 @@ import { resolveRoute, type RouteView } from './utils/route-view'
 import { initUiDiagnosticsFlag } from './utils/uiDiagnostics'
 import './styles/components/app/AppShell.css'
 
-const DEFAULT_WS_PATH = '/ws/session-events'
-const LEGACY_WS_PATH = '/ws/connect'
+const WS_PATH = '/ws/events'
 
 export default function App() {
   const bootstrapLoggedRef = useRef(false)
@@ -21,16 +20,12 @@ export default function App() {
     try {
       const parsed = new URL(rawWsUrl)
       if (parsed.pathname === '/' || parsed.pathname === '') {
-        parsed.pathname = DEFAULT_WS_PATH
+        parsed.pathname = WS_PATH
       }
       return parsed.toString()
     } catch {
       const trimmed = rawWsUrl.replace(/\/$/, '')
-      return trimmed.endsWith('/ws') ||
-        trimmed.endsWith(DEFAULT_WS_PATH) ||
-        trimmed.endsWith(LEGACY_WS_PATH)
-        ? trimmed
-        : `${trimmed}${DEFAULT_WS_PATH}`
+      return trimmed.endsWith('/ws') || trimmed.endsWith(WS_PATH) ? trimmed : `${trimmed}${WS_PATH}`
     }
   }
 

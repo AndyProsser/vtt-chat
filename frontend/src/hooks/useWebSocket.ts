@@ -257,10 +257,10 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       useStore.getState().handleRoomContextCleared(event)
     })
     dispatcher.register('CHAT:TYPING_STARTED', (event) => {
-      useStore.getState().handleTypingStarted(event)
+      useStore.getState().handlePresenceTypingStarted(event)
     })
     dispatcher.register('CHAT:TYPING_STOPPED', (event) => {
-      useStore.getState().handleTypingStopped(event)
+      useStore.getState().handlePresenceTypingStopped(event)
     })
 
     // Notes events
