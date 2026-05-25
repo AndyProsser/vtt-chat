@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { EventEnvelope } from '@shared'
 import type { UUID } from '@shared'
-import { isGreenroomSessionState } from '@shared'
+import { isGreenroomSessionState, SessionState } from '@shared'
 import { isGreenRoomName } from '../constants/roomPresence.constants'
 import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
@@ -135,6 +135,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       store.handleSessionEnded(event)
       store.resetSessionAudioState()
       store.clearActiveEffects()
+      store.clearMessages(event.sessionId)
     })
     dispatcher.register('SESSION:STATS_UPDATED', (event) => {
       useStore.getState().handleSessionStatsUpdated(event)
@@ -287,6 +288,10 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       if (isGreenroomSessionState(payload.nextState)) {
         store.resetSessionAudioState()
         store.clearActiveEffects()
+      }
+
+      if (payload.nextState === SessionState.ENDED) {
+        store.clearMessages(event.sessionId)
       }
     })
     dispatcher.register('ROOM:CLOSED', (event) => {

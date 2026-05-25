@@ -151,6 +151,7 @@ export function ChatWindow({
     | { dmId?: UUID }
     | undefined
   const addMessage = useStore((state) => state.addMessage)
+  const addMessages = useStore((state) => state.addMessages)
   const enqueueOutgoingMessage = useStore((state) => state.enqueueOutgoingMessage)
   const updateOutgoingMessage = useStore((state) => state.updateOutgoingMessage)
   const removeOutgoingMessage = useStore((state) => state.removeOutgoingMessage)
@@ -193,9 +194,26 @@ export function ChatWindow({
 
   // Derive ordered message list for this session
   // messages shape: Record<UUID, Record<UUID, Message>> (session → id → Message)
-  const messageList: Message[] = Object.values(sessionMessages ?? {}).sort(
-    (a, b) => a.createdAt - b.createdAt
-  )
+  const messageList = useMemo(() => {
+    const values = Object.values(sessionMessages ?? {}) as Message[]
+    if (values.length < 2) {
+      return values
+    }
+
+    let isChronological = true
+    for (let index = 1; index < values.length; index += 1) {
+      if (values[index - 1].createdAt > values[index].createdAt) {
+        isChronological = false
+        break
+      }
+    }
+
+    if (isChronological) {
+      return values
+    }
+
+    return [...values].sort((a, b) => a.createdAt - b.createdAt)
+  }, [sessionMessages])
 
   const [typingClock, setTypingClock] = useState(() => Date.now())
 
@@ -274,9 +292,7 @@ export function ChatWindow({
           editedAt: m.editedAt !== undefined ? toTimestamp(m.editedAt) : undefined,
         }))
 
-        for (const msg of msgs) {
-          addMessage(sessionId, msg)
-        }
+        addMessages(sessionId, msgs)
 
         const oldestInPage = msgs.length > 0 ? msgs[0]?.createdAt : undefined
         if (oldestInPage && Number.isFinite(oldestInPage)) {
@@ -314,7 +330,7 @@ export function ChatWindow({
         }
       }
     },
-    [addMessage, apiUrl, campaignId, isGreenroomMode, roomId, sessionId, token]
+    [addMessages, apiUrl, campaignId, isGreenroomMode, roomId, sessionId, token]
   )
 
   // Load latest history page on mount/change.

@@ -116,6 +116,7 @@ export interface ChatSlice {
 
   // Actions
   addMessage: (sessionId: UUID, message: Message) => void
+  addMessages: (sessionId: UUID, messages: Message[]) => void
   updateMessage: (sessionId: UUID, messageId: UUID, updates: Partial<Message>) => void
   deleteMessage: (sessionId: UUID, messageId: UUID) => void
   setTypingIndicators: (sessionId: UUID, indicators: TypingIndicator[]) => void
@@ -167,6 +168,37 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
             ...sessionMessages,
             [message.id]: message,
           }),
+        },
+      }
+    }),
+
+  addMessages: (sessionId, messages) =>
+    set((state) => {
+      if (messages.length === 0) {
+        return state
+      }
+
+      const sessionMessages = state.messages[sessionId] || {}
+      const nextSessionMessages = { ...sessionMessages }
+
+      for (const message of messages) {
+        if (isSessionBookend(message)) {
+          const hasDuplicate = Object.values(nextSessionMessages).some((existing) =>
+            isDuplicateSessionBookend(existing, message)
+          )
+
+          if (hasDuplicate) {
+            continue
+          }
+        }
+
+        nextSessionMessages[message.id] = message
+      }
+
+      return {
+        messages: {
+          ...state.messages,
+          [sessionId]: pruneSessionMessageCache(nextSessionMessages),
         },
       }
     }),
