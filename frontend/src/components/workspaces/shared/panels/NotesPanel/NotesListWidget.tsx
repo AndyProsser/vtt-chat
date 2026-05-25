@@ -1,6 +1,5 @@
 import { type UUID } from '@shared'
 import type { Note } from '@/types/notes'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 
 type NotesListWidgetProps = {
   notes: Note[]
@@ -53,14 +52,9 @@ export function NotesListWidget(props: NotesListWidgetProps) {
               <span className="notes-list-item-collapsed-mark" aria-hidden="true">
                 {toCompactNoteMark(note.title)}
               </span>
-              <TooltipProvider delayDuration={140}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="notes-list-item-title">{note.title}</div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{note.title}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="notes-list-item-title" title={note.title}>
+                {note.title}
+              </div>
 
               <div className="notes-list-item-tags" aria-label="Note hashtags">
                 {visibleTags.length > 0 ? (
