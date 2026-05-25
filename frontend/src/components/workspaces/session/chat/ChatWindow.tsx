@@ -10,10 +10,7 @@ import type { EventEnvelope, UUID } from '@shared'
 import { MessageType, Role, RoomType } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { isGreenRoomName, ROOM_NAMES } from '@/constants/roomPresence.constants'
-import {
-  CHAT_HISTORY_PAGE_SIZE,
-  TYPING_INDICATOR_REFRESH_INTERVAL_MS,
-} from '@/constants/chatPresence.constants'
+import { CHAT_HISTORY_PAGE_SIZE } from '@/constants/chatPresence.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
@@ -218,18 +215,25 @@ export function ChatWindow({
   const [typingClock, setTypingClock] = useState(() => Date.now())
 
   useEffect(() => {
-    if (!sessionTypingIndicators || sessionTypingIndicators.length === 0) {
+    const nextTypingExpiryAt = (sessionTypingIndicators ?? [])
+      .filter((indicator) => indicator.until > typingClock)
+      .reduce<
+        number | null
+      >((earliest, indicator) => (earliest === null || indicator.until < earliest ? indicator.until : earliest), null)
+
+    if (!nextTypingExpiryAt) {
       return
     }
 
-    const intervalId = window.setInterval(() => {
+    const timeoutDelayMs = Math.max(0, nextTypingExpiryAt - Date.now() + 12)
+    const timeoutId = window.setTimeout(() => {
       setTypingClock(Date.now())
-    }, TYPING_INDICATOR_REFRESH_INTERVAL_MS)
+    }, timeoutDelayMs)
 
     return () => {
-      window.clearInterval(intervalId)
+      window.clearTimeout(timeoutId)
     }
-  }, [sessionTypingIndicators])
+  }, [sessionTypingIndicators, typingClock])
 
   useEffect(() => {
     isLoadingOlderRef.current = isLoadingOlder
@@ -472,65 +476,70 @@ export function ChatWindow({
     }
   }, [hasMoreHistory, isLoading, loadHistoryPage, messageList.length])
 
-  const visibleMessages = useMemo(() => {
-    const roomScopedMessages = messageList.filter((message) => {
+  const messageView = useMemo(() => {
+    const roomScopedMessages: Message[] = []
+    const startedIndices: number[] = []
+    const isResolvedRoomGreen = isGreenRoomName(resolvedRoomName)
+
+    for (const message of messageList) {
       if (Array.isArray(message.visibleTo) && !message.visibleTo.includes(user.id)) {
-        return false
-      }
-
-      const bookendState = getBookendState(message.content, message.type)
-
-      if (!isGreenroomMode) {
-        const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
-        const isGreenroomMessage =
-          message.roomId === greenroomRoomId ||
-          (message.roomId === roomId
-            ? isGreenRoomName(resolvedRoomName)
-            : typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
-
-        if (isGreenroomMessage) {
-          return false
-        }
-
-        return true
+        continue
       }
 
       const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
       const isGreenroomMessage =
+        message.roomId === greenroomRoomId ||
+        (message.roomId === roomId
+          ? isResolvedRoomGreen
+          : typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
+      const bookendState = getBookendState(message.content, message.type)
+
+      if (!isGreenroomMode) {
+        if (isGreenroomMessage) {
+          continue
+        }
+
+        if (bookendState === 'started') {
+          startedIndices.push(roomScopedMessages.length)
+        }
+
+        roomScopedMessages.push(message)
+        continue
+      }
+
+      const isGreenroomContextMessage =
         message.roomId === roomId ||
         (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
 
-      if (!isGreenroomMessage) {
-        return false
+      if (!isGreenroomContextMessage) {
+        continue
       }
 
       if (bookendState && bookendState !== 'started' && bookendState !== 'ended') {
-        return false
+        continue
       }
 
-      return true
-    })
+      roomScopedMessages.push(message)
+    }
 
     // In greenroom mode, all campaign messages should be visible (old greenroom messages appear
     // before the STARTED bookend). Only trim to the latest STARTED bookend in session chat.
-    if (isGreenroomMode) {
-      return roomScopedMessages
-    }
+    const visibleMessages =
+      isGreenroomMode || startedIndices.length === 0
+        ? roomScopedMessages
+        : roomScopedMessages.slice(startedIndices[startedIndices.length - 1])
 
-    let latestSessionStartIndex = -1
-    for (let index = roomScopedMessages.length - 1; index >= 0; index -= 1) {
-      const message = roomScopedMessages[index]
-      if (getBookendState(message.content, message.type) === 'started') {
-        latestSessionStartIndex = index
-        break
+    const visibleRoomIds = new Set<UUID>()
+    for (const message of visibleMessages) {
+      if (message.roomId) {
+        visibleRoomIds.add(message.roomId)
       }
     }
 
-    if (latestSessionStartIndex <= 0) {
-      return roomScopedMessages
+    return {
+      visibleMessages,
+      visibleRoomCount: visibleRoomIds.size,
     }
-
-    return roomScopedMessages.slice(latestSessionStartIndex)
   }, [
     greenroomRoomId,
     isGreenroomMode,
@@ -540,6 +549,8 @@ export function ChatWindow({
     roomId,
     user.id,
   ])
+
+  const { visibleMessages, visibleRoomCount } = messageView
 
   const whisperRecipients = useMemo(() => {
     const participants = Object.entries(sessionPresence ?? {}) as Array<
@@ -585,25 +596,26 @@ export function ChatWindow({
       .sort((left, right) => left.label.localeCompare(right.label))
   }, [roomId, sessionPresence, sessionRecord?.dmId, user.id, user.role])
 
-  const visibleRoomCount = useMemo(
-    () => new Set(visibleMessages.map((message) => message.roomId).filter(Boolean)).size,
-    [visibleMessages]
-  )
-
-  const typingUsers = useMemo(() => {
-    return (sessionTypingIndicators ?? [])
+  const typingProjection = useMemo(() => {
+    const activeTypingUsers = (sessionTypingIndicators ?? [])
       .filter((indicator) => indicator.until > typingClock)
       .filter((indicator) => indicator.userId !== user.id)
       .filter((indicator) => !indicator.roomId || indicator.roomId === roomId)
-  }, [roomId, sessionTypingIndicators, typingClock, user.id])
 
-  const typingDisplayNames = useMemo(
-    () =>
-      typingUsers.map(
-        (indicator) => participantDirectory[indicator.userId]?.displayName || indicator.username
-      ),
-    [participantDirectory, typingUsers]
-  )
+    const typingDisplayNames = activeTypingUsers.map(
+      (indicator) => participantDirectory[indicator.userId]?.displayName || indicator.username
+    )
+
+    const typingSummary =
+      typingDisplayNames.length === 1
+        ? `${typingDisplayNames[0]} is typing`
+        : `${typingDisplayNames[0]} +${typingDisplayNames.length - 1} are typing`
+
+    return {
+      typingUsers: activeTypingUsers,
+      typingSummary,
+    }
+  }, [participantDirectory, roomId, sessionTypingIndicators, typingClock, user.id])
 
   const emitTypingEvent = useCallback(
     (type: 'CHAT:TYPING_STARTED' | 'CHAT:TYPING_STOPPED') => {
@@ -656,10 +668,7 @@ export function ChatWindow({
     [roomId, sessionOutgoingQueue]
   )
 
-  const typingSummary =
-    typingDisplayNames.length === 1
-      ? `${typingDisplayNames[0]} is typing`
-      : `${typingDisplayNames[0]} +${typingDisplayNames.length - 1} are typing`
+  const { typingUsers, typingSummary } = typingProjection
 
   const latestVisibleMessageCreatedAt = visibleMessages[visibleMessages.length - 1]?.createdAt
   const earliestVisibleMessageCreatedAt = visibleMessages[0]?.createdAt
