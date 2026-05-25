@@ -219,6 +219,31 @@ export function NoteCard({
           </div>
 
           <div className="notes-note-header__actions">
+            {canPublish ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={handlePublish}
+                    disabled={isSaving || isPublishDisabled}
+                    className={`notes-note-header-action notes-note-header-action--publish${hasPublishedThisSession ? ' is-published' : ''}`}
+                    aria-label="Publish handout to chat"
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      publish
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {isPublishDisabled
+                    ? 'Publish is unavailable in greenroom'
+                    : hasPublishedThisSession
+                      ? 'Published this session (click to publish again)'
+                      : 'Publish to chat'}
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
+
             {canManageShare ? (
               <NoteSharePopover
                 open={sharePopoverOpen}
@@ -267,31 +292,6 @@ export function NoteCard({
                       ? 'Save changes'
                       : 'Finish editing'
                     : 'Edit handout'}
-                </TooltipContent>
-              </Tooltip>
-            ) : null}
-
-            {canPublish ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handlePublish}
-                    disabled={isSaving || isPublishDisabled}
-                    className={`notes-note-header-action notes-note-header-action--publish${hasPublishedThisSession ? ' is-published' : ''}`}
-                    aria-label="Publish handout to chat"
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      publish
-                    </span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {isPublishDisabled
-                    ? 'Publish is unavailable in greenroom'
-                    : hasPublishedThisSession
-                      ? 'Published this session (click to publish again)'
-                      : 'Publish to chat'}
                 </TooltipContent>
               </Tooltip>
             ) : null}

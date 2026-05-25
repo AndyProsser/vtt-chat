@@ -49,7 +49,9 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
         const playerUsers: NotesShareUser[] = users
           .filter(
             (candidate) =>
-              candidate.userId !== params.currentUserId && candidate.role === Role.PLAYER
+              candidate.userId !== params.currentUserId &&
+              candidate.role === Role.PLAYER &&
+              !candidate.username.startsWith('dev_mock_')
           )
           .map((candidate) => ({
             id: candidate.userId,

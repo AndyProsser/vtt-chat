@@ -141,13 +141,19 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
         className={`notes-share-popover__player ${isSelected ? 'is-selected' : ''}`}
       >
         <span className="notes-share-popover__player-avatar" aria-hidden="true">
-          {player.avatarUrl ? <img src={player.avatarUrl} alt="" /> : player.username.slice(0, 1)}
+          {player.avatarUrl ? (
+            <img src={player.avatarUrl} alt="" />
+          ) : (
+            (player.characterName || player.username).slice(0, 1).toUpperCase()
+          )}
         </span>
         <span className="notes-share-popover__player-copy">
-          <span className="notes-share-popover__player-name">{player.username}</span>
-          <span className="notes-share-popover__player-character">
-            {player.characterName || 'No character'}
+          <span className="notes-share-popover__player-name">
+            {player.characterName || player.username}
           </span>
+          {player.characterName ? (
+            <span className="notes-share-popover__player-character">{player.username}</span>
+          ) : null}
         </span>
       </button>
     )

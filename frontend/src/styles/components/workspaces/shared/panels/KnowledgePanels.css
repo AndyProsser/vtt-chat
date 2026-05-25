@@ -1570,7 +1570,7 @@
 }
 
 .notes-share-popover {
-  width: min(28rem, 92vw);
+  width: min(17rem, 92vw);
   max-height: min(30rem, 70vh);
   overflow: auto;
   border: 1px solid var(--color-border-soft);
@@ -1654,7 +1654,7 @@
 
 .notes-share-popover__players {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9.4rem, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.35rem;
 }
 
