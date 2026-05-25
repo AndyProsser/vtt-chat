@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => ({
   mockSpectatorWaitlistCount: vi.fn(),
   mockSpectatorWaitlistUpdate: vi.fn(),
   mockCampaignFindMany: vi.fn(),
+  mockGetLobbyStatsSnapshot: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -126,6 +127,10 @@ vi.mock('@/repositories/session.repository', () => ({
   listSessionsByCampaign: vi.fn(),
 }))
 
+vi.mock('@/services/lobby/lobby-stats.service', () => ({
+  getLobbyStatsSnapshot: (...args: unknown[]) => mocks.mockGetLobbyStatsSnapshot(...args),
+}))
+
 import authRoutes from '@/api/auth.routes'
 import campaignRoutes from '@/api/campaign.routes'
 import platformRoutes from '@/api/platform.routes'
@@ -184,6 +189,17 @@ describe('guest auth routes', () => {
     mocks.mockSpectatorWaitlistCount.mockResolvedValue(1)
     mocks.mockPresenceSnapshotFindMany.mockResolvedValue([])
     mocks.mockCampaignFindMany.mockResolvedValue([])
+    mocks.mockGetLobbyStatsSnapshot.mockResolvedValue({
+      activeCampaigns: 5,
+      pausedCampaigns: 0,
+      averageSessionMinutesLast24h: 0,
+      connectedPlayersAndDms: 0,
+      connectedSpectators: 0,
+      activeSessions: 2,
+      peakConcurrentUsers24h: 0,
+      updatedAt: Date.now(),
+      source: 'snapshot',
+    })
     mocks.mockUserFindUnique.mockResolvedValue({
       id: 'guest-user',
       username: 'guest-user',

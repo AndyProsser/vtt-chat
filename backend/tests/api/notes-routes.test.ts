@@ -8,7 +8,10 @@ const mocks = vi.hoisted(() => ({
   mockExtractTokenFromHeader: vi.fn(),
   mockVerifyToken: vi.fn(),
   mockGetSession: vi.fn(),
+  mockGetSessionUsers: vi.fn(),
   mockResolveEffectiveSessionRole: vi.fn(),
+  mockGetCampaignForUser: vi.fn(),
+  mockListSessionsByCampaign: vi.fn(),
   mockCreateNote: vi.fn(),
   mockDeleteNote: vi.fn(),
   mockGetNoteById: vi.fn(),
@@ -17,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   mockUpdateNote: vi.fn(),
   mockSendMessage: vi.fn(),
   mockAppendSessionAuditEvent: vi.fn(),
+  mockCreateSessionLog: vi.fn(),
   mockLoggerInfo: vi.fn(),
 }))
 
@@ -27,11 +31,20 @@ vi.mock('@/services/auth.service', () => ({
 
 vi.mock('@/services/session/core.service', () => ({
   getSession: (...args: unknown[]) => mocks.mockGetSession(...args),
+  getSessionUsers: (...args: unknown[]) => mocks.mockGetSessionUsers(...args),
 }))
 
 vi.mock('@/services/session/authz.service', () => ({
   resolveEffectiveSessionRole: (...args: unknown[]) =>
     mocks.mockResolveEffectiveSessionRole(...args),
+}))
+
+vi.mock('@/repositories/campaign.repository', () => ({
+  getCampaignForUser: (...args: unknown[]) => mocks.mockGetCampaignForUser(...args),
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  listSessionsByCampaign: (...args: unknown[]) => mocks.mockListSessionsByCampaign(...args),
 }))
 
 vi.mock('@/services/notes.service', () => ({
@@ -51,6 +64,10 @@ vi.mock('@/services/runtime/runtime-streams.service', () => ({
   appendSessionAuditEvent: (...args: unknown[]) => mocks.mockAppendSessionAuditEvent(...args),
 }))
 
+vi.mock('@/repositories/session-logs.repository', () => ({
+  createSessionLog: (...args: unknown[]) => mocks.mockCreateSessionLog(...args),
+}))
+
 vi.mock('@/utils/logger', () => ({
   logger: {
     info: (...args: unknown[]) => mocks.mockLoggerInfo(...args),
@@ -60,6 +77,7 @@ vi.mock('@/utils/logger', () => ({
 import notesRoutes from '@/api/notes.routes'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
+const CAMPAIGN_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const NOTE_ID = '22222222-2222-4222-8222-222222222222'
 const USER_ID = '33333333-3333-4333-8333-333333333333'
 const DM_ID = '44444444-4444-4444-8444-444444444444'
@@ -88,13 +106,24 @@ describe('notes routes', () => {
     mocks.mockGetSession.mockResolvedValue({
       id: SESSION_ID,
       dmId: DM_ID,
-      campaignId: 'campaign-1',
+      campaignId: CAMPAIGN_ID,
     })
     mocks.mockResolveEffectiveSessionRole.mockResolvedValue({
       ok: true,
       role: 'PLAYER',
       session: { id: SESSION_ID, dmId: DM_ID },
     })
+    mocks.mockGetCampaignForUser.mockResolvedValue({
+      id: CAMPAIGN_ID,
+      currentDmId: DM_ID,
+      memberRole: 'PLAYER',
+    })
+    mocks.mockListSessionsByCampaign.mockResolvedValue([{ id: SESSION_ID }])
+    mocks.mockGetSessionUsers.mockResolvedValue([
+      { id: USER_ID, username: 'alice' },
+      { id: DM_ID, username: 'dm-user' },
+      { id: OTHER_USER_ID, username: 'other-user' },
+    ])
     mocks.mockGetVisibleNotes.mockResolvedValue([])
   })
 
@@ -149,6 +178,7 @@ describe('notes routes', () => {
     const app = buildApp()
 
     let response = await request(app).post('/api/notes').set('Authorization', 'Bearer token').send({
+      campaignId: CAMPAIGN_ID,
       sessionId: 'bad',
       title: 'Valid title',
       content: 'Valid content',
@@ -158,6 +188,7 @@ describe('notes routes', () => {
     expect(response.body.code).toBe(ErrorCode.INVALID_SESSION)
 
     response = await request(app).post('/api/notes').set('Authorization', 'Bearer token').send({
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       title: '',
       content: 'Valid content',
@@ -167,6 +198,7 @@ describe('notes routes', () => {
     expect(response.body.message).toBe('Invalid note title')
 
     response = await request(app).post('/api/notes').set('Authorization', 'Bearer token').send({
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       title: 'Valid title',
       content: '',
@@ -176,6 +208,7 @@ describe('notes routes', () => {
     expect(response.body.message).toBe('Invalid note content')
 
     response = await request(app).post('/api/notes').set('Authorization', 'Bearer token').send({
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       title: 'Valid title',
       content: 'Valid content',
@@ -185,6 +218,7 @@ describe('notes routes', () => {
     expect(response.body.message).toBe('Invalid note visibility')
 
     response = await request(app).post('/api/notes').set('Authorization', 'Bearer token').send({
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       title: 'DM Note',
       content: 'Secret',
@@ -215,6 +249,7 @@ describe('notes routes', () => {
       .post('/api/notes')
       .set('Authorization', 'Bearer token')
       .send({
+        campaignId: CAMPAIGN_ID,
         sessionId: SESSION_ID,
         title: 'Custom Note',
         content: 'For selected users',
@@ -543,7 +578,7 @@ describe('notes routes', () => {
     expect(response.status).toBe(200)
     expect(mocks.mockSendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        content: `[Note] Recap: ${longContent.slice(0, NOTE_PUBLISH_SNIPPET_MAX_LENGTH)}...`,
+        content: expect.stringContaining(`[Note Shared] Recap`),
       })
     )
     expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(

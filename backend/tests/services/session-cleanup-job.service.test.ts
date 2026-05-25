@@ -56,6 +56,11 @@ vi.mock('@/services/chat.service', () => ({
   clearRoomMessages: mocks.clearRoomMessages,
 }))
 
+vi.mock('@/services/dev-mock/simulation.service', () => ({
+  disableMockSimulationForSessionExit: vi.fn(),
+  purgeMockSimulationSessionState: vi.fn(),
+}))
+
 vi.mock('@/utils', () => ({
   logger: {
     info: mocks.loggerInfo,

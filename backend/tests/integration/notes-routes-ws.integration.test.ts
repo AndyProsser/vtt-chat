@@ -14,7 +14,12 @@ const mocks = vi.hoisted(() => ({
   mockGetVisibleNotes: vi.fn(),
   mockMarkNotePublished: vi.fn(),
   mockUpdateNote: vi.fn(),
+  mockResolveEffectiveSessionRole: vi.fn(),
+  mockGetCampaignForUser: vi.fn(),
+  mockListSessionsByCampaign: vi.fn(),
   mockSendMessage: vi.fn(),
+  mockAppendSessionAuditEvent: vi.fn(),
+  mockCreateSessionLog: vi.fn(),
   mockLoggerInfo: vi.fn(),
 }))
 
@@ -37,8 +42,29 @@ vi.mock('@/services/notes.service', () => ({
   updateNote: mocks.mockUpdateNote,
 }))
 
+vi.mock('@/services/session/authz.service', () => ({
+  resolveEffectiveSessionRole: (...args: unknown[]) =>
+    mocks.mockResolveEffectiveSessionRole(...args),
+}))
+
+vi.mock('@/repositories/campaign.repository', () => ({
+  getCampaignForUser: (...args: unknown[]) => mocks.mockGetCampaignForUser(...args),
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  listSessionsByCampaign: (...args: unknown[]) => mocks.mockListSessionsByCampaign(...args),
+}))
+
 vi.mock('@/services/chat.service', () => ({
   sendMessage: mocks.mockSendMessage,
+}))
+
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: (...args: unknown[]) => mocks.mockAppendSessionAuditEvent(...args),
+}))
+
+vi.mock('@/repositories/session-logs.repository', () => ({
+  createSessionLog: (...args: unknown[]) => mocks.mockCreateSessionLog(...args),
 }))
 
 vi.mock('@/utils/logger', () => ({
@@ -50,6 +76,7 @@ vi.mock('@/utils/logger', () => ({
 import notesRoutes from '@/api/notes.routes'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'
+const CAMPAIGN_ID = '66666666-6666-4666-8666-666666666666'
 const NOTE_ID = '22222222-2222-4222-8222-222222222222'
 const USER_ID = '33333333-3333-4333-8333-333333333333'
 const DM_ID = '44444444-4444-4444-8444-444444444444'
@@ -80,10 +107,21 @@ describe('notes routes websocket propagation', () => {
       id: SESSION_ID,
       name: 'Session 1',
       dmId: DM_ID,
-      campaignId: '66666666-6666-4666-8666-666666666666',
+      campaignId: CAMPAIGN_ID,
       state: 'ACTIVE',
       createdAt: Date.now(),
     })
+    mocks.mockResolveEffectiveSessionRole.mockResolvedValue({
+      ok: true,
+      role: 'PLAYER',
+      session: { id: SESSION_ID, dmId: DM_ID },
+    })
+    mocks.mockGetCampaignForUser.mockResolvedValue({
+      id: CAMPAIGN_ID,
+      currentDmId: DM_ID,
+      memberRole: 'PLAYER',
+    })
+    mocks.mockListSessionsByCampaign.mockResolvedValue([{ id: SESSION_ID }])
     mocks.mockGetSessionUsers.mockResolvedValue([
       { id: USER_ID, username: 'alice', role: 'PLAYER', createdAt: Date.now() },
       { id: DM_ID, username: 'dm-user', role: 'DM', createdAt: Date.now() },
@@ -110,6 +148,7 @@ describe('notes routes websocket propagation', () => {
       .post('/api/notes')
       .set('Authorization', 'Bearer token')
       .send({
+        campaignId: CAMPAIGN_ID,
         sessionId: SESSION_ID,
         title: 'Secret',
         content: 'Hidden lore',

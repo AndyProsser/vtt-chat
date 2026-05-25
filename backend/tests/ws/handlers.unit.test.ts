@@ -39,6 +39,10 @@ vi.mock('@/services/audio/audio-state', () => ({
   setRoomEnvironmentState: setRoomEnvironmentStateMock,
 }))
 
+vi.mock('@/services/dev-mock/takeover.service', () => ({
+  resolveEffectiveActor: vi.fn(async () => ({ userId: 'resolved', username: 'resolved' })),
+}))
+
 vi.mock('@/utils', () => ({
   logger: {
     debug: loggerDebugMock,

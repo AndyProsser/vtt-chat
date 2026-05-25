@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   getMockSimulationBounds: vi.fn(),
   getMockDisconnectRealismProfiles: vi.fn(),
   stopMockSimulation: vi.fn(),
+  disableMockSimulationForSessionExit: vi.fn(),
   removeMockPlayersFromSession: vi.fn(),
   broadcastSessionStatsSnapshot: vi.fn(),
   getSession: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock('@/services/dev-mock/simulation.service', () => ({
   getMockSimulationBounds: mocks.getMockSimulationBounds,
   getMockSimulationPlayerCount: vi.fn(),
   getMockSimulationStatus: mocks.getMockSimulationStatus,
+  disableMockSimulationForSessionExit: mocks.disableMockSimulationForSessionExit,
   stopMockSimulation: mocks.stopMockSimulation,
   updateMockSimulationConfig: vi.fn(),
 }))
@@ -98,6 +100,7 @@ describe('GET /dev/mock-players/simulation/status/:sessionId', () => {
       },
     })
     mocks.stopMockSimulation.mockResolvedValue(undefined)
+    mocks.disableMockSimulationForSessionExit.mockResolvedValue(undefined)
     mocks.removeMockPlayersFromSession.mockResolvedValue(undefined)
     mocks.broadcastSessionStatsSnapshot.mockResolvedValue(undefined)
   })
@@ -156,6 +159,7 @@ describe('POST /dev/mock-players/disconnect-all', () => {
       role: 'DM',
     })
     mocks.stopMockSimulation.mockResolvedValue(undefined)
+    mocks.disableMockSimulationForSessionExit.mockResolvedValue(undefined)
     mocks.removeMockPlayersFromSession.mockResolvedValue(undefined)
     mocks.broadcastSessionStatsSnapshot.mockResolvedValue(undefined)
     mocks.getSession.mockResolvedValue({ dmId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' })

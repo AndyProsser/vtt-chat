@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   listSessionsByCampaign: vi.fn(),
   softDeleteMessageRecord: vi.fn(),
   updateMessageRecord: vi.fn(),
+  appendChatRuntimeEvent: vi.fn(),
+  appendSessionAuditEvent: vi.fn(),
 }))
 
 vi.mock('@/repositories/chat.repository', () => ({
@@ -39,6 +41,11 @@ vi.mock('@/repositories/room.repository', () => ({
 vi.mock('@/repositories/session.repository', () => ({
   findSessionById: mocks.findSessionById,
   listSessionsByCampaign: mocks.listSessionsByCampaign,
+}))
+
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendChatRuntimeEvent: (...args: unknown[]) => mocks.appendChatRuntimeEvent(...args),
+  appendSessionAuditEvent: (...args: unknown[]) => mocks.appendSessionAuditEvent(...args),
 }))
 
 import {

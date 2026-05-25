@@ -46,6 +46,16 @@ vi.mock('@/services/chat.service', () => ({
   clearRoomMessages: mocks.clearRoomMessages,
 }))
 
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: vi.fn(),
+  appendChatRuntimeEvent: vi.fn(),
+}))
+
+vi.mock('@/services/dev-mock/simulation.service', () => ({
+  disableMockSimulationForSessionExit: vi.fn(),
+  purgeMockSimulationSessionState: vi.fn(),
+}))
+
 vi.mock('@/services/room.service', () => ({
   closeRoom: mocks.closeRoom,
   createRoom: mocks.createRoom,

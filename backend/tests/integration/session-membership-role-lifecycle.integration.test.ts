@@ -115,6 +115,16 @@ vi.mock('@/services/session/logs.service', () => ({
   logSessionStateChange: vi.fn(),
 }))
 
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: vi.fn(),
+  appendChatRuntimeEvent: vi.fn(),
+}))
+
+vi.mock('@/services/dev-mock/simulation.service', () => ({
+  disableMockSimulationForSessionExit: vi.fn(),
+  purgeMockSimulationSessionState: vi.fn(),
+}))
+
 vi.mock('@/services/session/access.service', () => ({
   listSessionLogsForRequester: mocks.listSessionLogsForRequester,
   listSessionUsersForRequester: mocks.listSessionUsersForRequester,

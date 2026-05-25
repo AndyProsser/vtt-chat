@@ -54,6 +54,14 @@ vi.mock('@/services/session/logs.service', () => ({
   logSessionCooldownExtended: mocks.mockLogSessionCooldownExtended,
 }))
 
+vi.mock('@/services/session/cleanup-job.service', () => ({
+  sessionCleanupJobService: {
+    notifyLifecycleTrigger: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+  },
+}))
+
 vi.mock('@/services/system-messages.service', () => ({
   emitSessionBoundarySystemMessage: vi.fn(),
   emitSessionRecapMessage: vi.fn(),
@@ -77,6 +85,16 @@ vi.mock('@/services/audio/audio-state', () => ({
 
 vi.mock('@/services/chat.service', () => ({
   clearRoomMessages: mocks.mockClearRoomMessages,
+}))
+
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: vi.fn(),
+  appendChatRuntimeEvent: vi.fn(),
+}))
+
+vi.mock('@/services/dev-mock/simulation.service', () => ({
+  disableMockSimulationForSessionExit: vi.fn(),
+  purgeMockSimulationSessionState: vi.fn(),
 }))
 
 vi.mock('@/services/session/access.service', () => ({

@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 type FileMap = Map<string, string>
@@ -63,7 +64,7 @@ import {
   updateLogRetentionSettings,
 } from '@/infra/telemetry-store'
 
-const LOG_DIR = '/home/andy/Development/vtt-chat/backend/logs'
+const LOG_DIR = path.resolve(process.cwd(), 'logs')
 const RETENTION_FILE = `${LOG_DIR}/log-retention.json`
 const TELEMETRY_FILE = `${LOG_DIR}/telemetry-ingest.log`
 const DIAGNOSTIC_FILE = `${LOG_DIR}/diagnostic.log`

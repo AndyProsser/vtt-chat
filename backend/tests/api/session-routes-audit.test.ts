@@ -119,6 +119,19 @@ vi.mock('@/services/session/cooldown-authz.service', () => ({
   resolveCooldownControlAuthorization: mocks.mockResolveCooldownControlAuthorization,
 }))
 
+vi.mock('@/services/session/cleanup-job.service', () => ({
+  sessionCleanupJobService: {
+    notifyLifecycleTrigger: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+  },
+}))
+
+vi.mock('@/services/dev-mock/simulation.service', () => ({
+  disableMockSimulationForSessionExit: vi.fn(),
+  purgeMockSimulationSessionState: vi.fn(),
+}))
+
 vi.mock('@/services/runtime/runtime-streams.service', () => ({
   appendSessionAuditEvent: mocks.mockAppendSessionAuditEvent,
 }))

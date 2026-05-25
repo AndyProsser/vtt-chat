@@ -134,6 +134,7 @@ Platform status metric contract:
 
 - `GET /api/platform/status` includes `peakConcurrentUsers24h` as a number representing the highest concurrent connected users observed in the previous 24 hours.
 - This value is computed from persisted telemetry connection state events and is authoritative for lobby peak display.
+- `GET /api/platform/status` also includes `lobbyStats`, computed via `getLobbyStatsSnapshot(platformStatus)`, containing the current campaign/session lobby aggregate counters used by pre-join UI surfaces.
 
 Party-to-settings navigation contract:
 
@@ -502,6 +503,12 @@ Room close/delete sequencing contract:
 - `NOTES:DELETED` — Author or DM can delete
 - `NOTES:SHARED` — Author shares with specific users
 - `NOTES:TAG_ADDED` — Tagging support
+
+Notes visibility/publish sequencing contract:
+
+- `NOTES:CREATED` and `NOTES:UPDATED` must be emitted with the computed visibility audience from note metadata (DM-only, custom allowed users, and author/DM inclusion rules).
+- Publishing a note emits `NOTES:UPDATED` first and then `CHAT:MESSAGE_SENT`, both using the same visibility audience for that note.
+- Publishing writes both an audit record (`NOTES.PUBLISHED`) and a session-log record for traceability.
 
 **Audio** (file: `events/audio.ts`)
 

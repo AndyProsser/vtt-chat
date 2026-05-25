@@ -56,6 +56,34 @@ const {
   }
 })
 
+vi.mock('@/services/dev-mock/takeover.service', () => ({
+  resolveEffectiveActor: vi.fn(async () => ({ userId: 'user-1', username: 'user-1' })),
+  resolveEffectiveActorSnapshot: vi.fn(async () => null),
+}))
+
+vi.mock('@/services/chat-visibility.service', () => ({
+  resolveTypingAudience: vi.fn(async () => undefined),
+}))
+
+vi.mock('@/repositories/campaign.repository', () => ({
+  listCampaignMemberIds: vi.fn(async () => []),
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  findSessionById: vi.fn(async () => null),
+}))
+
+vi.mock('@/services/lobby/lobby-stats.service', () => ({
+  broadcastLobbyStatsUpdated: vi.fn(async () => undefined),
+}))
+
+vi.mock('@/services/session/disconnect-cascade.service', () => ({
+  sessionDisconnectCascadeService: {
+    handleUserConnected: vi.fn(),
+    handleUserDisconnected: vi.fn(),
+  },
+}))
+
 vi.mock('@/ws/dispatcher', async () => {
   const actual = await vi.importActual<typeof import('@/ws/dispatcher')>('@/ws/dispatcher')
   return {
@@ -197,7 +225,7 @@ describe('WebSocketManager', () => {
     await manager.close()
 
     expect(clearIntervalMock).toHaveBeenCalledWith(202)
-    expect(clearIntervalMock).toHaveBeenCalledTimes(1)
+    expect(clearIntervalMock).toHaveBeenCalledTimes(2)
   })
 
   it('rebroadcasts typing only to the sender room audience plus DM', async () => {

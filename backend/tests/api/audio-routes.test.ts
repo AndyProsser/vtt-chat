@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   mockApplyDMOverrideState: vi.fn(),
   mockRemoveDMOverrideState: vi.fn(),
   mockGetSessionAudioState: vi.fn(),
+  mockAppendSessionAuditEvent: vi.fn(),
   mockBroadcastToSession: vi.fn(),
   mockLoggerInfo: vi.fn(),
 }))
@@ -34,6 +35,10 @@ vi.mock('@/ws/event-broadcaster', () => ({
   default: {
     broadcastToSession: mocks.mockBroadcastToSession,
   },
+}))
+
+vi.mock('@/services/runtime/runtime-streams.service', () => ({
+  appendSessionAuditEvent: (...args: unknown[]) => mocks.mockAppendSessionAuditEvent(...args),
 }))
 
 vi.mock('@/utils', () => ({

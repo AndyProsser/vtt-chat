@@ -473,6 +473,7 @@ describe('chat routes', () => {
       limit: undefined,
       before: undefined,
       sinceLatestStart: false,
+      systemOnly: false,
     })
   })
 
@@ -566,6 +567,7 @@ describe('chat routes', () => {
       limit: undefined,
       before: undefined,
       sinceLatestStart: false,
+      systemOnly: false,
     })
   })
 
@@ -586,6 +588,7 @@ describe('chat routes', () => {
       limit: undefined,
       before: undefined,
       sinceLatestStart: false,
+      systemOnly: false,
     })
     expect(response.body.messages).toEqual([{ id: MESSAGE_ID }])
     expect(response.body.pagination).toEqual({ hasMore: false, nextBefore: 1700000000000 })
