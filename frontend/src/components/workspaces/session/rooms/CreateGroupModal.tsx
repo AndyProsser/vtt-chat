@@ -20,7 +20,7 @@ export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalPro
     bottom: 'auto',
     right: 0,
     left: 'auto',
-    width: 'min(19rem, calc(100vw - 2rem))',
+    width: 'min(16rem, calc(100vw - 2rem))',
     zIndex: 1300,
   }
 
@@ -58,14 +58,6 @@ export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalPro
         <span className="audio-settings-panel__title">
           <Icon name="rooms" /> Create Group
         </span>
-        <button
-          type="button"
-          className="group-popover__close audio-settings-panel__close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          <Icon name="close" />
-        </button>
       </header>
 
       <form className="group-popover__form audio-settings-panel__body" onSubmit={handleSubmit}>
@@ -86,9 +78,6 @@ export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalPro
         {error ? <p className="group-popover__error">{error}</p> : null}
 
         <footer className="group-popover__actions">
-          <button type="button" onClick={onClose} disabled={isSubmitting}>
-            Cancel
-          </button>
           <button type="submit" disabled={submitDisabled}>
             {isSubmitting ? 'Creating...' : 'Create Group'}
           </button>

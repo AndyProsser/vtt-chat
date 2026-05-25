@@ -163,7 +163,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.4rem;
-  padding-top: 0.32rem;
+  padding-top: 0.48rem;
 }
 
 .group-popover.audio-settings-panel .group-popover__actions button {
@@ -219,7 +219,7 @@
   display: flex !important;
   justify-content: flex-end !important;
   gap: 0.4rem !important;
-  padding-top: 0.32rem !important;
+  padding-top: 0.48rem !important;
 }
 
 .room-selector
@@ -246,6 +246,7 @@
   font-weight: 600 !important;
   line-height: 1 !important;
   appearance: none !important;
+  margin-top: 0.18rem !important;
 }
 
 .room-selector
@@ -290,7 +291,7 @@
   display: grid !important;
   gap: 0 !important;
   padding: 0 !important;
-  width: min(19rem, calc(100vw - 2rem)) !important;
+  width: min(17rem, calc(100vw - 2rem)) !important;
   border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34)) !important;
   border-radius: var(--radius-lg, 14px) !important;
   background: var(--color-surface, #0f172a) !important;
@@ -306,7 +307,7 @@
   display: grid !important;
   gap: 0 !important;
   padding: 0 !important;
-  width: min(19rem, calc(100vw - 2rem)) !important;
+  width: min(17rem, calc(100vw - 2rem)) !important;
   border: 1px solid var(--color-border-soft, rgba(148, 163, 184, 0.34)) !important;
   border-radius: var(--radius-lg, 14px) !important;
   background: var(--color-surface, #0f172a) !important;
