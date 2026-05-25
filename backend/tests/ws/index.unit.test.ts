@@ -156,6 +156,15 @@ vi.mock('@/services/session/core.service', () => ({
   getSession: getSessionMock,
 }))
 
+vi.mock('@/infra/redis', () => ({
+  getRedisClient: vi.fn(async () => ({
+    xAdd: vi.fn(async () => undefined),
+    xTrim: vi.fn(async () => undefined),
+    xRange: vi.fn(async () => []),
+    del: vi.fn(async () => 0),
+  })),
+}))
+
 vi.mock('@/utils', () => ({
   logger: {
     info: vi.fn(),

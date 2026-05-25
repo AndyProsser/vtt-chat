@@ -110,6 +110,10 @@ vi.mock('@/services/session/stats.service', () => ({
   broadcastSessionStatsSnapshot: vi.fn(),
 }))
 
+vi.mock('@/ws/state-recovery', () => ({
+  clearSessionRecoveryState: vi.fn(),
+}))
+
 import sessionRoutes from '@/api/session.routes'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111'

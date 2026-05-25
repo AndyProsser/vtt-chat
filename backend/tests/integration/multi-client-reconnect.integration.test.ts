@@ -16,8 +16,15 @@
  *  - Each client's replay slice is exactly the events after its lastEventId
  */
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { EventEnvelope, UUID } from '@shared'
+
+vi.mock('@/infra/redis', () => ({
+  getRedisClient: vi.fn(async () => ({
+    del: vi.fn(async () => 1),
+  })),
+}))
+
 import {
   clearSessionRecoveryState,
   createConnectionState,

@@ -1,5 +1,12 @@
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
 import type { EventEnvelope, UUID } from '@shared'
+
+vi.mock('@/infra/redis', () => ({
+  getRedisClient: vi.fn(async () => ({
+    del: vi.fn(async () => 1),
+  })),
+}))
+
 import {
   clearSessionRecoveryState,
   createConnectionState,
