@@ -289,3 +289,11 @@ export function clearSessionRecoveryState(sessionId: UUID): void {
     }
   })()
 }
+
+/**
+ * Clear only in-memory recovery buffers while preserving durable stream replay.
+ * Useful when a session has no connected sockets but may reconnect shortly.
+ */
+export function clearInMemorySessionRecoveryState(sessionId: UUID): void {
+  eventLog.clearSession(sessionId)
+}

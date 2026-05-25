@@ -8,6 +8,8 @@ import type { StateCreator } from 'zustand'
 import type { UUID, MessageType } from '@shared'
 import type { EventEnvelope } from '@shared'
 import {
+  CHAT_SESSION_CACHE_MAX_MESSAGES,
+  CHAT_SESSION_CACHE_RETAIN_MESSAGES,
   TYPING_INDICATOR_TTL_MS,
   TYPING_RENEW_MIN_EXTENSION_MS,
 } from '@/constants/chatPresence.constants'
@@ -87,6 +89,24 @@ function isDuplicateSessionBookend(existing: Message, incoming: Message): boolea
   )
 }
 
+function pruneSessionMessageCache(sessionMessages: Record<UUID, Message>): Record<UUID, Message> {
+  const entries = Object.entries(sessionMessages) as Array<[UUID, Message]>
+  if (entries.length <= CHAT_SESSION_CACHE_MAX_MESSAGES) {
+    return sessionMessages
+  }
+
+  const pinnedEntries = entries.filter(([, message]) => isSessionBookend(message))
+  const normalEntries = entries.filter(([, message]) => !isSessionBookend(message))
+  normalEntries.sort((left, right) => left[1].createdAt - right[1].createdAt)
+
+  const maxNormalCount = Math.max(0, CHAT_SESSION_CACHE_RETAIN_MESSAGES - pinnedEntries.length)
+  const retainedNormal = normalEntries.slice(Math.max(0, normalEntries.length - maxNormalCount))
+  const nextEntries = [...retainedNormal, ...pinnedEntries]
+  nextEntries.sort((left, right) => left[1].createdAt - right[1].createdAt)
+
+  return Object.fromEntries(nextEntries) as Record<UUID, Message>
+}
+
 export interface ChatSlice {
   // State
   messages: Record<UUID, Record<UUID, Message>> // keyed by sessionId, then messageId
@@ -143,10 +163,10 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       return {
         messages: {
           ...state.messages,
-          [sessionId]: {
+          [sessionId]: pruneSessionMessageCache({
             ...sessionMessages,
             [message.id]: message,
-          },
+          }),
         },
       }
     }),
@@ -323,10 +343,10 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       return {
         messages: {
           ...state.messages,
-          [event.sessionId]: {
+          [event.sessionId]: pruneSessionMessageCache({
             ...sessionMessages,
             [message.id]: message,
-          },
+          }),
         },
       }
     })

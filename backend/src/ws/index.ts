@@ -9,6 +9,7 @@ import type { DeviceSessionEntity } from '@shared'
 import { EventDispatcher } from './dispatcher'
 import { buildSessionDeviceSessionsByUser } from './device-sessions'
 import {
+  clearInMemorySessionRecoveryState,
   registerEventForRecovery,
   registerEventForRecoveryDurable,
   replayEventsForConnectionDurable,
@@ -81,6 +82,7 @@ export class WebSocketManager {
   private dispatcher: EventDispatcher
   private connections: Map<string, ExtendedWebSocket> = new Map()
   private snapshotIntervalId: ReturnType<typeof setInterval>
+  private heartbeatIntervalId!: ReturnType<typeof setInterval>
 
   constructor(httpServer: HTTPServer) {
     this.wss = new WebSocketServer({ server: httpServer })
@@ -188,7 +190,7 @@ export class WebSocketManager {
     })
 
     // Heartbeat to detect stale connections
-    setInterval(() => {
+    this.heartbeatIntervalId = setInterval(() => {
       this.wss.clients.forEach((ws: ExtendedWebSocket) => {
         if (!ws.isAlive) {
           ws.terminate()
@@ -616,6 +618,10 @@ export class WebSocketManager {
       const sessionId = ws.connectionState.sessionId
       const userId = ws.authPayload.userId as UUID
 
+      if (!this.hasActiveConnectionsInSession(sessionId)) {
+        clearInMemorySessionRecoveryState(sessionId)
+      }
+
       this.broadcastDeviceSessionSnapshot({
         sessionId,
         userId,
@@ -802,6 +808,7 @@ export class WebSocketManager {
   close(): Promise<void> {
     return new Promise((resolve) => {
       clearInterval(this.snapshotIntervalId)
+      clearInterval(this.heartbeatIntervalId)
       this.wss.close(() => {
         resolve()
       })

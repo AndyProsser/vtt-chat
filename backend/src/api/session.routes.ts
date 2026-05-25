@@ -77,6 +77,7 @@ import {
 import { SESSION_EVENT_TYPES } from '@/constants/session-events.constants'
 import type { WebSocketManager } from '@/ws'
 import eventBroadcaster from '@/ws/event-broadcaster'
+import { clearSessionRecoveryState } from '@/ws/state-recovery'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -1335,6 +1336,10 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       sessionCleanupJobService.notifyLifecycleTrigger('COOLDOWN_STARTED')
     }
 
+    if (session.state === SessionStateEnum.ENDED || session.state === SessionStateEnum.CLEANUP) {
+      clearSessionRecoveryState(session.id)
+    }
+
     await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
     await broadcastCampaignListInvalidatedForSession({
       sessionId: session.id,
@@ -1615,6 +1620,10 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
           endedAt: Date.now(),
         },
       })
+    }
+
+    if (session.state === SessionStateEnum.ENDED || session.state === SessionStateEnum.CLEANUP) {
+      clearSessionRecoveryState(session.id)
     }
 
     await appendSessionAuditEvent({

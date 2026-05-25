@@ -9,6 +9,7 @@ import {
   MAX_DEV_MOCK_SIMULATOR_COUNT,
   MIN_DEV_MOCK_SIMULATOR_COUNT,
 } from '@/constants/dev-mock.constants'
+import { DEV_MOCK_RUNTIME_INACTIVE_TTL_MS } from '@/constants/dev-mock-simulation.constants'
 import { getSession } from '@/services/session/core.service'
 import { getSessionPresence, getRooms, updatePresenceState } from '@/services/room.service'
 import { DeviceClass, MessageType, PresenceState, Role, RoomType, SessionState } from '@shared'
@@ -76,6 +77,7 @@ interface MockSimulationRuntime {
   config: MockSimulationConfig
   isRunning: boolean
   startedAt: number
+  lastTouchedAt: number
   tickTimer: ReturnType<typeof setInterval> | null
   speakingNow: Set<UUID>
   typingNow: Set<UUID>
@@ -274,16 +276,37 @@ function pickRandomUsers(userIds: UUID[], maxCount: number): UUID[] {
   return shuffled.slice(0, Math.min(maxCount, shuffled.length))
 }
 
+function pruneInactiveRuntimes(now: number): void {
+  for (const [sessionId, runtime] of runtimeBySession.entries()) {
+    if (runtime.isRunning || runtime.tickTimer) {
+      continue
+    }
+
+    if (now - runtime.lastTouchedAt >= DEV_MOCK_RUNTIME_INACTIVE_TTL_MS) {
+      runtimeBySession.delete(sessionId)
+    }
+  }
+}
+
+function touchRuntime(runtime: MockSimulationRuntime, now = Date.now()): void {
+  runtime.lastTouchedAt = now
+}
+
 function getOrCreateRuntime(sessionId: UUID): MockSimulationRuntime {
+  const now = Date.now()
+  pruneInactiveRuntimes(now)
+
   const existing = runtimeBySession.get(sessionId)
   if (existing) {
+    touchRuntime(existing, now)
     return existing
   }
 
   const runtime: MockSimulationRuntime = {
     config: defaultConfig(),
     isRunning: false,
-    startedAt: Date.now(),
+    startedAt: now,
+    lastTouchedAt: now,
     tickTimer: null,
     speakingNow: new Set<UUID>(),
     typingNow: new Set<UUID>(),
@@ -1258,6 +1281,8 @@ async function runTick(sessionId: UUID): Promise<void> {
     return
   }
 
+  touchRuntime(runtime)
+
   try {
     pruneMessageWindow(runtime, Date.now())
 
@@ -1444,11 +1469,13 @@ async function clearRuntimeState(sessionId: UUID, runtime: MockSimulationRuntime
 function startRunner(sessionId: UUID): void {
   const runtime = getOrCreateRuntime(sessionId)
   if (runtime.tickTimer) {
+    touchRuntime(runtime)
     return
   }
 
   runtime.isRunning = true
   runtime.startedAt = Date.now()
+  touchRuntime(runtime, runtime.startedAt)
   runtime.tickTimer = setInterval(() => {
     void runTick(sessionId)
   }, 1400)
@@ -1484,6 +1511,7 @@ async function stopRunner(sessionId: UUID): Promise<void> {
   }
 
   runtime.isRunning = false
+  touchRuntime(runtime)
   await clearRuntimeState(sessionId, runtime)
 }
 
