@@ -1,7 +1,7 @@
 import type { Role, UUID } from '@shared'
 import type { HistoryControls, HistoryGroupBy, HistorySortOrder } from '@/types/history'
 
-export const DEFAULT_HISTORY_GROUP_BY: HistoryGroupBy = 'day'
+export const DEFAULT_HISTORY_GROUP_BY: HistoryGroupBy = 'session'
 export const DEFAULT_HISTORY_SORT_ORDER: HistorySortOrder = 'newest'
 
 export function getHistoryControlStorageKey(sessionId: UUID, role: Role, userId?: UUID): string {
@@ -23,7 +23,7 @@ export function parsePersistedHistoryControls(raw: string | null): HistoryContro
       sortOrder?: string
     }
 
-    const groupBy: HistoryGroupBy = parsed.groupBy === 'event' ? 'event' : DEFAULT_HISTORY_GROUP_BY
+    const groupBy: HistoryGroupBy = parsed.groupBy === 'day' ? 'day' : DEFAULT_HISTORY_GROUP_BY
     const sortOrder: HistorySortOrder =
       parsed.sortOrder === 'oldest' ? 'oldest' : DEFAULT_HISTORY_SORT_ORDER
 

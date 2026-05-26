@@ -173,6 +173,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
         <HistoryPanel
           apiUrl={props.apiUrl}
           token={props.token}
+          campaignId={props.campaignId}
           sessionId={props.currentSessionId}
           role={props.effectiveSessionRole}
           userId={props.userId}

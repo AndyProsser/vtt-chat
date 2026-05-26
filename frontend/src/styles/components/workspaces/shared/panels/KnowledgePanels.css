@@ -735,6 +735,39 @@
   color: var(--color-text-secondary);
 }
 
+.knowledge-panel-history__content {
+  min-height: 0;
+  max-height: min(56vh, 34rem);
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.knowledge-panel-history__session-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: -0.2rem;
+}
+
+.knowledge-panel-history__session-meta span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  padding: 0.08rem 0.4rem;
+  background: var(--color-surface-subtle);
+}
+
+.knowledge-panel-history__message-body {
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
 .knowledge-panel-empty {
   padding: var(--space-4);
   border: 1px dashed var(--color-border-soft);
