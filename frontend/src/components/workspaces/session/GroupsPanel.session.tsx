@@ -8,11 +8,19 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { Role, RoomType, SessionState, isGreenroomSessionState, type UUID } from '@shared'
+import {
+  PresenceState,
+  Role,
+  RoomType,
+  SessionState,
+  isGreenroomSessionState,
+  type UUID,
+} from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/state/store'
 import { useToast } from '@/hooks/useToast'
 import { logger } from '@/utils/logger'
+import type { RoomUser, SessionPresence } from '@/types/room'
 import {
   createSessionGroup,
   fetchSessionGroups,
@@ -23,6 +31,11 @@ import {
 import { isGreenRoomName } from '@/constants/roomPresence.constants'
 import '@/styles/components/workspaces/session/GroupsPanel.session.css'
 import SessionGroupCard from './GroupCard.session'
+
+const EMPTY_SESSION_PRESENCE: Record<UUID, SessionPresence> = Object.freeze({}) as Record<
+  UUID,
+  SessionPresence
+>
 
 interface GroupsPanelSessionProps {
   sessionId: UUID
@@ -60,6 +73,10 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     useShallow((state) => Object.values(state.sessionRoomsById[sessionId] || {}))
   )
   const roomMembers = useStore((state) => state.roomMembers)
+  const currentUser = useStore((state) => state.currentUser)
+  const sessionPresenceByUser = useStore(
+    useShallow((state) => state.sessionPresence[sessionId] || EMPTY_SESSION_PRESENCE)
+  )
   const roomEnvironmentNames = useStore(useShallow((state) => state.roomEnvironmentNames))
   const fallbackRoomEnvironments = useStore(
     useShallow((state) => state.sessionGroupEnvironments[sessionId] || {})
@@ -85,19 +102,76 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     [roomMembers]
   )
 
+  const dmFallback = useMemo(() => {
+    if ((!canManageGroups && currentUser?.role !== Role.DM) || !currentUser) {
+      return null
+    }
+
+    const selfPresence = sessionPresenceByUser[currentUser.id]
+    const availableRoomIds = new Set(sessionRooms.map((room) => room.id))
+    const greenRoom = sessionRooms.find((room) => isGreenRoomName(room.name))
+    const mainRoom = sessionRooms.find((room) => room.type === RoomType.MAIN)
+
+    const targetRoomIdCandidates = [
+      dmVoiceTargetGroupId,
+      selfPresence?.primaryRoomId,
+      greenRoom?.id,
+      mainRoom?.id,
+      sessionRooms[0]?.id,
+    ]
+    const targetRoomId =
+      targetRoomIdCandidates.find((candidate): candidate is UUID =>
+        Boolean(candidate && availableRoomIds.has(candidate))
+      ) || null
+
+    if (!targetRoomId) {
+      return null
+    }
+
+    const fallbackDmMember: RoomUser = {
+      userId: currentUser.id,
+      username: currentUser.username,
+      role: Role.DM,
+      playerName: currentUser.username,
+      characterName: currentUser.displayName || currentUser.username,
+      avatarUrl: selfPresence?.avatarUrl ?? null,
+      characterClass: selfPresence?.characterClass ?? null,
+      characterSubclass: selfPresence?.characterSubclass ?? null,
+      characterRace: selfPresence?.characterRace ?? null,
+      level: selfPresence?.level ?? null,
+      characterStats: selfPresence?.characterStats ?? null,
+      presenceState: selfPresence?.state ?? PresenceState.ONLINE,
+      ghost: selfPresence?.ghost,
+      previousGroupId: selfPresence?.previousGroupId,
+      joinedAt: Date.now(),
+    }
+
+    return {
+      member: fallbackDmMember,
+      targetRoomId,
+    }
+  }, [canManageGroups, currentUser, dmVoiceTargetGroupId, sessionPresenceByUser, sessionRooms])
+
   const membersByRoomId = useMemo(() => {
     const next: Record<UUID, (typeof roomMembers)[UUID]> = {}
+    const resolvedDmMember = dmMember || dmFallback?.member || null
+    const resolvedDmTargetRoomId = dmVoiceTargetGroupId || dmFallback?.targetRoomId || null
 
     for (const room of sessionRooms) {
       next[room.id] = [...(roomMembers[room.id] || [])]
     }
 
-    if (canManageGroups && dmMember && dmVoiceTargetGroupId && next[dmVoiceTargetGroupId]) {
+    if (
+      canManageGroups &&
+      resolvedDmMember &&
+      resolvedDmTargetRoomId &&
+      next[resolvedDmTargetRoomId]
+    ) {
       for (const roomId of Object.keys(next) as UUID[]) {
-        next[roomId] = next[roomId].filter((member) => member.userId !== dmMember.userId)
+        next[roomId] = next[roomId].filter((member) => member.userId !== resolvedDmMember.userId)
       }
 
-      next[dmVoiceTargetGroupId] = [dmMember, ...(next[dmVoiceTargetGroupId] || [])]
+      next[resolvedDmTargetRoomId] = [resolvedDmMember, ...(next[resolvedDmTargetRoomId] || [])]
     }
 
     for (const roomId of Object.keys(next) as UUID[]) {
@@ -111,7 +185,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     }
 
     return next
-  }, [canManageGroups, dmMember, dmVoiceTargetGroupId, roomMembers, sessionRooms])
+  }, [canManageGroups, dmFallback, dmMember, dmVoiceTargetGroupId, roomMembers, sessionRooms])
 
   const visibleRooms = useMemo(() => {
     return sessionRooms

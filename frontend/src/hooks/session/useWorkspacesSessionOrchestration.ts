@@ -140,7 +140,11 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
 
   const handleStartSession = useCallback(
     async (sessionId: UUID) => {
-      if (currentSession?.id === sessionId && currentSession.state === SessionState.ENDED) {
+      if (
+        currentSession?.id === sessionId &&
+        (currentSession.state === SessionState.ENDED ||
+          currentSession.state === SessionState.CLEANUP)
+      ) {
         if (!selectedCampaignId) {
           setError('Select a campaign before starting a new session.')
           return
