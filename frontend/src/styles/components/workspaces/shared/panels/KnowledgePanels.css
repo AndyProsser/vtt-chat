@@ -1493,7 +1493,7 @@
   place-content: center;
   min-height: 0;
   aspect-ratio: 1 / 1;
-  padding: 0.08rem 0.14rem 0.18rem;
+  padding: 0.04rem 0.4rem 0.6rem 0.4rem;
 }
 
 .notes-workspace--compact-picker .notes-list-item-title,
