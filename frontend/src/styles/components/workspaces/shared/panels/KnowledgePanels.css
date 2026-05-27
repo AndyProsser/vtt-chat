@@ -345,12 +345,17 @@
   display: grid;
   gap: var(--space-2);
   align-content: start;
+  padding-bottom: 0.55rem;
 }
 
 .knowledge-panel-session-item {
   position: relative;
   display: grid;
   gap: var(--space-2);
+}
+
+.knowledge-panel-history__content {
+  padding-bottom: 0.55rem;
 }
 
 .knowledge-panel-session-item__editor {

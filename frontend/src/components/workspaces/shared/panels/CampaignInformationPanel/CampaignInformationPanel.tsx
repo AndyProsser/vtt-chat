@@ -167,9 +167,6 @@ export function CampaignInformationPanel({
           onCancel={handleCancel}
           onStartEditing={() => setIsEditing(true)}
         />
-        <p className="cip-header-subtitle">
-          Shape campaign identity, frame narrative intent, and present the campaign clearly.
-        </p>
 
         <div className="cip-copy">
           {isEditing ? (
