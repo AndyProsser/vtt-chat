@@ -104,12 +104,10 @@ function getAuthorInitial(username: string): string {
 }
 
 function formatBoundaryDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleString(undefined, {
+  return new Date(timestamp).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
   })
 }
 
@@ -453,7 +451,6 @@ export function HistoryPanel({
             items,
             sessionId: groupSessionId,
             sessionName,
-            sessionState,
             startedAtLabel,
             nonSystemMessageCount,
           }) => (
@@ -464,8 +461,11 @@ export function HistoryPanel({
               >
                 <span className="knowledge-panel-history__boundary-title">Session Boundary</span>
                 <div className="knowledge-panel-history__boundary-meta">
-                  <span>{sessionName}</span>
-                  <span>{sessionState}</span>
+                  <span className="knowledge-panel-history__boundary-session">{sessionName}</span>
+                  <span
+                    className="knowledge-panel-history__boundary-separator"
+                    aria-hidden="true"
+                  />
                   <span>Started {startedAtLabel}</span>
                   <span>{nonSystemMessageCount} messages</span>
                 </div>
