@@ -178,10 +178,125 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.crbs-field--avatar {
+  grid-column: 1 / -1;
+}
+
+.crbs-avatar-field {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0.85rem;
+  align-items: start;
+  padding: 0.7rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-subtle);
+}
+
+.crbs-avatar-preview-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.crbs-avatar-preview {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--color-border-soft);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.12), transparent 50%),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--color-brand) 20%, var(--color-surface) 80%),
+      var(--color-surface)
+    );
+}
+
+.crbs-avatar-preview__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+}
+
+.crbs-avatar-preview__placeholder {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.crbs-avatar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.crbs-avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.crbs-avatar-file-input {
+  display: none;
+}
+
+.crbs-avatar-button {
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0.42rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.crbs-avatar-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.crbs-avatar-button--ghost {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.crbs-avatar-crop-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.crbs-avatar-crop-controls input[type='range'] {
+  width: 100%;
+}
+
 .crbs-stats-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.4rem;
+}
+
+@media (max-width: 720px) {
+  .crbs-avatar-field {
+    grid-template-columns: 1fr;
+  }
+
+  .crbs-avatar-preview-shell {
+    justify-content: flex-start;
+  }
 }
 
 .crbs-field--stat .crbs-input {

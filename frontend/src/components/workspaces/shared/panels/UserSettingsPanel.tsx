@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent, type SubmitEventHandler } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { Slider } from '@/components/ui'
+import { CharacterAvatarUploadField } from './CharacterAvatarUploadField'
 import '@/styles/components/workspaces/shared/panels/UserSettingsPanel.css'
+import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 export interface UserSettingsPanelProps {
   messageGroupingWindowMs: number
@@ -189,17 +191,6 @@ export function UserSettingsPanel({
         <TabsPrimitive.Content value="profile" className="susp-tab-content">
           <form onSubmit={(e) => void handleProfileSave(e)} noValidate>
             <div className="susp-avatar-row susp-avatar-row--spaced">
-              {profile.avatarUrl ? (
-                <img
-                  className="susp-avatar"
-                  src={profile.avatarUrl}
-                  alt={profile.displayName || username}
-                />
-              ) : (
-                <div className="susp-avatar-placeholder" aria-hidden="true">
-                  {(profile.displayName || username).charAt(0).toUpperCase()}
-                </div>
-              )}
               <div className="susp-avatar-meta">
                 <p className="susp-avatar-username">@{username}</p>
               </div>
@@ -224,21 +215,11 @@ export function UserSettingsPanel({
               </p>
             </div>
 
-            <div className="susp-field susp-field--spaced">
-              <label htmlFor="susp-avatar-url" className="susp-field__label">
-                Avatar URL
-              </label>
-              <input
-                id="susp-avatar-url"
-                type="url"
-                className="susp-field__input"
-                placeholder="https://…"
-                value={profile.avatarUrl}
-                disabled={!profileLoaded || saveStatus === 'saving'}
-                onChange={(e) => setProfile((prev) => ({ ...prev, avatarUrl: e.target.value }))}
-              />
-              <p className="susp-field__hint">Direct link to an image (PNG, JPEG, WebP).</p>
-            </div>
+            <CharacterAvatarUploadField
+              value={profile.avatarUrl}
+              onChange={(value) => setProfile((prev) => ({ ...prev, avatarUrl: value }))}
+              disabled={!profileLoaded || saveStatus === 'saving'}
+            />
 
             <div className="susp-profile-actions">
               <button

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Icon } from '@/components/ui/Icon'
+import { DND_5_5E_SRD_CLASSES, DND_5_5E_SRD_SPECIES } from '@/constants/characterSrd.constants'
+import { CharacterAvatarUploadField } from './CharacterAvatarUploadField'
 import { VerticalSliderInput } from './VerticalSliderInput'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
@@ -83,10 +85,16 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
               id="crbs-character-race"
               type="text"
               className="crbs-input"
+              list="crbs-character-race-suggestions"
               value={props.characterDraft.race}
               onChange={(event) => props.onCharacterFieldChange('race', event.target.value)}
               disabled={props.isCharacterLoading || props.isCharacterSaving}
             />
+            <datalist id="crbs-character-race-suggestions">
+              {DND_5_5E_SRD_SPECIES.map((species) => (
+                <option key={species} value={species} />
+              ))}
+            </datalist>
           </label>
           <label className="crbs-field" htmlFor="crbs-character-class">
             <span className="crbs-field-label">Class</span>
@@ -94,10 +102,16 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
               id="crbs-character-class"
               type="text"
               className="crbs-input"
+              list="crbs-character-class-suggestions"
               value={props.characterDraft.className}
               onChange={(event) => props.onCharacterFieldChange('className', event.target.value)}
               disabled={props.isCharacterLoading || props.isCharacterSaving}
             />
+            <datalist id="crbs-character-class-suggestions">
+              {DND_5_5E_SRD_CLASSES.map((className) => (
+                <option key={className} value={className} />
+              ))}
+            </datalist>
           </label>
           <label className="crbs-field" htmlFor="crbs-character-subclass">
             <span className="crbs-field-label">Subclass</span>
@@ -110,17 +124,11 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
               disabled={props.isCharacterLoading || props.isCharacterSaving}
             />
           </label>
-          <label className="crbs-field" htmlFor="crbs-character-avatar">
-            <span className="crbs-field-label">Avatar URL</span>
-            <input
-              id="crbs-character-avatar"
-              type="url"
-              className="crbs-input"
-              value={props.characterDraft.avatarUrl}
-              onChange={(event) => props.onCharacterFieldChange('avatarUrl', event.target.value)}
-              disabled={props.isCharacterLoading || props.isCharacterSaving}
-            />
-          </label>
+          <CharacterAvatarUploadField
+            value={props.characterDraft.avatarUrl}
+            onChange={(value) => props.onCharacterFieldChange('avatarUrl', value)}
+            disabled={props.isCharacterLoading || props.isCharacterSaving}
+          />
           <label className="crbs-field" htmlFor="crbs-character-level">
             <span className="crbs-field-label">Level</span>
             <VerticalSliderInput

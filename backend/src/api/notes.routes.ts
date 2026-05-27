@@ -6,6 +6,7 @@ import {
   isValidNoteVisibility,
   ErrorCode,
   NoteVisibility,
+  RoomType,
 } from '@shared'
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
@@ -37,6 +38,8 @@ import {
 } from '@/services/notes/route-helpers.service'
 import { NOTE_PUBLISH_SNIPPET_MAX_LENGTH } from '@/constants/notes.constants'
 import { createSessionLog } from '@/repositories/session-logs.repository'
+import { getRoom, getRoomMemberIds } from '@/services/room.service'
+import { isGreenRoomName } from '@/utils'
 
 const router = Router()
 
@@ -459,6 +462,8 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
 router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { noteId } = req.params
+  const requestedRoomId = req.body?.roomId
+  const publishAudience = req.body?.audience === 'ROOM' ? 'ROOM' : 'EVERYONE'
 
   if (!isValidUUID(noteId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_NOTE_ID, message: 'Invalid noteId' })
@@ -491,7 +496,87 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
 
-  const published = await markNotePublished(note.id)
+  let noteToPublish = note
+  let publishRoomId: UUID | undefined
+
+  if (publishAudience === 'ROOM') {
+    if (!isValidUUID(requestedRoomId)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Room publish requires a valid roomId',
+      })
+    }
+
+    const room = await getRoom(requestedRoomId as UUID)
+    if (!room || room.sessionId !== note.sessionId) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
+    }
+
+    if (
+      room.type === RoomType.PRIVATE ||
+      (room.type === RoomType.GROUP && isGreenRoomName(room.name))
+    ) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Handouts may only be posted to MAIN or active GROUP rooms',
+      })
+    }
+
+    const sessionUsers = await getSessionUsers(note.sessionId)
+    const playerIds = new Set(
+      sessionUsers.filter((sessionUser) => sessionUser.role === 'PLAYER').map((entry) => entry.id)
+    )
+    const roomMemberIds = await getRoomMemberIds(note.sessionId, room.id)
+    const targetPlayerIds = roomMemberIds.filter((memberId) => playerIds.has(memberId))
+
+    if (targetPlayerIds.length === 0) {
+      return res.status(409).json({
+        code: ErrorCode.CONFLICT,
+        message: 'Selected room has no players to share this handout with',
+      })
+    }
+
+    publishRoomId = room.id
+
+    if (note.visibility !== NoteVisibility.PLAYERS_VISIBLE) {
+      const mergedAllowedUsers = Array.from(
+        new Set([...(note.allowedUsers || []), ...targetPlayerIds])
+      )
+      const nextVisibility = mergedAllowedUsers.length
+        ? NoteVisibility.CUSTOM
+        : NoteVisibility.DM_ONLY
+
+      const sharedNote = await updateNote(note.id, user.userId as UUID, requesterRole, {
+        visibility: nextVisibility,
+        allowedUsers: mergedAllowedUsers,
+      })
+
+      if (!sharedNote) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: 'Unable to share note with the selected room',
+        })
+      }
+
+      noteToPublish = sharedNote
+    }
+  } else if (note.visibility !== NoteVisibility.PLAYERS_VISIBLE) {
+    const sharedNote = await updateNote(note.id, user.userId as UUID, requesterRole, {
+      visibility: NoteVisibility.PLAYERS_VISIBLE,
+      allowedUsers: [],
+    })
+
+    if (!sharedNote) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Unable to share note with everyone',
+      })
+    }
+
+    noteToPublish = sharedNote
+  }
+
+  const published = await markNotePublished(noteToPublish.id)
   if (!published) {
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
@@ -531,11 +616,20 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       ? `${published.content.slice(0, NOTE_PUBLISH_SNIPPET_MAX_LENGTH)}...`
       : published.content
 
+  const publishAudienceUsers = noteVisibleTo({
+    authorId: published.authorId,
+    visibility: published.visibility,
+    allowedUsers: published.allowedUsers,
+    dmId: session.dmId,
+  })
+
   const message = await sendMessage({
     sessionId: published.sessionId,
+    roomId: publishRoomId,
     authorId: user.userId as UUID,
     authorUsername: user.username,
     dmId: session.dmId,
+    visibleTo: publishAudienceUsers,
     content:
       `[Note Shared] ${published.title}\n` +
       `Shared with: ${sharedWithSummary}\n` +
@@ -593,16 +687,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       },
     }
 
-    wsManager.broadcastEventToSession(
-      published.sessionId,
-      notesEvent,
-      noteVisibleTo({
-        authorId: published.authorId,
-        visibility: published.visibility,
-        allowedUsers: published.allowedUsers,
-        dmId: session.dmId,
-      })
-    )
+    wsManager.broadcastEventToSession(published.sessionId, notesEvent, publishAudienceUsers)
 
     const chatEvent: EventEnvelope = {
       id: crypto.randomUUID() as UUID,
@@ -611,7 +696,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       version: 1,
       userId: user.userId as UUID,
       userRole: requesterRole as any,
-      roomId: null,
+      roomId: message.roomId || null,
       timestamp: message.createdAt,
       payload: {
         messageId: message.id,
@@ -622,16 +707,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
         isDmOnly: message.isDmOnly,
       },
     }
-    wsManager.broadcastEventToSession(
-      message.sessionId as UUID,
-      chatEvent,
-      noteVisibleTo({
-        authorId: published.authorId,
-        visibility: published.visibility,
-        allowedUsers: published.allowedUsers,
-        dmId: session.dmId,
-      })
-    )
+    wsManager.broadcastEventToSession(message.sessionId as UUID, chatEvent, publishAudienceUsers)
   }
 
   return res.status(200).json({ ok: true, message })

@@ -201,13 +201,13 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] JOURNAL is readable by all personas; DM-only edit
 - [ ] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
 - [x] NOTES is readable by all personas; DM can add/edit/delete/share notes to one or more players
-- [ ] NOTES supports Post to Chat, which creates a chat card in the selected group and auto-shares that note with all players in that group
+- [x] NOTES supports Post to Chat, which creates a chat card in the selected group and auto-shares that note with all players in that group
 - [x] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
 - [x] HISTORY never includes messages from the current active session
 - [x] SETTINGS opens role-specific surfaces: DM gets Campaign + Session settings, players get Character settings (own character only), spectators do not see rightbar SETTINGS
 - [x] Player action: PARTY > Edit switches panel focus to SETTINGS > Character and auto-focuses the first editable field
-- [ ] Character settings include editable character profile fields (name, race, class, level, stats, avatar)
-- [ ] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
+- [x] Character settings include editable character profile fields (name, race, class, level, stats, avatar)
+- [x] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
 - [x] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
 - [x] Right-panel dismisses on backdrop click
 - [ ] Mobile responsive: collapse/expand at <768px; side-panel at ≥1280px
@@ -247,7 +247,9 @@ Evidence snapshot (2026-05-27):
 - HISTORY panel now renders prior-session transcripts only (excluding current session) with visible session boundary separators and in-panel search/sort controls for compact timeline browsing.
 - PARTY panel now shows active condition chips from DM condition overrides, and Party/Handouts tabs are visible to spectators in read-only mode.
 - Player PARTY edit now opens the SETTINGS character surface directly and auto-focuses the first editable field for immediate character updates.
+- Character settings now include SRD-backed race/class suggestions and a reusable avatar upload flow with circular preview plus zoom/crop controls before save.
 - Notes mutation controls are now DM-only in the right rail (create/edit/delete/share/publish), while players and spectators retain read access.
+- Notes publish is now always manual: the handout publisher offers `Everyone` plus occupied MAIN/GROUP rooms only, excludes whisper/greenroom/empty rooms, and auto-shares room-targeted handouts to the players currently in that room.
 - Journal creation now upserts `_journal` notes per session in the backend, so the journal browser remains reverse chronological while enforcing exactly one markdown journal entry per session.
 
 **Evidence snapshot (2026-05-20):**

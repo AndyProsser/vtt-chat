@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import {
   NoteVisibility,
   Role,
+  RoomType,
   isGreenroomSessionState,
   type SessionState,
   type UUID,
@@ -10,6 +11,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
+import type { NotesPublishTarget } from '@/types/notesPublish'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { useNotesShareContext } from '@/hooks/notes/useNotesShareContext'
 import { isJournalNote, parseNoteHashtags } from '../../../../../utils/notesPanel'
@@ -79,6 +81,14 @@ export function NotesPanel({
   const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
   const canMutateNotes = user.role === Role.DM
+  const publishRooms = useMemo(
+    () =>
+      shareRooms.filter((room) => {
+        const memberCount = roomMemberIdsByRoomId[room.id]?.length || 0
+        return memberCount > 0 && (room.type === RoomType.MAIN || room.type === RoomType.GROUP)
+      }),
+    [roomMemberIdsByRoomId, shareRooms]
+  )
 
   const displayedNotes = useMemo(() => {
     const byPublishFilter =
@@ -260,13 +270,14 @@ export function NotesPanel({
     })
   }
 
-  const handlePublish = async (noteId: string) => {
+  const handlePublish = async (noteId: string, target: NotesPublishTarget) => {
     const res = await fetch(`${apiUrl}/api/notes/${noteId}/publish`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
+      body: JSON.stringify(target),
     })
 
     if (!res.ok) {
@@ -385,6 +396,7 @@ export function NotesPanel({
                   note={selectedNote}
                   shareUsers={shareUsers}
                   shareRooms={shareRooms}
+                  publishRooms={publishRooms}
                   roomMemberIdsByRoomId={roomMemberIdsByRoomId}
                   canEdit={canMutateNotes}
                   canManageShare={canMutateNotes}

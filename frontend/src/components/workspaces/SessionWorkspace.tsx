@@ -10,6 +10,10 @@ import type { SessionWorkspaceProps } from '@/types/sessionWorkspace'
 export function SessionWorkspace(props: SessionWorkspaceProps) {
   const [forcedRightRailTab, setForcedRightRailTab] = useState<'settings' | null>(null)
   const [playerSettingsFocusRequestKey, setPlayerSettingsFocusRequestKey] = useState(0)
+  const handleOpenPlayerSettingsFromParty = useCallback(() => {
+    setPlayerSettingsFocusRequestKey((current) => current + 1)
+    setForcedRightRailTab('settings')
+  }, [])
 
   if (!props.hasSessionSelected || !props.currentSession) {
     return null
@@ -17,10 +21,6 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
 
   const currentSession = props.currentSession
   const workspaceDiagnosticState = `${props.effectiveSessionRole}|${currentSession.state}`
-  const handleOpenPlayerSettingsFromParty = useCallback(() => {
-    setPlayerSettingsFocusRequestKey((current) => current + 1)
-    setForcedRightRailTab('settings')
-  }, [])
 
   return (
     <div

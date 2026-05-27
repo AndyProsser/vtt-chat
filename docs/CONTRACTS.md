@@ -140,6 +140,8 @@ Party-to-settings navigation contract:
 
 - Player selecting `Edit` from `PARTY` must switch active panel to `SETTINGS` with character section active.
 - The first editable character field must receive focus after the transition.
+- Character settings use D&D 5.5e SRD race/class suggestions by default via autocomplete, but must still allow free-text overrides.
+- Character avatar editing uses an upload-first flow with circular preview and client-side zoom/crop before save; the resulting avatar remains a standard `avatarUrl` payload value.
 
 ### Connection Status Naming (Roadmap Alignment)
 
@@ -508,7 +510,10 @@ Notes visibility/publish sequencing contract:
 
 - `NOTES:CREATED` and `NOTES:UPDATED` must be emitted with the computed visibility audience from note metadata (DM-only, custom allowed users, and author/DM inclusion rules).
 - `POST /api/notes` with the reserved journal tag (`_journal`) or canonical journal title (`Session Journal`) is an upsert for that session's journal entry: if a journal note already exists for the session, backend must update it in place, return `200`, and emit `NOTES:UPDATED` instead of creating a duplicate.
-- Publishing a note emits `NOTES:UPDATED` first and then `CHAT:MESSAGE_SENT`, both using the same visibility audience for that note.
+- `POST /api/notes/:noteId/publish` is manual and accepts either `audience: 'EVERYONE'` or `audience: 'ROOM'` with a valid `roomId`.
+- Publish room targets must exclude whisper/private rooms, greenroom, and empty rooms; frontend should offer `Everyone` plus occupied MAIN/GROUP rooms only.
+- Publishing to `Everyone` upgrades the note visibility to `PLAYERS_VISIBLE`; publishing to a room upgrades/shares the note to the players currently in that room before emitting chat.
+- Publishing a note emits `NOTES:UPDATED` first and then `CHAT:MESSAGE_SENT`, both using the same visibility audience for that note and the selected room/global destination.
 - Publishing writes both an audit record (`NOTES.PUBLISHED`) and a session-log record for traceability.
 
 **Audio** (file: `events/audio.ts`)
