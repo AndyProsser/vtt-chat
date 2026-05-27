@@ -768,6 +768,30 @@
   line-height: 1.35;
 }
 
+.knowledge-panel-history__message-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.44rem;
+}
+
+.knowledge-panel-history__message-list .session-message-list__message {
+  gap: 0.12rem;
+}
+
+.knowledge-panel-history__message-list .session-message-list__message-content {
+  max-width: 100%;
+}
+
+.knowledge-panel-history__message-list .session-message-list__message-bubble {
+  font-size: 0.8rem;
+}
+
+.knowledge-panel-history__message-list .session-message-list__message-meta {
+  font-size: 0.68rem;
+}
+
 .knowledge-panel-empty {
   padding: var(--space-4);
   border: 1px dashed var(--color-border-soft);

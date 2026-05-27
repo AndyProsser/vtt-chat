@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
-import type { Role, UUID } from '@shared'
+import { MessageType, type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import type {
   HistoryGroupBy,
@@ -14,6 +14,9 @@ import {
   getHistoryControlStorageKey,
   parsePersistedHistoryControls,
 } from '@/utils/history'
+import '@/styles/components/workspaces/session/chat/MessageList.messages.css'
+import '@/styles/components/workspaces/session/chat/MessageList.timeline.css'
+import '@/styles/components/workspaces/session/chat/MessageList.whisper-routes.css'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 
 interface HistoryPanelProps {
@@ -26,6 +29,52 @@ interface HistoryPanelProps {
 }
 
 const HISTORY_MESSAGE_LIMIT = 180
+const GROUPING_WINDOW_MS = 5 * 60 * 1000
+const SESSION_RECAP_PREFIX = '[Last Session]'
+const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
+
+type SessionBookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown'
+
+const SESSION_BOOKEND_PREFIXES = [
+  'Session Start:',
+  'Session End:',
+  '[Session Started]',
+  '[Session Ended]',
+  '[Session Paused]',
+  '[Session Resumed]',
+  '[Session Cooldown]',
+]
+
+const BOOKEND_META: Record<
+  SessionBookendState,
+  { label: string; icon: string; className: string }
+> = {
+  started: {
+    label: 'STARTED',
+    icon: 'play_circle',
+    className: 'session-message-list__session-marker--started',
+  },
+  ended: {
+    label: 'ENDED',
+    icon: 'stop_circle',
+    className: 'session-message-list__session-marker--ended',
+  },
+  paused: {
+    label: 'PAUSED',
+    icon: 'pause_circle',
+    className: 'session-message-list__session-marker--paused',
+  },
+  resumed: {
+    label: 'RESUMED',
+    icon: 'play_circle',
+    className: 'session-message-list__session-marker--resumed',
+  },
+  cooldown: {
+    label: 'CLOSED',
+    icon: 'theaters',
+    className: 'session-message-list__session-marker--cooldown',
+  },
+}
 
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -75,6 +124,55 @@ function matchesQuery(message: SessionHistoryMessage, query: string): boolean {
     .toLowerCase()
 
   return haystack.includes(query)
+}
+
+function toMessageVariant(type: string): 'ic' | 'ooc' | 'whisper' | 'dm' | 'system' {
+  if (type === MessageType.IC) return 'ic'
+  if (type === MessageType.WHISPER) return 'whisper'
+  if (type === MessageType.DM) return 'dm'
+  if (type === MessageType.SYSTEM) return 'system'
+  return 'ooc'
+}
+
+function toTypeIcon(variant: 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'): string {
+  if (variant === 'ic') return 'swords'
+  if (variant === 'whisper') return 'visibility_off'
+  if (variant === 'dm') return 'mail'
+  if (variant === 'system') return 'info'
+  return 'chat_bubble'
+}
+
+function getAuthorInitial(username: string): string {
+  return username.trim().charAt(0).toUpperCase() || '?'
+}
+
+function getSessionBookendState(content: string): SessionBookendState | null {
+  if (content.startsWith('[Session Started]') || content.startsWith('Session Start:')) {
+    return 'started'
+  }
+  if (content.startsWith('[Session Ended]') || content.startsWith('Session End:')) {
+    return 'ended'
+  }
+  if (content.startsWith('[Session Paused]')) {
+    return 'paused'
+  }
+  if (content.startsWith('[Session Resumed]')) {
+    return 'resumed'
+  }
+  if (content.startsWith('[Session Cooldown]')) {
+    return 'cooldown'
+  }
+
+  return null
+}
+
+function formatBookendTimestamp(timestamp: number): string {
+  return new Date(timestamp).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 export function HistoryPanel({
@@ -448,30 +546,164 @@ export function HistoryPanel({
         {groupedHistory.map(
           ({ label, items, sessionId: groupSessionId, sessionName, sessionState }) => (
             <div key={label} className="knowledge-panel__day-group">
-              <h4 className="knowledge-panel__day-label">{label}</h4>
+              <div className="session-message-list__day-separator" aria-label={label}>
+                <span className="session-message-list__day-separator-line" aria-hidden="true" />
+                <span className="session-message-list__day-separator-pill">{label}</span>
+                <span className="session-message-list__day-separator-line" aria-hidden="true" />
+              </div>
               <div className="knowledge-panel-history__session-meta">
                 <span>{sessionName}</span>
                 <span>{sessionState}</span>
                 <span>{items.length} matches</span>
               </div>
-              <ul className="knowledge-panel__event-list">
-                {items.map((message) => (
-                  <li
-                    key={`${groupSessionId}:${message.id}`}
-                    className="knowledge-panel__event-item"
-                  >
-                    <span className="knowledge-panel__event-label">{message.authorUsername}</span>
-                    <span className="knowledge-panel__event-actor">
-                      {String(message.type || 'MESSAGE')}
-                    </span>
-                    <span className="knowledge-panel__event-detail knowledge-panel-history__message-body">
-                      {message.content}
-                    </span>
-                    <span className="knowledge-panel__event-time">
-                      {new Date(message.createdAt).toLocaleTimeString()}
-                    </span>
-                  </li>
-                ))}
+              <ul className="knowledge-panel-history__message-list">
+                {items.map((message, index) => {
+                  const previous = index > 0 ? items[index - 1] : undefined
+                  const isSystem = message.type === MessageType.SYSTEM
+                  const recapPrefix = message.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
+                    ? CAMPAIGN_BRIEF_PREFIX
+                    : SESSION_RECAP_PREFIX
+                  const isSessionRecap = isSystem && message.content.startsWith(recapPrefix)
+                  const isSessionBookend =
+                    isSystem &&
+                    SESSION_BOOKEND_PREFIXES.some((prefix) => message.content.startsWith(prefix))
+                  const sessionBookendState = isSessionBookend
+                    ? getSessionBookendState(message.content)
+                    : null
+                  const isGroupedWithPrevious = Boolean(
+                    previous &&
+                    previous.authorId === message.authorId &&
+                    Math.abs(message.createdAt - previous.createdAt) <= GROUPING_WINDOW_MS
+                  )
+                  const isSelf = message.authorId === userId
+                  const variant = toMessageVariant(message.type)
+
+                  if (isSessionRecap) {
+                    const recapBody = message.content.slice(recapPrefix.length).trim()
+                    const recapLabel =
+                      recapPrefix === CAMPAIGN_BRIEF_PREFIX ? 'Campaign Brief' : 'Last Session'
+
+                    return (
+                      <li key={`${groupSessionId}:${message.id}`}>
+                        <article className="session-message-list__session-recap">
+                          <span
+                            className="session-message-list__session-recap-icon material-symbols-outlined"
+                            aria-hidden="true"
+                          >
+                            menu_book
+                          </span>
+                          <div className="session-message-list__session-recap-body">
+                            <span className="session-message-list__session-recap-label">
+                              {recapLabel}
+                            </span>
+                            <p className="session-message-list__session-recap-text">{recapBody}</p>
+                          </div>
+                        </article>
+                      </li>
+                    )
+                  }
+
+                  if (isSessionBookend && sessionBookendState) {
+                    const markerMeta = BOOKEND_META[sessionBookendState]
+                    return (
+                      <li key={`${groupSessionId}:${message.id}`}>
+                        <article
+                          className={`session-message-list__session-marker session-message-list__session-marker--bookend ${markerMeta.className}`}
+                        >
+                          <div className="session-message-list__session-marker-content">
+                            <div className="session-message-list__session-marker-label-row">
+                              <span
+                                className="session-message-list__session-marker-line"
+                                aria-hidden="true"
+                              />
+                              <span className="session-message-list__session-marker-badge">
+                                <span
+                                  className="session-message-list__session-marker-icon material-symbols-outlined"
+                                  aria-hidden="true"
+                                >
+                                  {markerMeta.icon}
+                                </span>
+                                <span className="session-message-list__session-marker-text">
+                                  {markerMeta.label}
+                                </span>
+                                <span
+                                  className="session-message-list__session-marker-icon material-symbols-outlined"
+                                  aria-hidden="true"
+                                >
+                                  {markerMeta.icon}
+                                </span>
+                              </span>
+                              <span
+                                className="session-message-list__session-marker-line"
+                                aria-hidden="true"
+                              />
+                            </div>
+                            <time
+                              className="session-message-list__session-marker-time"
+                              dateTime={new Date(message.createdAt).toISOString()}
+                            >
+                              {formatBookendTimestamp(message.createdAt)}
+                            </time>
+                          </div>
+                        </article>
+                      </li>
+                    )
+                  }
+
+                  return (
+                    <li key={`${groupSessionId}:${message.id}`}>
+                      <article
+                        className={`session-message-list__message ${isSelf ? 'session-message-list__message--self' : ''} ${isGroupedWithPrevious ? 'session-message-list__message--grouped' : ''}`}
+                      >
+                        <div className="session-message-list__message-row">
+                          {!isSelf && !isGroupedWithPrevious ? (
+                            <span
+                              className={`session-message-list__message-avatar ${variant === 'system' ? 'session-message-list__message-avatar--system' : ''}`}
+                              aria-hidden="true"
+                            >
+                              {getAuthorInitial(message.authorUsername)}
+                            </span>
+                          ) : (
+                            <span
+                              className="session-message-list__message-avatar session-message-list__message-avatar--spacer"
+                              aria-hidden="true"
+                            />
+                          )}
+
+                          <div className="session-message-list__message-content">
+                            {!isGroupedWithPrevious ? (
+                              <div className="session-message-list__message-meta">
+                                <span className="session-message-list__message-author">
+                                  {message.authorUsername}
+                                </span>
+                              </div>
+                            ) : null}
+
+                            <div
+                              className={`session-message-list__message-bubble session-message-list__message-bubble--${variant} ${isSelf ? 'session-message-list__message-bubble--self' : ''}`}
+                            >
+                              <span
+                                className={`session-message-list__message-type-icon session-message-list__message-type-icon--${variant} material-symbols-outlined`}
+                                aria-hidden="true"
+                              >
+                                {toTypeIcon(variant)}
+                              </span>
+                              <span className="session-message-list__message-bubble-text">
+                                {message.content}
+                              </span>
+                            </div>
+
+                            <div className="session-message-list__message-footer">
+                              <span className="session-message-list__message-timestamp">
+                                {new Date(message.createdAt).toLocaleTimeString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           )
