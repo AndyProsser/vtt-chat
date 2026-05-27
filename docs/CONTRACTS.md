@@ -507,6 +507,7 @@ Room close/delete sequencing contract:
 Notes visibility/publish sequencing contract:
 
 - `NOTES:CREATED` and `NOTES:UPDATED` must be emitted with the computed visibility audience from note metadata (DM-only, custom allowed users, and author/DM inclusion rules).
+- `POST /api/notes` with the reserved journal tag (`_journal`) or canonical journal title (`Session Journal`) is an upsert for that session's journal entry: if a journal note already exists for the session, backend must update it in place, return `200`, and emit `NOTES:UPDATED` instead of creating a duplicate.
 - Publishing a note emits `NOTES:UPDATED` first and then `CHAT:MESSAGE_SENT`, both using the same visibility audience for that note.
 - Publishing writes both an audit record (`NOTES.PUBLISHED`) and a session-log record for traceability.
 
