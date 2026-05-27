@@ -249,7 +249,7 @@ export function SessionWorkspaceFrame({
                   <TabsContent
                     value={activeRightRailTab}
                     data-testid="right-rail-content"
-                    className="session-workspace-frame__right-rail-content"
+                    className="knowledge-panels__right-rail-content"
                   >
                     {renderRightRailTab(activeRightRailTab)}
                   </TabsContent>
