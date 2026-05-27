@@ -319,6 +319,47 @@
   color: var(--color-text-secondary);
 }
 
+@media (max-width: 768px) {
+  .session-left-rail-stack {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'info'
+      'channels'
+      'audio';
+    height: 100%;
+    overflow: hidden;
+    align-items: stretch;
+  }
+
+  .session-left-rail-card--info {
+    grid-area: info;
+    min-width: 0;
+  }
+
+  .session-left-rail-card--channels {
+    grid-area: channels;
+    min-height: 0;
+  }
+
+  .session-left-rail-card--audio {
+    grid-area: audio;
+    min-width: 0;
+    align-self: end;
+  }
+}
+
+@media (max-width: 560px) {
+  .session-left-rail-stack {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'info'
+      'channels'
+      'audio';
+  }
+}
+
 .session-room-card-empty {
   margin: 0;
   font-size: 0.75rem;

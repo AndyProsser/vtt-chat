@@ -31,6 +31,7 @@ interface ChatWindowProps {
   messageGroupingWindowMs?: number
   forceMessageType?: MessageType
   sendWsEvent?: (event: EventEnvelope) => void
+  onPendingNewMessageCountChange?: (count: number) => void
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
@@ -107,6 +108,7 @@ export function ChatWindow({
   messageGroupingWindowMs = DEFAULT_MESSAGE_GROUPING_WINDOW_MS,
   forceMessageType,
   sendWsEvent,
+  onPendingNewMessageCountChange,
 }: ChatWindowProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingOlder, setIsLoadingOlder] = useState(false)
@@ -801,6 +803,10 @@ export function ChatWindow({
   const latestVisibleMessageKey = latestVisibleMessage
     ? `${latestVisibleMessage.id}:${latestVisibleMessage.createdAt}`
     : undefined
+
+  useEffect(() => {
+    onPendingNewMessageCountChange?.(pendingNewMessageCount)
+  }, [onPendingNewMessageCountChange, pendingNewMessageCount])
 
   useEffect(() => {
     if (isUserPinnedToBottom) {

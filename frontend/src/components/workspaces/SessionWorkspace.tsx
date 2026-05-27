@@ -10,6 +10,7 @@ import type { SessionWorkspaceProps } from '@/types/sessionWorkspace'
 export function SessionWorkspace(props: SessionWorkspaceProps) {
   const [forcedRightRailTab, setForcedRightRailTab] = useState<'settings' | null>(null)
   const [playerSettingsFocusRequestKey, setPlayerSettingsFocusRequestKey] = useState(0)
+  const [chatUnreadCount, setChatUnreadCount] = useState(0)
   const handleOpenPlayerSettingsFromParty = useCallback(() => {
     setPlayerSettingsFocusRequestKey((current) => current + 1)
     setForcedRightRailTab('settings')
@@ -33,6 +34,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
         forcedRightRailTab={forcedRightRailTab}
         onForcedRightRailTabApplied={() => setForcedRightRailTab(null)}
         rightRailIndicators={props.rightRailIndicators}
+        chatIndicatorCount={chatUnreadCount}
         renderSystemToasts={() => (
           <ReconnectBanner
             wsState={props.wsState}
@@ -120,6 +122,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             messageGroupingWindowMs={props.messageGroupingWindowMs}
             sendWsEvent={props.sendWsEvent}
             isGreenroomChatMode={props.isGreenroomChatMode}
+            onPendingNewMessageCountChange={setChatUnreadCount}
           />
         )}
         renderRightRailTab={(tab) => (

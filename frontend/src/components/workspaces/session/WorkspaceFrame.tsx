@@ -24,6 +24,8 @@ import '@/styles/components/workspaces/session/SessionWorkspaceFrame.css'
 
 export type { CenterPaneView, RightRailTab } from '@/types/ui'
 
+type DockTab = RightRailTab | 'chat'
+
 export function getRightRailTabsForRole(role: Role): RightRailTab[] {
   return getWorkspacePanelTabsForRole(role)
 }
@@ -36,6 +38,7 @@ interface SessionWorkspaceFrameProps {
   renderCenterPane: (view: CenterPaneView) => ReactNode
   renderRightRailTab: (tab: RightRailTab) => ReactNode
   rightRailIndicators?: Partial<Record<RightRailTab, number>>
+  chatIndicatorCount?: number
   forcedRightRailTab?: RightRailTab | null
   onForcedRightRailTabApplied?: () => void
 }
@@ -57,6 +60,7 @@ export function SessionWorkspaceFrame({
   renderCenterPane,
   renderRightRailTab,
   rightRailIndicators = {},
+  chatIndicatorCount = 0,
   forcedRightRailTab = null,
   onForcedRightRailTabApplied,
 }: SessionWorkspaceFrameProps) {
@@ -70,8 +74,12 @@ export function SessionWorkspaceFrame({
   const [isCompactLayout, setIsCompactLayout] = useState(
     typeof window !== 'undefined' ? window.innerWidth <= 1100 : false
   )
+  const [isDockLayout, setIsDockLayout] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  )
   const [isRightRailVisible, setIsRightRailVisible] = useState(toolbarRightRailOpen)
   const [isRightRailClosing, setIsRightRailClosing] = useState(false)
+  const [isChatDockOpen, setIsChatDockOpen] = useState(false)
   const lastTabToggleRef = useRef<{ at: number; tab: RightRailTab | null }>({
     at: 0,
     tab: null,
@@ -127,6 +135,7 @@ export function SessionWorkspaceFrame({
         to: tab,
         role,
       })
+      setIsChatDockOpen(false)
       setSelectedRightRailTab(tab)
       setToolbarRightRailOpen(true)
     },
@@ -136,6 +145,7 @@ export function SessionWorkspaceFrame({
   useEffect(() => {
     const handleResize = () => {
       setIsCompactLayout(window.innerWidth <= 1100)
+      setIsDockLayout(window.innerWidth <= 768)
     }
 
     window.addEventListener('resize', handleResize)
@@ -143,6 +153,12 @@ export function SessionWorkspaceFrame({
       window.removeEventListener('resize', handleResize)
     }
   }, [])
+
+  useEffect(() => {
+    if (!isDockLayout && isChatDockOpen) {
+      setIsChatDockOpen(false)
+    }
+  }, [isChatDockOpen, isDockLayout])
 
   useEffect(() => {
     if (!forcedRightRailTab) {
@@ -154,6 +170,7 @@ export function SessionWorkspaceFrame({
       return
     }
 
+    setIsChatDockOpen(false)
     setSelectedRightRailTab(forcedRightRailTab)
     setToolbarRightRailOpen(true)
     onForcedRightRailTabApplied?.()
@@ -193,15 +210,46 @@ export function SessionWorkspaceFrame({
       return
     }
 
+    setIsChatDockOpen(false)
     setSelectedRightRailTab(tab)
     setToolbarRightRailOpen(true)
   }
 
+  const handleChatDockClick = (timestamp: number) => {
+    const now = timestamp
+    if (lastTabToggleRef.current.tab === null && now - lastTabToggleRef.current.at < 140) {
+      return
+    }
+    lastTabToggleRef.current = { at: now, tab: null }
+
+    if (isChatDockOpen) {
+      setIsChatDockOpen(false)
+      return
+    }
+
+    setToolbarRightRailOpen(false)
+    setIsChatDockOpen(true)
+  }
+
   const handleRightRailClickOutside = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (toolbarRightRailOpen && event.currentTarget === event.target && !isRightRailClosing) {
+    if (event.currentTarget !== event.target || isRightRailClosing) {
+      return
+    }
+
+    if (isChatDockOpen) {
+      setIsChatDockOpen(false)
+      return
+    }
+
+    if (toolbarRightRailOpen) {
       setToolbarRightRailOpen(false)
     }
   }
+
+  const activeDockTab: DockTab = isChatDockOpen ? 'chat' : activeRightRailTab
+  const isDockOverlayVisible = isChatDockOpen || isRightRailVisible
+  const shouldRenderCenterPaneBase = !isDockLayout || toolbarCenterPaneView !== 'chat'
+  const chatBadgeCount = normalizeIndicatorCount(chatIndicatorCount)
 
   return (
     <section
@@ -251,28 +299,39 @@ export function SessionWorkspaceFrame({
           data-ui-component="SessionWorkspaceCenterPane"
           data-ui-state={toolbarCenterPaneView}
         >
-          {renderCenterPane(toolbarCenterPaneView)}
+          {shouldRenderCenterPaneBase ? renderCenterPane(toolbarCenterPaneView) : null}
 
-          {isRightRailVisible && (
+          {isDockOverlayVisible && (
             <aside
-              data-testid="right-rail"
+              data-testid={isChatDockOpen ? 'chat-dock-panel' : 'right-rail'}
               className={`session-workspace-frame__right-rail-overlay ${
                 isRightRailClosing ? 'session-workspace-frame__right-rail-overlay--closing' : ''
-              } session-workspace-frame__right-rail-overlay--tab-${pointerTabIndex}`}
+              } ${isChatDockOpen ? 'session-workspace-frame__right-rail-overlay--chat' : `session-workspace-frame__right-rail-overlay--tab-${pointerTabIndex}`}`}
               onClick={handleRightRailClickOutside}
-              data-ui-component="SessionWorkspaceRightRail"
-              data-ui-state={activeRightRailTab}
+              data-ui-component={
+                isChatDockOpen ? 'SessionWorkspaceChatDock' : 'SessionWorkspaceRightRail'
+              }
+              data-ui-state={activeDockTab}
             >
               <div className="session-workspace-frame__right-rail-layout">
-                <Tabs value={activeRightRailTab}>
-                  <TabsContent
-                    value={activeRightRailTab}
-                    data-testid="right-rail-content"
-                    className="knowledge-panels__right-rail-content"
+                {isChatDockOpen ? (
+                  <div
+                    data-testid="chat-dock-content"
+                    className="session-workspace-frame__dock-chat-panel"
                   >
-                    {renderRightRailTab(activeRightRailTab)}
-                  </TabsContent>
-                </Tabs>
+                    {renderCenterPane('chat')}
+                  </div>
+                ) : (
+                  <Tabs value={activeRightRailTab}>
+                    <TabsContent
+                      value={activeRightRailTab}
+                      data-testid="right-rail-content"
+                      className="knowledge-panels__right-rail-content"
+                    >
+                      {renderRightRailTab(activeRightRailTab)}
+                    </TabsContent>
+                  </Tabs>
+                )}
               </div>
             </aside>
           )}
@@ -289,6 +348,33 @@ export function SessionWorkspaceFrame({
                 className="session-workspace-frame__right-rail-toolbar"
                 aria-label="Tool panels"
               >
+                {isDockLayout ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Open chat"
+                        aria-pressed={isChatDockOpen}
+                        className="session-workspace-frame__right-rail-trigger"
+                        data-state={isChatDockOpen ? 'active' : 'inactive'}
+                        onClick={(event) => {
+                          handleChatDockClick(event.timeStamp)
+                        }}
+                      >
+                        <Icon name="chat" />
+                        {chatBadgeCount > 0 ? (
+                          <span
+                            className="session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--chat"
+                            aria-hidden="true"
+                          >
+                            {formatIndicatorCount(chatBadgeCount)}
+                          </span>
+                        ) : null}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">Chat</TooltipContent>
+                  </Tooltip>
+                ) : null}
                 {tabs.map((tab) => {
                   const label = getWorkspacePanelLabel(tab)
                   const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])

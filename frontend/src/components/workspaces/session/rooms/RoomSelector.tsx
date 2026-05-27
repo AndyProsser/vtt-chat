@@ -75,7 +75,6 @@ export function RoomSelector({
   selectedRoomId,
   onSelectRoom,
 }: GroupsPanelProps) {
-  const [isMobileExpanded] = useState(true)
   const [moveError, setMoveError] = useState<string | null>(null)
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
   const [optimisticRooms, setOptimisticRooms] = useState<OptimisticRoomEntry[]>([])
@@ -1277,7 +1276,7 @@ export function RoomSelector({
 
   return (
     <TooltipProvider delayDuration={140}>
-      <section className="room-selector room-selector--mobile-expanded" aria-label="Room Selector">
+      <section className="room-selector" aria-label="Room Selector">
         <header className="room-selector-header">
           <h4>
             <Icon name="rooms" /> Groups
@@ -1333,7 +1332,7 @@ export function RoomSelector({
         <div className="room-selector-body">
           <div className="room-selector-stack">
             <div
-              className={`room-selector-list${isMobileExpanded ? '' : ' room-selector-list--mobile-hidden'}`}
+              className="room-selector-list"
               role="list"
               aria-label="Session groups"
               ref={roomListRef}

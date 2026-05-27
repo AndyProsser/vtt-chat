@@ -26,6 +26,9 @@ type SessionWorkspaceCenterPaneProps = {
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof ChatWindow>['sendWsEvent']
   isGreenroomChatMode: boolean
+  onPendingNewMessageCountChange?: ComponentProps<
+    typeof ChatWindow
+  >['onPendingNewMessageCountChange']
 }
 
 export function SessionWorkspaceCenterPane(props: SessionWorkspaceCenterPaneProps) {
@@ -62,6 +65,7 @@ export function SessionWorkspaceCenterPane(props: SessionWorkspaceCenterPaneProp
                 messageGroupingWindowMs={props.messageGroupingWindowMs}
                 sendWsEvent={props.sendWsEvent}
                 forceMessageType={props.isGreenroomChatMode ? MessageType.OOC : undefined}
+                onPendingNewMessageCountChange={props.onPendingNewMessageCountChange}
               />
             ) : (
               <div className="session-greenroom-placeholder">
