@@ -106,7 +106,7 @@
   position: absolute;
   top: 0;
   right: -0.45rem;
-  width: min(420px, 44vw);
+  width: 420px;
   max-height: 100%;
   overflow: hidden;
   z-index: 120;
@@ -375,7 +375,7 @@
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 668px) {
   .session-workspace-frame__rails {
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
@@ -432,7 +432,7 @@
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 900px) {
   .session-workspace-frame {
     padding: 0;
     border-radius: 0;

@@ -216,5 +216,5 @@ body {
 main {
   margin: 0 auto;
   max-width: 900px;
-  padding: 8px var(--space-4);
+  padding: 8px 4px;
 }

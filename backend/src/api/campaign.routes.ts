@@ -5,6 +5,7 @@ import {
   buildCampaignSessionName,
   ErrorCode,
   PresenceState,
+  Role,
   RoomType,
   SessionState,
   isValidRoomName,
@@ -54,6 +55,7 @@ import {
   upsertCampaignExternalLink,
 } from '@/services/campaign-external-links.service'
 import { deriveCampaignJoinRole } from '@/services/session/authz.service'
+import { broadcastPresenceProfileUpdate } from '@/services/session/presence-profile-broadcast.service'
 import {
   SESSION_COOLDOWN_EXTENSION_MAX_MS,
   SESSION_COOLDOWN_EXTENSION_MIN_MS,
@@ -1770,6 +1772,19 @@ router.post('/:campaignId/characters', requireAuth, async (req: Request, res: Re
     isActive: Boolean(isActive),
   })
 
+  const wsManager = req.app.locals.wsManager as WebSocketManager | undefined
+  if (wsManager && character.isActive) {
+    const sessions = await listSessionsByCampaign(campaignId as UUID)
+    await broadcastPresenceProfileUpdate({
+      wsManager,
+      sessionIds: sessions.map((session) => session.id as UUID),
+      userId: user.userId as UUID,
+      username: user.username,
+      userRole: user.role as Role,
+      updatedAt: character.updatedAt.getTime(),
+    })
+  }
+
   return res.status(201).json({ character })
 })
 
@@ -1872,49 +1887,18 @@ router.patch(
         .json({ code: ErrorCode.NOT_FOUND, message: 'Character not found for this user' })
     }
 
-    const wsManager = req.app.locals.wsManager as
-      | { broadcastEventToSession: (sessionId: UUID, event: any) => void }
-      | undefined
+    const wsManager = req.app.locals.wsManager as WebSocketManager | undefined
 
-    if (wsManager) {
+    if (wsManager && character.isActive) {
       const sessions = await listSessionsByCampaign(campaignId as UUID)
-      const updatedAt = Date.now()
-      const characterStats =
-        character.metadata &&
-        typeof character.metadata === 'object' &&
-        !Array.isArray(character.metadata)
-          ? (character.metadata as Record<string, unknown>)
-          : null
-
-      for (const session of sessions) {
-        const presence = await getSessionPresence(session.id as UUID)
-        if (!presence.some((entry) => entry.userId === (user.userId as UUID))) {
-          continue
-        }
-
-        wsManager.broadcastEventToSession(session.id as UUID, {
-          id: crypto.randomUUID() as UUID,
-          type: 'PRESENCE:PROFILE_UPDATED',
-          version: 1,
-          userId: user.userId as UUID,
-          userRole: user.role,
-          sessionId: session.id as UUID,
-          roomId: null,
-          timestamp: updatedAt,
-          payload: {
-            userId: user.userId as UUID,
-            username: user.username,
-            updatedAt,
-            characterName: character.name,
-            characterClass: character.class,
-            characterSubclass: character.subclass,
-            characterRace: character.race,
-            level: typeof characterStats?.level === 'number' ? characterStats.level : null,
-            characterStats,
-            avatarUrl: character.avatarUrl,
-          },
-        })
-      }
+      await broadcastPresenceProfileUpdate({
+        wsManager,
+        sessionIds: sessions.map((session) => session.id as UUID),
+        userId: user.userId as UUID,
+        username: user.username,
+        userRole: user.role as Role,
+        updatedAt: character.updatedAt.getTime(),
+      })
     }
 
     return res.status(200).json({ character })

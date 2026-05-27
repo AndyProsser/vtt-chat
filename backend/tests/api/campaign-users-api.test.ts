@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   mockVerifyToken: vi.fn(),
   mockValidateUserAuthState: vi.fn(),
   mockUserFindUnique: vi.fn(),
+  mockUserUpdate: vi.fn(),
   mockListCampaignsForUser: vi.fn(),
   mockCreateCampaignForUser: vi.fn(),
   mockGetCampaignForUser: vi.fn(),
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   mockListSessionsByCampaign: vi.fn(),
   mockEnsureSessionDefaultRoomsForSession: vi.fn(),
   mockRestoreRememberedDevMockPlayersForSession: vi.fn(),
+  mockBroadcastPresenceProfileUpdate: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -35,6 +37,7 @@ vi.mock('@/infra/db', () => ({
   getPrismaClient: () => ({
     user: {
       findUnique: mocks.mockUserFindUnique,
+      update: mocks.mockUserUpdate,
     },
   }),
 }))
@@ -65,6 +68,10 @@ vi.mock('@/services/dev-mock/players.service', () => ({
 
 vi.mock('@/repositories/session.repository', () => ({
   listSessionsByCampaign: mocks.mockListSessionsByCampaign,
+}))
+
+vi.mock('@/services/session/presence-profile-broadcast.service', () => ({
+  broadcastPresenceProfileUpdate: mocks.mockBroadcastPresenceProfileUpdate,
 }))
 
 import campaignRoutes from '@/api/campaign.routes'
@@ -100,6 +107,14 @@ beforeEach(() => {
   mocks.mockUserFindUnique.mockResolvedValue({
     isActive: true,
     tokenInvalidBefore: null,
+  })
+  mocks.mockUserUpdate.mockResolvedValue({
+    id: USER_ID,
+    username: 'tester',
+    displayName: 'Tester',
+    avatarUrl: null,
+    role: 'DM',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
   })
 })
 
@@ -318,6 +333,56 @@ describe('campaign routes', () => {
     )
   })
 
+  it('broadcasts effective live profile when creating an active character', async () => {
+    const app = buildAppForCampaigns()
+    const sessionId = '33333333-3333-4333-8333-333333333333'
+    app.locals.wsManager = { broadcastEventToSession: vi.fn() }
+    mocks.mockIsUserInCampaign.mockResolvedValue(true)
+    mocks.mockCreateCharacterForCampaign.mockResolvedValue({
+      id: '55555555-5555-4555-8555-555555555555',
+      campaignId: CAMPAIGN_ID,
+      userId: USER_ID,
+      name: 'Thorn',
+      status: 'ALIVE',
+      race: 'Human',
+      class: 'Fighter',
+      subclass: 'Champion',
+      avatarUrl: 'https://example.com/thorn.png',
+      metadata: { level: 4 },
+      isActive: true,
+      createdAt: new Date('2026-05-27T10:00:00Z'),
+      updatedAt: new Date('2026-05-27T10:05:00Z'),
+    })
+    mocks.mockListSessionsByCampaign.mockResolvedValue([
+      {
+        id: sessionId,
+        campaignId: CAMPAIGN_ID,
+        name: 'Chapter 1',
+        description: null,
+        dmId: USER_ID,
+        state: 'ACTIVE',
+        createdAt: new Date(),
+        startedAt: new Date(),
+        endedAt: null,
+      },
+    ])
+
+    const response = await request(app)
+      .post(`/api/campaigns/${CAMPAIGN_ID}/characters`)
+      .set('Authorization', 'Bearer token')
+      .send({ name: 'Thorn', isActive: true })
+
+    expect(response.status).toBe(201)
+    expect(mocks.mockBroadcastPresenceProfileUpdate).toHaveBeenCalledWith({
+      wsManager: app.locals.wsManager,
+      sessionIds: [sessionId],
+      userId: USER_ID,
+      username: 'tester',
+      userRole: 'DM',
+      updatedAt: new Date('2026-05-27T10:05:00Z').getTime(),
+    })
+  })
+
   it('rejects invalid character status', async () => {
     const app = buildAppForCampaigns()
     mocks.mockIsUserInCampaign.mockResolvedValue(true)
@@ -374,6 +439,56 @@ describe('campaign routes', () => {
         isActive: true,
       })
     )
+  })
+
+  it('broadcasts effective live profile when updating an active character', async () => {
+    const app = buildAppForCampaigns()
+    const characterId = '55555555-5555-4555-8555-555555555555'
+    const sessionId = '33333333-3333-4333-8333-333333333333'
+    app.locals.wsManager = { broadcastEventToSession: vi.fn() }
+    mocks.mockIsUserInCampaign.mockResolvedValue(true)
+    mocks.mockUpdateCharacterForCampaignMember.mockResolvedValue({
+      id: characterId,
+      campaignId: CAMPAIGN_ID,
+      userId: USER_ID,
+      name: 'Aria Updated',
+      race: 'Elf',
+      class: 'Wizard',
+      subclass: 'Chronurgy',
+      avatarUrl: null,
+      metadata: { level: 7 },
+      isActive: true,
+      createdAt: new Date('2026-05-27T10:00:00Z'),
+      updatedAt: new Date('2026-05-27T10:06:00Z'),
+    })
+    mocks.mockListSessionsByCampaign.mockResolvedValue([
+      {
+        id: sessionId,
+        campaignId: CAMPAIGN_ID,
+        name: 'Chapter 1',
+        description: null,
+        dmId: USER_ID,
+        state: 'ACTIVE',
+        createdAt: new Date(),
+        startedAt: new Date(),
+        endedAt: null,
+      },
+    ])
+
+    const response = await request(app)
+      .patch(`/api/campaigns/${CAMPAIGN_ID}/characters/${characterId}`)
+      .set('Authorization', 'Bearer token')
+      .send({ name: 'Aria Updated', isActive: true })
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockBroadcastPresenceProfileUpdate).toHaveBeenCalledWith({
+      wsManager: app.locals.wsManager,
+      sessionIds: [sessionId],
+      userId: USER_ID,
+      username: 'tester',
+      userRole: 'DM',
+      updatedAt: new Date('2026-05-27T10:06:00Z').getTime(),
+    })
   })
 
   it('validates campaign character PATCH payload', async () => {
@@ -435,5 +550,35 @@ describe('users routes', () => {
     expect(response.body.characters).toHaveLength(1)
     expect(response.body.characters[0].name).toBe('Aria')
     expect(mocks.mockListCharactersForUser).toHaveBeenCalledWith(USER_ID)
+  })
+
+  it('broadcasts live profile updates when saving user settings', async () => {
+    const app = buildAppForUsers()
+    const sessionId = '33333333-3333-4333-8333-333333333333'
+    app.locals.wsManager = {
+      broadcastEventToSession: vi.fn(),
+      getActiveSessionIdsForUser: vi.fn().mockReturnValue([sessionId]),
+    }
+
+    const response = await request(app)
+      .patch('/api/users/me')
+      .set('Authorization', 'Bearer token')
+      .send({ displayName: 'Updated Tester', avatarUrl: 'https://example.com/avatar.png' })
+
+    expect(response.status).toBe(200)
+    expect(mocks.mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: USER_ID },
+        data: { displayName: 'Updated Tester', avatarUrl: 'https://example.com/avatar.png' },
+      })
+    )
+    expect(app.locals.wsManager.getActiveSessionIdsForUser).toHaveBeenCalledWith(USER_ID)
+    expect(mocks.mockBroadcastPresenceProfileUpdate).toHaveBeenCalledWith({
+      wsManager: app.locals.wsManager,
+      sessionIds: [sessionId],
+      userId: USER_ID,
+      username: 'tester',
+      userRole: 'DM',
+    })
   })
 })

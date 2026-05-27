@@ -60,7 +60,7 @@
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 900px) {
   .session-command-center {
     padding: 0;
     border: 0;
