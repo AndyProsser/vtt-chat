@@ -1,5 +1,6 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
+import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
 import type { WorkspaceToolbarProps } from '@/types/workspaceToolbar'
 
 export function WorkspaceToolbar({
@@ -21,6 +22,7 @@ export function WorkspaceToolbar({
   connectionStatusLabel,
   connectionStatusRows,
 }: WorkspaceToolbarProps) {
+  const { tooltipLabelsEnabled } = useTooltipLabelsPreference()
   const resolvedClassName = ['session-toolbar', className].filter(Boolean).join(' ')
 
   return (
@@ -44,8 +46,58 @@ export function WorkspaceToolbar({
       <div className="session-toolbar__zone session-toolbar__zone--right">
         {extraActions ? <div className="session-toolbar__extra-buttons">{extraActions}</div> : null}
 
-        <Tooltip>
-          <TooltipTrigger asChild>
+        {tooltipLabelsEnabled ? (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onToggleTheme}
+                  className="session-toolbar__icon-btn"
+                  aria-label="Theme"
+                >
+                  <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="end">
+                Theme
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onOpenUserSettings}
+                  className="session-toolbar__icon-btn"
+                  aria-label="Settings"
+                >
+                  <Icon name="settings" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="end">
+                Settings
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onExit}
+                  className="session-toolbar__icon-btn session-toolbar__icon-btn--exit"
+                  aria-label={exitAriaLabel}
+                >
+                  <Icon name={exitIcon} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="end">
+                {exitTooltipLabel}
+              </TooltipContent>
+            </Tooltip>
+          </>
+        ) : (
+          <>
             <button
               type="button"
               onClick={onToggleTheme}
@@ -54,14 +106,7 @@ export function WorkspaceToolbar({
             >
               <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} />
             </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="end">
-            Theme
-          </TooltipContent>
-        </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
             <button
               type="button"
               onClick={onOpenUserSettings}
@@ -70,14 +115,7 @@ export function WorkspaceToolbar({
             >
               <Icon name="settings" />
             </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="end">
-            Settings
-          </TooltipContent>
-        </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
             <button
               type="button"
               onClick={onExit}
@@ -86,11 +124,8 @@ export function WorkspaceToolbar({
             >
               <Icon name={exitIcon} />
             </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="end">
-            {exitTooltipLabel}
-          </TooltipContent>
-        </Tooltip>
+          </>
+        )}
 
         <Tooltip>
           <TooltipTrigger asChild>
