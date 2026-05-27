@@ -510,6 +510,48 @@ describe('roomSlice', () => {
         ROOM_ID_2
       )
     })
+
+    it('keeps SPEAKING -> ONLINE transitions on lightweight speaking tracker path', () => {
+      useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+        })
+      )
+
+      useStore.getState().handlePresenceStateChanged(
+        makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+          newState: 'SPEAKING',
+          changedAt: NOW + 10,
+        })
+      )
+
+      expect(useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]).toBe(true)
+
+      const roomMembersBeforeStop = useStore.getState().roomMembers[ROOM_ID_1]
+      const sessionPresenceBeforeStop = useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]
+
+      useStore.getState().handlePresenceStateChanged(
+        makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+          newState: 'ONLINE',
+          changedAt: NOW + 20,
+        })
+      )
+
+      expect(useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]).toBeUndefined()
+      expect(useStore.getState().roomMembers[ROOM_ID_1]).toBe(roomMembersBeforeStop)
+      expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]).toBe(
+        sessionPresenceBeforeStop
+      )
+    })
   })
 
   describe('handleSessionRoomTransitionApplied', () => {

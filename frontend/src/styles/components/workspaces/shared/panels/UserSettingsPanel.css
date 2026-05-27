@@ -106,6 +106,25 @@
   margin: 0;
 }
 
+.susp-field__help {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.susp-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.susp-toggle input[type='checkbox'] {
+  accent-color: var(--color-primary, #6366f1);
+}
+
 .susp-profile-actions {
   display: flex;
   align-items: center;

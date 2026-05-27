@@ -36,6 +36,30 @@ const EMPTY_SESSION_PRESENCE: Record<UUID, SessionPresence> = Object.freeze({}) 
   UUID,
   SessionPresence
 >
+const EMPTY_ROOM_MEMBERS: RoomUser[] = []
+
+function compareMembers(left: RoomUser, right: RoomUser): number {
+  if (left.role === Role.DM && right.role !== Role.DM) return -1
+  if (right.role === Role.DM && left.role !== Role.DM) return 1
+  return (left.characterName || left.playerName || left.username).localeCompare(
+    right.characterName || right.playerName || right.username
+  )
+}
+
+function sortMembersIfNeeded(members: RoomUser[]): RoomUser[] {
+  if (members.length < 2) {
+    return members
+  }
+
+  const sorted = [...members].sort(compareMembers)
+  for (let index = 0; index < sorted.length; index += 1) {
+    if (sorted[index] !== members[index]) {
+      return sorted
+    }
+  }
+
+  return members
+}
 
 interface GroupsPanelSessionProps {
   sessionId: UUID
@@ -93,14 +117,22 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     sessionState === SessionState.ACTIVE ||
     sessionState === SessionState.PAUSED ||
     sessionState === SessionState.COOLDOWN
+  const shouldDetachDmFromRooms =
+    sessionState === SessionState.ACTIVE ||
+    sessionState === SessionState.PAUSED ||
+    sessionState === SessionState.COOLDOWN
 
-  const dmMember = useMemo(
-    () =>
-      Object.values(roomMembers)
-        .flat()
-        .find((member) => member.role === Role.DM) || null,
-    [roomMembers]
-  )
+  const dmMember = useMemo(() => {
+    for (const room of sessionRooms) {
+      const members = roomMembers[room.id] || EMPTY_ROOM_MEMBERS
+      const foundDm = members.find((member) => member.role === Role.DM)
+      if (foundDm) {
+        return foundDm
+      }
+    }
+
+    return null
+  }, [roomMembers, sessionRooms])
 
   const dmFallback = useMemo(() => {
     if ((!canManageGroups && currentUser?.role !== Role.DM) || !currentUser) {
@@ -143,7 +175,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       presenceState: selfPresence?.state ?? PresenceState.ONLINE,
       ghost: selfPresence?.ghost,
       previousGroupId: selfPresence?.previousGroupId,
-      joinedAt: Date.now(),
+      joinedAt: selfPresence?.lastSeenAt ?? 0,
     }
 
     return {
@@ -158,34 +190,57 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     const resolvedDmTargetRoomId = dmVoiceTargetGroupId || dmFallback?.targetRoomId || null
 
     for (const room of sessionRooms) {
-      next[room.id] = [...(roomMembers[room.id] || [])]
+      next[room.id] = roomMembers[room.id] || EMPTY_ROOM_MEMBERS
     }
 
     if (
       canManageGroups &&
       resolvedDmMember &&
       resolvedDmTargetRoomId &&
-      next[resolvedDmTargetRoomId]
+      next[resolvedDmTargetRoomId] &&
+      !shouldDetachDmFromRooms
     ) {
       for (const roomId of Object.keys(next) as UUID[]) {
-        next[roomId] = next[roomId].filter((member) => member.userId !== resolvedDmMember.userId)
+        const members = next[roomId]
+        if (!members.some((member) => member.userId === resolvedDmMember.userId)) {
+          continue
+        }
+
+        next[roomId] = members.filter((member) => member.userId !== resolvedDmMember.userId)
       }
 
       next[resolvedDmTargetRoomId] = [resolvedDmMember, ...(next[resolvedDmTargetRoomId] || [])]
     }
 
     for (const roomId of Object.keys(next) as UUID[]) {
-      next[roomId] = [...next[roomId]].sort((left, right) => {
-        if (left.role === Role.DM && right.role !== Role.DM) return -1
-        if (right.role === Role.DM && left.role !== Role.DM) return 1
-        return (left.characterName || left.playerName || left.username).localeCompare(
-          right.characterName || right.playerName || right.username
-        )
-      })
+      next[roomId] = sortMembersIfNeeded(next[roomId])
     }
 
     return next
-  }, [canManageGroups, dmFallback, dmMember, dmVoiceTargetGroupId, roomMembers, sessionRooms])
+  }, [
+    canManageGroups,
+    dmFallback,
+    dmMember,
+    dmVoiceTargetGroupId,
+    roomMembers,
+    sessionRooms,
+    shouldDetachDmFromRooms,
+  ])
+
+  const nonDmCountsByRoomId = useMemo(() => {
+    const counts: Record<UUID, number> = {}
+    for (const room of sessionRooms) {
+      const members = membersByRoomId[room.id] || EMPTY_ROOM_MEMBERS
+      let count = 0
+      for (const member of members) {
+        if (member.role !== Role.DM) {
+          count += 1
+        }
+      }
+      counts[room.id] = count
+    }
+    return counts
+  }, [membersByRoomId, sessionRooms])
 
   const visibleRooms = useMemo(() => {
     return sessionRooms
@@ -214,8 +269,33 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       })
   }, [canManageGroups, membersByRoomId, sessionRooms, shouldHideGreenRoom])
 
+  const detachedDmMember = useMemo(() => {
+    if (!canManageGroups || !shouldDetachDmFromRooms) {
+      return null
+    }
+
+    return dmMember || dmFallback?.member || null
+  }, [canManageGroups, dmFallback, dmMember, shouldDetachDmFromRooms])
+
+  const detachedDmVoiceTargetRoomName = useMemo(() => {
+    if (!detachedDmMember) {
+      return null
+    }
+
+    const targetRoomId = dmVoiceTargetGroupId || dmFallback?.targetRoomId || null
+    if (!targetRoomId) {
+      return 'Main'
+    }
+
+    return sessionRooms.find((room) => room.id === targetRoomId)?.name || 'Main'
+  }, [detachedDmMember, dmFallback, dmVoiceTargetGroupId, sessionRooms])
+
   // Load session groups on mount
   useEffect(() => {
+    if (sessionRooms.length > 0) {
+      return
+    }
+
     const loadGroups = async () => {
       try {
         const rooms = await fetchSessionGroups(sessionId, token, apiUrl)
@@ -227,7 +307,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     }
 
     void loadGroups()
-  }, [sessionId, token, apiUrl, setSessionGroups, showToast])
+  }, [apiUrl, sessionId, sessionRooms.length, setSessionGroups, showToast, token])
 
   const handleCreateGroup = async () => {
     const trimmedName = newGroupName.trim()
@@ -295,11 +375,6 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     }
   }
 
-  const isGroupEmpty = (groupId: UUID): boolean => {
-    const members = membersByRoomId[groupId] || []
-    return members.filter((member) => member.role !== Role.DM).length === 0
-  }
-
   return (
     <section className="session-groups-panel" aria-label="Groups panel">
       <header className="session-groups-panel__header">
@@ -340,10 +415,24 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
           <div className="session-groups-panel__empty">No groups available.</div>
         ) : (
           <div className="session-groups-panel__list">
+            {detachedDmMember ? (
+              <article
+                className="session-groups-dm-detached"
+                data-ui-component="SessionGroupsDetachedDM"
+              >
+                <div className="session-groups-dm-detached__header">Dungeon Master</div>
+                <div className="session-groups-dm-detached__name">
+                  {detachedDmMember.characterName || detachedDmMember.username}
+                </div>
+                <div className="session-groups-dm-detached__target">
+                  Voice target: <strong>{detachedDmVoiceTargetRoomName || 'Main'}</strong>
+                </div>
+              </article>
+            ) : null}
             {visibleRooms.map((room) => {
               const members = membersByRoomId[room.id] || []
               const environment = roomEnvironmentNames[room.id] || fallbackRoomEnvironments[room.id]
-              const empty = isGroupEmpty(room.id)
+              const empty = (nonDmCountsByRoomId[room.id] ?? 0) === 0
 
               return (
                 <SessionGroupCard

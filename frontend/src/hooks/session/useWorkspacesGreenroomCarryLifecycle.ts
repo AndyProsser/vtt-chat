@@ -3,12 +3,12 @@ import type { MutableRefObject } from 'react'
 import type { UUID } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord } from '@/types/room'
+import { useStore } from '@/state/store'
 import { isGreenRoom } from '@/utils/session/workspaces'
 
 type UseWorkspacesGreenroomCarryLifecycleParams = {
   currentSession: SessionRecord | null
   currentRooms: RoomRecord[]
-  typedRoomsBySession: Record<UUID, Record<UUID, RoomRecord>>
   pendingGreenroomCarryBySessionIdRef: MutableRefObject<Map<UUID, UUID>>
 }
 
@@ -18,7 +18,6 @@ type UseWorkspacesGreenroomCarryLifecycleParams = {
 export function useWorkspacesGreenroomCarryLifecycle({
   currentSession,
   currentRooms,
-  typedRoomsBySession,
   pendingGreenroomCarryBySessionIdRef,
 }: UseWorkspacesGreenroomCarryLifecycleParams) {
   useEffect(() => {
@@ -36,7 +35,8 @@ export function useWorkspacesGreenroomCarryLifecycle({
       return
     }
 
-    const fromRooms = Object.values(typedRoomsBySession[fromSessionId] || {})
+    const fromRoomsBySession = useStore.getState().rooms as Record<UUID, Record<UUID, RoomRecord>>
+    const fromRooms = Object.values(fromRoomsBySession[fromSessionId] || {})
     const fromGreenroom = fromRooms.find((room) => isGreenRoom(room))
     if (!fromGreenroom) {
       pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
@@ -49,5 +49,5 @@ export function useWorkspacesGreenroomCarryLifecycle({
     void fromGreenroom
 
     pendingGreenroomCarryBySessionIdRef.current.delete(currentSession.id)
-  }, [currentRooms, currentSession, pendingGreenroomCarryBySessionIdRef, typedRoomsBySession])
+  }, [currentRooms, currentSession, pendingGreenroomCarryBySessionIdRef])
 }

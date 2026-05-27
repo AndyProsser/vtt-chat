@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '@/hooks/useStore'
+import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
 import {
   getWorkspacePanelIcon,
   getWorkspacePanelLabel,
@@ -64,6 +65,7 @@ export function SessionWorkspaceFrame({
   forcedRightRailTab = null,
   onForcedRightRailTabApplied,
 }: SessionWorkspaceFrameProps) {
+  const { tooltipLabelsEnabled } = useTooltipLabelsPreference()
   const systemToastsNode = renderSystemToasts ? renderSystemToasts() : null
   const toolbarCenterPaneView = useStore((state) => state.toolbarCenterPaneView)
   const toolbarRightRailOpen = useStore((state) => state.toolbarRightRailOpen)
@@ -342,72 +344,130 @@ export function SessionWorkspaceFrame({
           aria-label="Tools"
           data-ui-component="SessionWorkspaceDock"
         >
-          <TooltipProvider delayDuration={140}>
+          {tooltipLabelsEnabled ? (
+            <TooltipProvider delayDuration={140}>
+              <Tabs value={activeRightRailTab}>
+                <TabsList
+                  className="session-workspace-frame__right-rail-toolbar"
+                  aria-label="Tool panels"
+                >
+                  {isDockLayout ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Open chat"
+                          aria-pressed={isChatDockOpen}
+                          className="session-workspace-frame__right-rail-trigger"
+                          data-state={isChatDockOpen ? 'active' : 'inactive'}
+                          onClick={(event) => {
+                            handleChatDockClick(event.timeStamp)
+                          }}
+                        >
+                          <Icon name="chat" />
+                          {chatBadgeCount > 0 ? (
+                            <span
+                              className="session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--chat"
+                              aria-hidden="true"
+                            >
+                              {formatIndicatorCount(chatBadgeCount)}
+                            </span>
+                          ) : null}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Chat</TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                  {tabs.map((tab) => {
+                    const label = getWorkspacePanelLabel(tab)
+                    const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
+
+                    return (
+                      <Tooltip key={tab}>
+                        <TooltipTrigger asChild>
+                          <TabsTrigger
+                            value={tab}
+                            aria-label={`Tool ${label}`}
+                            className="session-workspace-frame__right-rail-trigger"
+                            onClick={(event) => {
+                              handleRightRailTabClick(tab, event.timeStamp)
+                            }}
+                          >
+                            <Icon name={getWorkspacePanelIcon(tab)} />
+                            {indicatorCount > 0 ? (
+                              <span
+                                className={`session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--${tab}`}
+                                aria-hidden="true"
+                              >
+                                {formatIndicatorCount(indicatorCount)}
+                              </span>
+                            ) : null}
+                          </TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">{label}</TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </TabsList>
+              </Tabs>
+            </TooltipProvider>
+          ) : (
             <Tabs value={activeRightRailTab}>
               <TabsList
                 className="session-workspace-frame__right-rail-toolbar"
                 aria-label="Tool panels"
               >
                 {isDockLayout ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Open chat"
-                        aria-pressed={isChatDockOpen}
-                        className="session-workspace-frame__right-rail-trigger"
-                        data-state={isChatDockOpen ? 'active' : 'inactive'}
-                        onClick={(event) => {
-                          handleChatDockClick(event.timeStamp)
-                        }}
+                  <button
+                    type="button"
+                    aria-label="Open chat"
+                    aria-pressed={isChatDockOpen}
+                    className="session-workspace-frame__right-rail-trigger"
+                    data-state={isChatDockOpen ? 'active' : 'inactive'}
+                    onClick={(event) => {
+                      handleChatDockClick(event.timeStamp)
+                    }}
+                  >
+                    <Icon name="chat" />
+                    {chatBadgeCount > 0 ? (
+                      <span
+                        className="session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--chat"
+                        aria-hidden="true"
                       >
-                        <Icon name="chat" />
-                        {chatBadgeCount > 0 ? (
-                          <span
-                            className="session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--chat"
-                            aria-hidden="true"
-                          >
-                            {formatIndicatorCount(chatBadgeCount)}
-                          </span>
-                        ) : null}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">Chat</TooltipContent>
-                  </Tooltip>
+                        {formatIndicatorCount(chatBadgeCount)}
+                      </span>
+                    ) : null}
+                  </button>
                 ) : null}
                 {tabs.map((tab) => {
                   const label = getWorkspacePanelLabel(tab)
                   const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
 
                   return (
-                    <Tooltip key={tab}>
-                      <TooltipTrigger asChild>
-                        <TabsTrigger
-                          value={tab}
-                          aria-label={`Tool ${label}`}
-                          className="session-workspace-frame__right-rail-trigger"
-                          onClick={(event) => {
-                            handleRightRailTabClick(tab, event.timeStamp)
-                          }}
+                    <TabsTrigger
+                      key={tab}
+                      value={tab}
+                      aria-label={`Tool ${label}`}
+                      className="session-workspace-frame__right-rail-trigger"
+                      onClick={(event) => {
+                        handleRightRailTabClick(tab, event.timeStamp)
+                      }}
+                    >
+                      <Icon name={getWorkspacePanelIcon(tab)} />
+                      {indicatorCount > 0 ? (
+                        <span
+                          className={`session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--${tab}`}
+                          aria-hidden="true"
                         >
-                          <Icon name={getWorkspacePanelIcon(tab)} />
-                          {indicatorCount > 0 ? (
-                            <span
-                              className={`session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--${tab}`}
-                              aria-hidden="true"
-                            >
-                              {formatIndicatorCount(indicatorCount)}
-                            </span>
-                          ) : null}
-                        </TabsTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">{label}</TooltipContent>
-                    </Tooltip>
+                          {formatIndicatorCount(indicatorCount)}
+                        </span>
+                      ) : null}
+                    </TabsTrigger>
                   )
                 })}
               </TabsList>
             </Tabs>
-          </TooltipProvider>
+          )}
         </aside>
       </div>
     </section>

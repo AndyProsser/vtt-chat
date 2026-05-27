@@ -401,8 +401,8 @@
   }
 
   .session-workspace-frame__rails {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) 2.15rem;
+    grid-template-rows: minmax(0, 1fr);
     min-height: 0;
     height: calc(100dvh - 6.4rem);
     max-height: calc(100dvh - 6.4rem);
@@ -470,7 +470,7 @@
   }
 
   .session-workspace-frame__right-rail-toolbar {
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
     width: 100%;
     height: auto;
@@ -492,7 +492,7 @@
   }
 
   .session-workspace-frame__right-rail-trigger {
-    flex: 0 0 2.2rem;
+    flex: 0 0 auto;
   }
 
   .session-workspace-frame__right-rail-layout {

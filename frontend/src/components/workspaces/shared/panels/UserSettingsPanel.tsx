@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { CharacterAvatarUploadField } from './CharacterAvatarUploadField'
+import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
 import '@/styles/components/workspaces/shared/panels/UserSettingsPanel.css'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
@@ -44,6 +45,7 @@ export const UserSettingsPanel = forwardRef<UserSettingsPanelHandle, UserSetting
     const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const persistedProfileRef = useRef<ProfileState>({ displayName: '', avatarUrl: '' })
+    const { tooltipLabelsEnabled, setTooltipLabelsEnabled } = useTooltipLabelsPreference()
 
     useEffect(() => {
       let cancelled = false
@@ -164,6 +166,24 @@ export const UserSettingsPanel = forwardRef<UserSettingsPanelHandle, UserSetting
             }}
             disabled={!profileLoaded || saveStatus === 'saving'}
           />
+
+          <div className="susp-field susp-field--spaced" role="group" aria-label="Interface labels">
+            <label htmlFor="susp-tooltip-labels-toggle" className="susp-field__label">
+              Show tooltip labels
+            </label>
+            <p className="susp-field__help">
+              Controls hover labels for toolbar and panel icon buttons.
+            </p>
+            <label className="susp-toggle" htmlFor="susp-tooltip-labels-toggle">
+              <input
+                id="susp-tooltip-labels-toggle"
+                type="checkbox"
+                checked={tooltipLabelsEnabled}
+                onChange={(event) => setTooltipLabelsEnabled(event.target.checked)}
+              />
+              <span>{tooltipLabelsEnabled ? 'Enabled' : 'Disabled'}</span>
+            </label>
+          </div>
         </div>
       </section>
     )

@@ -510,12 +510,15 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     // Note: we do NOT require !payload.username here — the mock simulator always includes
     // username in every event. The "no structural change" guard is roomId === previousRoomId
     // (a new user has no previousRoomId, so that branch is never falsely taken).
+    const speakingTrackerForSession = get().presenceSpeakingBySession[event.sessionId]
+    const wasTrackedAsSpeaking = Boolean(speakingTrackerForSession?.[payload.userId])
     const isVoiceActivityTransition =
       roomId === previousRoomId &&
       Boolean(existingPresence) &&
       (nextPresence === PresenceState.SPEAKING ||
         ((nextPresence === PresenceState.ONLINE || nextPresence === PresenceState.IDLE) &&
-          (existingPresence?.state === PresenceState.SPEAKING ||
+          (wasTrackedAsSpeaking ||
+            existingPresence?.state === PresenceState.SPEAKING ||
             existingPresence?.state === PresenceState.TYPING)))
 
     if (isVoiceActivityTransition) {

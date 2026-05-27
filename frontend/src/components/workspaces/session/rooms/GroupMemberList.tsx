@@ -198,11 +198,7 @@ export function GroupMemberList({
         const memberTooltip = (
           <Tooltip>
             <TooltipTrigger asChild>{memberButton}</TooltipTrigger>
-            <TooltipContent
-              side={isNarrowViewport ? 'bottom' : 'right'}
-              align={isNarrowViewport ? 'start' : 'center'}
-              className="room-selector-profile-tooltip"
-            >
+            <TooltipContent side="bottom" className="room-selector-profile-tooltip">
               <GroupMemberProfileCard
                 member={member}
                 metaLine={getParticipantMetaLine(member)}
