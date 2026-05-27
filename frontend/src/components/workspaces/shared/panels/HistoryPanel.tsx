@@ -2,14 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { MessageType, type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
-import type {
-  HistoryGroupBy,
-  HistorySortOrder,
-  SessionHistoryMessage,
-  SessionHistoryThread,
-} from '@/types/history'
+import type { HistorySortOrder, SessionHistoryMessage, SessionHistoryThread } from '@/types/history'
 import {
-  DEFAULT_HISTORY_GROUP_BY,
   DEFAULT_HISTORY_SORT_ORDER,
   getHistoryControlStorageKey,
   parsePersistedHistoryControls,
@@ -124,12 +118,6 @@ export function HistoryPanel({
     () => getHistoryControlStorageKey(sessionId, role, userId),
     [sessionId, role, userId]
   )
-  const [groupBy, setGroupBy] = useState<HistoryGroupBy>(() => {
-    if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
-      return DEFAULT_HISTORY_GROUP_BY
-    }
-    return parsePersistedHistoryControls(window.localStorage.getItem(storageKey)).groupBy
-  })
   const [sortOrder, setSortOrder] = useState<HistorySortOrder>(() => {
     if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
       return DEFAULT_HISTORY_SORT_ORDER
@@ -147,7 +135,6 @@ export function HistoryPanel({
 
     const persisted = parsePersistedHistoryControls(window.localStorage.getItem(storageKey))
     queueMicrotask(() => {
-      setGroupBy(persisted.groupBy)
       setSortOrder(persisted.sortOrder)
     })
   }, [storageKey])
@@ -157,8 +144,8 @@ export function HistoryPanel({
       return
     }
 
-    window.localStorage.setItem(storageKey, JSON.stringify({ groupBy, sortOrder }))
-  }, [storageKey, groupBy, sortOrder])
+    window.localStorage.setItem(storageKey, JSON.stringify({ sortOrder }))
+  }, [storageKey, sortOrder])
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -296,9 +283,6 @@ export function HistoryPanel({
 
     const filteredThreads = threads
       .map((thread) => {
-        const nonSystemMessageCount = thread.messages.filter(
-          (message) => message.type !== MessageType.SYSTEM
-        ).length
         const sortedMessages = [...thread.messages].sort((left, right) =>
           sortOrder === 'newest'
             ? right.createdAt - left.createdAt
@@ -310,7 +294,6 @@ export function HistoryPanel({
 
         return {
           ...thread,
-          nonSystemMessageCount,
           startedAtLabel: formatBoundaryDate(thread.startedAt || thread.createdAt),
           messages: filteredMessages,
         }
@@ -327,9 +310,7 @@ export function HistoryPanel({
       label: toSessionLabel(thread),
       sessionId: thread.sessionId,
       sessionName: thread.sessionName,
-      sessionState: thread.sessionState,
       startedAtLabel: thread.startedAtLabel,
-      nonSystemMessageCount: thread.nonSystemMessageCount,
       items: thread.messages,
     }))
   }, [query, sortOrder, threads])
@@ -385,7 +366,10 @@ export function HistoryPanel({
         Previous sessions only. Session boundaries summarize each chapter context.
       </p>
 
-      <div className="knowledge-panel-toolbar" aria-label="History controls">
+      <div
+        className="knowledge-panel-toolbar knowledge-panel-history__toolbar"
+        aria-label="History controls"
+      >
         <label className="knowledge-panel-filter-field" htmlFor="history-search-input">
           <span>Search</span>
           <input
@@ -399,39 +383,31 @@ export function HistoryPanel({
         </label>
 
         <div className="knowledge-panel-filter-field">
-          <span>Group by</span>
-          <TabsPrimitive.Root
-            value={groupBy}
-            onValueChange={(value) => setGroupBy(value as HistoryGroupBy)}
-            className="knowledge-panel-tabs"
-          >
-            <TabsPrimitive.List
-              className="knowledge-panel-tabs__list"
-              aria-label="History grouping"
-            >
-              <TabsPrimitive.Trigger value="session" className="knowledge-panel-tabs__trigger">
-                Session
-              </TabsPrimitive.Trigger>
-            </TabsPrimitive.List>
-          </TabsPrimitive.Root>
-        </div>
-
-        <div className="knowledge-panel-filter-field">
           <span>Sort</span>
           <TabsPrimitive.Root
             value={sortOrder}
             onValueChange={(value) => setSortOrder(value as HistorySortOrder)}
-            className="knowledge-panel-tabs"
+            className="knowledge-panel-tabs knowledge-panel-history__sort-tabs"
           >
             <TabsPrimitive.List
-              className="knowledge-panel-tabs__list"
+              className="knowledge-panel-tabs__list knowledge-panel-history__sort-list"
               aria-label="History sort order"
             >
-              <TabsPrimitive.Trigger value="newest" className="knowledge-panel-tabs__trigger">
-                Newest
+              <TabsPrimitive.Trigger
+                value="newest"
+                className="knowledge-panel-tabs__trigger knowledge-panel-history__sort-trigger"
+                title="Newest first"
+                aria-label="Sort by newest first"
+              >
+                <Icon name="south" />
               </TabsPrimitive.Trigger>
-              <TabsPrimitive.Trigger value="oldest" className="knowledge-panel-tabs__trigger">
-                Oldest
+              <TabsPrimitive.Trigger
+                value="oldest"
+                className="knowledge-panel-tabs__trigger knowledge-panel-history__sort-trigger"
+                title="Oldest first"
+                aria-label="Sort by oldest first"
+              >
+                <Icon name="north" />
               </TabsPrimitive.Trigger>
             </TabsPrimitive.List>
           </TabsPrimitive.Root>
@@ -446,29 +422,22 @@ export function HistoryPanel({
         ) : null}
 
         {groupedHistory.map(
-          ({
-            label,
-            items,
-            sessionId: groupSessionId,
-            sessionName,
-            startedAtLabel,
-            nonSystemMessageCount,
-          }) => (
+          ({ label, items, sessionId: groupSessionId, sessionName, startedAtLabel }) => (
             <div key={label} className="knowledge-panel__day-group">
               <div
                 className="knowledge-panel-history__boundary"
                 aria-label={`Session boundary ${label}`}
               >
-                <span className="knowledge-panel-history__boundary-title">Session Boundary</span>
-                <div className="knowledge-panel-history__boundary-meta">
+                <div className="knowledge-panel-history__boundary-title-row">
+                  <span className="knowledge-panel-history__boundary-icon" aria-hidden="true">
+                    <Icon name="menu_book" />
+                  </span>
                   <span className="knowledge-panel-history__boundary-session">{sessionName}</span>
-                  <span
-                    className="knowledge-panel-history__boundary-separator"
-                    aria-hidden="true"
-                  />
-                  <span>Started {startedAtLabel}</span>
-                  <span>{nonSystemMessageCount} messages</span>
+                  <span className="knowledge-panel-history__boundary-icon" aria-hidden="true">
+                    <Icon name="menu_book" />
+                  </span>
                 </div>
+                <span className="knowledge-panel-history__boundary-date">{startedAtLabel}</span>
               </div>
               <ul className="knowledge-panel-history__message-list">
                 {items.map((message, index) => {
