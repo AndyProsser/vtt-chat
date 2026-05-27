@@ -1357,6 +1357,40 @@ export function RoomSelector({
 
         <div className="room-selector-body">
           <div className="room-selector-stack">
+            {dmDetachedParticipant ? (
+              <section
+                className="room-selector-group-section room-selector-group-section--dm-detached-dock"
+                aria-label="Dungeon Master"
+              >
+                <div className="room-selector-dm" data-ui-component="RoomSelectorDmDetached">
+                  <button
+                    type="button"
+                    className="room-selector-dm__profile"
+                    onClick={() => {
+                      if (dmVoiceTargetRoom) {
+                        void handleSetDmVoiceRoom(dmVoiceTargetRoom.id)
+                      }
+                    }}
+                  >
+                    <AvatarOverlay
+                      username={dmDetachedParticipant.username}
+                      avatarUrl={dmDetachedParticipant.avatarUrl}
+                      roleLabel={ROOM_ROLE_LABELS.dm}
+                      metaLine="Detached from groups"
+                      presenceState={dmDetachedParticipant.presenceState}
+                      isSpeaking={Boolean(dmDetachedParticipant.isSpeaking)}
+                      isMuted={Boolean(dmDetachedParticipant.isMuted)}
+                      isGhost={Boolean(dmDetachedParticipant.ghost)}
+                    />
+                  </button>
+                  <p className="room-selector-dm__voice-target">
+                    Voice target:{' '}
+                    <strong>{dmVoiceTargetRoom?.name || ROOM_PRESENCE_COPY.mainGroup}</strong>
+                  </p>
+                </div>
+              </section>
+            ) : null}
+
             <div
               className="room-selector-list"
               role="list"
@@ -1367,39 +1401,6 @@ export function RoomSelector({
                 <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
               ) : (
                 <>
-                  {dmDetachedParticipant ? (
-                    <section
-                      className="room-selector-group-section room-selector-group-section--dm-detached"
-                      aria-label="Dungeon Master"
-                    >
-                      <div className="room-selector-dm" data-ui-component="RoomSelectorDmDetached">
-                        <button
-                          type="button"
-                          className="room-selector-dm__profile"
-                          onClick={() => {
-                            if (dmVoiceTargetRoom) {
-                              void handleSetDmVoiceRoom(dmVoiceTargetRoom.id)
-                            }
-                          }}
-                        >
-                          <AvatarOverlay
-                            username={dmDetachedParticipant.username}
-                            avatarUrl={dmDetachedParticipant.avatarUrl}
-                            roleLabel={ROOM_ROLE_LABELS.dm}
-                            metaLine="Detached from groups"
-                            presenceState={dmDetachedParticipant.presenceState}
-                            isSpeaking={Boolean(dmDetachedParticipant.isSpeaking)}
-                            isMuted={Boolean(dmDetachedParticipant.isMuted)}
-                            isGhost={Boolean(dmDetachedParticipant.ghost)}
-                          />
-                        </button>
-                        <p className="room-selector-dm__voice-target">
-                          Voice target:{' '}
-                          <strong>{dmVoiceTargetRoom?.name || ROOM_PRESENCE_COPY.mainGroup}</strong>
-                        </p>
-                      </div>
-                    </section>
-                  ) : null}
                   <section
                     className="room-selector-group-section"
                     aria-label={ROOM_PRESENCE_COPY.mainGroup}

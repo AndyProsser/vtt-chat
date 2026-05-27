@@ -220,7 +220,7 @@
   min-height: 0;
   height: 100%;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0.22rem;
   overflow: hidden;
 }
@@ -243,11 +243,11 @@
   position: relative;
   z-index: 2;
   border-top: 1px dashed color-mix(in srgb, var(--color-border-soft) 58%, transparent);
-  margin-top: 0.24rem;
-  padding: 0.42rem 0 0.1rem;
+  margin-top: 0.12rem;
+  padding: 0.24rem 0 0;
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
   border-radius: var(--radius-sm);
-  min-height: 4.1rem;
+  min-height: 0;
 }
 
 .room-selector-whisper-dock .room-selector-group-section__header--divider-only {
@@ -443,7 +443,7 @@
   padding-top: 0.28rem;
   padding-bottom: 0.28rem;
   gap: 0.14rem;
-  min-height: 2.55rem;
+  min-height: 1.96rem;
 }
 
 .room-selector-item--whisper-empty .room-selector-item__header {
@@ -459,8 +459,8 @@
   background: color-mix(in srgb, var(--color-brand) 8%, var(--color-surface));
 }
 
-.room-selector-group-section--dm-detached {
-  margin-bottom: 0.2rem;
+.room-selector-group-section--dm-detached-dock {
+  margin-bottom: 0.1rem;
 }
 
 .room-selector-dm__voice-target {
