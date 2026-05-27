@@ -1,5 +1,9 @@
+import { useRef } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { UserSettingsPanel } from '@/components/workspaces/shared/panels/UserSettingsPanel'
+import {
+  UserSettingsPanel,
+  type UserSettingsPanelHandle,
+} from '@/components/workspaces/shared/panels/UserSettingsPanel'
 import type { ModalsProps } from '@/types/modals'
 
 type UserSettingsModalProps = Pick<
@@ -14,10 +18,22 @@ type UserSettingsModalProps = Pick<
 >
 
 export function UserSettingsModal(props: UserSettingsModalProps) {
+  const panelRef = useRef<UserSettingsPanelHandle | null>(null)
+
   return (
     <DialogPrimitive.Root
       open={props.showUserSettingsModal}
-      onOpenChange={props.onUserSettingsOpenChange}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          props.onUserSettingsOpenChange(true)
+          return
+        }
+
+        void (async () => {
+          await panelRef.current?.flushPendingChanges()
+          props.onUserSettingsOpenChange(false)
+        })()
+      }}
     >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="session-modal-backdrop session-modal-backdrop--overlay session-user-settings-backdrop" />
@@ -25,22 +41,13 @@ export function UserSettingsModal(props: UserSettingsModalProps) {
           <DialogPrimitive.Title className="session-inline-form-title">
             User Settings
           </DialogPrimitive.Title>
-          <DialogPrimitive.Description className="sr-only">
-            Configure your user preferences.
-          </DialogPrimitive.Description>
           <UserSettingsPanel
+            ref={panelRef}
             apiUrl={props.apiUrl}
             token={props.token}
             userId={props.user.id}
             username={props.user.username}
           />
-          <div className="session-action-row">
-            <DialogPrimitive.Close asChild>
-              <button type="button" className="session-button session-button-neutral">
-                Close
-              </button>
-            </DialogPrimitive.Close>
-          </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
