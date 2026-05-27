@@ -177,7 +177,7 @@ export function RoomMemberList({
         const memberTooltip = (
           <Tooltip>
             <TooltipTrigger asChild>{memberButton}</TooltipTrigger>
-            <TooltipContent side="right" className="room-selector-profile-tooltip">
+            <TooltipContent side="bottom" className="room-selector-profile-tooltip">
               <div className="room-selector-profile">
                 <div className="room-selector-profile__avatar-col">
                   <div className="room-selector-profile__avatar" aria-hidden="true">

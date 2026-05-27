@@ -387,12 +387,12 @@
   }
 
   .session-workspace-frame__rails {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) 2.15rem;
+    grid-template-rows: minmax(0, 1fr);
     min-height: 0;
-    height: calc(100dvh - 6.4rem);
-    max-height: calc(100dvh - 6.4rem);
-    gap: 0.55rem;
+    height: calc(100dvh - 6.02rem);
+    max-height: calc(100dvh - 6.02rem);
+    gap: 0.5rem;
   }
 
   .session-workspace-frame__left-rail-shell {
@@ -403,22 +403,18 @@
   }
 
   .session-workspace-frame__right-rail-overlay {
-    right: 0;
-    bottom: 0;
-    left: 0;
-    width: auto;
-    max-height: min(46dvh, 25rem);
-    animation: none;
-    margin-top: 0;
+    right: -0.35rem;
+    left: auto;
+    bottom: auto;
+    width: min(82vw, 420px);
+    max-height: calc(100dvh - 8.7rem);
+    animation: slide-in-from-right 180ms var(--ease-out);
+    margin-top: 0.15rem;
     border-radius: var(--radius-lg);
   }
 
   .session-workspace-frame__right-rail-overlay--chat {
-    max-height: min(52dvh, 31rem);
-  }
-
-  .session-workspace-frame__right-rail-overlay::after {
-    display: none;
+    max-height: calc(100dvh - 8.7rem);
   }
 
   .session-workspace-frame__center-pane {
@@ -438,45 +434,39 @@
   }
 
   .session-workspace-frame__right-rail-dock {
-    grid-column: 1;
-    grid-row: 2;
-    position: sticky;
-    bottom: 0;
-    height: auto;
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    bottom: auto;
+    height: 100%;
     margin-top: 0;
-    padding: 0;
-    align-items: stretch;
-    justify-content: stretch;
+    padding: 0 4px 0 0;
+    align-items: flex-start;
+    justify-content: center;
     z-index: 32;
   }
 
   .session-workspace-frame__right-rail-toolbar {
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
-    width: 100%;
-    height: auto;
-    justify-content: center;
-    gap: 0.35rem;
-    padding: 0.35rem;
-    border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
-    border-radius: calc(var(--radius-lg) + 0.1rem);
-    background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-    box-shadow: 0 -8px 24px rgba(2, 6, 23, 0.18);
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-  }
-
-  .session-workspace-frame__right-rail-toolbar::-webkit-scrollbar {
-    display: none;
+    width: auto;
+    height: 100%;
+    justify-content: flex-start;
+    gap: 0.3rem;
+    padding: 2px 0 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
   }
 
   .session-workspace-frame__right-rail-trigger {
-    flex: 0 0 2.2rem;
+    flex: 0 0 auto;
   }
 
   .session-workspace-frame__right-rail-layout {
-    max-height: min(46dvh, 25rem);
+    max-height: calc(100dvh - 8.7rem);
   }
 
   .session-workspace-frame__dock-chat-panel,

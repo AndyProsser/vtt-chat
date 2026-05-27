@@ -227,7 +227,7 @@
 .session-left-rail-stack {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 0.4rem;
+  gap: 0.24rem;
   min-height: 0;
   height: 100%;
   overflow: hidden;
@@ -248,11 +248,15 @@
 
 .session-left-rail-card--channels {
   min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
 .session-left-rail-card--audio {
   flex: 0 0 auto;
+  align-self: end;
   overflow: visible;
   position: relative;
   z-index: 5;
@@ -330,6 +334,7 @@
     height: 100%;
     overflow: hidden;
     align-items: stretch;
+    gap: 0.22rem;
   }
 
   .session-left-rail-card--info {
