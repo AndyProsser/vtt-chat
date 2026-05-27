@@ -20,7 +20,7 @@ export function UserSettingsModal(props: UserSettingsModalProps) {
       onOpenChange={props.onUserSettingsOpenChange}
     >
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="session-modal-backdrop session-modal-backdrop--overlay" />
+        <DialogPrimitive.Overlay className="session-modal-backdrop session-modal-backdrop--overlay session-user-settings-backdrop" />
         <DialogPrimitive.Content className="session-modal session-user-settings-modal session-modal--floating">
           <DialogPrimitive.Title className="session-inline-form-title">
             User Settings

@@ -180,5 +180,26 @@
 }
 
 .session-user-settings-modal {
-  width: min(720px, 100%);
+  width: min(420px, calc(100vw - 2rem));
+}
+
+.session-user-settings-backdrop {
+  background: transparent;
+}
+
+.session-user-settings-modal.session-modal--floating {
+  top: calc(env(safe-area-inset-top, 0px) + 4.5rem);
+  right: 1rem;
+  left: auto;
+  transform: none;
+  max-height: calc(100dvh - 5.5rem);
+}
+
+@media (max-width: 720px) {
+  .session-user-settings-modal.session-modal--floating {
+    top: calc(env(safe-area-inset-top, 0px) + 4rem);
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+  }
 }

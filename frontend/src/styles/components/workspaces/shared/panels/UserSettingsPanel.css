@@ -1,38 +1,18 @@
-.susp-tabs-list {
-  display: inline-flex;
-  gap: 0;
-  padding: 3px;
-  background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-md);
-  margin-bottom: 1.25rem;
-}
-
-.susp-tab-trigger {
-  padding: 0.3rem 0.85rem;
-  font-size: 0.78rem;
-  font-weight: 500;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  border-radius: calc(var(--radius-md) - 2px);
-  cursor: pointer;
-  transition:
-    background 120ms,
-    color 120ms;
-  white-space: nowrap;
-}
-
-.susp-tab-trigger[data-state='active'] {
-  background: var(--color-surface);
-  color: var(--color-text);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-}
-
-.susp-tab-content {
+.susp-panel {
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
+}
+
+.susp-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.susp-panel-section--preferences {
+  padding-top: 0.9rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 82%, transparent);
 }
 
 /* ---- Profile tab ---- */

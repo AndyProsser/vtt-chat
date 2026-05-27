@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ChangeEvent, type SubmitEventHandler } from 'react'
-import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { Slider } from '@/components/ui'
 import { CharacterAvatarUploadField } from './CharacterAvatarUploadField'
 import '@/styles/components/workspaces/shared/panels/UserSettingsPanel.css'
@@ -176,165 +175,147 @@ export function UserSettingsPanel({
   }, [noiseSuppressionEnabled])
 
   return (
-    <section aria-label="User settings">
-      <TabsPrimitive.Root defaultValue="profile">
-        <TabsPrimitive.List className="susp-tabs-list" aria-label="Settings sections">
-          <TabsPrimitive.Trigger value="profile" className="susp-tab-trigger">
-            Profile
-          </TabsPrimitive.Trigger>
-          <TabsPrimitive.Trigger value="preferences" className="susp-tab-trigger">
-            Preferences
-          </TabsPrimitive.Trigger>
-        </TabsPrimitive.List>
+    <section aria-label="User settings" className="susp-panel">
+      <form onSubmit={(e) => void handleProfileSave(e)} noValidate className="susp-panel-section">
+        <div className="susp-avatar-row susp-avatar-row--spaced">
+          <div className="susp-avatar-meta">
+            <p className="susp-section-heading">Profile</p>
+            <p className="susp-avatar-username">@{username}</p>
+          </div>
+        </div>
 
-        {/* ── Profile tab ─────────────────────────────────── */}
-        <TabsPrimitive.Content value="profile" className="susp-tab-content">
-          <form onSubmit={(e) => void handleProfileSave(e)} noValidate>
-            <div className="susp-avatar-row susp-avatar-row--spaced">
-              <div className="susp-avatar-meta">
-                <p className="susp-avatar-username">@{username}</p>
-              </div>
-            </div>
+        <div className="susp-field susp-field--spaced">
+          <label htmlFor="susp-display-name" className="susp-field__label">
+            Display name
+          </label>
+          <input
+            id="susp-display-name"
+            type="text"
+            className="susp-field__input"
+            placeholder={username}
+            maxLength={64}
+            value={profile.displayName}
+            disabled={!profileLoaded || saveStatus === 'saving'}
+            onChange={(e) => setProfile((prev) => ({ ...prev, displayName: e.target.value }))}
+          />
+          <p className="susp-field__hint">
+            Shown to other players. Leave blank to use your username.
+          </p>
+        </div>
 
-            <div className="susp-field susp-field--spaced">
-              <label htmlFor="susp-display-name" className="susp-field__label">
-                Display name
-              </label>
-              <input
-                id="susp-display-name"
-                type="text"
-                className="susp-field__input"
-                placeholder={username}
-                maxLength={64}
-                value={profile.displayName}
-                disabled={!profileLoaded || saveStatus === 'saving'}
-                onChange={(e) => setProfile((prev) => ({ ...prev, displayName: e.target.value }))}
+        <CharacterAvatarUploadField
+          value={profile.avatarUrl}
+          onChange={(value) => setProfile((prev) => ({ ...prev, avatarUrl: value }))}
+          disabled={!profileLoaded || saveStatus === 'saving'}
+        />
+
+        <div className="susp-profile-actions">
+          <button
+            type="submit"
+            className="session-button"
+            disabled={!profileLoaded || saveStatus === 'saving'}
+          >
+            {saveStatus === 'saving' ? 'Saving…' : 'Save profile'}
+          </button>
+          {saveStatus === 'success' && <span className="susp-save-status is-success">Saved</span>}
+          {saveStatus === 'error' && <span className="susp-save-status is-error">Save failed</span>}
+        </div>
+      </form>
+
+      <div className="susp-panel-section susp-panel-section--preferences">
+        <div>
+          <p className="susp-section-heading">Chat</p>
+          <label htmlFor="susp-grouping-window" className="susp-field__label">
+            Message grouping window
+          </label>
+          <select
+            id="susp-grouping-window"
+            className="susp-select susp-select--spaced"
+            value={String(selectedOption.value)}
+            onChange={handleGroupingWindowChange}
+          >
+            {GROUPING_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <p className="susp-hint">{selectedOption.description}</p>
+        </div>
+
+        <div>
+          <p className="susp-section-heading">Audio</p>
+          <div className="susp-audio-stack">
+            <div className="susp-range-row">
+              <span className="susp-range-label">
+                <span>Master volume</span>
+                <span>{masterVolume}%</span>
+              </span>
+              <Slider
+                min={0}
+                max={100}
+                step={1}
+                value={masterVolume}
+                onValueChange={(nextValue) => setMasterVolume(nextValue)}
+                className="susp-range"
+                aria-label="Master volume"
               />
-              <p className="susp-field__hint">
-                Shown to other players. Leave blank to use your username.
-              </p>
             </div>
 
-            <CharacterAvatarUploadField
-              value={profile.avatarUrl}
-              onChange={(value) => setProfile((prev) => ({ ...prev, avatarUrl: value }))}
-              disabled={!profileLoaded || saveStatus === 'saving'}
-            />
-
-            <div className="susp-profile-actions">
-              <button
-                type="submit"
-                className="session-button"
-                disabled={!profileLoaded || saveStatus === 'saving'}
-              >
-                {saveStatus === 'saving' ? 'Saving…' : 'Save profile'}
-              </button>
-              {saveStatus === 'success' && (
-                <span className="susp-save-status is-success">Saved</span>
-              )}
-              {saveStatus === 'error' && (
-                <span className="susp-save-status is-error">Save failed</span>
-              )}
+            <div className="susp-range-row">
+              <span className="susp-range-label">
+                <span>Microphone level</span>
+                <span>{inputVolume}%</span>
+              </span>
+              <Slider
+                min={0}
+                max={100}
+                step={1}
+                value={inputVolume}
+                onValueChange={(nextValue) => setInputVolume(nextValue)}
+                className="susp-range"
+                aria-label="Microphone level"
+              />
             </div>
-          </form>
-        </TabsPrimitive.Content>
+            <div className="susp-range-row">
+              <span className="susp-range-label">
+                <span>Voice output level</span>
+                <span>{outputVolume}%</span>
+              </span>
+              <Slider
+                min={0}
+                max={100}
+                step={1}
+                value={outputVolume}
+                onValueChange={(nextValue) => setOutputVolume(nextValue)}
+                className="susp-range"
+                aria-label="Voice output level"
+              />
+            </div>
 
-        {/* ── Preferences tab ─────────────────────────────── */}
-        <TabsPrimitive.Content value="preferences" className="susp-tab-content">
-          <div>
-            <p className="susp-section-heading">Chat</p>
-            <label htmlFor="susp-grouping-window" className="susp-field__label">
-              Message grouping window
-            </label>
-            <select
-              id="susp-grouping-window"
-              className="susp-select susp-select--spaced"
-              value={String(selectedOption.value)}
-              onChange={handleGroupingWindowChange}
-            >
-              {GROUPING_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="susp-hint">{selectedOption.description}</p>
-          </div>
-
-          <div>
-            <p className="susp-section-heading">Audio</p>
-            <div className="susp-audio-stack">
-              <div className="susp-range-row">
-                <span className="susp-range-label">
-                  <span>Master volume</span>
-                  <span>{masterVolume}%</span>
-                </span>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={masterVolume}
-                  onValueChange={(nextValue) => setMasterVolume(nextValue)}
-                  className="susp-range"
-                  aria-label="Master volume"
+            <div className="susp-toggle-row">
+              <label className="susp-toggle" htmlFor="susp-push-to-talk">
+                <input
+                  id="susp-push-to-talk"
+                  type="checkbox"
+                  checked={pushToTalkEnabled}
+                  onChange={(event) => setPushToTalkEnabled(event.target.checked)}
                 />
-              </div>
-
-              <div className="susp-range-row">
-                <span className="susp-range-label">
-                  <span>Microphone level</span>
-                  <span>{inputVolume}%</span>
-                </span>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={inputVolume}
-                  onValueChange={(nextValue) => setInputVolume(nextValue)}
-                  className="susp-range"
-                  aria-label="Microphone level"
+                <span>Push to talk</span>
+              </label>
+              <label className="susp-toggle" htmlFor="susp-noise-suppression">
+                <input
+                  id="susp-noise-suppression"
+                  type="checkbox"
+                  checked={noiseSuppressionEnabled}
+                  onChange={(event) => setNoiseSuppressionEnabled(event.target.checked)}
                 />
-              </div>
-              <div className="susp-range-row">
-                <span className="susp-range-label">
-                  <span>Voice output level</span>
-                  <span>{outputVolume}%</span>
-                </span>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={outputVolume}
-                  onValueChange={(nextValue) => setOutputVolume(nextValue)}
-                  className="susp-range"
-                  aria-label="Voice output level"
-                />
-              </div>
-
-              <div className="susp-toggle-row">
-                <label className="susp-toggle" htmlFor="susp-push-to-talk">
-                  <input
-                    id="susp-push-to-talk"
-                    type="checkbox"
-                    checked={pushToTalkEnabled}
-                    onChange={(event) => setPushToTalkEnabled(event.target.checked)}
-                  />
-                  <span>Push to talk</span>
-                </label>
-                <label className="susp-toggle" htmlFor="susp-noise-suppression">
-                  <input
-                    id="susp-noise-suppression"
-                    type="checkbox"
-                    checked={noiseSuppressionEnabled}
-                    onChange={(event) => setNoiseSuppressionEnabled(event.target.checked)}
-                  />
-                  <span>Noise suppression</span>
-                </label>
-              </div>
+                <span>Noise suppression</span>
+              </label>
             </div>
           </div>
-        </TabsPrimitive.Content>
-      </TabsPrimitive.Root>
+        </div>
+      </div>
     </section>
   )
 }
