@@ -10,7 +10,6 @@ import { CampaignInformationStatusLine } from './StatusLine'
 import { CampaignInformationEditBody } from './EditBody'
 import { CampaignInformationReadOnlyBody } from './ReadOnlyBody'
 import { CampaignInformationHeader } from './Header'
-import { CampaignInformationFooterActions } from './FooterActions'
 import '@/styles/components/workspaces/shared/panels/CampaignInformationPanel.css'
 
 function toUiIntegrationPolicy(
@@ -191,10 +190,6 @@ export function CampaignInformationPanel({
               statusLine={statusLine}
             />
           )}
-        </div>
-
-        <div className="cip-actions">
-          <CampaignInformationFooterActions canEdit={canEdit} isEditing={isEditing} />
         </div>
       </TooltipProvider>
     </section>
