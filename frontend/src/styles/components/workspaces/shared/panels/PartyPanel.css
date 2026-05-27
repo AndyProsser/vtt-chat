@@ -8,6 +8,7 @@
   gap: 0.5rem;
   min-height: 0;
   height: 100%;
+  --workspace-panel-scroll-max-height: calc(100dvh - 20rem);
   background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
   padding: 0.1rem 0.25rem;
 } /* ─── Header ─────────────────────────────────────────────────────────────────── */
@@ -169,7 +170,8 @@
   gap: 0.25rem;
   overflow-y: auto;
   min-height: 0;
-  padding-right: 0.1rem;
+  max-height: var(--workspace-panel-scroll-max-height);
+  padding-right: 0.2rem;
   padding-bottom: 0.5rem;
 }
 
