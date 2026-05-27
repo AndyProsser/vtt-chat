@@ -16,6 +16,7 @@ import { useStore } from '@/hooks/useStore'
 import { Icon } from '@/components/ui/Icon'
 import { AvatarOverlay } from './AvatarOverlay'
 import { GroupCard } from './GroupCard'
+import { GroupMemberProfileCard } from './GroupMemberProfileCard'
 import { GroupsHeaderActions } from './GroupsHeaderActions'
 import { ParticipantDeviceList } from './ParticipantDeviceList'
 import { WhisperDock } from './WhisperDock'
@@ -706,6 +707,14 @@ export function RoomSelector({
     sessionPresenceByUser,
   ])
 
+  const dmDetachedEnvironmentName = useMemo(() => {
+    if (!dmVoiceTargetRoom) {
+      return 'Default'
+    }
+
+    return getResolvedGroupEnvironmentName(dmVoiceTargetRoom)
+  }, [dmVoiceTargetRoom])
+
   const visibleMainRooms = useMemo(() => {
     if (canManageRooms) {
       return mainRooms
@@ -1363,26 +1372,45 @@ export function RoomSelector({
                 aria-label="Dungeon Master"
               >
                 <div className="room-selector-dm" data-ui-component="RoomSelectorDmDetached">
-                  <button
-                    type="button"
-                    className="room-selector-dm__profile"
-                    onClick={() => {
-                      if (dmVoiceTargetRoom) {
-                        void handleSetDmVoiceRoom(dmVoiceTargetRoom.id)
-                      }
-                    }}
-                  >
-                    <AvatarOverlay
-                      username={dmDetachedParticipant.username}
-                      avatarUrl={dmDetachedParticipant.avatarUrl}
-                      roleLabel={ROOM_ROLE_LABELS.dm}
-                      metaLine="Detached from groups"
-                      presenceState={dmDetachedParticipant.presenceState}
-                      isSpeaking={Boolean(dmDetachedParticipant.isSpeaking)}
-                      isMuted={Boolean(dmDetachedParticipant.isMuted)}
-                      isGhost={Boolean(dmDetachedParticipant.ghost)}
-                    />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="room-selector-dm__profile"
+                        onClick={() => {
+                          if (dmVoiceTargetRoom) {
+                            void handleSetDmVoiceRoom(dmVoiceTargetRoom.id)
+                          }
+                        }}
+                      >
+                        <AvatarOverlay
+                          username={dmDetachedParticipant.username}
+                          avatarUrl={dmDetachedParticipant.avatarUrl}
+                          roleLabel={ROOM_ROLE_LABELS.dm}
+                          metaLine={dmFlavorLine}
+                          presenceState={dmDetachedParticipant.presenceState}
+                          isSpeaking={Boolean(dmDetachedParticipant.isSpeaking)}
+                          isMuted={Boolean(dmDetachedParticipant.isMuted)}
+                          isGhost={Boolean(dmDetachedParticipant.ghost)}
+                        />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="room-selector-profile-tooltip">
+                      <GroupMemberProfileCard
+                        member={dmDetachedParticipant}
+                        metaLine={dmFlavorLine}
+                        statEntries={getGroupStatEntries(dmDetachedParticipant)}
+                        environmentName={dmDetachedEnvironmentName}
+                        presenceLabel={String(
+                          getResolvedPresenceState(dmDetachedParticipant.presenceState)
+                        )}
+                        presenceDotState={getPresenceDotState(
+                          getResolvedPresenceState(dmDetachedParticipant.presenceState)
+                        )}
+                        deviceSessions={getDeviceSessions(dmDetachedParticipant.userId)}
+                      />
+                    </TooltipContent>
+                  </Tooltip>
                   <p className="room-selector-dm__voice-target">
                     Voice target:{' '}
                     <strong>{dmVoiceTargetRoom?.name || ROOM_PRESENCE_COPY.mainGroup}</strong>
