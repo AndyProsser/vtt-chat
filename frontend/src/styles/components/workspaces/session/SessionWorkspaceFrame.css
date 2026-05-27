@@ -417,12 +417,12 @@
   }
 
   .session-workspace-frame__right-rail-overlay {
-    position: fixed;
-    right: 0;
-    bottom: var(--session-workspace-frame__mobile-dock-offset);
-    left: 0;
-    width: auto;
-    top: auto;
+    position: absolute;
+    top: 0;
+    right: -0.45rem;
+    bottom: auto;
+    left: auto;
+    width: min(420px, calc(100vw - 4.25rem));
     max-height: var(--session-workspace-frame__mobile-overlay-max-height);
     animation: none;
     margin-top: 0;
@@ -455,15 +455,15 @@
   }
 
   .session-workspace-frame__right-rail-dock {
-    grid-column: 1;
-    grid-row: 2;
-    position: sticky;
-    bottom: 0;
-    width: 97vw;
-    flex-direction: column;
-    height: auto;
-    margin-top: 4px;
-    padding: 0;
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    bottom: auto;
+    width: auto;
+    flex-direction: row;
+    height: 100%;
+    margin-top: 0;
+    padding: 0 4px 0 0;
     align-items: stretch;
     justify-content: center;
     z-index: 32;
@@ -472,19 +472,16 @@
   .session-workspace-frame__right-rail-toolbar {
     flex-direction: column;
     flex-wrap: nowrap;
-    width: 100%;
-    height: auto;
-    justify-content: center;
+    width: auto;
+    height: 100%;
     gap: 0.35rem;
-    padding: 0.35rem max(0.65rem, env(safe-area-inset-left, 0px)) 0.35rem
-      max(0.65rem, env(safe-area-inset-right, 0px));
-    border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
-    border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-    box-shadow: 0 -8px 24px rgba(2, 6, 23, 0.18);
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
+    padding: 2px 0 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+    scrollbar-width: auto;
   }
 
   .session-workspace-frame__right-rail-toolbar::-webkit-scrollbar {
