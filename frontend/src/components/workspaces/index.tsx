@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { SessionState, Role, isGreenroomSessionState } from '@shared'
 import type { UUID } from '@shared'
 import { PresenceState, RoomType } from '@shared'
@@ -75,6 +76,18 @@ import {
 } from '@/utils/session/workspaceInitialization'
 import type { EditorWorkspaceView } from '@/types/workspaces'
 import '@/styles/components/workspaces/Workspaces.css'
+
+const EMPTY_ROOMS_BY_ID = Object.freeze({}) as Record<UUID, RoomRecord>
+const EMPTY_PRESENCE_BY_USER = Object.freeze({}) as Record<UUID, PresenceRecord>
+const EMPTY_NOTES_BY_ID = Object.freeze({}) as Record<
+  UUID,
+  { title: string; tags?: string[] | null }
+>
+const EMPTY_PAUSE_STATS = {
+  cumulativePauseMs: 0,
+  pauseCount: 0,
+  pauseStartedAt: undefined,
+}
 
 export function WorkspaceInitialization({
   apiUrl,
@@ -195,17 +208,64 @@ export function WorkspaceInitialization({
   })
 
   // Store
-  const sessions = useStore((state) => state.sessions)
   const currentSessionId = useStore((state) => state.currentSessionId)
+  const currentSession = useStore((state) => {
+    if (!state.currentSessionId) {
+      return null
+    }
+
+    const sessionsById = state.sessions as Record<UUID, SessionRecord>
+    return sessionsById[state.currentSessionId] ?? null
+  })
+  const sessionList = useStore(
+    useShallow((state) => Object.values(state.sessions as Record<UUID, SessionRecord>))
+  )
   const isGreenroom = useStore((state) => state.isGreenroom)
-  const rooms = useStore((state) => state.rooms)
-  const sessionPresence = useStore((state) => state.sessionPresence)
-  const sessionStatsBySessionId = useStore((state) => state.sessionStatsBySessionId)
+  const currentSessionRoomsById = useStore((state) => {
+    if (!state.currentSessionId) {
+      return EMPTY_ROOMS_BY_ID
+    }
+
+    const roomsBySession = state.rooms as Record<UUID, Record<UUID, RoomRecord>>
+    return roomsBySession[state.currentSessionId] ?? EMPTY_ROOMS_BY_ID
+  })
+  const currentSessionPresenceByUser = useStore((state) => {
+    if (!state.currentSessionId) {
+      return EMPTY_PRESENCE_BY_USER
+    }
+
+    const presenceBySession = state.sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
+    return presenceBySession[state.currentSessionId] ?? EMPTY_PRESENCE_BY_USER
+  })
+  const currentSessionStats = useStore((state) => {
+    if (!state.currentSessionId) {
+      return undefined
+    }
+
+    const statsBySession = state.sessionStatsBySessionId as Record<UUID, ApiSessionStats>
+    return statsBySession[state.currentSessionId]
+  })
   const roomMembers = useStore((state) => state.roomMembers)
-  const notes = useStore((state) => state.notes)
+  const currentSessionNotesById = useStore((state) => {
+    if (!state.currentSessionId) {
+      return EMPTY_NOTES_BY_ID
+    }
+
+    const notesBySession = state.notes as Record<
+      UUID,
+      Record<UUID, { title: string; tags?: string[] | null }>
+    >
+    return notesBySession[state.currentSessionId] ?? EMPTY_NOTES_BY_ID
+  })
   const addNote = useStore((state) => state.addNote)
   const addMessage = useStore((state) => state.addMessage)
-  const sessionTransitionNotice = useStore((state) => state.sessionTransitionNotice)
+  const currentTransitionNotice = useStore((state) => {
+    if (!state.currentSessionId) {
+      return undefined
+    }
+
+    return state.sessionTransitionNotice[state.currentSessionId]
+  })
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
   const setBroadcastState = useStore((state) => state.setBroadcastState)
@@ -224,22 +284,27 @@ export function WorkspaceInitialization({
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
-  const activeTakeoverUserId = useStore((state) =>
-    currentSessionId ? state.mockTakeoverUserIdBySession[currentSessionId] : null
-  )
+  const activeTakeoverUserId = useStore((state) => {
+    if (!state.currentSessionId) {
+      return null
+    }
+
+    return state.mockTakeoverUserIdBySession[state.currentSessionId] ?? null
+  })
   const setCurrentSession = useStore((state) => state.setCurrentSession)
   const setIsGreenroom = useStore((state) => state.setIsGreenroom)
   const resetToolbarActionsState = useStore((state) => state.resetToolbarActionsState)
   const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
   const updateSession = useStore((state) => state.updateSession)
-  const pauseStats = useStore((state) => state.pauseStats)
+  const currentPauseStats = useStore((state) => {
+    if (!state.currentSessionId) {
+      return EMPTY_PAUSE_STATS
+    }
+
+    return state.pauseStats[state.currentSessionId] ?? EMPTY_PAUSE_STATS
+  })
   const cooldownExtensionCounts = useStore((state) => state.cooldownExtensionCounts)
   const setCooldownExtensionCount = useStore((state) => state.setCooldownExtensionCount)
-  const typedSessions = sessions as Record<UUID, SessionRecord>
-  const sessionList: SessionRecord[] = Object.values(typedSessions)
-  const currentSession: SessionRecord | null = currentSessionId
-    ? (typedSessions[currentSessionId] ?? null)
-    : null
   const shouldEnableWs = !!token && (!isCampaignRestorePending || !!currentSessionId)
   const {
     campaigns,
@@ -283,13 +348,6 @@ export function WorkspaceInitialization({
     onPartyPresenceUpdated: handlePartyPresenceUpdated,
   })
 
-  const currentPauseStats = currentSessionId
-    ? (pauseStats[currentSessionId] ?? {
-        cumulativePauseMs: 0,
-        pauseCount: 0,
-        pauseStartedAt: undefined,
-      })
-    : { cumulativePauseMs: 0, pauseCount: 0, pauseStartedAt: undefined }
   const selectedCharacter = useMemo(
     () =>
       userCharacters.find((character) => character.id === selectedCharacterId) ||
@@ -319,34 +377,26 @@ export function WorkspaceInitialization({
     setCharacterSettingsDraft: characterSettingsActions.setCharacterSettingsDraft,
   })
 
-  const typedRoomsBySession = rooms as Record<UUID, Record<UUID, RoomRecord>>
-  const typedPresenceBySession = sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
-  const typedSessionStatsBySession = sessionStatsBySessionId as Record<UUID, ApiSessionStats>
   const typedRoomMembers = roomMembers as Record<UUID, RoomMember[]>
   const isTakeoverActive = Boolean(activeTakeoverUserId)
   const effectiveActorUserId = (activeTakeoverUserId || user.id) as UUID
   const currentRooms = useMemo<RoomRecord[]>(
-    () => (currentSession ? Object.values(typedRoomsBySession[currentSession.id] || {}) : []),
-    [currentSession, typedRoomsBySession]
+    () => Object.values(currentSessionRoomsById),
+    [currentSessionRoomsById]
   )
   const currentPresence = useMemo<PresenceRecord[]>(
-    () => (currentSession ? Object.values(typedPresenceBySession[currentSession.id] || {}) : []),
-    [currentSession, typedPresenceBySession]
+    () => Object.values(currentSessionPresenceByUser),
+    [currentSessionPresenceByUser]
   )
-  const currentSessionStats = currentSession
-    ? typedSessionStatsBySession[currentSession.id]
-    : undefined
   const visibleRooms = useMemo<RoomRecord[]>(
     () =>
       currentSession ? getVisibleRoomsForSessionState(currentRooms, currentSession.state) : [],
     [currentRooms, currentSession]
   )
-  const currentTransitionNotice = currentSession
-    ? sessionTransitionNotice[currentSession.id]
-    : undefined
-  const currentSessionHandoutCount = currentSession
-    ? Object.values(notes[currentSession.id] ?? {}).filter((note) => !isJournalNote(note)).length
-    : 0
+  const currentSessionHandoutCount = useMemo(
+    () => Object.values(currentSessionNotesById).filter((note) => !isJournalNote(note)).length,
+    [currentSessionNotesById]
+  )
   const takeoverPresence = useMemo(
     () =>
       activeTakeoverUserId
@@ -432,7 +482,6 @@ export function WorkspaceInitialization({
   useWorkspacesGreenroomCarryLifecycle({
     currentSession,
     currentRooms,
-    typedRoomsBySession,
     pendingGreenroomCarryBySessionIdRef,
   })
 
@@ -804,7 +853,7 @@ export function WorkspaceInitialization({
     apiUrl,
     token,
     currentSessionId: currentSessionId || null,
-    currentSessionState: currentSessionId ? (typedSessions[currentSessionId]?.state ?? null) : null,
+    currentSessionState: currentSession?.state ?? null,
     userId: user.id,
     partyPresenceRefreshVersion,
     fetchWithAuthGuard,

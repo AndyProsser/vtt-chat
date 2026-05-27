@@ -6,9 +6,10 @@
 
 import React, { useMemo, useState } from 'react'
 import { PresenceState, RoomType } from '@shared'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
 import type { Room, RoomUser } from '@/types/room'
 import { ENVIRONMENT_OPTIONS } from '@/types/groupPanel'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { isGreenRoomName } from '@/constants/roomPresence.constants'
 import { resolveEnvironmentGlyph } from '@/constants/voiceGroup.constants'
 import '@/styles/components/workspaces/session/GroupsPanel.session.css'
@@ -108,6 +109,7 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
   onDelete,
   onSetEnvironment,
 }) => {
+  const { tooltipLabelsEnabled } = useTooltipLabelsPreference()
   const isWhisper = room.type === RoomType.PRIVATE
   const isMain = room.type === RoomType.MAIN
   const isGreenRoom = isGreenRoomCard || isGreenRoomName(room.name)
@@ -148,9 +150,72 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
         </div>
 
         <div className="session-groups-room-card__actions">
-          {isGreenroom && isGreenRoom ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
+          {tooltipLabelsEnabled ? (
+            <TooltipProvider delayDuration={120}>
+              {isGreenroom && isGreenRoom ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="session-groups-room-card__icon-button"
+                      aria-label={
+                        isCollapsed ? 'Expand Green Room players' : 'Collapse Green Room players'
+                      }
+                      onClick={() => setIsCollapsed((current) => !current)}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        {isCollapsed ? 'keyboard_arrow_down' : 'keyboard_arrow_up'}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isCollapsed ? 'Show players' : 'Hide players'}</TooltipContent>
+                </Tooltip>
+              ) : null}
+              {canChangeEnvironment ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="session-groups-room-card__icon-button"
+                      aria-label="Change environment"
+                      onClick={() => setShowEnvironmentPicker((current) => !current)}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        {environmentGlyph}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Set environment</TooltipContent>
+                </Tooltip>
+              ) : null}
+              {showDrainOrDeleteAction ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={`session-groups-room-card__icon-button ${actionIcon === 'delete' ? 'session-groups-room-card__icon-button--danger' : ''}`}
+                      aria-label={actionLabel}
+                      disabled={isClosing || isDeleting}
+                      onClick={() => {
+                        if (!isWhisper && isEmpty) {
+                          onDelete()
+                          return
+                        }
+                        onClose()
+                      }}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        {actionIcon}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{actionLabel}</TooltipContent>
+                </Tooltip>
+              ) : null}
+            </TooltipProvider>
+          ) : (
+            <>
+              {isGreenroom && isGreenRoom ? (
                 <button
                   type="button"
                   className="session-groups-room-card__icon-button"
@@ -163,15 +228,8 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                     {isCollapsed ? 'keyboard_arrow_down' : 'keyboard_arrow_up'}
                   </span>
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                {isCollapsed ? 'Show players' : 'Hide players'}
-              </TooltipContent>
-            </Tooltip>
-          ) : null}
-          {canChangeEnvironment ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
+              ) : null}
+              {canChangeEnvironment ? (
                 <button
                   type="button"
                   className="session-groups-room-card__icon-button"
@@ -182,13 +240,8 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                     {environmentGlyph}
                   </span>
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Set environment</TooltipContent>
-            </Tooltip>
-          ) : null}
-          {showDrainOrDeleteAction ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
+              ) : null}
+              {showDrainOrDeleteAction ? (
                 <button
                   type="button"
                   className={`session-groups-room-card__icon-button ${actionIcon === 'delete' ? 'session-groups-room-card__icon-button--danger' : ''}`}
@@ -206,10 +259,9 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                     {actionIcon}
                   </span>
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">{actionLabel}</TooltipContent>
-            </Tooltip>
-          ) : null}
+              ) : null}
+            </>
+          )}
         </div>
       </header>
 

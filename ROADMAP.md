@@ -210,7 +210,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
 - [x] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
 - [x] Right-panel dismisses on backdrop click
-- [ ] Mobile responsive: collapse/expand at <768px; side-panel at ≥1280px
+- [ ] Mobile responsive: collapse/expand at <720px; side-panel at ≥1200px
 
 **Related Docs**:
 
