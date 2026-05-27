@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { MessageType, type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
@@ -114,6 +114,7 @@ export function HistoryPanel({
   userId,
 }: HistoryPanelProps) {
   const [threads, setThreads] = useState<SessionHistoryThread[]>([])
+  const searchInputRef = useRef<HTMLInputElement | null>(null)
   const storageKey = useMemo(
     () => getHistoryControlStorageKey(sessionId, role, userId),
     [sessionId, role, userId]
@@ -371,14 +372,30 @@ export function HistoryPanel({
       >
         <label className="knowledge-panel-filter-field" htmlFor="history-search-input">
           <span>Search</span>
-          <input
-            id="history-search-input"
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search messages, player names, handouts"
-            autoComplete="off"
-          />
+          <div className="knowledge-panel-history__search-input-wrap">
+            <input
+              id="history-search-input"
+              ref={searchInputRef}
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search messages, player names, handouts"
+              autoComplete="off"
+            />
+            {query.length > 0 ? (
+              <button
+                type="button"
+                className="knowledge-panel-history__search-clear"
+                aria-label="Clear history search"
+                onClick={() => {
+                  setQuery('')
+                  searchInputRef.current?.focus()
+                }}
+              >
+                <Icon name="close" />
+              </button>
+            ) : null}
+          </div>
         </label>
 
         <div className="knowledge-panel-filter-field">

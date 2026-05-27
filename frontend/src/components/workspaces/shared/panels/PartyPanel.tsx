@@ -12,7 +12,6 @@ import type { MockPartyMember, MockPlayerStatus } from '@/types/campaignParty'
 import { formatLastSeen, generateMockParty } from '@/utils/campaignPartyMockData'
 import '@/styles/components/workspaces/shared/panels/PartyPanel.css'
 
-const IS_DEV = import.meta.env.DEV
 const AWAY_TIMEOUT_MS = 8 * 60 * 1000
 const AWAY_POLL_INTERVAL_MS = 20 * 1000
 
@@ -325,9 +324,6 @@ function PartyMemberCard({ member }: { member: MockPartyMember }) {
           <div className="party-card__footer">
             <div className="party-card__footer-left">
               <PartyStatusBadge status={member.status} />
-              {IS_DEV && member.dataSource && (
-                <span className="party-card__source-badge">{member.dataSource}</span>
-              )}
             </div>
             <span className="party-card__seen">{formatLastSeen(member.lastSeenMs)}</span>
           </div>

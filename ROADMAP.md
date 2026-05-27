@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-05-24
+**Last Updated**: 2026-05-27
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -181,7 +181,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 
 ### W0-Rightbar: Info Panels and Settings Toolbar
 
-**Status**: 🟡 In Progress
+**Status**: 🟡 In Progress (near-complete rightbar icon dock)
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
@@ -190,6 +190,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 **Acceptance Criteria**:
 
 - [x] Rightbar toolbar renders buttons in canonical order: INFO, PARTY, ROOMS, JOURNAL, NOTES, HISTORY, SETTINGS (PARTY is 2nd; JOURNAL comes before NOTES)
+- [x] Rightbar uses an icon-first dock with tooltip labels and centralized role-aware panel visibility policy
 - [x] INFO panel shows campaign overview: name, description, player count, session count, completed sessions, next session ETA
 - [x] INFO is readable by all personas; DM can edit campaign name/description/poster
 - [x] PARTY panel lists all campaign players, including disconnected users and users not currently in-session
@@ -201,8 +202,8 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [ ] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
 - [ ] NOTES is readable by all personas; DM can add/edit/delete/share notes to one or more players
 - [ ] NOTES supports Post to Chat, which creates a chat card in the selected group and auto-shares that note with all players in that group
-- [ ] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
-- [ ] HISTORY never includes messages from the current active session
+- [x] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
+- [x] HISTORY never includes messages from the current active session
 - [x] SETTINGS opens role-specific surfaces: DM gets Campaign + Session settings, players get Character settings (own character only), spectators do not see rightbar SETTINGS
 - [ ] Player action: PARTY > Edit switches panel focus to SETTINGS > Character and auto-focuses the first editable field
 - [ ] Character settings include editable character profile fields (name, race, class, level, stats, avatar)
@@ -238,6 +239,13 @@ Evidence snapshot (2026-05-23):
   - Spectator remains excluded from editable rightbar settings.
 - Player/character settings were extracted into `frontend/src/components/workspaces/shared/panels/PlayerSettingsPanel.tsx`.
 - Legacy workspace-specific settings panel wrappers and the standalone route-level campaign settings flow (`/campaigns/:id/settings`) were removed to prevent parallel settings implementations.
+
+Evidence snapshot (2026-05-27):
+
+- Right-rail panel availability and order are now enforced through centralized policy helpers (`frontend/src/constants/workspacePanelPolicy.constants.ts`, `frontend/src/utils/workspacePanelPolicy.ts`) and consumed by the session dock renderer.
+- Session right-rail interaction now uses an icon-first dock with tooltip labels and role-filtered tab sets; click toggles are handled consistently by the shared workspace frame.
+- HISTORY panel now renders prior-session transcripts only (excluding current session) with visible session boundary separators and in-panel search/sort controls for compact timeline browsing.
+- Completion caveats for this workstream remain explicit: PARTY still lacks active-condition rendering and spectator visibility parity; NOTES and JOURNAL remain in-progress against their full acceptance contracts.
 
 **Evidence snapshot (2026-05-20):**
 

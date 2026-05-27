@@ -746,6 +746,43 @@
   min-width: 0;
 }
 
+.knowledge-panel-history__search-input-wrap {
+  position: relative;
+}
+
+.knowledge-panel-history__search-input-wrap input {
+  padding-right: 2rem;
+}
+
+.knowledge-panel-history__search-clear {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.knowledge-panel-history__search-clear:hover,
+.knowledge-panel-history__search-clear:focus-visible {
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-surface-subtle) 80%, transparent);
+}
+
+.knowledge-panel-history__search-clear .icon {
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
 .knowledge-panel-history__sort-list {
   display: inline-flex;
   align-items: center;
