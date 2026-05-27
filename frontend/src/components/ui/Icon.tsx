@@ -24,6 +24,14 @@ type IconName =
   | 'signal'
   | 'logout'
   | 'arrow_back'
+  | 'north'
+  | 'south'
+  | 'menu_book'
+  | 'chevron_left'
+  | 'chevron_right'
+  | 'keyboard_double_arrow_left'
+  | 'keyboard_double_arrow_right'
+  | 'book_2'
   | 'status'
   | 'mic_off'
   | 'effects'
@@ -58,6 +66,14 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   signal: 'signal_cellular_alt',
   logout: 'logout',
   arrow_back: 'arrow_back',
+  north: 'north',
+  south: 'south',
+  menu_book: 'menu_book',
+  chevron_left: 'chevron_left',
+  chevron_right: 'chevron_right',
+  keyboard_double_arrow_left: 'keyboard_double_arrow_left',
+  keyboard_double_arrow_right: 'keyboard_double_arrow_right',
+  book_2: 'book_2',
   status: 'circle',
   mic_off: 'mic_off',
   effects: 'tune',

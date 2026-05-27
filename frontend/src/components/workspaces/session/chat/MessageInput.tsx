@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageType, RoomType } from '@shared'
 import type { Role } from '@shared'
 import { TYPING_IDLE_TIMEOUT_MS } from '@/constants/chatPresence.constants'
+import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import type { WhisperRecipientOption } from '@/types/chat'
 
@@ -369,8 +370,9 @@ export function MessageInput({
           onClick={() => void handleSend()}
           disabled={!canSend}
           className="session-message-input__send"
+          aria-label={isSending ? 'Sending message' : 'Send message'}
         >
-          {isSending ? '…' : 'Send'}
+          {isSending ? '…' : <Icon name="north" />}
         </button>
       </div>
     </div>

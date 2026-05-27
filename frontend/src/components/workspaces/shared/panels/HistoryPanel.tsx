@@ -148,7 +148,7 @@ export function HistoryPanel({
   }, [storageKey, sortOrder])
 
   useEffect(() => {
-    const abortController = new AbortController()
+    let isDisposed = false
 
     const fetchPreviousSessionHistory = async () => {
       try {
@@ -163,7 +163,6 @@ export function HistoryPanel({
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          signal: abortController.signal,
         })
 
         if (!sessionResponse.ok) {
@@ -201,7 +200,6 @@ export function HistoryPanel({
                 headers: {
                   Authorization: `Bearer ${token}`,
                 },
-                signal: abortController.signal,
               }
             )
 
@@ -253,19 +251,23 @@ export function HistoryPanel({
         )
 
         const nextThreads = chatThreads
-          .filter((thread): thread is SessionHistoryThread => Boolean(thread))
+          .filter((thread) => thread !== null)
           .filter((thread) => thread.messages.length > 0)
+
+        if (isDisposed) {
+          return
+        }
 
         setThreads(nextThreads)
       } catch (err) {
-        if (abortController.signal.aborted) {
+        if (isDisposed) {
           return
         }
 
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
       } finally {
-        if (!abortController.signal.aborted) {
+        if (!isDisposed) {
           setIsLoading(false)
         }
       }
@@ -274,7 +276,7 @@ export function HistoryPanel({
     void fetchPreviousSessionHistory()
 
     return () => {
-      abortController.abort()
+      isDisposed = true
     }
   }, [apiUrl, campaignId, sessionId, token])
 
@@ -362,9 +364,6 @@ export function HistoryPanel({
         <Icon name="history" />
         History
       </h3>
-      <p className="knowledge-panel-subtitle">
-        Previous sessions only. Session boundaries summarize each chapter context.
-      </p>
 
       <div
         className="knowledge-panel-toolbar knowledge-panel-history__toolbar"
@@ -399,9 +398,7 @@ export function HistoryPanel({
                 title="Newest first"
                 aria-label="Sort by newest first"
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  south
-                </span>
+                <Icon name="south" />
               </TabsPrimitive.Trigger>
               <TabsPrimitive.Trigger
                 value="oldest"
@@ -409,9 +406,7 @@ export function HistoryPanel({
                 title="Oldest first"
                 aria-label="Sort by oldest first"
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  north
-                </span>
+                <Icon name="north" />
               </TabsPrimitive.Trigger>
             </TabsPrimitive.List>
           </TabsPrimitive.Root>
@@ -433,19 +428,17 @@ export function HistoryPanel({
                 aria-label={`Session boundary ${label}`}
               >
                 <div className="knowledge-panel-history__boundary-title-row">
-                  <span className="knowledge-panel-history__boundary-icon" aria-hidden="true">
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      menu_book
-                    </span>
+                  <span className="knowledge-panel-history__boundary-side-icon">
+                    <Icon name="keyboard_double_arrow_left" />
                   </span>
-                  <span className="knowledge-panel-history__boundary-session">{sessionName}</span>
-                  <span className="knowledge-panel-history__boundary-icon" aria-hidden="true">
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      menu_book
-                    </span>
+                  <span className="knowledge-panel-history__boundary-text">
+                    <span className="knowledge-panel-history__boundary-session">{sessionName}</span>
+                    <span className="knowledge-panel-history__boundary-date">{startedAtLabel}</span>
+                  </span>
+                  <span className="knowledge-panel-history__boundary-side-icon">
+                    <Icon name="keyboard_double_arrow_right" />
                   </span>
                 </div>
-                <span className="knowledge-panel-history__boundary-date">{startedAtLabel}</span>
               </div>
               <ul className="knowledge-panel-history__message-list">
                 {items.map((message, index) => {
