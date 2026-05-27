@@ -29,8 +29,6 @@ export function UserSettingsModal(props: UserSettingsModalProps) {
             Configure your user preferences.
           </DialogPrimitive.Description>
           <UserSettingsPanel
-            messageGroupingWindowMs={props.messageGroupingWindowMs}
-            onMessageGroupingWindowChange={props.onMessageGroupingWindowChange}
             apiUrl={props.apiUrl}
             token={props.token}
             userId={props.user.id}
