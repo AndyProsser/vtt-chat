@@ -60,6 +60,8 @@ type SessionWorkspaceRightRailTabProps = {
   onSaveCharacterSettings: () => void
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean
+  onRequestOpenPlayerSettings: () => void
+  playerSettingsFocusRequestKey: number
 }
 
 export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTabProps) {
@@ -88,6 +90,8 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
             currentUserId={props.effectiveSessionUserId}
             partyPresenceRefreshVersion={props.partyPresenceRefreshVersion}
             fetchWithAuthGuard={props.fetchWithAuthGuard}
+            canOpenCharacterSettings={props.effectiveSessionRole === 'PLAYER'}
+            onOpenCharacterSettings={props.onRequestOpenPlayerSettings}
           />
         ) : (
           <CampaignScaffoldPanel
@@ -213,6 +217,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
             onSaveCharacterSettings: props.onSaveCharacterSettings,
             isCharacterLoading: props.isCharacterSettingsLoading,
             isCharacterSaving: props.isCharacterSettingsSaving,
+            focusRequestKey: props.playerSettingsFocusRequestKey,
           }}
         />
       }

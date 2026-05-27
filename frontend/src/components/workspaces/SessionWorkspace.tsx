@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react'
 import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import { SessionWorkspaceFrame } from '@/components/workspaces/session/WorkspaceFrame'
 import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
@@ -7,12 +8,19 @@ import { SessionWorkspaceRightRailTab } from '@/components/workspaces/session/Ri
 import type { SessionWorkspaceProps } from '@/types/sessionWorkspace'
 
 export function SessionWorkspace(props: SessionWorkspaceProps) {
+  const [forcedRightRailTab, setForcedRightRailTab] = useState<'settings' | null>(null)
+  const [playerSettingsFocusRequestKey, setPlayerSettingsFocusRequestKey] = useState(0)
+
   if (!props.hasSessionSelected || !props.currentSession) {
     return null
   }
 
   const currentSession = props.currentSession
   const workspaceDiagnosticState = `${props.effectiveSessionRole}|${currentSession.state}`
+  const handleOpenPlayerSettingsFromParty = useCallback(() => {
+    setPlayerSettingsFocusRequestKey((current) => current + 1)
+    setForcedRightRailTab('settings')
+  }, [])
 
   return (
     <div
@@ -22,6 +30,8 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
     >
       <SessionWorkspaceFrame
         role={props.effectiveSessionRole}
+        forcedRightRailTab={forcedRightRailTab}
+        onForcedRightRailTabApplied={() => setForcedRightRailTab(null)}
         rightRailIndicators={props.rightRailIndicators}
         renderSystemToasts={() => (
           <ReconnectBanner
@@ -152,6 +162,8 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             onSaveCharacterSettings={props.onSaveCharacterSettings}
             isCharacterSettingsLoading={props.isCharacterSettingsLoading}
             isCharacterSettingsSaving={props.isCharacterSettingsSaving}
+            onRequestOpenPlayerSettings={handleOpenPlayerSettingsFromParty}
+            playerSettingsFocusRequestKey={playerSettingsFocusRequestKey}
           />
         )}
       />

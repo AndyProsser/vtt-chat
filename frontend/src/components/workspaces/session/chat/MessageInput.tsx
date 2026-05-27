@@ -372,7 +372,7 @@ export function MessageInput({
           className="session-message-input__send"
           aria-label={isSending ? 'Sending message' : 'Send message'}
         >
-          {isSending ? '…' : <Icon name="north" />}
+          {isSending ? '…' : <Icon name="send" />}
         </button>
       </div>
     </div>

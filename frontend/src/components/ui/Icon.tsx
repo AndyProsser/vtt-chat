@@ -26,6 +26,7 @@ type IconName =
   | 'arrow_back'
   | 'north'
   | 'south'
+  | 'send'
   | 'menu_book'
   | 'chevron_left'
   | 'chevron_right'
@@ -68,6 +69,7 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   arrow_back: 'arrow_back',
   north: 'north',
   south: 'south',
+  send: 'send',
   menu_book: 'menu_book',
   chevron_left: 'chevron_left',
   chevron_right: 'chevron_right',

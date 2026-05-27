@@ -36,6 +36,8 @@ interface SessionWorkspaceFrameProps {
   renderCenterPane: (view: CenterPaneView) => ReactNode
   renderRightRailTab: (tab: RightRailTab) => ReactNode
   rightRailIndicators?: Partial<Record<RightRailTab, number>>
+  forcedRightRailTab?: RightRailTab | null
+  onForcedRightRailTabApplied?: () => void
 }
 
 function normalizeIndicatorCount(rawCount: number | undefined): number {
@@ -55,6 +57,8 @@ export function SessionWorkspaceFrame({
   renderCenterPane,
   renderRightRailTab,
   rightRailIndicators = {},
+  forcedRightRailTab = null,
+  onForcedRightRailTabApplied,
 }: SessionWorkspaceFrameProps) {
   const systemToastsNode = renderSystemToasts ? renderSystemToasts() : null
   const toolbarCenterPaneView = useStore((state) => state.toolbarCenterPaneView)
@@ -139,6 +143,21 @@ export function SessionWorkspaceFrame({
       window.removeEventListener('resize', handleResize)
     }
   }, [])
+
+  useEffect(() => {
+    if (!forcedRightRailTab) {
+      return
+    }
+
+    if (!tabs.includes(forcedRightRailTab)) {
+      onForcedRightRailTabApplied?.()
+      return
+    }
+
+    setSelectedRightRailTab(forcedRightRailTab)
+    setToolbarRightRailOpen(true)
+    onForcedRightRailTabApplied?.()
+  }, [forcedRightRailTab, onForcedRightRailTabApplied, setToolbarRightRailOpen, tabs])
 
   useEffect(() => {
     if (toolbarRightRailOpen) {

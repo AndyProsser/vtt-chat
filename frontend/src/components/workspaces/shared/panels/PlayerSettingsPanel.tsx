@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { VerticalSliderInput } from './VerticalSliderInput'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
@@ -24,9 +25,21 @@ export interface PlayerSettingsPanelProps {
   onSaveCharacterSettings: () => void
   isCharacterLoading: boolean
   isCharacterSaving: boolean
+  focusRequestKey?: number
 }
 
 export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
+  const nameInputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (typeof props.focusRequestKey !== 'number') {
+      return
+    }
+
+    nameInputRef.current?.focus()
+    nameInputRef.current?.select()
+  }, [props.focusRequestKey])
+
   return (
     <div className="crbs-panel" aria-label="Player settings">
       <div className="crbs-panel-header">
@@ -56,6 +69,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
             <span className="crbs-field-label">Name</span>
             <input
               id="crbs-character-name"
+              ref={nameInputRef}
               type="text"
               className="crbs-input"
               value={props.characterDraft.name}

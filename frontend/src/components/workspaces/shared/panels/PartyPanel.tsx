@@ -376,6 +376,8 @@ interface PartyPanelProps {
   currentUserId: UUID
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+  canOpenCharacterSettings?: boolean
+  onOpenCharacterSettings?: () => void
 }
 
 export function PartyPanel({
@@ -388,6 +390,8 @@ export function PartyPanel({
   currentUserId,
   partyPresenceRefreshVersion,
   fetchWithAuthGuard,
+  canOpenCharacterSettings = false,
+  onOpenCharacterSettings,
 }: PartyPanelProps) {
   const awayStorageKey = `vtt:presence:manual-away:${campaignId}:${currentUserId}:${currentSessionId || 'none'}`
 
@@ -681,6 +685,16 @@ export function PartyPanel({
         </div>
 
         <div className="party-sheet__header-actions">
+          {canOpenCharacterSettings && onOpenCharacterSettings ? (
+            <button
+              type="button"
+              className="party-sheet__away-btn"
+              onClick={onOpenCharacterSettings}
+            >
+              Edit
+            </button>
+          ) : null}
+
           {canManageAway && (
             <button
               type="button"

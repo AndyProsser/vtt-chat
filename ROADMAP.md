@@ -205,7 +205,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
 - [x] HISTORY never includes messages from the current active session
 - [x] SETTINGS opens role-specific surfaces: DM gets Campaign + Session settings, players get Character settings (own character only), spectators do not see rightbar SETTINGS
-- [ ] Player action: PARTY > Edit switches panel focus to SETTINGS > Character and auto-focuses the first editable field
+- [x] Player action: PARTY > Edit switches panel focus to SETTINGS > Character and auto-focuses the first editable field
 - [ ] Character settings include editable character profile fields (name, race, class, level, stats, avatar)
 - [ ] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
 - [x] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
@@ -246,6 +246,7 @@ Evidence snapshot (2026-05-27):
 - Session right-rail interaction now uses an icon-first dock with tooltip labels and role-filtered tab sets; click toggles are handled consistently by the shared workspace frame.
 - HISTORY panel now renders prior-session transcripts only (excluding current session) with visible session boundary separators and in-panel search/sort controls for compact timeline browsing.
 - PARTY panel now shows active condition chips from DM condition overrides, and Party/Handouts tabs are visible to spectators in read-only mode.
+- Player PARTY edit now opens the SETTINGS character surface directly and auto-focuses the first editable field for immediate character updates.
 - Notes mutation controls are now DM-only in the right rail (create/edit/delete/share/publish), while players and spectators retain read access.
 - Journal creation now upserts `_journal` notes per session in the backend, so the journal browser remains reverse chronological while enforcing exactly one markdown journal entry per session.
 
