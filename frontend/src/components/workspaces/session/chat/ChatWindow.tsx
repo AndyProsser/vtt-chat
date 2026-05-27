@@ -37,6 +37,32 @@ interface ChatWindowProps {
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const AUTO_FOLLOW_BOTTOM_THRESHOLD_PX = 48
 const AUTO_FOLLOW_SMOOTH_SETTLE_MS = 480
+const EMPTY_TYPING_INDICATORS: Array<{
+  userId: UUID
+  username: string
+  roomId?: UUID
+  until: number
+}> = []
+const EMPTY_PARTICIPANT_DIRECTORY: Record<
+  UUID,
+  {
+    displayName: string
+    avatarUrl?: string | null
+  }
+> = {}
+const EMPTY_ROOM_DIRECTORY: Record<string, { name: string }> = {}
+const EMPTY_SESSION_PRESENCE: Record<
+  UUID,
+  {
+    username: string
+    avatarUrl?: string | null
+    characterName?: string | null
+    role?: Role | string
+    primaryRoomId?: UUID
+  }
+> = {}
+const EMPTY_SESSION_ROOMS: Record<UUID, { id: UUID; name: string }> = {}
+const EMPTY_OUTGOING_QUEUE: OutgoingChatMessage[] = []
 
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -153,22 +179,19 @@ export function ChatWindow({
   const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
     | Record<UUID, Message>
     | undefined
-  const sessionTypingIndicators = useStore((state) => state.presenceTypingBySession[sessionId])
-  const sessionPresence = useStore((state) => (state.sessionPresence as any)[sessionId]) as
-    | Record<
-        UUID,
-        {
-          username: string
-          avatarUrl?: string | null
-          characterName?: string | null
-          role?: Role | string
-          primaryRoomId?: UUID
-        }
-      >
-    | undefined
-  const sessionRooms = useStore((state) => (state.rooms as any)[sessionId]) as
-    | Record<UUID, { id: UUID; name: string }>
-    | undefined
+  const sessionTypingIndicators = useStore(
+    (state) => state.presenceTypingBySession[sessionId] ?? EMPTY_TYPING_INDICATORS
+  )
+  const sessionPresence = useStore(
+    (state) =>
+      ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
+      EMPTY_SESSION_PRESENCE
+  )
+  const sessionRooms = useStore(
+    (state) =>
+      ((state.rooms as any)[sessionId] as Record<UUID, { id: UUID; name: string }>) ??
+      EMPTY_SESSION_ROOMS
+  )
   const sessionRecord = useStore((state) => (state.sessions as any)[sessionId]) as
     | { dmId?: UUID }
     | undefined
@@ -177,14 +200,20 @@ export function ChatWindow({
   const enqueueOutgoingMessage = useStore((state) => state.enqueueOutgoingMessage)
   const updateOutgoingMessage = useStore((state) => state.updateOutgoingMessage)
   const removeOutgoingMessage = useStore((state) => state.removeOutgoingMessage)
-  const sessionOutgoingQueue = useStore((state) => (state.outgoingQueue as any)[sessionId]) as
-    | OutgoingChatMessage[]
-    | undefined
+  const sessionOutgoingQueue = useStore(
+    (state) =>
+      ((state.outgoingQueue as any)[sessionId] as OutgoingChatMessage[]) ?? EMPTY_OUTGOING_QUEUE
+  )
 
   const participantDirectory = useMemo(() => {
-    const entries = Object.entries(sessionPresence ?? {}) as Array<
+    const entries = Object.entries(sessionPresence) as Array<
       [UUID, { username: string; avatarUrl?: string | null; characterName?: string | null }]
     >
+
+    if (entries.length === 0) {
+      return EMPTY_PARTICIPANT_DIRECTORY
+    }
+
     return entries.reduce(
       (acc, [participantUserId, participant]) => {
         acc[participantUserId] = {
@@ -198,7 +227,12 @@ export function ChatWindow({
   }, [sessionPresence])
 
   const roomDirectory = useMemo(() => {
-    const entries = Object.values(sessionRooms ?? {}) as Array<{ id: UUID; name: string }>
+    const entries = Object.values(sessionRooms) as Array<{ id: UUID; name: string }>
+
+    if (entries.length === 0) {
+      return EMPTY_ROOM_DIRECTORY
+    }
+
     return entries.reduce(
       (acc, room) => {
         acc[room.id] = { name: room.name }
@@ -209,7 +243,7 @@ export function ChatWindow({
   }, [sessionRooms])
 
   const greenroomRoomId = useMemo(() => {
-    const rooms = Object.values(sessionRooms ?? {}) as Array<{ id: UUID; name: string }>
+    const rooms = Object.values(sessionRooms) as Array<{ id: UUID; name: string }>
     const greenroom = rooms.find((room) => isGreenRoomName(room.name))
     return greenroom?.id
   }, [sessionRooms])
@@ -240,7 +274,7 @@ export function ChatWindow({
   const [typingClock, setTypingClock] = useState(() => Date.now())
 
   useEffect(() => {
-    const indicators = sessionTypingIndicators ?? []
+    const indicators = sessionTypingIndicators
     let nextTypingExpiryAt: number | null = null
     for (const indicator of indicators) {
       if (indicator.until <= typingClock) {
@@ -716,7 +750,7 @@ export function ChatWindow({
     }> = []
     const typingDisplayNames: string[] = []
 
-    for (const indicator of sessionTypingIndicators ?? []) {
+    for (const indicator of sessionTypingIndicators) {
       if (indicator.until <= typingClock) {
         continue
       }
@@ -791,7 +825,7 @@ export function ChatWindow({
 
   const failedQueueItems = useMemo(
     () =>
-      (sessionOutgoingQueue ?? [])
+      sessionOutgoingQueue
         .filter((entry) => entry.roomId === roomId && entry.status === 'failed')
         .sort((a, b) => b.createdAt - a.createdAt),
     [roomId, sessionOutgoingQueue]

@@ -4,7 +4,7 @@
  * Messages arrive pre-filtered by the server (visibility-safe).
  */
 
-import { Fragment, useMemo } from 'react'
+import { Fragment, memo, useMemo } from 'react'
 import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import type { Message, SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import { MessageType } from '@shared'
@@ -204,7 +204,26 @@ function formatDayLabel(ts: number): string {
   })
 }
 
-export function MessageList({
+function areMessageListPropsEqual(previous: MessageListProps, next: MessageListProps): boolean {
+  return (
+    previous.messages === next.messages &&
+    previous.currentUserId === next.currentUserId &&
+    previous.currentUserRole === next.currentUserRole &&
+    previous.sessionDmId === next.sessionDmId &&
+    previous.groupingWindowMs === next.groupingWindowMs &&
+    previous.listRef === next.listRef &&
+    previous.topSentinelRef === next.topSentinelRef &&
+    previous.onListScroll === next.onListScroll &&
+    previous.onListWheel === next.onListWheel &&
+    previous.participantDirectory === next.participantDirectory &&
+    previous.roomDirectory === next.roomDirectory &&
+    previous.activeRoomId === next.activeRoomId &&
+    previous.hideIntermissionMarkers === next.hideIntermissionMarkers &&
+    previous.emptyDayLabel === next.emptyDayLabel
+  )
+}
+
+function MessageListComponent({
   messages,
   currentUserId,
   currentUserRole,
@@ -699,3 +718,5 @@ export function MessageList({
     </TooltipProvider>
   )
 }
+
+export const MessageList = memo(MessageListComponent, areMessageListPropsEqual)
