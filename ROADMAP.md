@@ -248,8 +248,10 @@ Evidence snapshot (2026-05-27):
 - PARTY panel now shows active condition chips from DM condition overrides, and Party/Handouts tabs are visible to spectators in read-only mode.
 - Player PARTY edit now opens the SETTINGS character surface directly and auto-focuses the first editable field for immediate character updates.
 - Character settings now include SRD-backed race/class suggestions and a reusable avatar upload flow with circular preview plus zoom/crop controls before save.
+- Topbar user settings now reuse the same shared avatar upload/crop flow as character settings, so player profile and character profile avatar edits follow the same client-side crop pipeline.
 - Notes mutation controls are now DM-only in the right rail (create/edit/delete/share/publish), while players and spectators retain read access.
 - Notes publish is now always manual: the handout publisher offers `Everyone` plus occupied MAIN/GROUP rooms only, excludes whisper/greenroom/empty rooms, and auto-shares room-targeted handouts to the players currently in that room.
+- Notes now support in-panel search across handout title, markdown content, and hashtags; structured attachment fields are still pending before the remaining W0 Notes acceptance criterion can be closed.
 - Journal creation now upserts `_journal` notes per session in the backend, so the journal browser remains reverse chronological while enforcing exactly one markdown journal entry per session.
 
 **Evidence snapshot (2026-05-20):**

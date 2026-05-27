@@ -80,6 +80,7 @@ export function NotesPanel({
   const [publishFilter, setPublishFilter] = useState<NotesPublishFilter>('ALL')
   const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const canMutateNotes = user.role === Role.DM
   const publishRooms = useMemo(
     () =>
@@ -98,25 +99,35 @@ export function NotesPanel({
           ? notes.filter((note) => !note.publishedAt)
           : notes
 
+    const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+    const bySearchQuery = normalizedSearchQuery
+      ? byPublishFilter.filter((note) => {
+          const searchableFields = [note.title, note.content, ...note.tags].join(' ').toLowerCase()
+          return searchableFields.includes(normalizedSearchQuery)
+        })
+      : byPublishFilter
+
     if (!activeHashtagFilter) {
-      return byPublishFilter
+      return bySearchQuery
     }
 
-    return byPublishFilter.filter((note) =>
+    return bySearchQuery.filter((note) =>
       note.tags.some((tag) => {
         const normalized = tag.startsWith('#') ? tag : `#${tag}`
         return normalized.toLowerCase() === activeHashtagFilter.toLowerCase()
       })
     )
-  }, [activeHashtagFilter, notes, publishFilter])
+  }, [activeHashtagFilter, notes, publishFilter, searchQuery])
 
-  const emptyStateMessage = activeHashtagFilter
-    ? `No handouts tagged ${activeHashtagFilter}.`
-    : publishFilter === 'SHARED'
-      ? 'No shared handouts yet.'
-      : publishFilter === 'UNSHARED'
-        ? 'No unshared handouts yet.'
-        : 'No handouts yet.'
+  const emptyStateMessage = searchQuery.trim()
+    ? `No handouts match "${searchQuery.trim()}".`
+    : activeHashtagFilter
+      ? `No handouts tagged ${activeHashtagFilter}.`
+      : publishFilter === 'SHARED'
+        ? 'No shared handouts yet.'
+        : publishFilter === 'UNSHARED'
+          ? 'No unshared handouts yet.'
+          : 'No handouts yet.'
 
   const isPublishDisabledInCurrentState =
     !currentSessionState || isGreenroomSessionState(currentSessionState)
@@ -344,8 +355,10 @@ export function NotesPanel({
 
       <NotesPanelToolbar
         publishFilter={publishFilter}
+        searchQuery={searchQuery}
         activeHashtagFilter={activeHashtagFilter}
         onSetPublishFilter={setPublishFilter}
+        onSetSearchQuery={setSearchQuery}
         onClearHashtagFilter={() => setActiveHashtagFilter(null)}
       />
 

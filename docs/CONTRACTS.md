@@ -80,7 +80,8 @@ Visibility and editability contract:
 - `PARTY`: spectators see the same row-level character detail fields as players (including stats and active conditions).
 - `ROOMS`: DM-only; hidden (not disabled) for non-DM personas.
 - `NOTES`: readable by all personas; DM edit controls.
-- `NOTES`: each note contains name, markdown content, image-only attachments (0..N), and hashtags for search.
+- `NOTES`: current rightbar handouts contain name, markdown content, and hashtags, and the panel search must cover name + content + hashtags.
+- `NOTES`: structured image attachment fields are not yet implemented in the current runtime contract and remain pending roadmap work.
 - `NOTES`: DM may share a note to one or more players, and may post a note card to a selected group chat; posting auto-shares to all players in that group.
 - `JOURNAL`: readable by all personas, DM edit controls only, reverse-chronological by session, exactly one markdown entry per session with hashtag list.
 - `HISTORY`: readable by all personas, grouped by session boundaries, and excludes current-session messages.
