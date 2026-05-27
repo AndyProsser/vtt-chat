@@ -4,7 +4,6 @@
   display: grid;
   gap: var(--space-3);
   padding: 0.1rem 0.25rem;
-  --workspace-panel-scroll-max-height: calc(100dvh - 20rem);
 }
 
 .knowledge-panel--compact {
@@ -257,7 +256,7 @@
   min-height: 0;
   max-height: var(--workspace-panel-scroll-max-height);
   overflow-y: auto;
-  padding-right: 0.25rem;
+  padding-right: 0.2rem;
 }
 
 .knowledge-panel--compact .knowledge-panel-card {
@@ -345,10 +344,6 @@
 .knowledge-panel-session-list {
   display: grid;
   gap: var(--space-2);
-  min-height: 0;
-  max-height: var(--workspace-panel-scroll-max-height);
-  overflow-y: auto;
-  padding-right: 0.2rem;
   align-content: start;
 }
 
@@ -735,13 +730,6 @@
 .knowledge-panel__event-time {
   font-size: 0.76rem;
   color: var(--color-text-secondary);
-}
-
-.knowledge-panel-history__content {
-  min-height: 0;
-  max-height: var(--workspace-panel-scroll-max-height);
-  overflow-y: auto;
-  padding-right: 0.2rem;
 }
 
 .knowledge-panel-history__toolbar {
@@ -1283,9 +1271,6 @@
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
-  min-height: 0;
-  max-height: var(--workspace-panel-scroll-max-height);
-  overflow-y: auto;
   overflow-x: hidden;
   padding: 0.7rem 0.2rem;
 }

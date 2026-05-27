@@ -351,7 +351,7 @@ export function NotesPanel({
         />
       ) : null}
 
-      <div className="notes-workspace-content">
+      <div className="notes-workspace-content workspace-panel-scroll-region">
         {isLoading ? (
           <p className="text-sm text-ui-secondary">Loading handouts...</p>
         ) : displayedNotes.length === 0 ? (

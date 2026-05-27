@@ -875,7 +875,11 @@ function JournalBrowser({
             ) : null}
           </div>
         </div>
-        <div className="knowledge-panel-session-list" role="list" aria-label="Recent sessions">
+        <div
+          className="knowledge-panel-session-list workspace-panel-scroll-region"
+          role="list"
+          aria-label="Recent sessions"
+        >
           {visibleSessions.map((session, index) => {
             const isSelected = session.id === effectiveSessionId
             const sessionStatus = journalStatusBySession[session.id]

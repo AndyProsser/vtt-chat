@@ -413,7 +413,7 @@ export function HistoryPanel({
         </div>
       </div>
 
-      <div className="knowledge-panel__content knowledge-panel-history__content">
+      <div className="knowledge-panel__content knowledge-panel-history__content workspace-panel-scroll-region">
         {groupedHistory.length === 0 ? (
           <div className="knowledge-panel-empty" role="status">
             No results for that search.

@@ -99,6 +99,16 @@
   /* Typography */
   --font-sans: 'Inter Variable', Inter, sans-serif;
   --font-mono: 'Roboto Mono Variable', monospace;
+
+  /* Workspace panels */
+  --workspace-panel-scroll-max-height: calc(100dvh - 20rem);
+}
+
+.workspace-panel-scroll-region {
+  min-height: 0;
+  max-height: var(--workspace-panel-scroll-max-height);
+  overflow-y: auto;
+  padding-right: 0.2rem;
 }
 
 /* ─── Dark mode tokens ───────────────────────────────────────────────────── */

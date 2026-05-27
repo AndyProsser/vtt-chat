@@ -684,7 +684,7 @@ export function PartyPanel({
             <span>No party members yet.</span>
           </div>
         ) : (
-          <div className="party-sheet__cards">
+          <div className="party-sheet__cards workspace-panel-scroll-region">
             {members.map((member) => (
               <PartyMemberCard key={member.id} member={member} />
             ))}
