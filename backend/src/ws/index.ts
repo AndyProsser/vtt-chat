@@ -568,6 +568,25 @@ export class WebSocketManager {
     return buildSessionDeviceSessionsByUser(this.connections.values(), sessionId)
   }
 
+  getActiveSessionIdsForUser(userId: UUID): UUID[] {
+    const sessionIds = new Set<UUID>()
+
+    this.connections.forEach((ws) => {
+      if (!ws.authPayload || ws.authPayload.userId !== userId) {
+        return
+      }
+
+      const sessionId = ws.connectionState?.sessionId
+      if (!sessionId || sessionId === UNASSIGNED_SESSION_ID) {
+        return
+      }
+
+      sessionIds.add(sessionId)
+    })
+
+    return [...sessionIds]
+  }
+
   /**
    * Broadcast an event to all connected clients who are members of a campaign.
    * Used for campaign-scoped events such as greenroom chat.

@@ -1,9 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express'
-import { ErrorCode } from '@shared'
+import { ErrorCode, Role } from '@shared'
+import type { EventEnvelope, UUID } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getUserProfileById, listCharactersForUser } from '@/repositories/campaign.repository'
 import { validateUserAuthState } from '@/services/auth/user-context.service'
+import { getSessionPresence } from '@/services/room.service'
+import { getSessionParticipantProfiles } from '@/repositories/session.repository'
+import type { WebSocketManager } from '@/ws'
 
 const router = Router()
 
@@ -135,6 +139,53 @@ router.patch('/me', requireAuth, async (req: Request, res: Response) => {
       createdAt: true,
     },
   })
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  if (wsManager) {
+    const sessionIds = wsManager.getActiveSessionIdsForUser(updated.id as UUID)
+
+    for (const sessionId of sessionIds) {
+      const [presence, profilesByUserId] = await Promise.all([
+        getSessionPresence(sessionId),
+        getSessionParticipantProfiles(sessionId),
+      ])
+
+      const activePresence = presence.find((entry) => entry.userId === (updated.id as UUID))
+      const participantProfile = profilesByUserId[updated.id]
+
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'PRESENCE:PROFILE_UPDATED',
+        version: 1,
+        userId: updated.id as UUID,
+        userRole: updated.role as Role,
+        sessionId,
+        roomId: activePresence?.primaryRoomId || null,
+        timestamp: Date.now(),
+        payload: {
+          userId: updated.id,
+          username: updated.username,
+          updatedAt: Date.now(),
+          roomId: activePresence?.primaryRoomId || null,
+          previousGroupId: activePresence?.previousGroupId || null,
+          playerName:
+            participantProfile?.playerName || updated.displayName || updated.username || null,
+          avatarUrl:
+            participantProfile?.avatarUrl !== undefined
+              ? participantProfile.avatarUrl
+              : (updated.avatarUrl ?? null),
+          characterName: participantProfile?.characterName || null,
+          characterClass: participantProfile?.characterClass || null,
+          characterSubclass: participantProfile?.characterSubclass || null,
+          characterRace: participantProfile?.characterRace || null,
+          level: participantProfile?.level ?? null,
+          characterStats: participantProfile?.characterStats || null,
+        },
+      }
+
+      wsManager.broadcastEventToSession(sessionId, event)
+    }
+  }
 
   return res.status(200).json({
     user: {
