@@ -41,23 +41,21 @@
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--color-brand) 26%, transparent),
     0 0 8px color-mix(in srgb, var(--color-brand) 24%, transparent);
-  animation: avatar-speaking-pulse 1.35s ease-in-out infinite;
+  animation: avatar-speaking-pulse 220ms ease-out 1;
+  will-change: transform;
 }
 
 @keyframes avatar-speaking-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--color-brand) 22%, transparent),
-      0 0 7px color-mix(in srgb, var(--color-brand) 20%, transparent);
+  0% {
+    transform: scale(0.985);
   }
 
-  50% {
-    transform: scale(1.02);
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--color-brand) 30%, transparent),
-      0 0 12px color-mix(in srgb, var(--color-brand) 28%, transparent);
+  65% {
+    transform: scale(1.03);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
 
