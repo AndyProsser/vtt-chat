@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { LONG_PRESS_MOVE_CANCEL_PX } from '@/constants/voiceGroup.constants'
@@ -65,6 +65,21 @@ export function RoomMemberList({
   onMemberDragStart,
   onMemberDragEnd,
 }: RoomMemberListProps) {
+  const [isNarrowViewport, setIsNarrowViewport] = useState(
+    typeof window !== 'undefined' ? window.innerWidth <= 720 : false
+  )
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsNarrowViewport(window.innerWidth <= 720)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
   const touchFeedbackTimerRef = useRef<number | null>(null)
   const touchStartRef = useRef<{ x: number; y: number; userId: UUID } | null>(null)
 
@@ -177,7 +192,11 @@ export function RoomMemberList({
         const memberTooltip = (
           <Tooltip>
             <TooltipTrigger asChild>{memberButton}</TooltipTrigger>
-            <TooltipContent side="right" className="room-selector-profile-tooltip">
+            <TooltipContent
+              side={isNarrowViewport ? 'bottom' : 'right'}
+              align={isNarrowViewport ? 'start' : 'center'}
+              className="room-selector-profile-tooltip"
+            >
               <div className="room-selector-profile">
                 <div className="room-selector-profile__avatar-col">
                   <div className="room-selector-profile__avatar" aria-hidden="true">

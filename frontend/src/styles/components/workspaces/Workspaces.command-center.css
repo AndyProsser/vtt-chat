@@ -319,7 +319,7 @@
   color: var(--color-text-secondary);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 720px) {
   .session-left-rail-stack {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;

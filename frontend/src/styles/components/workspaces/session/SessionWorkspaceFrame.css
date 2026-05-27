@@ -379,7 +379,21 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 720px) {
+  .session-workspace-frame {
+    --session-workspace-frame__mobile-top-clearance: max(
+      100px,
+      calc(env(safe-area-inset-top, 0px) + 0.5rem)
+    );
+    --session-workspace-frame__mobile-dock-offset: calc(
+      3.2rem + max(env(safe-area-inset-bottom, 0px), 0px)
+    );
+    --session-workspace-frame__mobile-overlay-max-height: calc(
+      100dvh - var(--session-workspace-frame__mobile-top-clearance) -
+        var(--session-workspace-frame__mobile-dock-offset)
+    );
+  }
+
   .session-workspace-frame__top-toolbar {
     position: sticky;
     top: 0;
@@ -392,7 +406,7 @@
     min-height: 0;
     height: calc(100dvh - 6.4rem);
     max-height: calc(100dvh - 6.4rem);
-    gap: 0.55rem;
+    gap: 0.2rem;
   }
 
   .session-workspace-frame__left-rail-shell {
@@ -403,18 +417,21 @@
   }
 
   .session-workspace-frame__right-rail-overlay {
+    position: fixed;
     right: 0;
-    bottom: 0;
+    bottom: var(--session-workspace-frame__mobile-dock-offset);
     left: 0;
     width: auto;
-    max-height: min(46dvh, 25rem);
+    top: auto;
+    max-height: var(--session-workspace-frame__mobile-overlay-max-height);
     animation: none;
     margin-top: 0;
     border-radius: var(--radius-lg);
+    z-index: 33;
   }
 
   .session-workspace-frame__right-rail-overlay--chat {
-    max-height: min(52dvh, 31rem);
+    max-height: var(--session-workspace-frame__mobile-overlay-max-height);
   }
 
   .session-workspace-frame__right-rail-overlay::after {
@@ -442,11 +459,13 @@
     grid-row: 2;
     position: sticky;
     bottom: 0;
+    width: 97vw;
+    flex-direction: column;
     height: auto;
-    margin-top: 0;
+    margin-top: 4px;
     padding: 0;
     align-items: stretch;
-    justify-content: stretch;
+    justify-content: center;
     z-index: 32;
   }
 
@@ -457,9 +476,10 @@
     height: auto;
     justify-content: center;
     gap: 0.35rem;
-    padding: 0.35rem;
+    padding: 0.35rem max(0.65rem, env(safe-area-inset-left, 0px)) 0.35rem
+      max(0.65rem, env(safe-area-inset-right, 0px));
     border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
-    border-radius: calc(var(--radius-lg) + 0.1rem);
+    border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--color-surface) 94%, transparent);
     box-shadow: 0 -8px 24px rgba(2, 6, 23, 0.18);
     overflow-x: auto;
@@ -476,7 +496,8 @@
   }
 
   .session-workspace-frame__right-rail-layout {
-    max-height: min(46dvh, 25rem);
+    height: auto;
+    max-height: var(--session-workspace-frame__mobile-overlay-max-height);
   }
 
   .session-workspace-frame__dock-chat-panel,
@@ -502,7 +523,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 720px) {
   .session-workspace-frame__top-toasts {
     top: 5.1rem;
     width: min(95%, 560px);

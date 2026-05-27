@@ -614,8 +614,7 @@
     font-size: 0.8rem;
   }
 
-  .session-toolbar__timer-state,
-  .session-toolbar__exit-label {
+  .session-toolbar__timer-state-wrap {
     display: none;
   }
 }

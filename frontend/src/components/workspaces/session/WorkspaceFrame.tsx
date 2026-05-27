@@ -75,7 +75,7 @@ export function SessionWorkspaceFrame({
     typeof window !== 'undefined' ? window.innerWidth <= 1100 : false
   )
   const [isDockLayout, setIsDockLayout] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+    typeof window !== 'undefined' ? window.innerWidth <= 720 : false
   )
   const [isRightRailVisible, setIsRightRailVisible] = useState(toolbarRightRailOpen)
   const [isRightRailClosing, setIsRightRailClosing] = useState(false)
@@ -145,7 +145,7 @@ export function SessionWorkspaceFrame({
   useEffect(() => {
     const handleResize = () => {
       setIsCompactLayout(window.innerWidth <= 1100)
-      setIsDockLayout(window.innerWidth <= 768)
+      setIsDockLayout(window.innerWidth <= 720)
     }
 
     window.addEventListener('resize', handleResize)
