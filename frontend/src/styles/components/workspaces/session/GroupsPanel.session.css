@@ -108,6 +108,38 @@
   text-align: center;
 }
 
+.session-groups-dm-detached {
+  border: 1px solid color-mix(in srgb, var(--color-brand) 44%, var(--color-border-soft));
+  border-radius: 10px;
+  padding: 0.48rem;
+  background: color-mix(in srgb, var(--color-brand) 14%, var(--color-surface));
+  display: grid;
+  gap: 0.14rem;
+}
+
+.session-groups-dm-detached__header {
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.session-groups-dm-detached__name {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.session-groups-dm-detached__target {
+  font-size: 0.66rem;
+  color: var(--color-text-secondary);
+}
+
+.session-groups-dm-detached__target strong {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
 .session-groups-room-card {
   display: grid;
   gap: 0.4rem;

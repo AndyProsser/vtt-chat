@@ -648,36 +648,62 @@ export function RoomSelector({
     [allRooms]
   )
 
-  const displayedParticipantsByRoom = useMemo(() => {
-    const next: Record<UUID, GroupParticipantWithGroupId[]> = {
-      ...roomMoves.displayedParticipantsByRoom,
+  const displayedParticipantsByRoom = roomMoves.displayedParticipantsByRoom
+
+  const dmVoiceTargetRoom = useMemo(
+    () => allRooms.find((room) => room.id === selectedRoomId) || null,
+    [allRooms, selectedRoomId]
+  )
+
+  const dmDetachedParticipant = useMemo((): GroupParticipantWithGroupId | null => {
+    if (!canManageRooms || isGreenroom) {
+      return null
     }
 
-    if (!canManageRooms || isGreenroom || !dmParticipant || !selectedRoomId) {
-      return next
+    const fallbackTargetRoomId = allRooms.find((room) => room.type === RoomType.MAIN)?.id
+    const resolvedTargetRoomId = dmVoiceTargetRoom?.id || fallbackTargetRoomId
+
+    if (!resolvedTargetRoomId) {
+      return null
     }
 
-    Object.keys(next).forEach((roomId) => {
-      next[roomId as UUID] = (next[roomId as UUID] || []).filter(
-        (participant) => participant.userId !== dmUserId
-      )
-    })
-
-    const selectedParticipants = next[selectedRoomId] || []
-    const dmInSelectedRoom: GroupParticipantWithGroupId = {
-      ...dmParticipant,
-      roomId: selectedRoomId,
+    if (dmParticipant) {
+      return {
+        ...dmParticipant,
+        roomId: resolvedTargetRoomId,
+      }
     }
-    next[selectedRoomId] = [dmInSelectedRoom, ...selectedParticipants]
 
-    return next
+    if (!currentUser) {
+      return null
+    }
+
+    const selfPresence = sessionPresenceByUser[currentUser.id]
+
+    return {
+      userId: currentUser.id,
+      username: currentUser.username,
+      avatarUrl: selfPresence?.avatarUrl || null,
+      characterName: currentUser.displayName || currentUser.username,
+      playerName: currentUser.username,
+      characterClass: selfPresence?.characterClass || null,
+      characterSubclass: selfPresence?.characterSubclass || null,
+      characterRace: selfPresence?.characterRace || null,
+      level: selfPresence?.level || null,
+      characterStats: selfPresence?.characterStats || null,
+      roleLabel: ROOM_ROLE_LABELS.dm,
+      presenceState: selfPresence?.state || PresenceState.ONLINE,
+      ghost: selfPresence?.ghost,
+      roomId: resolvedTargetRoomId,
+    }
   }, [
+    allRooms,
     canManageRooms,
+    currentUser,
     dmParticipant,
-    dmUserId,
+    dmVoiceTargetRoom,
     isGreenroom,
-    roomMoves.displayedParticipantsByRoom,
-    selectedRoomId,
+    sessionPresenceByUser,
   ])
 
   const visibleMainRooms = useMemo(() => {
@@ -1341,6 +1367,39 @@ export function RoomSelector({
                 <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
               ) : (
                 <>
+                  {dmDetachedParticipant ? (
+                    <section
+                      className="room-selector-group-section room-selector-group-section--dm-detached"
+                      aria-label="Dungeon Master"
+                    >
+                      <div className="room-selector-dm" data-ui-component="RoomSelectorDmDetached">
+                        <button
+                          type="button"
+                          className="room-selector-dm__profile"
+                          onClick={() => {
+                            if (dmVoiceTargetRoom) {
+                              void handleSetDmVoiceRoom(dmVoiceTargetRoom.id)
+                            }
+                          }}
+                        >
+                          <AvatarOverlay
+                            username={dmDetachedParticipant.username}
+                            avatarUrl={dmDetachedParticipant.avatarUrl}
+                            roleLabel={ROOM_ROLE_LABELS.dm}
+                            metaLine="Detached from groups"
+                            presenceState={dmDetachedParticipant.presenceState}
+                            isSpeaking={Boolean(dmDetachedParticipant.isSpeaking)}
+                            isMuted={Boolean(dmDetachedParticipant.isMuted)}
+                            isGhost={Boolean(dmDetachedParticipant.ghost)}
+                          />
+                        </button>
+                        <p className="room-selector-dm__voice-target">
+                          Voice target:{' '}
+                          <strong>{dmVoiceTargetRoom?.name || ROOM_PRESENCE_COPY.mainGroup}</strong>
+                        </p>
+                      </div>
+                    </section>
+                  ) : null}
                   <section
                     className="room-selector-group-section"
                     aria-label={ROOM_PRESENCE_COPY.mainGroup}
