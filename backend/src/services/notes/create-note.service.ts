@@ -2,7 +2,18 @@ import { randomUUID } from 'node:crypto'
 import { NoteVisibility } from '@shared'
 import type { UUID } from '@shared'
 import type { StoredNote } from '@/types/notes.types'
-import { createNoteRecord } from '@/repositories/notes.repository'
+import {
+  createNoteRecord,
+  listSessionNotes,
+  updateNoteRecord,
+} from '@/repositories/notes.repository'
+import { mapStoredNote } from '@/services/notes/shared'
+
+const JOURNAL_TAG = '_journal'
+
+function isJournalNoteCandidate(params: { title: string; tags?: string[] }): boolean {
+  return params.tags?.includes(JOURNAL_TAG) || params.title === 'Session Journal'
+}
 
 export async function createNote(params: {
   campaignId?: UUID
@@ -14,7 +25,39 @@ export async function createNote(params: {
   visibility: NoteVisibility
   tags?: string[]
   allowedUsers?: UUID[]
-}): Promise<StoredNote> {
+}): Promise<StoredNote & { created: boolean }> {
+  if (isJournalNoteCandidate({ title: params.title, tags: params.tags })) {
+    const existingJournal = (await listSessionNotes(params.sessionId)).find((row) => {
+      const tags = Array.isArray(row.tags) ? (row.tags as string[]) : []
+      return tags.includes(JOURNAL_TAG) || row.title === 'Session Journal'
+    })
+
+    if (existingJournal) {
+      const now = Date.now()
+      await updateNoteRecord({
+        noteId: existingJournal.id,
+        title: params.title,
+        content: params.content,
+        visibility: params.visibility,
+        tags: params.tags || [],
+        allowedUsers: params.allowedUsers || [],
+        updatedAt: new Date(now),
+        publishedAt: existingJournal.publishedAt,
+      })
+
+      return {
+        ...mapStoredNote(existingJournal),
+        title: params.title,
+        content: params.content,
+        visibility: params.visibility,
+        tags: params.tags || [],
+        allowedUsers: params.allowedUsers,
+        updatedAt: now,
+        created: false,
+      }
+    }
+  }
+
   const now = Date.now()
   const note: StoredNote = {
     id: randomUUID() as UUID,
@@ -45,5 +88,5 @@ export async function createNote(params: {
     updatedAt: new Date(note.updatedAt),
   })
 
-  return note
+  return { ...note, created: true }
 }

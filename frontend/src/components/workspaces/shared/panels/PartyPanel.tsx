@@ -10,6 +10,7 @@ import { useStore } from '@/state/store'
 import type { SessionPresence } from '@/types/room'
 import type { MockPartyMember, MockPlayerStatus } from '@/types/campaignParty'
 import { formatLastSeen, generateMockParty } from '@/utils/campaignPartyMockData'
+import { getUserDMOverride } from '@/utils/audioOverrides'
 import '@/styles/components/workspaces/shared/panels/PartyPanel.css'
 
 const AWAY_TIMEOUT_MS = 8 * 60 * 1000
@@ -131,6 +132,27 @@ function toMockMember(member: PartyPresenceMemberSnapshot): MockPartyMember {
   }
 }
 
+function extractConditionLabel(parameters?: Record<string, unknown>): string | null {
+  if (!parameters) {
+    return null
+  }
+
+  const candidates = [
+    parameters.conditionName,
+    parameters.presetName,
+    parameters.name,
+    parameters.label,
+  ]
+
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim()
+    }
+  }
+
+  return null
+}
+
 function buildSnapshotWithLivePresence(
   snapshot: PartyPresenceMemberSnapshot,
   livePresence?: SessionPresence
@@ -211,6 +233,7 @@ function membersEqual(left: MockPartyMember, right: MockPartyMember): boolean {
     left.avatarUrl === right.avatarUrl &&
     left.avatarInitials === right.avatarInitials &&
     left.dataSource === right.dataSource &&
+    left.activeCondition === right.activeCondition &&
     left.race === right.race &&
     left.characterClass === right.characterClass &&
     left.subClass === right.subClass &&
@@ -307,6 +330,14 @@ function PartyMemberCard({ member }: { member: MockPartyMember }) {
               <span className="party-card__player-name">{member.playerName}</span>
             )}
             {!isDM && <span className="party-card__meta">{metaParts.join(' · ')}</span>}
+            {member.activeCondition ? (
+              <span
+                className="party-card__condition-chip"
+                title={`Condition: ${member.activeCondition}`}
+              >
+                Condition: {member.activeCondition}
+              </span>
+            ) : null}
           </div>
           {!isDM && (
             <div className="party-card__stats-column">
@@ -376,6 +407,8 @@ export function PartyPanel({
   const lastActivityAtRef = useRef<number>(0)
   const awayRequestInFlightRef = useRef(false)
   const sessionPresenceByUserRef = useRef<Record<UUID, SessionPresence>>(EMPTY_SESSION_PRESENCE)
+  const dmOverrides = useStore((state) => state.dmOverrides)
+  const dmOverridesRef = useRef(dmOverrides)
   const sessionPresenceByUser = useStore((state) => {
     if (!currentSessionId) {
       return EMPTY_SESSION_PRESENCE
@@ -400,6 +433,10 @@ export function PartyPanel({
     sessionPresenceByUserRef.current = sessionPresenceByUser
   }, [sessionPresenceByUser])
 
+  useEffect(() => {
+    dmOverridesRef.current = dmOverrides
+  }, [dmOverrides])
+
   const applyMergedMembers = useCallback(
     (baseSnapshots: PartyPresenceMemberSnapshot[]) => {
       const nextMembers = baseSnapshots.map((snapshotMember) => {
@@ -407,9 +444,17 @@ export function PartyPanel({
           snapshotMember,
           sessionPresenceByUserRef.current[snapshotMember.userId]
         )
+        const conditionOverride = getUserDMOverride(
+          dmOverridesRef.current,
+          snapshotMember.userId,
+          'CONDITION'
+        )
+        const activeCondition = extractConditionLabel(conditionOverride?.parameters)
+
         return {
           ...toMockMember(merged.snapshot),
           dataSource: merged.source,
+          activeCondition,
         } as MockPartyMember
       })
 
@@ -452,7 +497,7 @@ export function PartyPanel({
         const message = error instanceof Error ? error.message : 'Failed to load party presence'
         setRefreshError(message)
 
-        if (IS_DEV) {
+        if (import.meta.env.DEV) {
           const fallbackMembers = generateMockParty()
           setSnapshotMembers([])
           setMembers(fallbackMembers)

@@ -8,6 +8,7 @@ export interface MockPartyMember {
   avatarUrl?: string | null
   avatarInitials: string
   dataSource?: 'snapshot' | 'live-merged'
+  activeCondition?: string | null
   race: string
   characterClass: string
   subClass?: string

@@ -99,6 +99,7 @@ export async function emitSessionRecapMessage(params: {
   const notes = await prisma.note.findMany({
     where: { sessionId: previousSession.id },
     select: { title: true, content: true, tags: true },
+    orderBy: { updatedAt: 'desc' },
   })
 
   const journalNote = notes.find((n) => {

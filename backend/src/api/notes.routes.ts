@@ -255,17 +255,18 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     tags,
     allowedUsers: visibility === NoteVisibility.CUSTOM ? allowedUsers : [],
   })
+  const created = note.created
 
   await appendSessionAuditEvent({
     sessionId: noteSession.id,
     campaignId: getSessionCampaignId(noteSession),
     actorUserId: user.userId as UUID,
     actorRole: requesterRole,
-    actionType: 'NOTES.CREATED',
+    actionType: created ? 'NOTES.CREATED' : 'NOTES.UPDATED',
     targetType: 'NOTE',
     targetId: note.id,
     visibilityClass: toNoteAuditVisibilityClass(note.visibility),
-    timestamp: note.createdAt,
+    timestamp: created ? note.createdAt : note.updatedAt,
     metadata: {
       noteVisibility: note.visibility,
       tagCount: note.tags.length,
@@ -278,13 +279,13 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   if (wsManager) {
     const event: EventEnvelope = {
       id: crypto.randomUUID() as UUID,
-      type: 'NOTES:CREATED',
+      type: created ? 'NOTES:CREATED' : 'NOTES:UPDATED',
       version: 1,
       userId: user.userId as UUID,
       userRole: requesterRole as any,
       sessionId: noteSession.id,
       roomId: null,
-      timestamp: note.createdAt,
+      timestamp: created ? note.createdAt : note.updatedAt,
       payload: {
         noteId: note.id,
         ownerId: note.authorId,
@@ -309,7 +310,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     )
   }
 
-  return res.status(201).json({ note })
+  return res.status(created ? 201 : 200).json({ note })
 })
 
 router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {

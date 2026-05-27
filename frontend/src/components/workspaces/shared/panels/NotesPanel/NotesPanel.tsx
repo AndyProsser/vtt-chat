@@ -78,6 +78,7 @@ export function NotesPanel({
   const [publishFilter, setPublishFilter] = useState<NotesPublishFilter>('ALL')
   const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
+  const canMutateNotes = user.role === Role.DM
 
   const displayedNotes = useMemo(() => {
     const byPublishFilter =
@@ -111,6 +112,10 @@ export function NotesPanel({
     !currentSessionState || isGreenroomSessionState(currentSessionState)
 
   const handleToggleCreateForm = () => {
+    if (!canMutateNotes) {
+      return
+    }
+
     if (!showCreateForm) {
       setVisibility(NoteVisibility.DM_ONLY)
       setAllowedUsers([])
@@ -297,25 +302,27 @@ export function NotesPanel({
             <Icon name="notes" />
             Handouts
           </h3>
-          <TooltipProvider delayDuration={140}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="notes-toolbar-segment notes-toolbar-segment--icon"
-                  onClick={handleToggleCreateForm}
-                  aria-label={showCreateForm ? 'Hide handout creator' : 'Create handout'}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    {showCreateForm ? 'visibility_off' : 'note_add'}
-                  </span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                {showCreateForm ? 'Hide handout creator' : 'Create handout'}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {canMutateNotes ? (
+            <TooltipProvider delayDuration={140}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="notes-toolbar-segment notes-toolbar-segment--icon"
+                    onClick={handleToggleCreateForm}
+                    aria-label={showCreateForm ? 'Hide handout creator' : 'Create handout'}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {showCreateForm ? 'visibility_off' : 'note_add'}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {showCreateForm ? 'Hide handout creator' : 'Create handout'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
         </div>
         <p className="notes-workspace-header__subtitle">
           Draft handouts, organize references, and share player-ready notes.
@@ -331,7 +338,7 @@ export function NotesPanel({
         onClearHashtagFilter={() => setActiveHashtagFilter(null)}
       />
 
-      {showCreateForm ? (
+      {canMutateNotes && showCreateForm ? (
         <NotesCreateForm
           title={title}
           content={content}
@@ -379,9 +386,9 @@ export function NotesPanel({
                   shareUsers={shareUsers}
                   shareRooms={shareRooms}
                   roomMemberIdsByRoomId={roomMemberIdsByRoomId}
-                  canEdit={user.role === Role.DM || selectedNote.ownerId === user.id}
-                  canManageShare={user.role === Role.DM}
-                  canPublish={user.role === Role.DM || selectedNote.ownerId === user.id}
+                  canEdit={canMutateNotes}
+                  canManageShare={canMutateNotes}
+                  canPublish={canMutateNotes}
                   isPublishDisabled={isPublishDisabledInCurrentState}
                   onSave={handleSave}
                   onDelete={handleDelete}

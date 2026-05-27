@@ -349,6 +349,26 @@
   margin-top: 1px;
 }
 
+.party-card__condition-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 0.12rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-brand) 45%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  color: color-mix(in srgb, var(--color-brand) 90%, var(--color-text-primary));
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ─── Inline stats grid ──────────────────────────────────────────────────────── */
 
 .party-card__stats-column {

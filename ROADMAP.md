@@ -194,13 +194,13 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] INFO panel shows campaign overview: name, description, player count, session count, completed sessions, next session ETA
 - [x] INFO is readable by all personas; DM can edit campaign name/description/poster
 - [x] PARTY panel lists all campaign players, including disconnected users and users not currently in-session
-- [ ] PARTY row fields include: name, class, level, race, presence status (`HERE` | `AWAY` | `LOBBY` | `NOT HERE` | `OFFLINE`), last seen, stats, and active conditions (same visible fields for players and spectators)
+- [x] PARTY row fields include: name, class, level, race, presence status (`HERE` | `AWAY` | `LOBBY` | `NOT HERE` | `OFFLINE`), last seen, stats, and active conditions (same visible fields for players and spectators)
 - [x] PARTY/Lobby presence labels and transitions follow the shared model in `docs/ui/PRESENCE-STATUS-MODEL.md`
 - [x] ROOMS panel is DM-only and hidden entirely for non-DM personas
-- [ ] JOURNAL panel is a reverse-chronological list of sessions; each session has exactly one markdown journal entry with a hashtag list for search
-- [ ] JOURNAL is readable by all personas; DM-only edit
+- [x] JOURNAL panel is a reverse-chronological list of sessions; each session has exactly one markdown journal entry with a hashtag list for search
+- [x] JOURNAL is readable by all personas; DM-only edit
 - [ ] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
-- [ ] NOTES is readable by all personas; DM can add/edit/delete/share notes to one or more players
+- [x] NOTES is readable by all personas; DM can add/edit/delete/share notes to one or more players
 - [ ] NOTES supports Post to Chat, which creates a chat card in the selected group and auto-shares that note with all players in that group
 - [x] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
 - [x] HISTORY never includes messages from the current active session
@@ -245,7 +245,9 @@ Evidence snapshot (2026-05-27):
 - Right-rail panel availability and order are now enforced through centralized policy helpers (`frontend/src/constants/workspacePanelPolicy.constants.ts`, `frontend/src/utils/workspacePanelPolicy.ts`) and consumed by the session dock renderer.
 - Session right-rail interaction now uses an icon-first dock with tooltip labels and role-filtered tab sets; click toggles are handled consistently by the shared workspace frame.
 - HISTORY panel now renders prior-session transcripts only (excluding current session) with visible session boundary separators and in-panel search/sort controls for compact timeline browsing.
-- Completion caveats for this workstream remain explicit: PARTY still lacks active-condition rendering and spectator visibility parity; NOTES and JOURNAL remain in-progress against their full acceptance contracts.
+- PARTY panel now shows active condition chips from DM condition overrides, and Party/Handouts tabs are visible to spectators in read-only mode.
+- Notes mutation controls are now DM-only in the right rail (create/edit/delete/share/publish), while players and spectators retain read access.
+- Journal creation now upserts `_journal` notes per session in the backend, so the journal browser remains reverse chronological while enforcing exactly one markdown journal entry per session.
 
 **Evidence snapshot (2026-05-20):**
 

@@ -27,8 +27,8 @@ export const WORKSPACE_PANEL_ROLE_EXCEPTIONS: Record<Role, WorkspacePanelRoleExc
     rationale: 'Player role cannot manage room topology or DM audio policy controls.',
   },
   [Role.SPECTATOR]: {
-    hidden: ['party', 'rooms', 'notes', 'audio', 'settings'],
-    rationale: 'Spectator role is observation-focused and excludes campaign mutation tools.',
+    hidden: ['rooms', 'audio', 'settings'],
+    rationale: 'Spectator role is observation-focused and excludes mutation/control tools.',
   },
   [Role.SYSTEM]: {
     hidden: ['party', 'rooms', 'journal', 'notes', 'history', 'audio', 'settings'],
