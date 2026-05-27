@@ -33,49 +33,6 @@ const GROUPING_WINDOW_MS = 5 * 60 * 1000
 const SESSION_RECAP_PREFIX = '[Last Session]'
 const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
 
-type SessionBookendState = 'started' | 'ended' | 'paused' | 'resumed' | 'cooldown'
-
-const SESSION_BOOKEND_PREFIXES = [
-  'Session Start:',
-  'Session End:',
-  '[Session Started]',
-  '[Session Ended]',
-  '[Session Paused]',
-  '[Session Resumed]',
-  '[Session Cooldown]',
-]
-
-const BOOKEND_META: Record<
-  SessionBookendState,
-  { label: string; icon: string; className: string }
-> = {
-  started: {
-    label: 'STARTED',
-    icon: 'play_circle',
-    className: 'session-message-list__session-marker--started',
-  },
-  ended: {
-    label: 'ENDED',
-    icon: 'stop_circle',
-    className: 'session-message-list__session-marker--ended',
-  },
-  paused: {
-    label: 'PAUSED',
-    icon: 'pause_circle',
-    className: 'session-message-list__session-marker--paused',
-  },
-  resumed: {
-    label: 'RESUMED',
-    icon: 'play_circle',
-    className: 'session-message-list__session-marker--resumed',
-  },
-  cooldown: {
-    label: 'CLOSED',
-    icon: 'theaters',
-    className: 'session-message-list__session-marker--cooldown',
-  },
-}
-
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value
@@ -146,30 +103,11 @@ function getAuthorInitial(username: string): string {
   return username.trim().charAt(0).toUpperCase() || '?'
 }
 
-function getSessionBookendState(content: string): SessionBookendState | null {
-  if (content.startsWith('[Session Started]') || content.startsWith('Session Start:')) {
-    return 'started'
-  }
-  if (content.startsWith('[Session Ended]') || content.startsWith('Session End:')) {
-    return 'ended'
-  }
-  if (content.startsWith('[Session Paused]')) {
-    return 'paused'
-  }
-  if (content.startsWith('[Session Resumed]')) {
-    return 'resumed'
-  }
-  if (content.startsWith('[Session Cooldown]')) {
-    return 'cooldown'
-  }
-
-  return null
-}
-
-function formatBookendTimestamp(timestamp: number): string {
+function formatBoundaryDate(timestamp: number): string {
   return new Date(timestamp).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
+    year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   })
@@ -360,15 +298,23 @@ export function HistoryPanel({
 
     const filteredThreads = threads
       .map((thread) => {
+        const nonSystemMessageCount = thread.messages.filter(
+          (message) => message.type !== MessageType.SYSTEM
+        ).length
         const sortedMessages = [...thread.messages].sort((left, right) =>
           sortOrder === 'newest'
             ? right.createdAt - left.createdAt
             : left.createdAt - right.createdAt
         )
+        const filteredMessages = sortedMessages.filter((message) =>
+          matchesQuery(message, normalizedQuery)
+        )
 
         return {
           ...thread,
-          messages: sortedMessages.filter((message) => matchesQuery(message, normalizedQuery)),
+          nonSystemMessageCount,
+          startedAtLabel: formatBoundaryDate(thread.startedAt || thread.createdAt),
+          messages: filteredMessages,
         }
       })
       .filter((thread) => thread.messages.length > 0)
@@ -379,55 +325,16 @@ export function HistoryPanel({
       return sortOrder === 'newest' ? rightAnchor - leftAnchor : leftAnchor - rightAnchor
     })
 
-    if (groupBy === 'session') {
-      return sortedThreads.map((thread) => ({
-        label: toSessionLabel(thread),
-        sessionId: thread.sessionId,
-        sessionName: thread.sessionName,
-        sessionState: thread.sessionState,
-        items: thread.messages,
-      }))
-    }
-
-    const groups = new Map<
-      string,
-      {
-        label: string
-        sessionId: string
-        sessionName: string
-        sessionState: string
-        items: SessionHistoryMessage[]
-      }
-    >()
-
-    for (const thread of sortedThreads) {
-      for (const message of thread.messages) {
-        const key = toDayLabel(message.createdAt)
-        const existing = groups.get(key)
-        if (!existing) {
-          groups.set(key, {
-            label: key,
-            sessionId: thread.sessionId,
-            sessionName: thread.sessionName,
-            sessionState: thread.sessionState,
-            items: [message],
-          })
-          continue
-        }
-
-        existing.items.push(message)
-      }
-    }
-
-    const withSortedItems = Array.from(groups.values()).map((group) => ({
-      ...group,
-      items: [...group.items].sort((left, right) =>
-        sortOrder === 'newest' ? right.createdAt - left.createdAt : left.createdAt - right.createdAt
-      ),
+    return sortedThreads.map((thread) => ({
+      label: toSessionLabel(thread),
+      sessionId: thread.sessionId,
+      sessionName: thread.sessionName,
+      sessionState: thread.sessionState,
+      startedAtLabel: thread.startedAtLabel,
+      nonSystemMessageCount: thread.nonSystemMessageCount,
+      items: thread.messages,
     }))
-
-    return withSortedItems
-  }, [groupBy, query, sortOrder, threads])
+  }, [query, sortOrder, threads])
 
   if (isLoading) {
     return (
@@ -477,7 +384,7 @@ export function HistoryPanel({
         History
       </h3>
       <p className="knowledge-panel-subtitle">
-        Previous sessions only. Search quotes, handout mentions, and key reveals.
+        Previous sessions only. Session boundaries summarize each chapter context.
       </p>
 
       <div className="knowledge-panel-toolbar" aria-label="History controls">
@@ -506,9 +413,6 @@ export function HistoryPanel({
             >
               <TabsPrimitive.Trigger value="session" className="knowledge-panel-tabs__trigger">
                 Session
-              </TabsPrimitive.Trigger>
-              <TabsPrimitive.Trigger value="day" className="knowledge-panel-tabs__trigger">
-                Day
               </TabsPrimitive.Trigger>
             </TabsPrimitive.List>
           </TabsPrimitive.Root>
@@ -544,17 +448,27 @@ export function HistoryPanel({
         ) : null}
 
         {groupedHistory.map(
-          ({ label, items, sessionId: groupSessionId, sessionName, sessionState }) => (
+          ({
+            label,
+            items,
+            sessionId: groupSessionId,
+            sessionName,
+            sessionState,
+            startedAtLabel,
+            nonSystemMessageCount,
+          }) => (
             <div key={label} className="knowledge-panel__day-group">
-              <div className="session-message-list__day-separator" aria-label={label}>
-                <span className="session-message-list__day-separator-line" aria-hidden="true" />
-                <span className="session-message-list__day-separator-pill">{label}</span>
-                <span className="session-message-list__day-separator-line" aria-hidden="true" />
-              </div>
-              <div className="knowledge-panel-history__session-meta">
-                <span>{sessionName}</span>
-                <span>{sessionState}</span>
-                <span>{items.length} matches</span>
+              <div
+                className="knowledge-panel-history__boundary"
+                aria-label={`Session boundary ${label}`}
+              >
+                <span className="knowledge-panel-history__boundary-title">Session Boundary</span>
+                <div className="knowledge-panel-history__boundary-meta">
+                  <span>{sessionName}</span>
+                  <span>{sessionState}</span>
+                  <span>Started {startedAtLabel}</span>
+                  <span>{nonSystemMessageCount} messages</span>
+                </div>
               </div>
               <ul className="knowledge-panel-history__message-list">
                 {items.map((message, index) => {
@@ -566,10 +480,18 @@ export function HistoryPanel({
                   const isSessionRecap = isSystem && message.content.startsWith(recapPrefix)
                   const isSessionBookend =
                     isSystem &&
-                    SESSION_BOOKEND_PREFIXES.some((prefix) => message.content.startsWith(prefix))
-                  const sessionBookendState = isSessionBookend
-                    ? getSessionBookendState(message.content)
-                    : null
+                    (message.content.startsWith('[Session Started]') ||
+                      message.content.startsWith('Session Start:') ||
+                      message.content.startsWith('[Session Ended]') ||
+                      message.content.startsWith('Session End:') ||
+                      message.content.startsWith('[Session Paused]') ||
+                      message.content.startsWith('[Session Resumed]') ||
+                      message.content.startsWith('[Session Cooldown]'))
+
+                  if (isSessionBookend) {
+                    return null
+                  }
+
                   const isGroupedWithPrevious = Boolean(
                     previous &&
                     previous.authorId === message.authorId &&
@@ -597,53 +519,6 @@ export function HistoryPanel({
                               {recapLabel}
                             </span>
                             <p className="session-message-list__session-recap-text">{recapBody}</p>
-                          </div>
-                        </article>
-                      </li>
-                    )
-                  }
-
-                  if (isSessionBookend && sessionBookendState) {
-                    const markerMeta = BOOKEND_META[sessionBookendState]
-                    return (
-                      <li key={`${groupSessionId}:${message.id}`}>
-                        <article
-                          className={`session-message-list__session-marker session-message-list__session-marker--bookend ${markerMeta.className}`}
-                        >
-                          <div className="session-message-list__session-marker-content">
-                            <div className="session-message-list__session-marker-label-row">
-                              <span
-                                className="session-message-list__session-marker-line"
-                                aria-hidden="true"
-                              />
-                              <span className="session-message-list__session-marker-badge">
-                                <span
-                                  className="session-message-list__session-marker-icon material-symbols-outlined"
-                                  aria-hidden="true"
-                                >
-                                  {markerMeta.icon}
-                                </span>
-                                <span className="session-message-list__session-marker-text">
-                                  {markerMeta.label}
-                                </span>
-                                <span
-                                  className="session-message-list__session-marker-icon material-symbols-outlined"
-                                  aria-hidden="true"
-                                >
-                                  {markerMeta.icon}
-                                </span>
-                              </span>
-                              <span
-                                className="session-message-list__session-marker-line"
-                                aria-hidden="true"
-                              />
-                            </div>
-                            <time
-                              className="session-message-list__session-marker-time"
-                              dateTime={new Date(message.createdAt).toISOString()}
-                            >
-                              {formatBookendTimestamp(message.createdAt)}
-                            </time>
                           </div>
                         </article>
                       </li>

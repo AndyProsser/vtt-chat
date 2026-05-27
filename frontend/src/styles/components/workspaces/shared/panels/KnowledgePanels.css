@@ -761,6 +761,41 @@
   background: var(--color-surface-subtle);
 }
 
+.knowledge-panel-history__boundary {
+  display: grid;
+  gap: 0.42rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface-subtle) 82%, transparent);
+  padding: 0.5rem 0.58rem;
+}
+
+.knowledge-panel-history__boundary-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.knowledge-panel-history__boundary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.knowledge-panel-history__boundary-meta span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  padding: 0.07rem 0.4rem;
+  background: var(--color-surface-subtle);
+}
+
 .knowledge-panel-history__message-body {
   color: var(--color-text-primary);
   white-space: pre-wrap;
