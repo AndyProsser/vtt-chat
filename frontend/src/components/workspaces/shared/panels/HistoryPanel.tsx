@@ -399,7 +399,9 @@ export function HistoryPanel({
                 title="Newest first"
                 aria-label="Sort by newest first"
               >
-                <Icon name="south" />
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  south
+                </span>
               </TabsPrimitive.Trigger>
               <TabsPrimitive.Trigger
                 value="oldest"
@@ -407,7 +409,9 @@ export function HistoryPanel({
                 title="Oldest first"
                 aria-label="Sort by oldest first"
               >
-                <Icon name="north" />
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  north
+                </span>
               </TabsPrimitive.Trigger>
             </TabsPrimitive.List>
           </TabsPrimitive.Root>
@@ -430,11 +434,15 @@ export function HistoryPanel({
               >
                 <div className="knowledge-panel-history__boundary-title-row">
                   <span className="knowledge-panel-history__boundary-icon" aria-hidden="true">
-                    <Icon name="menu_book" />
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      menu_book
+                    </span>
                   </span>
                   <span className="knowledge-panel-history__boundary-session">{sessionName}</span>
                   <span className="knowledge-panel-history__boundary-icon" aria-hidden="true">
-                    <Icon name="menu_book" />
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      menu_book
+                    </span>
                   </span>
                 </div>
                 <span className="knowledge-panel-history__boundary-date">{startedAtLabel}</span>
