@@ -99,7 +99,7 @@ export function useWorkspacesCampaignEntryOrchestration(
   )
 
   const handleEnterCampaign = useCallback(
-    async (campaignId?: UUID, preferredSessionId?: UUID) => {
+    async (campaignId?: UUID, preferredSessionId?: UUID, campaignHint?: CampaignSummary) => {
       setError(null)
       setLobbyNotice(null)
 
@@ -113,7 +113,10 @@ export function useWorkspacesCampaignEntryOrchestration(
         setSelectedCampaignId(targetCampaignId)
       }
 
-      const targetCampaign = campaigns.find((campaign) => campaign.id === targetCampaignId)
+      const targetCampaign =
+        campaignHint && campaignHint.id === targetCampaignId
+          ? campaignHint
+          : campaigns.find((campaign) => campaign.id === targetCampaignId)
       if (targetCampaign) {
         const launchAction = getCampaignEntryAction(targetCampaign)
         if (launchAction.disabled) {
@@ -245,7 +248,12 @@ export function useWorkspacesCampaignEntryOrchestration(
         }
 
         const data = (await response.json()) as { campaign: CampaignSummary }
-        const campaign = data.campaign
+        const campaign: CampaignSummary = {
+          ...data.campaign,
+          currentDmId: data.campaign.currentDmId ?? userId,
+          memberRole: data.campaign.memberRole ?? 'DM',
+          isMember: data.campaign.isMember ?? true,
+        }
         setCampaigns((prev) => [campaign, ...prev])
         setSelectedCampaignId(campaign.id)
         setShowCreateCampaignModal(false)
@@ -253,7 +261,7 @@ export function useWorkspacesCampaignEntryOrchestration(
         if (intent === 'launch') {
           setLobbyNotice('Campaign created. Launching now.')
           setEditorWorkspaceView('lobby')
-          await handleEnterCampaign(campaign.id)
+          await handleEnterCampaign(campaign.id, undefined, campaign)
         } else {
           setLobbyNotice('Campaign created. Offline edit/review mode is ready.')
           openEditorCampaignWorkspace(campaign.id)
@@ -283,6 +291,7 @@ export function useWorkspacesCampaignEntryOrchestration(
       setShowCreateCampaignModal,
       token,
       userAuthType,
+      userId,
     ]
   )
 

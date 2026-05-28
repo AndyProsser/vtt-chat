@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   mockVerifyToken: vi.fn(),
   mockValidateUserAuthState: vi.fn(),
   mockUserFindUnique: vi.fn(),
+  mockUserUpsert: vi.fn(),
   mockUserUpdate: vi.fn(),
   mockListCampaignsForUser: vi.fn(),
   mockCreateCampaignForUser: vi.fn(),
@@ -37,6 +38,7 @@ vi.mock('@/infra/db', () => ({
   getPrismaClient: () => ({
     user: {
       findUnique: mocks.mockUserFindUnique,
+      upsert: mocks.mockUserUpsert,
       update: mocks.mockUserUpdate,
     },
   }),
@@ -107,6 +109,19 @@ beforeEach(() => {
   mocks.mockUserFindUnique.mockResolvedValue({
     isActive: true,
     tokenInvalidBefore: null,
+  })
+  mocks.mockUserUpsert.mockResolvedValue({
+    id: USER_ID,
+    username: 'tester',
+    displayName: 'Tester',
+    avatarUrl: null,
+    role: 'DM',
+    adminRole: 'CAMPAIGN_DM',
+    authType: 'FULL',
+    isActive: true,
+    tokenInvalidBefore: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
   })
   mocks.mockUserUpdate.mockResolvedValue({
     id: USER_ID,

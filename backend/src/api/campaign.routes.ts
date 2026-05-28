@@ -488,6 +488,31 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Campaign name is required', field: 'name' })
   }
 
+  await prisma.user.upsert({
+    where: { id: user.userId as UUID },
+    create: {
+      id: user.userId as UUID,
+      username: user.username,
+      displayName:
+        typeof user.displayName === 'string' && user.displayName.trim().length > 0
+          ? user.displayName.trim()
+          : user.username,
+      role: 'DM',
+      adminRole: 'CAMPAIGN_DM',
+      authType: user.authType ?? 'FULL',
+    },
+    update: {
+      username: user.username,
+      displayName:
+        typeof user.displayName === 'string' && user.displayName.trim().length > 0
+          ? user.displayName.trim()
+          : user.username,
+      role: 'DM',
+      adminRole: 'CAMPAIGN_DM',
+      authType: user.authType ?? 'FULL',
+    },
+  })
+
   const campaign = await createCampaignForUser({
     name: name.trim(),
     description: typeof description === 'string' ? description.trim() : undefined,
