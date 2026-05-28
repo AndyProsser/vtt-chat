@@ -331,6 +331,41 @@ describe('ChatWindow timeline behavior', () => {
     expect(screen.getByText('Shattered Crown: Heroes begin in the old watchtower.')).toBeTruthy()
   })
 
+  it('renders shared handouts as markdown system cards instead of generic bubbles', () => {
+    renderWithTooltip(
+      <MessageList
+        currentUserId={String(USER_ID)}
+        activeRoomId={MAIN_ROOM_ID}
+        messages={
+          [
+            {
+              id: 'c0ffee00-abab-4aba-8aba-abababababab' as UUID,
+              roomId: MAIN_ROOM_ID,
+              authorId: USER_ID,
+              authorUsername: 'SYSTEM',
+              content:
+                '[Note Shared] Treasure Map\n' +
+                'Shared with: All players\n' +
+                'Hashtags: #clue, #treasure\n\n' +
+                '**First clue**\n\n' +
+                '![map](data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==)',
+              type: MessageType.SYSTEM,
+              isDmOnly: false,
+              createdAt: Date.now(),
+            },
+          ] as any
+        }
+      />
+    )
+
+    expect(screen.getByText('Handout Shared')).toBeTruthy()
+    expect(screen.getByText('Treasure Map')).toBeTruthy()
+    expect(screen.getByText('All players')).toBeTruthy()
+    expect(screen.getByText('First clue')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'map' })).toBeTruthy()
+    expect(screen.queryByText('[Note Shared] Treasure Map')).toBeNull()
+  })
+
   it('renders day separators for editorial timeline grouping', () => {
     const yesterday = Date.now() - 24 * 60 * 60 * 1000
 

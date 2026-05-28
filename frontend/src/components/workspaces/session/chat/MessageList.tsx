@@ -9,6 +9,8 @@ import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import type { Message, SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import { MessageType } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
+import { parseNoteSharedMessage } from '@/utils/noteSharedMessage'
 interface MessageListProps {
   messages: Message[]
   currentUserId: string
@@ -251,6 +253,7 @@ function MessageListComponent({
           isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
         const sessionBookendState = isSessionBookend ? getSessionBookendState(msg.content) : null
         const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
+        const noteShared = isSystem ? parseNoteSharedMessage(msg.content) : null
         const recapPrefix = msg.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
           ? CAMPAIGN_BRIEF_PREFIX
           : SESSION_RECAP_PREFIX
@@ -321,6 +324,7 @@ function MessageListComponent({
           isSessionBookend,
           sessionBookendState,
           isSessionNote,
+          noteShared,
           recapPrefix,
           isSessionRecap,
           isSessionSummary,
@@ -390,6 +394,7 @@ function MessageListComponent({
             isSessionBookend,
             sessionBookendState,
             isSessionNote,
+            noteShared,
             recapPrefix,
             isSessionRecap,
             isSessionSummary,
@@ -544,6 +549,17 @@ function MessageListComponent({
                   <span className="session-message-list__session-marker-text">{msg.content}</span>
                 )}
               </article>
+            )
+          }
+
+          if (noteShared) {
+            return (
+              <NoteSharedCard
+                key={msg.id}
+                note={noteShared}
+                timestampLabel={`${msg.editedAt ? 'edited · ' : ''}${relativeTime}`}
+                timestampDateTime={new Date(msg.createdAt).toISOString()}
+              />
             )
           }
 

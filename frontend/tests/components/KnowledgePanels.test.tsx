@@ -309,6 +309,80 @@ describe('knowledge panels', () => {
     expect(screen.getByRole('tab', { name: 'Sort by oldest first' })).toBeTruthy()
   })
 
+  it('renders shared handouts in history as dedicated cards with markdown content', async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+
+      if (url.includes(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'The Emerald Crown #3',
+                state: 'ACTIVE',
+                createdAt: '2026-05-31T19:00:00.000Z',
+              },
+              {
+                id: SESSION_TWO_ID,
+                name: 'The Emerald Crown #2',
+                state: 'ENDED',
+                createdAt: '2026-05-24T19:00:00.000Z',
+                startedAt: '2026-05-24T19:00:00.000Z',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (!url.includes(`/api/chat/messages/${SESSION_TWO_ID}`)) {
+        throw new Error(`Unexpected fetch call: ${url}`)
+      }
+
+      return {
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: 'note-1',
+              sessionId: SESSION_TWO_ID,
+              roomId: ROOM_ID,
+              userId: PLAYER_ID,
+              authorUsername: 'SYSTEM',
+              content:
+                '[Note Shared] Emerald Crown\n' +
+                'Shared with: All players\n' +
+                'Hashtags: None\n\n' +
+                'The crown bears **three runes**.',
+              type: MessageType.SYSTEM,
+              createdAt: '2026-05-24T19:55:37.000Z',
+            },
+          ],
+        }),
+      }
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <HistoryPanel
+        apiUrl="http://localhost:3000"
+        token="token"
+        campaignId={CAMPAIGN_ID}
+        sessionId={SESSION_ID}
+        role={Role.DM}
+        userId={PLAYER_ID}
+      />
+    )
+
+    expect(await screen.findByText('Handout Shared')).toBeTruthy()
+    expect(screen.getByText('Emerald Crown')).toBeTruthy()
+    expect(screen.getByText(/The crown bears/i)).toBeTruthy()
+    expect(screen.getByText(/three runes/i)).toBeTruthy()
+    expect(screen.queryByText('[Note Shared] Emerald Crown')).toBeNull()
+  })
+
   it('does not refetch journal status on browser rerender when sessions are unchanged', async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input)

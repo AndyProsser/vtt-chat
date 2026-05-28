@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
 import { MessageType, type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
+import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
 import type { HistorySortOrder, SessionHistoryMessage, SessionHistoryThread } from '@/types/history'
+import { parseNoteSharedMessage } from '@/utils/noteSharedMessage'
 import {
   DEFAULT_HISTORY_SORT_ORDER,
   getHistoryControlStorageKey,
@@ -474,6 +476,7 @@ export function HistoryPanel({
                       message.content.startsWith('[Session Paused]') ||
                       message.content.startsWith('[Session Resumed]') ||
                       message.content.startsWith('[Session Cooldown]'))
+                  const noteShared = isSystem ? parseNoteSharedMessage(message.content) : null
 
                   if (isSessionBookend) {
                     return null
@@ -508,6 +511,18 @@ export function HistoryPanel({
                             <p className="session-message-list__session-recap-text">{recapBody}</p>
                           </div>
                         </article>
+                      </li>
+                    )
+                  }
+
+                  if (noteShared) {
+                    return (
+                      <li key={`${groupSessionId}:${message.id}`}>
+                        <NoteSharedCard
+                          note={noteShared}
+                          timestampLabel={new Date(message.createdAt).toLocaleTimeString()}
+                          timestampDateTime={new Date(message.createdAt).toISOString()}
+                        />
                       </li>
                     )
                   }
