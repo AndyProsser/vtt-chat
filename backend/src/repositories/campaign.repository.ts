@@ -845,7 +845,7 @@ export async function listDiscoverableCampaigns(userId: string): Promise<
     campaigns = await prisma.campaign.findMany({
       where: {
         retiredAt: null,
-        id: { notIn: memberCampaignIds.length > 0 ? memberCampaignIds : ['__none__'] },
+        ...(memberCampaignIds.length > 0 ? { id: { notIn: memberCampaignIds } } : {}),
         OR: [
           { discoverable: true },
           {

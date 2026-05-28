@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   campaignMembershipCreate: vi.fn(),
   campaignMembershipFindManyMemberIds: vi.fn(),
   campaignFindUnique: vi.fn(),
+  campaignFindMany: vi.fn(),
   campaignCreate: vi.fn(),
   characterFindMany: vi.fn(),
   characterFindFirst: vi.fn(),
@@ -42,6 +43,7 @@ vi.mock('@/infra/db', () => ({
     },
     campaign: {
       findUnique: mocks.campaignFindUnique,
+      findMany: mocks.campaignFindMany,
       create: mocks.campaignCreate,
     },
     character: {
@@ -76,6 +78,7 @@ import {
   listCharactersForUser,
   listCampaignMemberIds,
   listCampaignsForUser,
+  listDiscoverableCampaigns,
   updateCharacterForCampaignMember,
   upsertUserAccount,
 } from '@/repositories/campaign.repository'
@@ -277,6 +280,44 @@ describe('campaign repository', () => {
 
     const characters = await listCharactersForUser('u-1')
     expect(characters[0]).toMatchObject({ id: 'ch-1', name: 'Aria', status: 'ALIVE' })
+  })
+
+  it('lists discoverable campaigns without invalid UUID fallback when user has no memberships', async () => {
+    mocks.campaignMembershipFindMany.mockResolvedValueOnce([])
+    mocks.campaignFindMany.mockResolvedValueOnce([
+      {
+        id: 'c-discover-1',
+        name: 'Open Table',
+        description: null,
+        posterUrl: null,
+        discoverable: true,
+        spectatorPolicy: 'NONE',
+        spectatorInviteCode: null,
+        spectatorInviteActive: false,
+        currentDmId: 'u-dm',
+        createdAt: new Date('2026-05-01T00:00:00.000Z'),
+        currentDm: { username: 'dm', displayName: 'DM', avatarUrl: null },
+        members: [],
+        sessions: [],
+      },
+    ])
+
+    const rows = await listDiscoverableCampaigns('u-viewer')
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      id: 'c-discover-1',
+      discoverable: true,
+      activeConnectedCount: 0,
+    })
+
+    expect(mocks.campaignFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({
+          id: expect.anything(),
+        }),
+      })
+    )
   })
 
   it('creates and updates campaign characters including null metadata path', async () => {
