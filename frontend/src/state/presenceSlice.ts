@@ -143,6 +143,22 @@ export interface PresenceSlice {
   clearPresenceSessionActivity: (sessionId?: UUID) => void
 }
 
+function buildWsSpeakingSetFromPresence(
+  presenceByUser: Record<UUID, SessionPresence>
+): Record<UUID, true> | undefined {
+  const speakingUsers: Record<UUID, true> = {}
+
+  for (const [userId, presence] of Object.entries(presenceByUser) as Array<
+    [UUID, SessionPresence]
+  >) {
+    if (presence.state === PresenceState.SPEAKING) {
+      speakingUsers[userId] = true
+    }
+  }
+
+  return Object.keys(speakingUsers).length > 0 ? speakingUsers : undefined
+}
+
 export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
   sessionPresence: {},
   sessionStatsBySessionId: {},
@@ -151,12 +167,24 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
   presenceTypingBySession: {},
 
   replaceSessionPresenceMap: (sessionId, presenceByUser) =>
-    set((state) => ({
-      sessionPresence: {
-        ...state.sessionPresence,
-        [sessionId]: presenceByUser,
-      },
-    })),
+    set((state) => {
+      const nextWsSpeaking = buildWsSpeakingSetFromPresence(presenceByUser)
+      const presenceSpeakingBySession = { ...state.presenceSpeakingBySession }
+
+      if (nextWsSpeaking) {
+        presenceSpeakingBySession[sessionId] = nextWsSpeaking
+      } else {
+        delete presenceSpeakingBySession[sessionId]
+      }
+
+      return {
+        sessionPresence: {
+          ...state.sessionPresence,
+          [sessionId]: presenceByUser,
+        },
+        presenceSpeakingBySession,
+      }
+    }),
 
   replaceSessionStatsSnapshot: (sessionId, snapshot) =>
     set((state) => ({

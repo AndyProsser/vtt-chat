@@ -27,6 +27,31 @@ describe('presenceSlice', () => {
     useStore.setState({
       sessionPresence: {},
       sessionStatsBySessionId: {},
+      presenceSpeakingBySession: {},
+      presenceLkSpeakingBySession: {},
+    })
+  })
+
+  describe('replaceSessionPresenceMap', () => {
+    it('rebuilds WS speaking tracker from snapshot presence states', () => {
+      useStore.getState().replaceSessionPresenceMap(SESSION_ID, {
+        [USER_ID_1]: makePresence({ userId: USER_ID_1, state: PresenceState.SPEAKING }),
+        [USER_ID_2]: makePresence({
+          userId: USER_ID_2,
+          username: 'bob',
+          state: PresenceState.ONLINE,
+          primaryRoomId: ROOM_ID_2,
+        }),
+      })
+
+      expect(useStore.getState().presenceSpeakingBySession[SESSION_ID]?.[USER_ID_1]).toBe(true)
+      expect(useStore.getState().presenceSpeakingBySession[SESSION_ID]?.[USER_ID_2]).toBeUndefined()
+
+      useStore.getState().replaceSessionPresenceMap(SESSION_ID, {
+        [USER_ID_1]: makePresence({ userId: USER_ID_1, state: PresenceState.ONLINE }),
+      })
+
+      expect(useStore.getState().presenceSpeakingBySession[SESSION_ID]).toBeUndefined()
     })
   })
 

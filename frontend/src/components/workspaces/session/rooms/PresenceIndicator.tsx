@@ -46,7 +46,11 @@ function PresenceIndicatorImpl({
   const baseClass = 'room-selector-presence-dot'
   const composed = className ? `${baseClass} ${className}` : baseClass
 
-  return <span className={composed} data-state={dotState} role="status" aria-label={label} />
+  return (
+    <span className={composed} data-state={dotState} role="status" aria-label={label}>
+      <span className="room-selector-presence-dot__inner" aria-hidden="true" />
+    </span>
+  )
 }
 
 export const PresenceIndicator = React.memo(PresenceIndicatorImpl)
