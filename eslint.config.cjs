@@ -3,6 +3,7 @@ const tsPlugin = require('@typescript-eslint/eslint-plugin')
 const reactPlugin = require('eslint-plugin-react')
 const reactHooksPlugin = require('eslint-plugin-react-hooks')
 const prettierPlugin = require('eslint-plugin-prettier')
+const { fixupPluginRules } = require('@eslint/compat')
 
 /** @type {import('eslint').Linter.FlatConfig[]} */
 module.exports = [
@@ -40,7 +41,7 @@ module.exports = [
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
-      react: reactPlugin,
+      react: fixupPluginRules(reactPlugin),
       'react-hooks': reactHooksPlugin,
       prettier: prettierPlugin,
     },

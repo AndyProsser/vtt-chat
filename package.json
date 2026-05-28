@@ -27,13 +27,15 @@
     "qa:all": "npm run qa:coverage-report && npm run qa:flaky-tests:json"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.59.1",
-    "@typescript-eslint/parser": "^8.59.1",
-    "eslint": "^9.39.4",
+    "@eslint/compat": "^2.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.0",
+    "eslint": "^10.4.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "prettier": "^3.8.2"
+    "prettier": "^3.8.2",
+    "typescript": "^6.0.3"
   }
 }
