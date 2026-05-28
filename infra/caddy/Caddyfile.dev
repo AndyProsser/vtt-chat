@@ -1,3 +1,6 @@
+# ---------------------------------------------------------------------------
+# HTTP (port 8080) — loopback-only / localhost dev access
+# ---------------------------------------------------------------------------
 :8080 {
   encode gzip
 
@@ -11,9 +14,12 @@
     reverse_proxy backend:3000
   }
 
-  # LiveKit HTTP signalling
+  # LiveKit HTTP signalling — strip /livekit prefix before proxying.
+  # Force HTTP/1.1 so Caddy can upgrade to WebSocket.
   handle_path /livekit/* {
     reverse_proxy livekit:7880 {
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Proto http
       transport http {
         versions 1.1
       }
@@ -26,6 +32,45 @@
   }
 
   # Frontend SPA — Vite dev server with HMR (catch-all)
+  handle {
+    reverse_proxy frontend:5173
+  }
+}
+
+# ---------------------------------------------------------------------------
+# HTTPS (port 8443) — LAN / remote browser access (secure context required
+# for WebRTC / getUserMedia).  Caddy issues a self-signed cert automatically;
+# you will need to accept the browser warning once, or add the Caddy root CA
+# to your OS/browser trust store.
+# Access via: https://<host-lan-ip>:8443
+# ---------------------------------------------------------------------------
+:8443 {
+  tls internal
+
+  encode gzip
+
+  handle /ws/* {
+    reverse_proxy backend:3000
+  }
+
+  handle /api/* {
+    reverse_proxy backend:3000
+  }
+
+  handle_path /livekit/* {
+    reverse_proxy livekit:7880 {
+      header_up X-Forwarded-Host {host}
+      header_up X-Forwarded-Proto https
+      transport http {
+        versions 1.1
+      }
+    }
+  }
+
+  handle /admin* {
+    reverse_proxy admin:5174
+  }
+
   handle {
     reverse_proxy frontend:5173
   }

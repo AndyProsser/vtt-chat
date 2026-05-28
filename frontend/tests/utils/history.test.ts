@@ -38,10 +38,8 @@ describe('history utils', () => {
   })
 
   it('parses valid persisted controls and falls back unknown values selectively', () => {
-    expect(
-      parsePersistedHistoryControls(JSON.stringify({ groupBy: 'event', sortOrder: 'oldest' }))
-    ).toEqual({
-      groupBy: 'event',
+    expect(parsePersistedHistoryControls(JSON.stringify({ groupBy: 'day', sortOrder: 'oldest' }))).toEqual({
+      groupBy: 'day',
       sortOrder: 'oldest',
     })
 

@@ -18,8 +18,8 @@ vi.mock('../../src/components/workspaces/shared/panels/MarkdownEditor', () => ({
 }))
 
 vi.mock('../../src/components/workspaces/shared/panels/NotesPanel/NoteSharePopover', () => ({
-  NoteSharePopover: ({ open, trigger }: any) => (
-    <div>
+  NoteSharePopover: ({ open, trigger, onOpenChange }: any) => (
+    <div onClick={() => onOpenChange?.(!open)}>
       {trigger}
       <div data-testid="share-popover-state">{open ? 'open' : 'closed'}</div>
     </div>
@@ -69,8 +69,10 @@ describe('NoteCard', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-    fireEvent.change(screen.getByLabelText('Note title'), { target: { value: 'Updated clue' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Edit handout' }))
+    fireEvent.change(screen.getByPlaceholderText('Handout title'), {
+      target: { value: 'Updated clue' },
+    })
     fireEvent.change(screen.getByLabelText('Markdown editor'), {
       target: { value: 'Fresh notes' },
     })
@@ -109,11 +111,12 @@ describe('NoteCard', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Share handout' }))
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Note title')).toBeTruthy()
       expect(screen.getByTestId('share-popover-state').textContent).toBe('open')
     })
+
+    expect(screen.queryByPlaceholderText('Handout title')).toBeNull()
   })
 })

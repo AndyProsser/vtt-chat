@@ -255,6 +255,58 @@ This gives you:
 
 Caddy handles routing automatically.
 
+### Accessing from another machine on your LAN (e.g. testing on a phone or a second PC)
+
+WebRTC (`getUserMedia`, `RTCPeerConnection`) requires a **secure context** — HTTPS or localhost.
+Browsers accessing the app via a plain-HTTP LAN IP (`http://192.168.x.x:8080`) will block mic
+access and prevent LiveKit peer connections from establishing.
+
+The dev Caddy config exposes an HTTPS listener on port **8443** with a self-signed certificate:
+
+| Service     | LAN URL (HTTPS)                    |
+| ----------- | ---------------------------------- |
+| Frontend    | <https://192.168.x.x:8443>         |
+| Backend API | <https://192.168.x.x:8443/api>     |
+| LiveKit     | <https://192.168.x.x:8443/livekit> |
+
+**Steps to enable LAN access:**
+
+1. **Set `LIVEKIT_NODE_IP`** in your `.env` file to your host's LAN IP address.
+   Without this, LiveKit advertises its Docker-internal IP (`172.x.x.x`) as WebRTC ICE candidates,
+   which LAN browsers cannot reach — you'll see "could not establish pc connection" in the logs.
+
+```bash
+# Find your LAN IP:
+# Linux/WSL:
+ip route get 1 | awk '{print $7; exit}'
+# macOS:
+ipconfig getifaddr en0
+# Windows (PowerShell):
+(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notmatch '^127' })[0].IPAddress
+```
+
+Then in your `.env`:
+
+```
+LIVEKIT_NODE_IP=192.168.1.50   # replace with your actual LAN IP
+```
+
+2. **Add the HTTPS origin to `CORS_ALLOWED_ORIGINS`** if the browser sends cross-origin requests:
+
+```
+CORS_ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173,http://localhost:5174,https://192.168.1.50:8443
+```
+
+3. **Browse to `https://192.168.x.x:8443`** — accept the self-signed certificate warning once.
+   The Caddy root CA cert is stored in the `caddy_data_dev` Docker volume; you can export and
+   install it in your OS trust store to suppress the warning permanently.
+
+4. **Restart the dev stack** after changing `.env`:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
 ---
 
 ## 🧠 8. VS Code Workspace

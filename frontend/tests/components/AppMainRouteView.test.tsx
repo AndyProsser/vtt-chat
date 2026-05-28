@@ -21,12 +21,12 @@ vi.mock('../../src/components/auth/PasswordResetConfirmForm', () => ({
   PasswordResetConfirmForm: () => <div>Mock Password Reset Confirm Form</div>,
 }))
 
-vi.mock('../../src/components/auth/auth-surface', () => ({
+vi.mock('../../src/utils/authSurface', () => ({
   resolveAuthSurfaceRoute: () => 'login',
 }))
 
-vi.mock('../../src/components/session/Workspaces', () => ({
-  Workspaces: ({ onReady }: { onReady?: () => void }) => {
+vi.mock('../../src/components/workspaces', () => ({
+  WorkspaceInitialization: ({ onReady }: { onReady?: () => void }) => {
     return (
       <div>
         <div>Mock Session Init</div>

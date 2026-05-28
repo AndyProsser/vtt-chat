@@ -191,8 +191,10 @@ services:
     restart: unless-stopped
     ports:
       - '8080:8080'
+      - '8443:8443'
     volumes:
       - ./infra/caddy/Caddyfile.dev:/etc/caddy/Caddyfile
+      - caddy_data_dev:/data
     depends_on:
       backend:
         condition: service_healthy
@@ -216,6 +218,7 @@ volumes:
   backend_node_modules:
   frontend_node_modules:
   admin_node_modules:
+  caddy_data_dev:
 
 networks:
   vttnet:
