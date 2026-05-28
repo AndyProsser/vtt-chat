@@ -68,41 +68,51 @@ function countRecordKeys<T>(record: Record<string, T>): number {
 
 function collectChurnSnapshot(state: Store): StoreChurnSnapshot {
   let totalSessionMessages = 0
-  for (const _sessionId in state.messages) {
+  for (const _sessionId of Object.keys(state.messages) as Array<keyof typeof state.messages>) {
     totalSessionMessages += countRecordKeys(state.messages[_sessionId])
   }
 
   let totalOutgoingQueueMessages = 0
-  for (const _sessionId in state.outgoingQueue) {
+  for (const _sessionId of Object.keys(state.outgoingQueue) as Array<
+    keyof typeof state.outgoingQueue
+  >) {
     totalOutgoingQueueMessages += state.outgoingQueue[_sessionId]?.length || 0
   }
 
   let totalTypingIndicators = 0
-  for (const _sessionId in state.presenceTypingBySession) {
+  for (const _sessionId of Object.keys(state.presenceTypingBySession) as Array<
+    keyof typeof state.presenceTypingBySession
+  >) {
     totalTypingIndicators += state.presenceTypingBySession[_sessionId]?.length || 0
   }
 
   let totalWsSpeakers = 0
-  for (const _sessionId in state.presenceSpeakingBySession) {
+  for (const _sessionId of Object.keys(state.presenceSpeakingBySession) as Array<
+    keyof typeof state.presenceSpeakingBySession
+  >) {
     totalWsSpeakers += countRecordKeys(state.presenceSpeakingBySession[_sessionId])
   }
 
   let totalLiveKitSpeakers = 0
-  for (const _sessionId in state.presenceLkSpeakingBySession) {
+  for (const _sessionId of Object.keys(state.presenceLkSpeakingBySession) as Array<
+    keyof typeof state.presenceLkSpeakingBySession
+  >) {
     totalLiveKitSpeakers += countRecordKeys(state.presenceLkSpeakingBySession[_sessionId])
   }
 
   let totalRoomMembers = 0
-  for (const _roomId in state.roomMembers) {
+  for (const _roomId of Object.keys(state.roomMembers) as Array<keyof typeof state.roomMembers>) {
     totalRoomMembers += state.roomMembers[_roomId]?.length || 0
   }
 
   let totalSessionPresenceEntries = 0
   let totalPresenceDeviceSessions = 0
-  for (const _sessionId in state.sessionPresence) {
+  for (const _sessionId of Object.keys(state.sessionPresence) as Array<
+    keyof typeof state.sessionPresence
+  >) {
     const byUser = state.sessionPresence[_sessionId]
     totalSessionPresenceEntries += countRecordKeys(byUser)
-    for (const _userId in byUser) {
+    for (const _userId of Object.keys(byUser) as Array<keyof typeof byUser>) {
       totalPresenceDeviceSessions += byUser[_userId]?.deviceSessions?.length || 0
     }
   }

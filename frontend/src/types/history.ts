@@ -20,6 +20,8 @@ export interface SessionHistoryThread {
   messages: SessionHistoryMessage[]
 }
 
+export type SessionLogEntry = SessionHistoryMessage
+
 export type HistoryGroupBy = 'session' | 'day'
 export type HistorySortOrder = 'newest' | 'oldest'
 
