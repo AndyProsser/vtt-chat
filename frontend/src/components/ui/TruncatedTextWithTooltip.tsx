@@ -42,7 +42,7 @@ export function TruncatedTextWithTooltip({
     }
   }, [text])
 
-  // Dynamic tag rendered via JSX (not createElement) to avoid the react-hooks/refs
+  // Dynamic tag rendered via JSX (not createElement) to avoid the @eslint-react/refs
   // lint rule flagging ref assignment inside a createElement() call.
   const Tag = as as React.ElementType
   const textElement = (

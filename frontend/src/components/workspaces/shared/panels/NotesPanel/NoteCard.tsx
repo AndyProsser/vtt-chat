@@ -75,10 +75,9 @@ export function NoteCard({
 
   useEffect(() => {
     if (!isEditing && !sharePopoverOpen && !isSaving) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       syncDraftFromNote()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- syncDraftFromNote is not memoised; adding it would cause an infinite re-render loop
+    // eslint-disable-next-line @eslint-react/exhaustive-deps -- syncDraftFromNote is not memoised; adding it would cause an infinite re-render loop
   }, [
     isEditing,
     isSaving,
@@ -92,7 +91,6 @@ export function NoteCard({
 
   useEffect(() => {
     if (note.publishedAt) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHasPublishedThisSession(true)
     }
   }, [note.publishedAt])

@@ -317,8 +317,7 @@ npm run lint:backend   # Lint backend only
 npm run lint:frontend  # Lint frontend only
 npm run lint:admin     # Lint admin only
 npm run ci:lint  # Local CI lint gate (WSL on Windows, Linux shell elsewhere)
-npm run ci:lint:strict  # Lint gate + eslint-plugin-react peer/workaround alignment check
-npm run qa:eslint-react-peer-check  # Check whether .npmrc workaround should stay or be removed
+npm run ci:lint:strict  # Alias of ci:lint for stricter CI-style workflows
 npm run format         # Auto-format all files
 npm run check          # Run linting checks
 ```
@@ -331,11 +330,10 @@ wsl -e bash -lc "cd /mnt/c/Users/<your-user>/dev/vtt-chat && npm run lint"
 wsl -e bash -lc "cd /mnt/c/Users/<your-user>/dev/vtt-chat && npm run ci:lint"
 ```
 
-ESLint 10 compatibility note:
+ESLint note:
 
-- The repo currently includes a temporary `.npmrc` setting (`legacy-peer-deps=true`) because `eslint-plugin-react` has not yet published a peer range that includes ESLint 10.
-- Remove this setting after `eslint-plugin-react` declares ESLint 10 support and installs succeed without peer-resolution overrides.
-- Run `npm run qa:eslint-react-peer-check` to verify whether the workaround is still required.
+- React linting now runs through `@eslint-react/eslint-plugin`, so the old peer-dependency workaround for `eslint-plugin-react` is no longer needed.
+- The repo root and package-local ESLint entrypoints now use ESM flat config files (`eslint.config.mjs`) so `npm run lint` works consistently from the root, `frontend/`, `admin/`, and `backend/`.
 
 VS Code will auto‑format on save.
 
