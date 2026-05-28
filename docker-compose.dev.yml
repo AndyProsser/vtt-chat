@@ -186,17 +186,17 @@ services:
       - vttnet
 
   caddy:
-    image: caddy:2.8.4-alpine
+    image: caddy:2-alpine
     container_name: vttchat-caddy-dev
     restart: unless-stopped
     environment:
-      DEV_HOST_IP: ${LIVEKIT_NODE_IP:-localhost}
+      # Keep Caddy's local HTTPS cert aligned with the host/IP developers actually browse.
+      DEV_HOST_IP: ${LIVEKIT_NODE_IP:-127.0.0.1}
     ports:
       - '8080:8080'
       - '8443:8443'
     volumes:
       - ./infra/caddy/Caddyfile.dev:/etc/caddy/Caddyfile
-      - ./infra/caddy/certs:/etc/caddy/certs:ro
       - caddy_data_dev:/data
     depends_on:
       backend:

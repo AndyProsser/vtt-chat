@@ -261,7 +261,8 @@ WebRTC (`getUserMedia`, `RTCPeerConnection`) requires a **secure context** — H
 Browsers accessing the app via a plain-HTTP LAN IP (`http://192.168.x.x:8080`) will block mic
 access and prevent LiveKit peer connections from establishing.
 
-The dev Caddy config exposes an HTTPS listener on port **8443** with a self-signed certificate:
+The dev Caddy config exposes an HTTPS listener on port **8443** with a certificate
+issued by Caddy's local CA (`tls internal`, backed by Smallstep libraries):
 
 | Service     | LAN URL (HTTPS)                    |
 | ----------- | ---------------------------------- |
@@ -297,11 +298,30 @@ LIVEKIT_NODE_IP=192.168.1.50   # replace with your actual LAN IP
 CORS_ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173,http://localhost:5174,https://192.168.1.50:8443
 ```
 
-3. **Browse to `https://192.168.x.x:8443`** — accept the self-signed certificate warning once.
-   The Caddy root CA cert is stored in the `caddy_data_dev` Docker volume; you can export and
-   install it in your OS trust store to suppress the warning permanently.
+3. **Export and trust Caddy's local root CA** so browsers accept the HTTPS cert cleanly.
 
-4. **Restart the dev stack** after changing `.env`:
+```bash
+# Start the dev stack first so Caddy has generated its local CA.
+docker compose -f docker-compose.dev.yml up -d caddy
+
+# Export the root CA PEM from Caddy's persisted /data volume.
+sh infra/scripts/export-caddy-local-ca.sh ./tmp/caddy-local-root.crt
+
+# Trust it system-wide on Linux.
+sudo cp ./tmp/caddy-local-root.crt /usr/local/share/ca-certificates/vtt-chat-caddy-local.crt
+sudo update-ca-certificates
+```
+
+If you use Firefox on Linux, either enable `security.enterprise_roots.enabled` in
+`about:config` so Firefox respects the OS trust store, or import `./tmp/caddy-local-root.crt`
+manually via `Settings -> Privacy & Security -> Certificates -> View Certificates -> Authorities -> Import`.
+
+4. **Browse to `https://192.168.x.x:8443`** after trusting the CA.
+   The issued leaf certificate covers `localhost` and the `LIVEKIT_NODE_IP` value wired into
+   Caddy as `DEV_HOST_IP`, so set `LIVEKIT_NODE_IP` before starting the stack when you want
+   LAN-IP access without a certificate warning.
+
+5. **Restart the dev stack** after changing `.env`:
 
 ```bash
 docker compose -f docker-compose.dev.yml up --build

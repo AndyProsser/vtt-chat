@@ -38,13 +38,13 @@ http://:8080 {
 
 # ---------------------------------------------------------------------------
 # HTTPS (port 8443) — LAN / remote browser access (secure context required
-# for WebRTC / getUserMedia). Use a fixed self-signed cert with SANs for the
-# LAN IP and localhost so IP-based browsers can complete TLS even if they omit
-# SNI on direct IP connections.
+# for WebRTC / getUserMedia). `tls internal` uses Caddy's Smallstep-backed
+# local CA, but the site addresses still need explicit hosts/IPs so the issued
+# leaf certificate SANs match what browsers connect to.
 # Access via: https://localhost:8443 or https://{$DEV_HOST_IP}:8443
 # ---------------------------------------------------------------------------
-:8443 {
-  tls /etc/caddy/certs/dev-lan.crt /etc/caddy/certs/dev-lan.key
+https://localhost:8443, https://{$DEV_HOST_IP}:8443 {
+  tls internal
 
   encode gzip
 
