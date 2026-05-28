@@ -626,11 +626,19 @@
   cursor: grab;
 }
 
-.room-selector-member--ghost {
+/*
+ * Ghost modifier — driven either by an explicit class or implicitly when
+ * the member's `<AvatarOverlay>` renders a ghost badge. The `:has` selector
+ * lets the GhostIndicator leaf drive the button's ghost styling without
+ * the button having to subscribe to the ghost bit.
+ */
+.room-selector-member--ghost,
+.room-selector-member:has(.avatar-ghost-badge) {
   opacity: 0.82;
 }
 
-.room-selector-member--ghost .avatar-overlay {
+.room-selector-member--ghost .avatar-overlay,
+.room-selector-member:has(.avatar-ghost-badge) .avatar-overlay {
   border-style: dashed;
 }
 

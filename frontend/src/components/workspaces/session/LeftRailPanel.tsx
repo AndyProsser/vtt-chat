@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
-import { PresenceState, RoomType } from '@shared'
+import { RoomType } from '@shared'
 import { isGreenroomSessionState } from '@shared'
 import type { RoomUser } from '@/types/room'
-import { useStore } from '@/state/store'
 import { getUserDMOverride, type AudioDMOverridesByUser } from '@/utils/audioOverrides'
 import { isGreenRoomName, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
 import { LeftRailSummary } from './LeftRailSummary'
 import { GroupsPanel } from '@/components/workspaces/session/rooms/GroupsPanel'
 
 // Stable empty objects to avoid creating new references on every render
-const EMPTY_USER_MUTE_MAP: Record<UUID, boolean> = {}
 const EMPTY_ROOM_MEMBERS: RoomUser[] = []
 
 interface LeftRailPanelProps {
@@ -70,14 +68,13 @@ export function LeftRailPanel({
   roomEnvironmentNames,
   onOpenInfoPanel,
 }: LeftRailPanelProps) {
-  const device = useStore((state) => state.device)
-  const pttActive = useStore((state) => state.pttActive)
-  // NOTE: speaking state is intentionally NOT read here.
-  // It is consumed only by the leaf <SpeakingIndicator /> rendered inside each
-  // <AvatarOverlay />. Threading speaking through participant data would
-  // recompute groupPanelRooms (and rebuild every Radix Tooltip/Popover subtree)
-  // on every VAD tick — the root cause of the long-session memory leak.
-  const userMuteState = useStore((state) => state.userMuteState[sessionId] ?? EMPTY_USER_MUTE_MAP)
+  // NOTE: speaking, mute, ghost, and presence state are intentionally NOT read
+  // here. They are consumed only by leaf components (<SpeakingIndicator />,
+  // <MicMutedIndicator />, <GhostIndicator />, <PresenceIndicator />) rendered
+  // inside each <AvatarOverlay /> / <GroupMemberProfileCard />. Threading any
+  // of these through participant data would recompute groupPanelRooms (and
+  // rebuild every Radix Tooltip/Popover subtree) on every flip — the root
+  // cause of the long-session memory leak.
 
   const isGreenroom = isGreenroomSessionState(sessionState)
   const [cooldownNowMs, setCooldownNowMs] = useState(() => Date.now())
@@ -111,8 +108,6 @@ export function LeftRailPanel({
   }, [cooldownNowMs, cooldownWindowMs, sessionEndedAt, sessionState])
 
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
-
-  const localUserMuted = device.pttEnabled ? !pttActive : !device.microphoneOn
 
   const hasNamedGreenRoom = rooms.some((room) => isGreenRoomName(room.name))
 
@@ -163,12 +158,11 @@ export function LeftRailPanel({
           }
 
           const isSelf = member.userId === currentUserId
-          const muteOverride = getUserDMOverride(dmOverrides, member.userId, 'MUTE')
+          void isSelf
           const distanceOverride = getUserDMOverride(dmOverrides, member.userId, 'DISTANCE')
           const conditionOverride =
             getUserDMOverride(dmOverrides, member.userId, 'CONDITION') ||
             getUserDMOverride(dmOverrides, member.userId, 'FILTER')
-          const overrideMuted = Boolean(muteOverride)
           const overrideCondition =
             typeof conditionOverride?.parameters?.conditionName === 'string'
               ? String(conditionOverride.parameters.conditionName)
@@ -179,10 +173,6 @@ export function LeftRailPanel({
             typeof distanceOverride?.parameters?.presetName === 'string'
               ? String(distanceOverride.parameters.presetName)
               : undefined
-
-          const userOwnMuted = userMuteState[member.userId] ?? false
-          const dmMuted = overrideMuted
-          const isMutedCombined = userOwnMuted || dmMuted
 
           return {
             userId: member.userId,
@@ -201,9 +191,6 @@ export function LeftRailPanel({
                 : member.role === 'SPECTATOR'
                   ? ROOM_ROLE_LABELS.spectator
                   : ROOM_ROLE_LABELS.player,
-            presenceState: member.presenceState,
-            ghost: member.ghost,
-            isMuted: isSelf ? localUserMuted || isMutedCombined : isMutedCombined,
             distanceLabel: isGreenroom ? undefined : overrideDistance,
             condition: isGreenroom
               ? undefined
@@ -224,11 +211,9 @@ export function LeftRailPanel({
     dmUserId,
     isEndedCooldownActive,
     isGreenroom,
-    localUserMuted,
     roomEnvironmentNames,
     roomMembersByRoomId,
     sessionState,
-    userMuteState,
     visibleRooms,
   ])
 

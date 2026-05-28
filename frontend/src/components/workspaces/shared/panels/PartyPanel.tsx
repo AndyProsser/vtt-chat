@@ -2,7 +2,7 @@
  * Renders campaign members with real, campaign-scoped presence labels.
  * Presence is fetched from backend snapshot API and refreshed periodically.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PresenceState, SessionState, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
@@ -282,7 +282,18 @@ function PartyStatusBadge({ status }: { status: MockPlayerStatus }) {
   )
 }
 
-function PartyMemberCard({ member }: { member: MockPartyMember }) {
+/**
+ * PartyMemberCard — per-member row in the party rail.
+ *
+ * Wrapped in React.memo so that when only one member's status flips (HERE /
+ * AWAY / NOT_HERE / OFFLINE), only that card re-renders. PartyPanel's
+ * `mergeMembersPreservingReferences` keeps the MockPartyMember reference
+ * stable for any member whose fields did not change, so the default shallow
+ * compare here short-circuits the rebuild of every other card and its Radix
+ * Tooltip subtree. A presence storm across many users still only touches
+ * the affected cards.
+ */
+const PartyMemberCard = memo(function PartyMemberCard({ member }: { member: MockPartyMember }) {
   const isDM = member.role === 'DM'
   const rolePillLabel =
     member.role === 'DM' ? 'DM' : member.role === 'SPECTATOR' ? 'SPECTATOR' : 'PLAYER'
@@ -362,7 +373,7 @@ function PartyMemberCard({ member }: { member: MockPartyMember }) {
       </div>
     </div>
   )
-}
+})
 
 // ─── Main component ────────────────────────────────────────────────────────────
 

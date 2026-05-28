@@ -25,25 +25,22 @@
 
 import { RoomType, type UUID } from '@shared'
 import { useStore } from '@/state/store'
+import { useIsUserMuted } from '@/hooks/useIsUserMuted'
 
 interface SpeakingIndicatorProps {
   sessionId: UUID
   userId: UUID
   /** True iff this card represents the local user. */
   isSelf: boolean
-  /** Combined mute state (user-own + DM override). Stable across speaking flips. */
-  isMuted: boolean
   /** Room type — speaking is suppressed in PRIVATE (whisper) rooms. */
   roomType: RoomType
 }
 
-export function SpeakingIndicator({
-  sessionId,
-  userId,
-  isSelf,
-  isMuted,
-  roomType,
-}: SpeakingIndicatorProps) {
+export function SpeakingIndicator({ sessionId, userId, isSelf, roomType }: SpeakingIndicatorProps) {
+  // Mute is subscribed via the shared hook (own + DM override + self device).
+  // Re-renders only when THIS user's combined mute bit flips.
+  const isMuted = useIsUserMuted(sessionId, userId, isSelf)
+
   // Per-user speaking bits — primitive boolean selectors. These are the only
   // store subscriptions that flip at speaking-rate. Object.is equality means
   // this component re-renders only when its own user's bit changes.
@@ -55,17 +52,11 @@ export function SpeakingIndicator({
   )
 
   // Self path: LiveKit's activeSpeakers does not include the local publisher,
-  // so we read the local device VAD + mic/PTT gate instead.
+  // so we read the local device VAD instead.
   const deviceSpeaking = useStore((state) => (isSelf ? state.device.isSpeaking : false))
-  const isSelfLocallyMuted = useStore((state) => {
-    if (!isSelf) return false
-    const device = state.device
-    return device.pttEnabled ? !state.pttActive : !device.microphoneOn
-  })
 
   if (roomType === RoomType.PRIVATE) return null
   if (isMuted) return null
-  if (isSelf && isSelfLocallyMuted) return null
 
   const speaking = isSelf ? deviceSpeaking : isWsSpeaking || isLkSpeaking
   if (!speaking) return null

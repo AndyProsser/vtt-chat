@@ -1,5 +1,5 @@
 import type { UUID } from '@shared'
-import { PresenceState, RoomType } from '@shared'
+import { RoomType } from '@shared'
 
 export interface GroupPanelGroup {
   id: UUID
@@ -9,6 +9,16 @@ export interface GroupPanelGroup {
   environmentName?: string
 }
 
+/**
+ * Group participant projection used by the rightbar/leftbar group panels.
+ *
+ * NOTE: presence/ghost/mute/speaking are intentionally NOT modelled here.
+ * Those bits are subscribed to per-user inside leaf indicators
+ * (<PresenceIndicator />, <GhostIndicator />, <MicMutedIndicator />,
+ * <SpeakingIndicator />) so a flip re-renders only the matching leaf and
+ * never invalidates this participant object. See the leaf-isolation pattern
+ * in copilot-instructions.md and the SpeakingIndicator doc comment.
+ */
 export interface GroupParticipantStatus {
   userId: UUID
   username: string
@@ -20,10 +30,7 @@ export interface GroupParticipantStatus {
   characterRace?: string | null
   level?: number | null
   characterStats?: Record<string, unknown> | null
-  presenceState: PresenceState
-  ghost?: boolean
   roleLabel?: 'DM' | 'PLAYER' | 'SPECTATOR'
-  isMuted?: boolean
   condition?: string
   distanceLabel?: string
 }

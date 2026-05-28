@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { LONG_PRESS_MOVE_CANCEL_PX } from '@/constants/voiceGroup.constants'
+import { useIsUserMuted } from '@/hooks/useIsUserMuted'
 import { AvatarOverlay } from './AvatarOverlay'
 import { GroupMemberProfileCard } from './GroupMemberProfileCard'
 import { PlayerContextMenu } from './context-menu/PlayerContextMenu'
@@ -28,12 +29,6 @@ export interface GroupMemberListProps {
   touchFeedbackUserId: UUID | null
   setTouchFeedbackUserId: (userId: UUID | null) => void
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
-  getResolvedPresenceState: (
-    presenceState: GroupParticipantWithGroupId['presenceState']
-  ) => GroupParticipantWithGroupId['presenceState']
-  getPresenceDotState: (
-    presenceState: GroupParticipantWithGroupId['presenceState']
-  ) => 'online' | 'offline'
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   getDeviceSessions: (userId: UUID) => NonNullable<SessionPresence['deviceSessions']>
@@ -63,12 +58,6 @@ interface GroupMemberItemProps {
   isNarrowViewport: boolean
   touchFeedbackUserId: UUID | null
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
-  getResolvedPresenceState: (
-    presenceState: GroupParticipantWithGroupId['presenceState']
-  ) => GroupParticipantWithGroupId['presenceState']
-  getPresenceDotState: (
-    presenceState: GroupParticipantWithGroupId['presenceState']
-  ) => 'online' | 'offline'
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   getDeviceSessions: (userId: UUID) => NonNullable<SessionPresence['deviceSessions']>
@@ -109,8 +98,6 @@ function areGroupMemberItemPropsEqual(
     previous.conditionTargets === next.conditionTargets &&
     previous.setTouchFeedbackUserId === next.setTouchFeedbackUserId &&
     previous.getParticipantMetaLine === next.getParticipantMetaLine &&
-    previous.getResolvedPresenceState === next.getResolvedPresenceState &&
-    previous.getPresenceDotState === next.getPresenceDotState &&
     previous.getStatEntries === next.getStatEntries &&
     previous.getResolvedGroupEnvironmentName === next.getResolvedGroupEnvironmentName &&
     previous.getDeviceSessions === next.getDeviceSessions &&
@@ -132,10 +119,7 @@ function areGroupMemberItemPropsEqual(
     left.characterRace === right.characterRace &&
     left.level === right.level &&
     left.characterStats === right.characterStats &&
-    left.presenceState === right.presenceState &&
-    left.ghost === right.ghost &&
     left.roleLabel === right.roleLabel &&
-    left.isMuted === right.isMuted &&
     left.condition === right.condition &&
     left.distanceLabel === right.distanceLabel
   )
@@ -151,8 +135,6 @@ const GroupMemberItem = memo(function GroupMemberItem({
   isNarrowViewport,
   touchFeedbackUserId,
   getParticipantMetaLine,
-  getResolvedPresenceState,
-  getPresenceDotState,
   getStatEntries,
   getResolvedGroupEnvironmentName,
   getDeviceSessions,
@@ -236,15 +218,19 @@ const GroupMemberItem = memo(function GroupMemberItem({
   )
 
   const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
-  const isMuted = Boolean(member.isMuted)
+  const isSelf = member.userId === currentUserId
+  // Live subscription to combined mute state for THIS user only.
+  // Re-renders this single GroupMemberItem when the user's mute bit flips —
+  // never the surrounding list or panel. The ghost class is driven by CSS
+  // `:has(.avatar-ghost-badge)` so we no longer subscribe to ghost here at all.
+  const isMuted = useIsUserMuted(sessionId, member.userId, isSelf)
   const isPlayerTarget = member.roleLabel !== 'DM'
   const isTakeoverEligible = member.roleLabel === 'PLAYER'
   const isTakeoverActive = activeTakeoverUserId === member.userId
-  const shownPresenceState = getResolvedPresenceState(member.presenceState)
   const memberButton = (
     <button
       type="button"
-      className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${member.ghost ? 'room-selector-member--ghost' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''} ${isTakeoverActive ? 'room-selector-member--takeover-active' : ''}`}
+      className={`room-selector-member ${canDrag ? 'room-selector-member--draggable' : ''} ${touchFeedbackUserId === member.userId ? 'room-selector-member--touch-feedback' : ''} ${isTakeoverActive ? 'room-selector-member--takeover-active' : ''}`}
       draggable={canDrag}
       aria-label={canDrag ? `Drag ${member.username}` : member.username}
       title={undefined}
@@ -264,13 +250,10 @@ const GroupMemberItem = memo(function GroupMemberItem({
         avatarUrl={member.avatarUrl}
         roleLabel={member.roleLabel}
         metaLine={getParticipantMetaLine(member)}
-        presenceState={shownPresenceState}
-        isMuted={isMuted}
-        isGhost={Boolean(member.ghost)}
-        speaking={{
+        presence={{
           sessionId,
           userId: member.userId,
-          isSelf: member.userId === currentUserId,
+          isSelf,
           roomType: room.type,
         }}
       />
@@ -285,12 +268,12 @@ const GroupMemberItem = memo(function GroupMemberItem({
         className="room-selector-profile-tooltip"
       >
         <GroupMemberProfileCard
+          sessionId={sessionId}
+          isSelf={isSelf}
           member={member}
           metaLine={getParticipantMetaLine(member)}
           statEntries={getStatEntries(member)}
           environmentName={getResolvedGroupEnvironmentName(room)}
-          presenceLabel={String(shownPresenceState)}
-          presenceDotState={getPresenceDotState(shownPresenceState)}
           activeTakeover={isTakeoverActive}
           deviceSessions={getDeviceSessions(member.userId)}
         />
@@ -335,8 +318,6 @@ export function GroupMemberList({
   touchFeedbackUserId,
   setTouchFeedbackUserId,
   getParticipantMetaLine,
-  getResolvedPresenceState,
-  getPresenceDotState,
   getStatEntries,
   getResolvedGroupEnvironmentName,
   getDeviceSessions,
@@ -384,8 +365,6 @@ export function GroupMemberList({
           isNarrowViewport={isNarrowViewport}
           touchFeedbackUserId={touchFeedbackUserId}
           getParticipantMetaLine={getParticipantMetaLine}
-          getResolvedPresenceState={getResolvedPresenceState}
-          getPresenceDotState={getPresenceDotState}
           getStatEntries={getStatEntries}
           getResolvedGroupEnvironmentName={getResolvedGroupEnvironmentName}
           getDeviceSessions={getDeviceSessions}

@@ -58,7 +58,14 @@
   }
 }
 
-.avatar-glyph--ghost {
+/*
+ * Ghost modifier — applied either explicitly via class or implicitly when
+ * a `.avatar-ghost-badge` leaf is rendered as a child. The `:has` selector
+ * lets the leaf indicator drive the parent's visual treatment without the
+ * parent ever subscribing to the ghost bit.
+ */
+.avatar-glyph--ghost,
+.avatar-glyph:has(.avatar-ghost-badge) {
   filter: saturate(0.3);
   opacity: 0.74;
   border-color: color-mix(in srgb, var(--color-text-secondary) 45%, var(--color-border-soft));

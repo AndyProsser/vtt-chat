@@ -3,7 +3,6 @@ import { PresenceState, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import {
-  getVoiceGroupPresenceState,
   isGreenRoomName,
   RADIAL_MENU_COPY,
   ROOM_PRESENCE_COPY,
@@ -491,20 +490,6 @@ export function RoomSelector({
     }
   }, [whisperFlow])
 
-  const getResolvedPresenceState = useCallback((presenceState: PresenceState) => {
-    if (presenceState === PresenceState.IDLE) {
-      return PresenceState.OFFLINE
-    }
-
-    return getVoiceGroupPresenceState(presenceState)
-  }, [])
-
-  const getPresenceDotState = useCallback(
-    (presenceState: PresenceState): 'online' | 'offline' =>
-      getResolvedPresenceState(presenceState) === PresenceState.OFFLINE ? 'offline' : 'online',
-    [getResolvedPresenceState]
-  )
-
   const getParticipantMetaLineForRoom = useCallback(
     (member: GroupParticipantWithGroupId | GroupParticipantStatus) =>
       getGroupParticipantMetaLine(member, dmFlavorLine),
@@ -693,8 +678,6 @@ export function RoomSelector({
       level: selfPresence?.level || null,
       characterStats: selfPresence?.characterStats || null,
       roleLabel: ROOM_ROLE_LABELS.dm,
-      presenceState: selfPresence?.state || PresenceState.ONLINE,
-      ghost: selfPresence?.ghost,
       roomId: resolvedTargetRoomId,
     }
   }, [
@@ -1304,8 +1287,6 @@ export function RoomSelector({
       getDisplayRoomName={getDisplayGroupName}
       getResolvedEnvironmentName={getResolvedGroupEnvironmentName}
       getParticipantMetaLine={getParticipantMetaLineForRoom}
-      getResolvedPresenceState={getResolvedPresenceState}
-      getPresenceDotState={getPresenceDotState}
       getStatEntries={getGroupStatEntries}
       getDeviceSessions={getDeviceSessions}
     />
@@ -1390,10 +1371,7 @@ export function RoomSelector({
                           avatarUrl={dmDetachedParticipant.avatarUrl}
                           roleLabel={ROOM_ROLE_LABELS.dm}
                           metaLine={dmFlavorLine}
-                          presenceState={dmDetachedParticipant.presenceState}
-                          isMuted={Boolean(dmDetachedParticipant.isMuted)}
-                          isGhost={Boolean(dmDetachedParticipant.ghost)}
-                          speaking={{
+                          presence={{
                             sessionId,
                             userId: dmDetachedParticipant.userId as UUID,
                             isSelf: dmDetachedParticipant.userId === currentUser?.id,
@@ -1403,16 +1381,12 @@ export function RoomSelector({
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="room-selector-profile-tooltip">
                       <GroupMemberProfileCard
+                        sessionId={sessionId}
+                        isSelf={dmDetachedParticipant.userId === currentUser?.id}
                         member={dmDetachedParticipant}
                         metaLine={dmFlavorLine}
                         statEntries={getGroupStatEntries(dmDetachedParticipant)}
                         environmentName={dmDetachedEnvironmentName}
-                        presenceLabel={String(
-                          getResolvedPresenceState(dmDetachedParticipant.presenceState)
-                        )}
-                        presenceDotState={getPresenceDotState(
-                          getResolvedPresenceState(dmDetachedParticipant.presenceState)
-                        )}
                         deviceSessions={getDeviceSessions(dmDetachedParticipant.userId)}
                       />
                     </TooltipContent>

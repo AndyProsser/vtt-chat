@@ -63,12 +63,6 @@ export interface GroupCardProps {
   getDisplayRoomName: (room: GroupPanelGroupWithParticipants) => string
   getResolvedEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
-  getResolvedPresenceState: (
-    presenceState: GroupParticipantWithGroupId['presenceState']
-  ) => GroupParticipantWithGroupId['presenceState']
-  getPresenceDotState: (
-    presenceState: GroupParticipantWithGroupId['presenceState']
-  ) => 'online' | 'offline'
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
   getDeviceSessions: (userId: UUID) => NonNullable<SessionPresence['deviceSessions']>
 }
@@ -92,9 +86,6 @@ function areSameParticipant(
     previous.level === next.level &&
     previous.characterStats === next.characterStats &&
     previous.roleLabel === next.roleLabel &&
-    previous.presenceState === next.presenceState &&
-    previous.ghost === next.ghost &&
-    previous.isMuted === next.isMuted &&
     previous.condition === next.condition &&
     previous.distanceLabel === next.distanceLabel
   )
@@ -156,8 +147,6 @@ function areGroupCardPropsEqual(previous: GroupCardProps, next: GroupCardProps):
     previous.getDisplayRoomName === next.getDisplayRoomName &&
     previous.getResolvedEnvironmentName === next.getResolvedEnvironmentName &&
     previous.getParticipantMetaLine === next.getParticipantMetaLine &&
-    previous.getResolvedPresenceState === next.getResolvedPresenceState &&
-    previous.getPresenceDotState === next.getPresenceDotState &&
     previous.getStatEntries === next.getStatEntries &&
     previous.getDeviceSessions === next.getDeviceSessions &&
     previous.room.id === next.room.id &&
@@ -210,8 +199,6 @@ function RoomGroupCardComponent({
   getDisplayRoomName,
   getResolvedEnvironmentName,
   getParticipantMetaLine,
-  getResolvedPresenceState,
-  getPresenceDotState,
   getStatEntries,
   getDeviceSessions,
 }: GroupCardProps) {
@@ -464,8 +451,6 @@ function RoomGroupCardComponent({
           touchFeedbackUserId={touchFeedbackUserId}
           setTouchFeedbackUserId={setTouchFeedbackUserId}
           getParticipantMetaLine={getParticipantMetaLine}
-          getResolvedPresenceState={getResolvedPresenceState}
-          getPresenceDotState={getPresenceDotState}
           getStatEntries={getStatEntries}
           getDeviceSessions={getDeviceSessions}
           getResolvedGroupEnvironmentName={getResolvedEnvironmentName}

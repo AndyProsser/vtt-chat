@@ -1,6 +1,8 @@
-import { RoomType, type PresenceState, type UUID } from '@shared'
+import { RoomType, type UUID } from '@shared'
 import { DEFAULT_AVATAR_META_LINES, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
 import { SpeakingIndicator } from './SpeakingIndicator'
+import { GhostIndicator } from './GhostIndicator'
+import { MicMutedIndicator } from './MicMutedIndicator'
 import '@/styles/components/workspaces/session/rooms/AvatarOverlay.css'
 
 interface AvatarOverlayProps {
@@ -8,19 +10,18 @@ interface AvatarOverlayProps {
   avatarUrl?: string | null
   roleLabel?: 'DM' | 'PLAYER' | 'SPECTATOR'
   metaLine?: string
-  presenceState?: PresenceState
-  isMuted?: boolean
-  isGhost?: boolean
   /**
-   * Speaking-indicator wiring. When provided, a leaf SpeakingIndicator
-   * subscribes directly to the per-user speaking bits from the store.
-   * The parent does not see speaking changes and is not re-rendered when
-   * this user starts or stops speaking — the only DOM change is a single
-   * child <span> mounting/unmounting on the avatar glyph.
+   * Per-user presence wiring. When provided, leaf indicators
+   * (SpeakingIndicator, MicMutedIndicator, GhostIndicator) subscribe directly
+   * to the per-user store bits. The parent does not see speaking, mute, or
+   * ghost flips and is not re-rendered when any of those change.
    *
-   * Omit to render the avatar without any speaking visualisation.
+   * The `.avatar-glyph--ghost` modifier is now driven by CSS
+   * `:has(.avatar-ghost-badge)` so the parent never needs the ghost bit.
+   *
+   * Omit `presence` to render the avatar without any presence leaves.
    */
-  speaking?: {
+  presence?: {
     sessionId: UUID
     userId: UUID
     isSelf?: boolean
@@ -38,9 +39,7 @@ export function AvatarOverlay({
   avatarUrl,
   roleLabel,
   metaLine,
-  isMuted = false,
-  isGhost = false,
-  speaking,
+  presence,
 }: AvatarOverlayProps) {
   const resolvedMetaLine =
     metaLine?.trim() ||
@@ -50,34 +49,28 @@ export function AvatarOverlay({
 
   return (
     <div className="avatar-overlay" data-testid="avatar-overlay">
-      <div className={`avatar-glyph ${isGhost ? 'avatar-glyph--ghost' : ''}`} aria-hidden="true">
+      <div className="avatar-glyph" aria-hidden="true">
         {avatarUrl ? (
           <img src={avatarUrl} alt="" className="avatar-glyph__image" />
         ) : (
           initialFor(username)
         )}
-        {speaking ? (
-          <SpeakingIndicator
-            sessionId={speaking.sessionId}
-            userId={speaking.userId}
-            isSelf={Boolean(speaking.isSelf)}
-            isMuted={isMuted}
-            roomType={speaking.roomType ?? RoomType.GROUP}
-          />
-        ) : null}
-        {isMuted ? (
-          <span className="avatar-muted-badge" aria-label="Muted microphone" role="img">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              mic_off
-            </span>
-          </span>
-        ) : null}
-        {isGhost ? (
-          <span className="avatar-ghost-badge" aria-label="Ghost mode" role="img">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              visibility_off
-            </span>
-          </span>
+        {presence ? (
+          <>
+            <SpeakingIndicator
+              sessionId={presence.sessionId}
+              userId={presence.userId}
+              isSelf={Boolean(presence.isSelf)}
+              roomType={presence.roomType ?? RoomType.GROUP}
+            />
+            <MicMutedIndicator
+              sessionId={presence.sessionId}
+              userId={presence.userId}
+              isSelf={Boolean(presence.isSelf)}
+              variant="avatar"
+            />
+            <GhostIndicator sessionId={presence.sessionId} userId={presence.userId} />
+          </>
         ) : null}
       </div>
       <div className="avatar-meta">
