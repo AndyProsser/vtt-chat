@@ -51,11 +51,10 @@ describe('CampaignInformationPanel', () => {
         sessionCount={1}
         totalSessionDurationMs={3600000}
         canEdit={true}
+        workspaceMode={true}
         onSaveCampaignInfo={vi.fn()}
       />
     )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
 
     await waitFor(() => {
       expect(screen.getByLabelText('Name')).toBeTruthy()
@@ -73,13 +72,12 @@ describe('CampaignInformationPanel', () => {
         sessionCount={1}
         totalSessionDurationMs={3600000}
         canEdit={true}
+        workspaceMode={true}
         onSaveCampaignInfo={onSaveCampaignInfo}
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
-
-    const nameInput = await screen.findByDisplayValue('Test Campaign')
+    const nameInput = await screen.findByLabelText('Name')
     fireEvent.change(nameInput, { target: { value: 'Updated Campaign' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save campaign information' }))
@@ -104,13 +102,12 @@ describe('CampaignInformationPanel', () => {
         sessionCount={1}
         totalSessionDurationMs={3600000}
         canEdit={true}
+        workspaceMode={true}
         onSaveCampaignInfo={onSaveCampaignInfo}
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
-
-    const nameInput = await screen.findByDisplayValue('Test Campaign')
+    const nameInput = await screen.findByLabelText('Name')
     fireEvent.change(nameInput, { target: { value: 'Changed Campaign' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo campaign edits' }))
@@ -126,11 +123,10 @@ describe('CampaignInformationPanel', () => {
         sessionCount={1}
         totalSessionDurationMs={3600000}
         canEdit={true}
+        workspaceMode={true}
         onSaveCampaignInfo={vi.fn()}
       />
     )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
 
     await waitFor(() => {
       expect(screen.queryByText(/Poster URL/i)).toBeNull()
