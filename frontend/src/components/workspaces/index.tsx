@@ -458,6 +458,8 @@ export function WorkspaceInitialization({
     apiUrl,
     token,
     currentSessionId,
+    currentSessionState: currentSession?.state ?? null,
+    wsState,
     fetchWithAuthGuard,
     updateSession,
     addMessage,

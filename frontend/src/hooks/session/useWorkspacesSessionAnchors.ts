@@ -1,10 +1,11 @@
-import { useCallback, useEffect } from 'react'
-import { MessageType, RoomType, type UUID } from '@shared'
+import { useCallback, useEffect, useRef } from 'react'
+import { MessageType, RoomType, SessionState, type UUID } from '@shared'
 import { generateClientId } from '@/utils/uuid'
 import { useStore } from '@/hooks/useStore'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Message } from '@/types/chat'
 import type { Room as RoomRecord } from '@/types/room'
+import type { ConnectionState } from '@/ws/client'
 import {
   isGreenRoom,
   isSessionBookendMessage,
@@ -16,6 +17,8 @@ type UseWorkspacesSessionAnchorsParams = {
   apiUrl: string
   token: string
   currentSessionId: UUID | null
+  currentSessionState: SessionState | null
+  wsState: ConnectionState
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
   updateSession: (sessionId: UUID, session: SessionRecord) => void
   addMessage: (sessionId: UUID, message: Message) => void
@@ -25,14 +28,36 @@ type UseWorkspacesSessionAnchorsParams = {
  * Owns periodic session-anchor refresh and boundary-bookend recovery for hydration.
  */
 export function useWorkspacesSessionAnchors(params: UseWorkspacesSessionAnchorsParams) {
-  const { apiUrl, token, currentSessionId, fetchWithAuthGuard, updateSession, addMessage } = params
+  const {
+    apiUrl,
+    token,
+    currentSessionId,
+    currentSessionState,
+    wsState,
+    fetchWithAuthGuard,
+    updateSession,
+    addMessage,
+  } = params
+  const previousWsStateRef = useRef<ConnectionState>(wsState)
+  const previousSessionStateRef = useRef<SessionState | null>(currentSessionState)
 
   useEffect(() => {
     if (!currentSessionId) {
+      previousWsStateRef.current = wsState
+      previousSessionStateRef.current = currentSessionState
       return
     }
 
     let cancelled = false
+    const shouldPollWhileDisconnected = wsState !== 'connected'
+    const enteredCooldownNow =
+      previousSessionStateRef.current !== SessionState.COOLDOWN &&
+      currentSessionState === SessionState.COOLDOWN
+    const shouldMaintainInterval = shouldPollWhileDisconnected
+    const shouldRefreshImmediately =
+      enteredCooldownNow ||
+      shouldPollWhileDisconnected ||
+      (previousWsStateRef.current !== 'connected' && wsState === 'connected')
 
     const syncSessionAnchors = async () => {
       try {
@@ -57,7 +82,19 @@ export function useWorkspacesSessionAnchors(params: UseWorkspacesSessionAnchorsP
       }
     }
 
-    void syncSessionAnchors()
+    previousWsStateRef.current = wsState
+    previousSessionStateRef.current = currentSessionState
+
+    if (shouldRefreshImmediately) {
+      void syncSessionAnchors()
+    }
+
+    if (!shouldMaintainInterval) {
+      return () => {
+        cancelled = true
+      }
+    }
+
     const timerId = window.setInterval(() => {
       void syncSessionAnchors()
     }, SESSION_TIMER_SYNC_POLL_MS)
@@ -66,7 +103,15 @@ export function useWorkspacesSessionAnchors(params: UseWorkspacesSessionAnchorsP
       cancelled = true
       window.clearInterval(timerId)
     }
-  }, [apiUrl, currentSessionId, fetchWithAuthGuard, token, updateSession])
+  }, [
+    apiUrl,
+    currentSessionId,
+    currentSessionState,
+    fetchWithAuthGuard,
+    token,
+    updateSession,
+    wsState,
+  ])
 
   const restoreSessionBookendsFromHistory = useCallback(
     async (sessionId: UUID, rooms: Array<Pick<RoomRecord, 'id' | 'type' | 'name'>>) => {

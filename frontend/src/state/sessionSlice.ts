@@ -14,6 +14,16 @@ import type { Session } from '@/types/session'
 const sessionById = (sessions: Record<UUID, Session>, id: UUID | string | null): Session | null =>
   id ? ((sessions as Record<string, Session>)[id] ?? null) : null
 
+const hasSessionChanges = (session: Session, updates: Partial<Session>): boolean => {
+  for (const [key, value] of Object.entries(updates)) {
+    if (!Object.is(session[key as keyof Session], value as Session[keyof Session])) {
+      return true
+    }
+  }
+
+  return false
+}
+
 export type { Session } from '@/types/session'
 
 export interface SessionPauseStats {
@@ -137,6 +147,10 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
     set((state) => {
       const session = state.sessions[sessionId]
       if (!session) return state
+
+      if (!hasSessionChanges(session, updates)) {
+        return state
+      }
 
       const nextSession = { ...session, ...updates }
       const nextSessions = {
