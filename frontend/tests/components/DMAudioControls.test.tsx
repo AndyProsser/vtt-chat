@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PresenceState, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
-import { DMAudioControls } from '../../src/components/session/DMAudioControls'
+import { DMAudioControls } from '../../src/components/workspaces/session/DMAudioControls'
 import { useStore } from '../../src/state/store'
 import { getUserDMOverride } from '@/utils/audioOverrides'
 

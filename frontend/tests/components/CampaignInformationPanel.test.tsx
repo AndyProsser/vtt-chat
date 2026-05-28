@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CampaignSummary } from '@shared'
-import { CampaignInformationPanel } from '../../src/components/session/CampaignInformationPanel'
+import { CampaignInformationPanel } from '../../src/components/workspaces/shared/panels/CampaignInformationPanel/CampaignInformationPanel'
 
 describe('CampaignInformationPanel', () => {
   const mockCampaign: CampaignSummary = {

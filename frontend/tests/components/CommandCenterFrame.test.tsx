@@ -2,10 +2,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Role } from '@shared'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
-  CommandCenterFrame,
+  SessionWorkspaceFrame as CommandCenterFrame,
   type ToolbarActionModel,
   getRightRailTabsForRole,
-} from '../../src/components/session/CommandCenterFrame'
+} from '../../src/components/workspaces/session/WorkspaceFrame'
 import { useStore } from '../../src/state/store'
 
 function renderToolbar(model: ToolbarActionModel) {

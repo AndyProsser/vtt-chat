@@ -43,8 +43,8 @@ vi.mock('../../src/components/auth/LoginForm', () => ({
   ),
 }))
 
-vi.mock('../../src/components/session/Workspaces', () => ({
-  Workspaces: ({ token, user }: { token: string; user: { username: string } }) => (
+vi.mock('../../src/components/workspaces', () => ({
+  WorkspaceInitialization: ({ token, user }: { token: string; user: { username: string } }) => (
     <div>
       Session Init Mounted: {token}:{user.username}
     </div>
@@ -67,6 +67,8 @@ describe('App shell', () => {
     })
     mockUseStore.mockClear()
     sessionStorage.clear()
+    localStorage.clear()
+    window.history.pushState({}, '', '/')
   })
 
   it('renders unauthenticated login surface by default', async () => {

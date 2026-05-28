@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react'
 import { type UUID } from '@shared'
 import { describe, expect, it } from 'vitest'
 import type { AudioDMOverride } from '@/types/audio'
-import { AudioPresetsPanel } from '../../src/components/audio/panels/AudioPresetsPanel'
-import { AudioEffectsPanel } from '../../src/components/audio/panels/AudioEffectsPanel'
-import { AudioDMOverridesPanel } from '../../src/components/audio/panels/AudioDMOverridesPanel'
+import { AudioPresetsPanel } from '../../src/components/workspaces/session/audio/panels/AudioPresetsPanel'
+import { AudioEffectsPanel } from '../../src/components/workspaces/session/audio/panels/AudioEffectsPanel'
+import { AudioDMOverridesPanel } from '../../src/components/workspaces/session/audio/panels/AudioDMOverridesPanel'
 
 describe('AudioPanel subcomponents', () => {
   it('renders presets section when active presets exist', () => {
