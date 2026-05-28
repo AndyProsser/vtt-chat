@@ -311,9 +311,13 @@ This project uses:
 From the repo root, run:
 
 ```bash
-npm run lint      # Check style issues
-npm run format    # Auto-format all files
-npm run check     # Run linting checks
+npm run lint           # Check style issues
+npm run lint:packages  # Lint backend + frontend + admin sequentially
+npm run lint:backend   # Lint backend only
+npm run lint:frontend  # Lint frontend only
+npm run lint:admin     # Lint admin only
+npm run format         # Auto-format all files
+npm run check          # Run linting checks
 ```
 
 For Windows developers, run lint/install commands from WSL bash so the toolchain matches Linux behavior:

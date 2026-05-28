@@ -9,6 +9,7 @@
     "build": "vite build",
     "build:debug": "VITE_DEBUG_BUILD=true vite build --mode development",
     "build:prod": "VITE_DEBUG_BUILD=false vite build --mode production",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "preview": "vite preview",
     "test": "NODE_NO_WARNINGS=1 vitest run",
     "test:coverage": "NODE_NO_WARNINGS=1 vitest run --coverage"

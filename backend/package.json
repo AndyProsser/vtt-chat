@@ -8,6 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "db:prepare": "node scripts/container-startup.mjs",
     "build": "prisma generate && tsc && tsc-alias",
+    "lint": "eslint . --ext .ts,.js",
     "generate": "prisma generate",
     "postinstall": "prisma generate",
     "start": "node dist/index.js",
