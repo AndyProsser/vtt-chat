@@ -356,6 +356,16 @@ describe('knowledge panels', () => {
                 'Hashtags: None\n\n' +
                 'The crown bears **three runes**.',
               type: MessageType.SYSTEM,
+              metadata: {
+                noteShared: {
+                  kind: 'NOTE_SHARED',
+                  noteId: asUuid('abababab-abab-4bab-8bab-abababababab'),
+                  title: 'Emerald Crown',
+                  markdown: 'The crown bears **three runes**.',
+                  sharedWith: 'All players',
+                  hashtags: 'None',
+                },
+              },
               createdAt: '2026-05-24T19:55:37.000Z',
             },
           ],

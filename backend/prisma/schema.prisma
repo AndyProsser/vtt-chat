@@ -281,6 +281,7 @@ model ChatMessage {
   isDmOnly       Boolean     @default(false)
   isOffTheRecord Boolean     @default(false)
   visibleTo      Json?
+  metadata       Json?
   createdAt      DateTime    @default(now())
   editedAt       DateTime?
   deletedAt      DateTime?

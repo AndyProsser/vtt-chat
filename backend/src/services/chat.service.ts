@@ -6,6 +6,7 @@
 
 import { MessageType } from '@shared'
 import type { UUID } from '@shared'
+import type { MessageMetadataEntity } from '@shared'
 import type { StoredMessage } from '@/types/chat.types'
 import {
   createChatMessageRecord,
@@ -194,6 +195,7 @@ function mapStoredMessage(row: {
   isDmOnly: boolean
   isOffTheRecord: boolean
   visibleTo: unknown
+  metadata: unknown
   createdAt: Date
   editedAt: Date | null
   deletedAt: Date | null
@@ -215,6 +217,7 @@ function mapStoredMessage(row: {
     isOffTheRecord: row.isOffTheRecord,
     visibleTo: visibility.visibleTo,
     targetIds: visibility.targetIds,
+    metadata: (row.metadata as MessageMetadataEntity | null | undefined) ?? undefined,
     createdAt: row.createdAt.getTime(),
     editedAt: row.editedAt?.getTime(),
     deletedAt: row.deletedAt?.getTime(),
@@ -247,6 +250,7 @@ export async function sendMessage(params: {
   recipientId?: UUID
   visibleTo?: UUID[]
   isOffTheRecord?: boolean
+  metadata?: MessageMetadataEntity
 }): Promise<StoredMessage> {
   const {
     sessionId,
@@ -260,6 +264,7 @@ export async function sendMessage(params: {
     recipientId,
     visibleTo,
     isOffTheRecord,
+    metadata,
   } = params
   const resolvedAuthorId = type === MessageType.SYSTEM ? SYSTEM_CHAT_AUTHOR_ID : authorId
   const resolvedAuthorUsername =
@@ -283,6 +288,7 @@ export async function sendMessage(params: {
     isOffTheRecord: isOffTheRecord ?? false,
     visibleTo: visibility.visibleTo,
     targetIds: visibility.targetIds,
+    metadata,
     createdAt: Date.now(),
   }
 
@@ -342,6 +348,7 @@ export async function sendMessage(params: {
     isDmOnly: message.isDmOnly,
     isOffTheRecord: message.isOffTheRecord,
     visibleTo: visibility,
+    metadata,
     createdAt: new Date(message.createdAt),
   })
 

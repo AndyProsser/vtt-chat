@@ -1,3 +1,5 @@
+import type { MessageMetadataEntity } from '@shared'
+
 export interface SessionHistoryMessage {
   id: string
   sessionId: string
@@ -7,6 +9,7 @@ export interface SessionHistoryMessage {
   content: string
   type: string
   isDmOnly?: boolean
+  metadata?: MessageMetadataEntity
   createdAt: number
 }
 

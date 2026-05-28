@@ -1,3 +1,5 @@
+import type { MessageMetadataEntity } from '@shared'
+
 const NOTE_SHARED_PREFIX = '[Note Shared]'
 const SHARED_WITH_PREFIX = 'Shared with:'
 const HASHTAGS_PREFIX = 'Hashtags:'
@@ -9,10 +11,26 @@ export interface ParsedNoteSharedMessage {
   markdown: string
 }
 
+function parseNoteSharedMessageMetadata(
+  metadata?: MessageMetadataEntity | null
+): ParsedNoteSharedMessage | null {
+  const noteShared = metadata?.noteShared
+  if (!noteShared || noteShared.kind !== 'NOTE_SHARED') {
+    return null
+  }
+
+  return {
+    title: noteShared.title.trim() || 'Untitled Handout',
+    sharedWith: noteShared.sharedWith?.trim() || null,
+    hashtags: noteShared.hashtags?.trim() || null,
+    markdown: noteShared.markdown ?? '',
+  }
+}
+
 /**
  * Parses the legacy text-based note-share system message into structured card fields.
  */
-export function parseNoteSharedMessage(content: string): ParsedNoteSharedMessage | null {
+function parseLegacyNoteSharedMessage(content: string): ParsedNoteSharedMessage | null {
   if (!content.startsWith(NOTE_SHARED_PREFIX)) {
     return null
   }
@@ -52,4 +70,13 @@ export function parseNoteSharedMessage(content: string): ParsedNoteSharedMessage
     hashtags,
     markdown: restLines.slice(cursor).join('\n').trim(),
   }
+}
+
+export function parseNoteSharedMessage(params: {
+  content: string
+  metadata?: MessageMetadataEntity | null
+}): ParsedNoteSharedMessage | null {
+  return (
+    parseNoteSharedMessageMetadata(params.metadata) ?? parseLegacyNoteSharedMessage(params.content)
+  )
 }

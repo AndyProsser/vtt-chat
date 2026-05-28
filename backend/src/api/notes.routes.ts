@@ -636,6 +636,16 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       `Hashtags: ${hashtagsSummary}\n` +
       `${snippet}`,
     type: MessageType.SYSTEM,
+    metadata: {
+      noteShared: {
+        kind: 'NOTE_SHARED',
+        noteId: published.id,
+        title: published.title,
+        markdown: published.content,
+        sharedWith: sharedWithSummary,
+        hashtags: hashtagsSummary,
+      },
+    },
   })
 
   await createSessionLog({

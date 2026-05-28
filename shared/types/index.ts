@@ -166,10 +166,12 @@ export interface Metadata {
 
 export type {
   DeviceSessionEntity,
+  MessageMetadataEntity,
   UserEntity,
   SessionEntity,
   RoomEntity,
   MessageEntity,
   NoteEntity,
+  NoteSharedMessageMetadata,
   PresenceEntity,
 } from './entities'

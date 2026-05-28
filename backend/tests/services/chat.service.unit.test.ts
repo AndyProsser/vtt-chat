@@ -147,6 +147,39 @@ describe('chat.service', () => {
     expect(mocks.createChatMessageRecord).toHaveBeenCalledTimes(1)
   })
 
+  it('persists structured message metadata when provided', async () => {
+    const message = await sendMessage({
+      sessionId: SESSION_ID,
+      authorId: AUTHOR_ID,
+      authorUsername: 'author',
+      dmId: DM_ID,
+      content: 'handout sent',
+      type: MessageType.SYSTEM,
+      metadata: {
+        noteShared: {
+          kind: 'NOTE_SHARED',
+          noteId: '55555555-5555-4555-8555-555555555555' as any,
+          title: 'Treasure Map',
+          markdown: '**Look closer**',
+          sharedWith: 'All players',
+          hashtags: '#clue',
+        },
+      },
+    })
+
+    expect(message.metadata?.noteShared?.title).toBe('Treasure Map')
+    expect(mocks.createChatMessageRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: {
+          noteShared: expect.objectContaining({
+            kind: 'NOTE_SHARED',
+            title: 'Treasure Map',
+          }),
+        },
+      })
+    )
+  })
+
   it('skips persistence for off-the-record whisper-group messages', async () => {
     const message = await sendMessage({
       sessionId: SESSION_ID,

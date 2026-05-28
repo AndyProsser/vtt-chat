@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as TabsPrimitive from '@radix-ui/react-tabs'
+import type { MessageMetadataEntity } from '@shared'
 import { MessageType, type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
@@ -220,6 +221,7 @@ export function HistoryPanel({
                 content: string
                 type: string
                 isDmOnly?: boolean
+                metadata?: MessageMetadataEntity | null
                 createdAt: string | number
               }>
             }
@@ -238,6 +240,7 @@ export function HistoryPanel({
                 content: message.content,
                 type: message.type,
                 isDmOnly: Boolean(message.isDmOnly),
+                metadata: message.metadata ?? undefined,
                 createdAt: toTimestamp(message.createdAt),
               }))
 
@@ -476,7 +479,12 @@ export function HistoryPanel({
                       message.content.startsWith('[Session Paused]') ||
                       message.content.startsWith('[Session Resumed]') ||
                       message.content.startsWith('[Session Cooldown]'))
-                  const noteShared = isSystem ? parseNoteSharedMessage(message.content) : null
+                  const noteShared = isSystem
+                    ? parseNoteSharedMessage({
+                        content: message.content,
+                        metadata: message.metadata,
+                      })
+                    : null
 
                   if (isSessionBookend) {
                     return null

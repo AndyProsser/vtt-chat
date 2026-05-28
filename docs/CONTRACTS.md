@@ -467,7 +467,7 @@ and conceptual architecture docs may show dotted names. Runtime transport contra
 
 **Chat** (file: `events/chat.ts`)
 
-- `CHAT:MESSAGE_SENT` — IC/OOC/whisper/DM/system, delivery metadata includes room scope, send-time audience, and off-the-record state; DM messages are sender + DM only, and private whisper-group messages target the visible private-room audience off the record
+- `CHAT:MESSAGE_SENT` — IC/OOC/whisper/DM/system, delivery metadata includes room scope, send-time audience, off-the-record state, and optional structured message metadata for special system cards; DM messages are sender + DM only, and private whisper-group messages target the visible private-room audience off the record
 - `CHAT:MESSAGE_EDITED` — Author or DM can edit
 - `CHAT:MESSAGE_DELETED` — Author or DM can delete
 - `CHAT:TYPING_STARTED` — Ephemeral, room-scoped payload, never durable
@@ -515,6 +515,7 @@ Notes visibility/publish sequencing contract:
 - Publish room targets must exclude whisper/private rooms, greenroom, and empty rooms; frontend should offer `Everyone` plus occupied MAIN/GROUP rooms only.
 - Publishing to `Everyone` upgrades the note visibility to `PLAYERS_VISIBLE`; publishing to a room upgrades/shares the note to the players currently in that room before emitting chat.
 - Publishing a note emits `NOTES:UPDATED` first and then `CHAT:MESSAGE_SENT`, both using the same visibility audience for that note and the selected room/global destination.
+- Published note chat messages must include `message.metadata.noteShared = { kind: 'NOTE_SHARED', noteId, title, markdown, sharedWith, hashtags }` so recipients render a handout card from structured data rather than reparsing the chat text body.
 - Publishing writes both an audit record (`NOTES.PUBLISHED`) and a session-log record for traceability.
 
 **Audio** (file: `events/audio.ts`)

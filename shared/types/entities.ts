@@ -62,6 +62,19 @@ export interface RoomEntity {
   updatedAt?: number
 }
 
+export interface NoteSharedMessageMetadata {
+  kind: 'NOTE_SHARED'
+  noteId: UUID
+  title: string
+  markdown: string
+  sharedWith: string
+  hashtags: string
+}
+
+export interface MessageMetadataEntity {
+  noteShared?: NoteSharedMessageMetadata
+}
+
 export interface MessageEntity {
   id: UUID
   sessionId?: UUID
@@ -74,6 +87,7 @@ export interface MessageEntity {
   isOffTheRecord?: boolean
   visibleTo?: UUID[]
   targetIds?: UUID[]
+  metadata?: MessageMetadataEntity
   createdAt: number
   editedAt?: number
 }

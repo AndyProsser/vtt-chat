@@ -366,6 +366,45 @@ describe('ChatWindow timeline behavior', () => {
     expect(screen.queryByText('[Note Shared] Treasure Map')).toBeNull()
   })
 
+  it('prefers structured note-share metadata over legacy text payloads', () => {
+    renderWithTooltip(
+      <MessageList
+        currentUserId={String(USER_ID)}
+        activeRoomId={MAIN_ROOM_ID}
+        messages={
+          [
+            {
+              id: 'd0ffee00-abab-4aba-8aba-abababababab' as UUID,
+              roomId: MAIN_ROOM_ID,
+              authorId: USER_ID,
+              authorUsername: 'SYSTEM',
+              content:
+                '[Note Shared] Legacy title\nShared with: Legacy\nHashtags: #old\n\nOld body',
+              type: MessageType.SYSTEM,
+              isDmOnly: false,
+              metadata: {
+                noteShared: {
+                  kind: 'NOTE_SHARED',
+                  noteId: 'f0ffee00-abab-4aba-8aba-abababababab' as UUID,
+                  title: 'Structured title',
+                  markdown: '**Structured body**',
+                  sharedWith: 'All players',
+                  hashtags: '#new',
+                },
+              },
+              createdAt: Date.now(),
+            },
+          ] as any
+        }
+      />
+    )
+
+    expect(screen.getByText('Structured title')).toBeTruthy()
+    expect(screen.getByText('Structured body')).toBeTruthy()
+    expect(screen.queryByText('Legacy title')).toBeNull()
+    expect(screen.queryByText('Old body')).toBeNull()
+  })
+
   it('renders day separators for editorial timeline grouping', () => {
     const yesterday = Date.now() - 24 * 60 * 60 * 1000
 

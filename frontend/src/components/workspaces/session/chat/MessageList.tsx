@@ -253,7 +253,9 @@ function MessageListComponent({
           isSystem && SESSION_BOOKEND_PREFIXES.some((prefix) => msg.content.startsWith(prefix))
         const sessionBookendState = isSessionBookend ? getSessionBookendState(msg.content) : null
         const isSessionNote = isSystem && msg.content.startsWith(SESSION_NOTE_PREFIX)
-        const noteShared = isSystem ? parseNoteSharedMessage(msg.content) : null
+        const noteShared = isSystem
+          ? parseNoteSharedMessage({ content: msg.content, metadata: msg.metadata })
+          : null
         const recapPrefix = msg.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
           ? CAMPAIGN_BRIEF_PREFIX
           : SESSION_RECAP_PREFIX

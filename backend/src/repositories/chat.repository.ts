@@ -14,6 +14,7 @@ export async function createChatMessageRecord(params: {
   isDmOnly: boolean
   isOffTheRecord?: boolean
   visibleTo?: unknown
+  metadata?: unknown
   createdAt: Date
 }): Promise<void> {
   await prisma.chatMessage.create({
@@ -28,6 +29,7 @@ export async function createChatMessageRecord(params: {
       isDmOnly: params.isDmOnly,
       isOffTheRecord: params.isOffTheRecord ?? false,
       visibleTo: params.visibleTo ? (params.visibleTo as Prisma.InputJsonValue) : undefined,
+      metadata: params.metadata ? (params.metadata as Prisma.InputJsonValue) : undefined,
       createdAt: params.createdAt,
     },
   })
@@ -44,6 +46,7 @@ export async function listSessionMessages(sessionId: string): Promise<
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
+    metadata: unknown
     createdAt: Date
     editedAt: Date | null
     deletedAt: Date | null
@@ -97,6 +100,7 @@ export async function listSessionMessagesSince(
     isDmOnly: row.isDmOnly,
     isOffTheRecord: row.isOffTheRecord,
     visibleTo: row.visibleTo,
+    metadata: row.metadata,
     createdAt: row.createdAt,
     editedAt: row.editedAt,
     deletedAt: row.deletedAt,
@@ -121,6 +125,7 @@ export async function listSessionMessagesPage(params: {
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
+    metadata: unknown
     createdAt: Date
     editedAt: Date | null
     deletedAt: Date | null
@@ -176,6 +181,7 @@ export async function listSessionMessagesPage(params: {
       isDmOnly: row.isDmOnly,
       isOffTheRecord: row.isOffTheRecord,
       visibleTo: row.visibleTo,
+      metadata: row.metadata,
       createdAt: row.createdAt,
       editedAt: row.editedAt,
       deletedAt: row.deletedAt,
@@ -196,6 +202,7 @@ export async function listMessagesBySessionIds(sessionIds: string[]): Promise<
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
+    metadata: unknown
     createdAt: Date
     editedAt: Date | null
     deletedAt: Date | null
@@ -225,6 +232,7 @@ export async function listMessagesBySessionIds(sessionIds: string[]): Promise<
     isDmOnly: row.isDmOnly,
     isOffTheRecord: row.isOffTheRecord,
     visibleTo: row.visibleTo,
+    metadata: row.metadata,
     createdAt: row.createdAt,
     editedAt: row.editedAt,
     deletedAt: row.deletedAt,
@@ -247,6 +255,7 @@ export async function listMessagesBySessionIdsPage(params: {
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
+    metadata: unknown
     createdAt: Date
     editedAt: Date | null
     deletedAt: Date | null
@@ -333,6 +342,7 @@ export async function findMessageById(messageId: string): Promise<{
     isDmOnly: row.isDmOnly,
     isOffTheRecord: row.isOffTheRecord,
     visibleTo: row.visibleTo,
+    metadata: row.metadata,
     createdAt: row.createdAt,
     editedAt: row.editedAt,
     deletedAt: row.deletedAt,
@@ -396,6 +406,7 @@ export async function listCampaignMessages(campaignId: string): Promise<
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
+    metadata: unknown
     createdAt: Date
     editedAt: Date | null
     deletedAt: Date | null
@@ -419,6 +430,7 @@ export async function listCampaignMessagesSince(
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
+    metadata: unknown
     createdAt: Date
     editedAt: Date | null
     deletedAt: Date | null
@@ -451,6 +463,7 @@ export async function listCampaignMessagesSince(
       isDmOnly: row.isDmOnly,
       isOffTheRecord: row.isOffTheRecord,
       visibleTo: row.visibleTo,
+      metadata: row.metadata,
       createdAt: row.createdAt,
       editedAt: row.editedAt,
       deletedAt: row.deletedAt,
@@ -479,6 +492,7 @@ export async function listCampaignMessagesPage(params: {
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
+    metadata: unknown
     createdAt: Date
     editedAt: Date | null
     deletedAt: Date | null
@@ -529,6 +543,7 @@ export async function listCampaignMessagesPage(params: {
         isDmOnly: row.isDmOnly,
         isOffTheRecord: row.isOffTheRecord,
         visibleTo: row.visibleTo,
+        metadata: row.metadata,
         createdAt: row.createdAt,
         editedAt: row.editedAt,
         deletedAt: row.deletedAt,

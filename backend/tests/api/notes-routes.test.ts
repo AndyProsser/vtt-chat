@@ -590,6 +590,16 @@ describe('notes routes', () => {
     expect(mocks.mockSendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringContaining(`[Note Shared] Recap`),
+        metadata: {
+          noteShared: {
+            kind: 'NOTE_SHARED',
+            noteId: NOTE_ID,
+            title: 'Recap',
+            markdown: longContent,
+            sharedWith: 'other-user',
+            hashtags: 'None',
+          },
+        },
       })
     )
     expect(mocks.mockAppendSessionAuditEvent).toHaveBeenCalledWith(
