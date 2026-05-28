@@ -63,11 +63,11 @@ module.exports = [
   },
   {
     files: [
-      'frontend/src/components/workspaces/index.tsx',
-      'frontend/src/components/workspaces/session/WorkspaceFrame.tsx',
-      'frontend/src/components/workspaces/session/DMAudioControls.tsx',
-      'frontend/src/components/workspaces/session/rooms/RoomSelector.tsx',
-      'frontend/src/components/workspaces/shared/panels/CampaignInformationPanel.tsx',
+      '**/src/components/workspaces/index.tsx',
+      '**/src/components/workspaces/session/WorkspaceFrame.tsx',
+      '**/src/components/workspaces/session/DMAudioControls.tsx',
+      '**/src/components/workspaces/session/rooms/RoomSelector.tsx',
+      '**/src/components/workspaces/shared/panels/CampaignInformationPanel.tsx',
     ],
     rules: {
       'react-hooks/set-state-in-effect': 'off',

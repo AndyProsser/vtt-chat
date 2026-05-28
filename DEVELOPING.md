@@ -316,6 +316,18 @@ npm run format    # Auto-format all files
 npm run check     # Run linting checks
 ```
 
+For Windows developers, run lint/install commands from WSL bash so the toolchain matches Linux behavior:
+
+```bash
+wsl -e bash -lc "cd /mnt/c/Users/<your-user>/dev/vtt-chat && npm install"
+wsl -e bash -lc "cd /mnt/c/Users/<your-user>/dev/vtt-chat && npm run lint"
+```
+
+ESLint 10 compatibility note:
+
+- The repo currently includes a temporary `.npmrc` setting (`legacy-peer-deps=true`) because `eslint-plugin-react` has not yet published a peer range that includes ESLint 10.
+- Remove this setting after `eslint-plugin-react` declares ESLint 10 support and installs succeed without peer-resolution overrides.
+
 VS Code will auto‑format on save.
 
 ---
