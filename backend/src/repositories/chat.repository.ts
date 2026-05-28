@@ -70,6 +70,7 @@ export async function listSessionMessagesSince(
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
+    metadata: unknown
     createdAt: Date
     editedAt: Date | null
     deletedAt: Date | null
@@ -300,6 +301,7 @@ export async function listMessagesBySessionIdsPage(params: {
       isDmOnly: row.isDmOnly,
       isOffTheRecord: row.isOffTheRecord,
       visibleTo: row.visibleTo,
+      metadata: row.metadata,
       createdAt: row.createdAt,
       editedAt: row.editedAt,
       deletedAt: row.deletedAt,
@@ -320,6 +322,7 @@ export async function findMessageById(messageId: string): Promise<{
   isDmOnly: boolean
   isOffTheRecord: boolean
   visibleTo: unknown
+  metadata: unknown
   createdAt: Date
   editedAt: Date | null
   deletedAt: Date | null
