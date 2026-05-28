@@ -67,7 +67,9 @@ describe('App shell', () => {
     })
     mockUseStore.mockClear()
     sessionStorage.clear()
-    localStorage.clear()
+    if (typeof localStorage !== 'undefined') {
+      localStorage.clear()
+    }
     window.history.pushState({}, '', '/')
   })
 

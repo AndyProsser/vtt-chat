@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { BrowseCampaignsPage } from '../../src/components/auth/BrowseCampaignsPage'
-import { InviteJoinPage } from '../../src/components/auth/InviteJoinPage'
-import { SpectatorInvitePage } from '../../src/components/auth/SpectatorInvitePage'
+import { BrowseCampaignsPage } from '../../src/components/guest/BrowseCampaignsPage'
+import { InviteJoinPage } from '../../src/components/guest/InviteJoinPage'
+import { SpectatorInvitePage } from '../../src/components/watch/SpectatorInvitePage'
 
 describe('guest auth route surfaces', () => {
   beforeEach(() => {

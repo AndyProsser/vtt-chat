@@ -44,7 +44,7 @@ describe('CampaignInformationPanel', () => {
     expect(screen.queryByRole('button', { name: /open full settings/i })).toBeNull()
   })
 
-  it('enters edit mode and shows icon formatting toolbar', async () => {
+  it('enters edit mode and shows campaign metadata editors', async () => {
     render(
       <CampaignInformationPanel
         campaign={mockCampaign}
@@ -58,10 +58,10 @@ describe('CampaignInformationPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Bold')).toBeTruthy()
-      expect(screen.getByLabelText('Italic')).toBeTruthy()
-      expect(screen.getByLabelText('Bullet list')).toBeTruthy()
-      expect(screen.getByLabelText('Numbered list')).toBeTruthy()
+      expect(screen.getByLabelText('Name')).toBeTruthy()
+      expect(screen.getByText('Description')).toBeTruthy()
+      expect(screen.getByLabelText('Save campaign information')).toBeTruthy()
+      expect(screen.getByLabelText('Undo campaign edits')).toBeTruthy()
     })
   })
 
@@ -80,10 +80,7 @@ describe('CampaignInformationPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
 
     const nameInput = await screen.findByDisplayValue('Test Campaign')
-    const descInput = screen.getByDisplayValue('A test campaign description')
-
     fireEvent.change(nameInput, { target: { value: 'Updated Campaign' } })
-    fireEvent.change(descInput, { target: { value: 'Updated description' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save campaign information' }))
 
@@ -92,7 +89,7 @@ describe('CampaignInformationPanel', () => {
         'campaign-1',
         expect.objectContaining({
           name: 'Updated Campaign',
-          description: 'Updated description',
+          description: 'A test campaign description',
           integrationSyncPolicy: 'ALLOW',
         })
       )
