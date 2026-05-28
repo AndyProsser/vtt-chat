@@ -217,6 +217,7 @@
 }
 
 .room-selector-stack {
+  grid-row: 1 / -1;
   min-height: 0;
   height: 100%;
   display: grid;
@@ -232,7 +233,8 @@
   align-content: start;
   gap: 0.28rem;
   min-height: 0;
-  height: 100%;
+  /* Force the list row to consume the full available slot so whisper stays bottom-pinned. */
+  height: calc(100% - 0px);
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -243,7 +245,7 @@
   position: relative;
   z-index: 2;
   border-top: 1px dashed color-mix(in srgb, var(--color-border-soft) 58%, transparent);
-  margin-top: 0.12rem;
+  margin-top: 0.2rem;
   padding: 0.24rem 0 0;
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
   border-radius: var(--radius-sm);
