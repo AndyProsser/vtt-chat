@@ -14,6 +14,7 @@ import { CHAT_HISTORY_PAGE_SIZE } from '@/constants/chatPresence.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
+import { TypingIndicator } from './TypingIndicator'
 import type { OutgoingChatMessage } from '@/state/chatSlice'
 import type { BookendState, Message } from '@/types/chat'
 import { generateClientId } from '@/utils/uuid'
@@ -37,12 +38,6 @@ interface ChatWindowProps {
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const AUTO_FOLLOW_BOTTOM_THRESHOLD_PX = 48
 const AUTO_FOLLOW_SMOOTH_SETTLE_MS = 480
-const EMPTY_TYPING_INDICATORS: Array<{
-  userId: UUID
-  username: string
-  roomId?: UUID
-  until: number
-}> = []
 const EMPTY_PARTICIPANT_DIRECTORY: Record<
   UUID,
   {
@@ -179,9 +174,9 @@ export function ChatWindow({
   const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
     | Record<UUID, Message>
     | undefined
-  const sessionTypingIndicators = useStore(
-    (state) => state.presenceTypingBySession[sessionId] ?? EMPTY_TYPING_INDICATORS
-  )
+  // Typing indicators are intentionally NOT read here. They flip at keystroke
+  // frequency and would re-render the whole chat window. See <TypingIndicator />
+  // below for the leaf subscription.
   const sessionPresence = useStore(
     (state) =>
       ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
@@ -270,35 +265,6 @@ export function ChatWindow({
 
     return [...values].sort((a, b) => a.createdAt - b.createdAt)
   }, [sessionMessages])
-
-  const [typingClock, setTypingClock] = useState(() => Date.now())
-
-  useEffect(() => {
-    const indicators = sessionTypingIndicators
-    let nextTypingExpiryAt: number | null = null
-    for (const indicator of indicators) {
-      if (indicator.until <= typingClock) {
-        continue
-      }
-
-      if (nextTypingExpiryAt === null || indicator.until < nextTypingExpiryAt) {
-        nextTypingExpiryAt = indicator.until
-      }
-    }
-
-    if (!nextTypingExpiryAt) {
-      return
-    }
-
-    const timeoutDelayMs = Math.max(0, nextTypingExpiryAt - Date.now() + 12)
-    const timeoutId = window.setTimeout(() => {
-      setTypingClock(Date.now())
-    }, timeoutDelayMs)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [sessionTypingIndicators, typingClock])
 
   useEffect(() => {
     isLoadingOlderRef.current = isLoadingOlder
@@ -741,45 +707,6 @@ export function ChatWindow({
       .sort((left, right) => left.label.localeCompare(right.label))
   }, [roomId, sessionPresence, sessionRecord?.dmId, user.id, user.role])
 
-  const typingProjection = useMemo(() => {
-    const activeTypingUsers: Array<{
-      userId: UUID
-      username: string
-      roomId?: UUID
-      until: number
-    }> = []
-    const typingDisplayNames: string[] = []
-
-    for (const indicator of sessionTypingIndicators) {
-      if (indicator.until <= typingClock) {
-        continue
-      }
-
-      if (indicator.userId === user.id) {
-        continue
-      }
-
-      if (indicator.roomId && indicator.roomId !== roomId) {
-        continue
-      }
-
-      activeTypingUsers.push(indicator)
-      typingDisplayNames.push(
-        participantDirectory[indicator.userId]?.displayName || indicator.username
-      )
-    }
-
-    const typingSummary =
-      typingDisplayNames.length === 1
-        ? `${typingDisplayNames[0]} is typing`
-        : `${typingDisplayNames[0]} +${typingDisplayNames.length - 1} are typing`
-
-    return {
-      typingUsers: activeTypingUsers,
-      typingSummary,
-    }
-  }, [participantDirectory, roomId, sessionTypingIndicators, typingClock, user.id])
-
   const emitTypingEvent = useCallback(
     (type: 'CHAT:TYPING_STARTED' | 'CHAT:TYPING_STOPPED') => {
       if (!sendWsEvent) {
@@ -830,8 +757,6 @@ export function ChatWindow({
         .sort((a, b) => b.createdAt - a.createdAt),
     [roomId, sessionOutgoingQueue]
   )
-
-  const { typingUsers, typingSummary } = typingProjection
 
   const latestVisibleMessage = visibleMessages[visibleMessages.length - 1]
   const latestVisibleMessageKey = latestVisibleMessage
@@ -1161,21 +1086,7 @@ export function ChatWindow({
         </TooltipProvider>
       ) : null}
 
-      <div className="session-chat-window__typing-slot" aria-live="polite">
-        <div
-          className={`session-chat-window__typing-overlay ${typingUsers.length > 0 ? 'session-chat-window__typing-overlay--active' : ''}`}
-          aria-hidden={typingUsers.length === 0}
-        >
-          <span className="session-chat-window__typing-text">
-            {typingUsers.length > 0 ? typingSummary : ''}
-          </span>
-          <span className="session-chat-window__typing-dots" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
-        </div>
-      </div>
+      <TypingIndicator sessionId={sessionId} roomId={roomId} currentUserId={user.id} />
 
       {/* Input */}
       <MessageInput

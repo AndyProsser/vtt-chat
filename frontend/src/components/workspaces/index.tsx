@@ -467,13 +467,15 @@ export function WorkspaceInitialization({
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
       ? currentTransitionNotice
       : undefined
+  // History is past-session only — it never reflects current session activity,
+  // so it must not carry a live badge (transition notices belong elsewhere).
   const rightRailIndicators = useMemo<Partial<Record<RightRailTab, number>>>(
     () => ({
       notes: currentSessionHandoutCount,
       journal: 0,
-      history: activeTransitionNotice ? 1 : 0,
+      history: 0,
     }),
-    [activeTransitionNotice, currentSessionHandoutCount]
+    [currentSessionHandoutCount]
   )
 
   useWorkspacesGreenroomCarryLifecycle({
