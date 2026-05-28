@@ -2,8 +2,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { PresenceState, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AvatarOverlay } from '../../src/components/rooms/AvatarOverlay'
-import { GroupsPanel as RoomSelector } from '../../src/components/rooms/GroupsPanel'
+import { AvatarOverlay } from '../../src/components/workspaces/session/rooms/AvatarOverlay'
+import { GroupsPanel as RoomSelector } from '../../src/components/workspaces/session/rooms/GroupsPanel'
 import { useStore } from '../../src/hooks/useStore'
 import { getUserDMOverride } from '@/utils/audioOverrides'
 
@@ -66,7 +66,7 @@ describe('AvatarOverlay', () => {
     expect(screen.getByText('Aria')).toBeTruthy()
     expect(screen.getByText('PLAYER')).toBeTruthy()
     expect(screen.getByText('Wizard | Level 7 | Elf')).toBeTruthy()
-    expect(screen.getByLabelText('Muted microphone')).toBeTruthy()
+    expect(screen.queryByLabelText('Muted microphone')).toBeNull()
     expect(screen.queryByText('Muted')).toBeNull()
   })
 })
@@ -129,7 +129,7 @@ describe('RoomSelector', () => {
     expect(screen.queryByText('Main Group')).toBeNull()
     expect(screen.getByText('Morgan')).toBeTruthy()
     expect(screen.getByText('Tara')).toBeTruthy()
-    expect(screen.getByText('Rogue | Level 5 | Halfling')).toBeTruthy()
+    expect(screen.getByText('Rogue | Halfling | Level 5')).toBeTruthy()
 
     fireEvent.click(getSelectGroupButton('Tavern'))
     expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-1'))

@@ -8,7 +8,7 @@ import {
   createCampaignSettingsController,
   createCharacterSettingsController,
   createSessionMembershipController,
-} from '../../src/components/session/sessionController'
+} from '../../src/utils/session/sessionController'
 import { DEFAULT_CHARACTER_SETTINGS } from '../../src/hooks/useCharacterSettings'
 import type { UUID } from '@shared'
 

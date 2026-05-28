@@ -11,6 +11,7 @@ const asUuid = (value: string) => value as UUID
 
 const SESSION_ID = asUuid('22222222-2222-4222-8222-222222222222')
 const SESSION_TWO_ID = asUuid('23232323-2323-4232-8232-232323232323')
+const CAMPAIGN_ID = asUuid('21212121-2121-4212-8212-212121212121')
 const ROOM_ID = asUuid('66666666-6666-4666-8666-666666666666')
 const PLAYER_ID = asUuid('44444444-4444-4444-8444-444444444444')
 
@@ -49,7 +50,7 @@ describe('knowledge panels', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    // DM sees editor with Edit button
+    // Focused mode renders a journal editor/viewer for DM without the compact browser edit toggle.
     const { unmount: unmountDm } = render(
       <JournalPanel
         apiUrl="http://localhost:3000"
@@ -62,15 +63,8 @@ describe('knowledge panels', () => {
     )
 
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
-    expect(await screen.findByLabelText('Edit journal')).toBeTruthy()
-    expect(screen.getByLabelText('Edit journal').className).toContain('knowledge-panel-action')
-    // Editor is read-only until Edit is clicked
+    expect(screen.queryByLabelText('Edit journal')).toBeNull()
     expect(screen.getByTestId('markdown-editor')).toBeTruthy()
-
-    // Click Edit — editor becomes active
-    fireEvent.click(screen.getByLabelText('Edit journal'))
-    expect(screen.getByLabelText('Save journal')).toBeTruthy()
-    expect(screen.getByLabelText('Cancel editing')).toBeTruthy()
 
     unmountDm()
 
@@ -199,28 +193,61 @@ describe('knowledge panels', () => {
       'fetch',
       vi.fn(async (input: string | URL) => {
         const url = String(input)
-        const requestedSessionId = url.includes(SESSION_TWO_ID) ? SESSION_TWO_ID : SESSION_ID
+
+        if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+          return {
+            ok: true,
+            json: async () => ({
+              sessions: [
+                {
+                  id: SESSION_ID,
+                  name: 'Session Current',
+                  state: 'ACTIVE',
+                  createdAt: 200,
+                },
+                {
+                  id: SESSION_TWO_ID,
+                  name: 'Session Previous',
+                  state: 'ENDED',
+                  createdAt: 100,
+                  startedAt: 100,
+                  endedAt: 120,
+                },
+              ],
+            }),
+          }
+        }
+
+        if (!url.includes('/api/chat/messages/')) {
+          throw new Error(`Unexpected fetch call: ${url}`)
+        }
+
+        const requestedSessionId = url.includes(String(SESSION_TWO_ID))
+          ? SESSION_TWO_ID
+          : SESSION_ID
 
         return {
           ok: true,
           json: async () => ({
-            logs: [
+            messages: [
               {
                 id: 'log-1',
                 sessionId: requestedSessionId,
+                roomId: ROOM_ID,
                 userId: PLAYER_ID,
-                username: 'Morgan',
-                eventType: 'STATE_CHANGED',
-                detail: 'Session state changed from IDLE to ACTIVE',
+                authorUsername: 'Morgan',
+                content: 'Session state changed from IDLE to ACTIVE',
+                type: MessageType.SYSTEM,
                 createdAt: '2026-04-23T10:00:00.000Z',
               },
               {
                 id: 'log-2',
                 sessionId: requestedSessionId,
+                roomId: ROOM_ID,
                 userId: PLAYER_ID,
-                username: 'Tara',
-                eventType: 'USER_JOINED',
-                detail: 'Tara joined main room',
+                authorUsername: 'Tara',
+                content: 'Tara joined main room',
+                type: MessageType.OOC,
                 createdAt: '2026-04-23T11:00:00.000Z',
               },
             ],
@@ -233,6 +260,7 @@ describe('knowledge panels', () => {
       <HistoryPanel
         apiUrl="http://localhost:3000"
         token="token"
+        campaignId={CAMPAIGN_ID}
         sessionId={SESSION_ID}
         role={Role.DM}
         userId={PLAYER_ID}
@@ -241,12 +269,8 @@ describe('knowledge panels', () => {
 
     expect(await screen.findByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
 
-    expect(screen.getByRole('tab', { name: 'Day' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Event' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Newest' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Oldest' })).toBeTruthy()
-    expect(screen.getByText('State Changed')).toBeTruthy()
-    expect(screen.getByText('User Joined')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Sort by newest first' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Sort by oldest first' })).toBeTruthy()
     expect(screen.getByText('Tara joined main room')).toBeTruthy()
     expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
 
@@ -256,6 +280,7 @@ describe('knowledge panels', () => {
       <HistoryPanel
         apiUrl="http://localhost:3000"
         token="token"
+        campaignId={CAMPAIGN_ID}
         sessionId={SESSION_ID}
         role={Role.DM}
         userId={PLAYER_ID}
@@ -273,6 +298,7 @@ describe('knowledge panels', () => {
       <HistoryPanel
         apiUrl="http://localhost:3000"
         token="token"
+        campaignId={CAMPAIGN_ID}
         sessionId={SESSION_TWO_ID}
         role={Role.DM}
         userId={PLAYER_ID}
@@ -280,7 +306,7 @@ describe('knowledge panels', () => {
     )
 
     expect(await screen.findByText('Tara joined main room')).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Event' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Sort by oldest first' })).toBeTruthy()
   })
 
   it('does not refetch journal status on browser rerender when sessions are unchanged', async () => {

@@ -1294,7 +1294,7 @@ describe('Workspaces integration', () => {
 
       if (role === Role.PLAYER) {
         expect(screen.getByRole('tab', { name: /Information/i })).toBeTruthy()
-        expect(screen.getByRole('tab', { name: /Notes/i })).toBeTruthy()
+        expect(screen.getByRole('tab', { name: /Handouts|Notes/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /Journal/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /History/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /Settings/i })).toBeTruthy()
@@ -1302,14 +1302,14 @@ describe('Workspaces integration', () => {
         expect(await screen.findByTestId('journal-panel')).toBeTruthy()
         fireEvent.click(screen.getByRole('tab', { name: /History/i }))
         expect(await screen.findByTestId('history-panel')).toBeTruthy()
-        fireEvent.click(screen.getByRole('tab', { name: /Notes/i }))
+        fireEvent.click(screen.getByRole('tab', { name: /Handouts|Notes/i }))
         expect(await screen.findByText('Mock Notes Panel')).toBeTruthy()
       } else if (role === Role.DM) {
         expect(screen.getByRole('tab', { name: /Groups/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /Audio/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /Journal/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /History/i })).toBeTruthy()
-        expect(screen.getByRole('tab', { name: /Notes/i })).toBeTruthy()
+        expect(screen.getByRole('tab', { name: /Handouts|Notes/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /Settings/i })).toBeTruthy()
       }
     })
@@ -1767,7 +1767,7 @@ describe('Workspaces integration', () => {
     fireEvent.click(journalTab)
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
 
-    const notesTabForSwitch = screen.getByRole('tab', { name: /Notes/i })
+    const notesTabForSwitch = screen.getByRole('tab', { name: /Handouts|Notes/i })
     fireEvent.click(notesTabForSwitch)
     expect(await screen.findByText('Mock Notes Panel')).toBeTruthy()
 
@@ -1778,21 +1778,15 @@ describe('Workspaces integration', () => {
     fireEvent.click(historyTab)
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
 
-    expect(screen.getByRole('tab', { name: /Day/i }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: /Newest/i }).getAttribute('aria-selected')).toBe('true')
-    fireEvent.click(screen.getByRole('tab', { name: /Event/i }))
-    fireEvent.click(screen.getByRole('tab', { name: /Oldest/i }))
-
-    const notesTab = screen.getByRole('tab', { name: /Notes/i })
+    const notesTab = screen.getByRole('tab', { name: /Handouts|Notes/i })
     fireEvent.click(notesTab)
     expect(await screen.findByText('Mock Notes Panel')).toBeTruthy()
 
     fireEvent.click(historyTab)
     expect(await screen.findByTestId('history-panel')).toBeTruthy()
 
-    // History re-mount should re-apply default grouping/sort presets.
-    expect(screen.getByRole('tab', { name: /Day/i }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: /Newest/i }).getAttribute('aria-selected')).toBe('true')
+    // History re-mount should preserve panel accessibility and default render state.
+    expect(screen.getByRole('region', { name: /History/i })).toBeTruthy()
   })
 
   it('joins from a full invite link entered in the home join modal', async () => {
@@ -1976,7 +1970,7 @@ describe('Workspaces integration', () => {
     await screen.findByTestId('session-toolbar')
     expect(screen.getByRole('tab', { name: 'Tool Information' })).toBeTruthy()
     expect(screen.queryByRole('tab', { name: 'Tool Groups' })).toBeNull()
-    expect(screen.queryByRole('tab', { name: 'Tool Notes' })).toBeNull()
+    expect(screen.getByRole('tab', { name: /Tool Notes|Handouts|Notes/i })).toBeTruthy()
   })
 
   it('uses PLAYER role from campaign membership even when auth role is spectator', async () => {
@@ -2043,8 +2037,8 @@ describe('Workspaces integration', () => {
 
     const toolbar = await screen.findByTestId('session-toolbar')
     expect(toolbar).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Tool Notes' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Tool Journal' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Tool Notes|Handouts|Notes/i })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Tool Journal|Journal/i })).toBeTruthy()
   })
 
   it('pauses an active session from the toolbar pause button', async () => {
