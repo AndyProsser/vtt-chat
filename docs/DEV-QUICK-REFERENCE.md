@@ -269,6 +269,28 @@ If regressions reappear, inspect those files first for:
 - Stable or slower-growing `store.churn` deltas for typing/speaking/message totals
 - No functional regressions in session lifecycle, chat, or room transitions
 
+### 5) Leaf-Isolation Check for Per-User Transient UI
+
+If the regression involves freeze under speaking/presence/mute/ghost churn, verify the
+leaf-isolation pattern is intact:
+
+- Per-user transient bits (speaking, online/offline, ghost, mic mute) must be rendered
+  via the memoized leaves under `frontend/src/components/workspaces/session/rooms/`:
+  `SpeakingIndicator`, `PresenceIndicator`, `GhostIndicator`, `MicMutedIndicator`.
+- Each leaf must `useStore` a **single primitive** selector for that user's bit.
+- Parent participant shapes (`GroupParticipantStatus`, `MockPartyMember`, etc.) must
+  **not** carry `presenceState` / `ghost` / `isMuted` / `speaking` fields. Any field
+  leaking back in re-invalidates every participant on any flip and rebuilds every Radix
+  Tooltip/Popover subtree.
+- `AvatarOverlay` should only receive `presence={{sessionId, userId, isSelf?, roomType?}}`.
+- For list-of-cards (e.g. `PartyPanel.PartyMemberCard`), the card must be `React.memo`
+  and the parent must merge with a reference-preserving helper so unchanged cards keep
+  their identity.
+- Cascading visual styles must use CSS `:has(.leaf-class)`, not parent className threading.
+
+Full contract: `.github/copilot-instructions.md` → "Leaf-Isolation Pattern for
+High-Frequency Per-User UI Bits".
+
 ---
 
 ## Prisma Local Recovery (Copy-Paste)

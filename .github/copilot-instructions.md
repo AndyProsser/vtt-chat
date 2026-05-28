@@ -51,6 +51,7 @@ VTT-Chat is optimized for **Linux development**. When running on Windows:
 4. **If WSL is installed**: Affirm it's the right choice and ensure all subsequent commands use WSL context
 
 **Why WSL is critical:**
+
 - All backend/frontend build scripts assume Unix-like paths and commands
 - Docker Desktop integrates seamlessly with WSL 2
 - Development experience is near-identical to native Linux
@@ -64,38 +65,43 @@ VTT-Chat is optimized for **Linux development**. When running on Windows:
 
 **Every state change must converge across all four required layers. Never update only one.**
 
-| Layer | Responsibility | Scope |
-| ----- | -------------- | ----- |
-| **PostgreSQL** (via Prisma) | Authoritative persistence | Campaign-scoped; survives session boundaries |
-| **Redis** | Presence, room membership, audio state | Session-scoped; survives reconnects |
-| **WS broadcast** | Sync all connected clients | Session-scoped; fires after persistence |
-| **Zustand** | Local UI cache | Per-user; hydrated from server, updated via WS |
+| Layer                       | Responsibility                         | Scope                                          |
+| --------------------------- | -------------------------------------- | ---------------------------------------------- |
+| **PostgreSQL** (via Prisma) | Authoritative persistence              | Campaign-scoped; survives session boundaries   |
+| **Redis**                   | Presence, room membership, audio state | Session-scoped; survives reconnects            |
+| **WS broadcast**            | Sync all connected clients             | Session-scoped; fires after persistence        |
+| **Zustand**                 | Local UI cache                         | Per-user; hydrated from server, updated via WS |
 
 Use the table above as a quick reference. Implement every state change using the numbered steps below — in order, without skipping.
 
 **Apply changes in this order — always:**
 
 #### Step 1 — Validate
+
 - Validate the request and all target entities.
 - Reject invalid input before touching any layer; return a descriptive error to the acting user.
 
 #### Step 2 — Persist
+
 - Write to PostgreSQL and/or Redis as required by the feature.
 - If PostgreSQL write fails: do not proceed to Step 3. Surface an error to the acting user and retry up to 3 times before reporting failure.
 - If Redis write fails: log the failure. The WS event may still broadcast, but warn that reconnecting users may see stale state until Redis recovers.
 - If both PostgreSQL and Redis fail: log at `error` level, surface a persistent error banner to the acting user, and do not proceed to Step 3. Do not attempt automatic retry for a dual-layer failure — require explicit user-initiated retry.
 
 #### Step 3 — Broadcast
+
 - Emit the WS event to all affected clients after persistence succeeds — never before.
 - If WS broadcast fails: log the failure. Affected clients must rehydrate on the next API poll or reconnect — do not silently drop the change.
 - If a WS event is delayed beyond 1 second or lost entirely: affected clients must rehydrate their full local state from the server snapshot API on reconnect. Reconnect is always treated as a full rehydration point — never assume partial state is current.
 - If a session transition event (`SESSION:STATE_CHANGED` or `ROOM:SESSION_TRANSITION_APPLIED`) is not received within the expected window, clients must poll the session state API directly to confirm the current state before rendering any session-gated UI — never infer session state from the absence of an event.
 
 #### Step 4 — Update Zustand
+
 - All clients update their local Zustand slice from the WS payload — not from the local action.
 - This ensures all clients converge on the same state, including the acting user.
 
 #### Step 5 — Confirm UI
+
 - Verify the UI reflects the final state for both the acting user and all affected users.
 - If the round-trip from DM action to visible UI update exceeds **500ms**, display a loading indicator and retry automatically up to 3 times.
 - After 3 failed retries, surface a clear error with an explicit retry button — never fail silently.
@@ -103,6 +109,7 @@ Use the table above as a quick reference. Implement every state change using the
 - If an action was partially applied (e.g., persisted to PostgreSQL but WS broadcast failed), treat the server state as authoritative on reconnection. Never resolve the inconsistency by trusting stale local Zustand — rehydrate fully from the server API after reconnect.
 
 **Example — DM applies a condition to a player:**
+
 - PostgreSQL/Redis: condition persisted and keyed to session
 - WS: `AUDIO:DM_OVERRIDE_APPLIED` broadcast to all members
 - DM's Zustand: `dmOverrides` updated
@@ -172,30 +179,34 @@ IDLE ──► ACTIVE ──► PAUSED ──► ACTIVE (resume)
                  └──► ENDED ──► CLEANUP
 ```
 
-| From     | To        | Trigger                      |
-| -------- | --------- | ---------------------------- |
-| `IDLE`   | `ACTIVE`  | DM starts session            |
-| `ACTIVE` | `PAUSED`  | DM pauses session            |
-| `ACTIVE` | `ENDED`   | DM ends session              |
-| `PAUSED` | `ACTIVE`  | DM resumes session           |
-| `PAUSED` | `ENDED`   | DM ends from paused state    |
-| `ENDED`  | `CLEANUP` | System cleanup completes     |
+| From     | To        | Trigger                   |
+| -------- | --------- | ------------------------- |
+| `IDLE`   | `ACTIVE`  | DM starts session         |
+| `ACTIVE` | `PAUSED`  | DM pauses session         |
+| `ACTIVE` | `ENDED`   | DM ends session           |
+| `PAUSED` | `ACTIVE`  | DM resumes session        |
+| `PAUSED` | `ENDED`   | DM ends from paused state |
+| `ENDED`  | `CLEANUP` | System cleanup completes  |
 
 **Rules — apply in this order for every DM action:** enum usage → API validation → UI gating → Zustand/effects.
 
 _Enum usage (never use raw strings):_
+
 - Always import `SessionState` from `shared/types/index.ts`.
 - Always use `shared/utils/session-state.ts` helpers (`isGreenroomSessionState`, `deriveCampaignDisplayState`, `normalizeSessionState`) — never re-implement them.
 
 _API validation:_
+
 - Read the current session state from the database before acting. Return `403` with a descriptive message if the action is invalid for that state.
 - No transition may skip states — `IDLE → ENDED` is invalid; reject it at the API layer.
 
 _UI gating:_
+
 - Compute a single `isValidForState` value at the feature level and thread it down. Do not scatter ad-hoc `if (state === ...)` blocks across components.
 - Disable or hide controls when the session state makes them invalid — do not rely on the API to catch it first.
 
 _Zustand / effects:_
+
 - Derive all session-gated effects from the authoritative state received via WS or API, not from stale local flags.
 - Before implementing any DM action, confirm which session states permit it. Add that guard before writing any other code.
 
@@ -212,6 +223,7 @@ if (session.state === SessionState.ACTIVE) { ... }
 **Invalid transition handling:**
 
 If the DM or API attempts a transition not listed in the valid transitions table above:
+
 - **API layer:** return `403` with a message of the form `"Invalid transition: {currentState} → {requestedState}. Allowed transitions from {currentState}: {list}"`.
 - **UI layer:** disable the triggering control before the request is made. If the API rejects it anyway, display a toast: `"That action isn't available while the session is {currentState}."` — never a generic error.
 - Never silently ignore an invalid transition. Always surface the reason and the allowed alternatives.
@@ -223,6 +235,7 @@ If the DM or API attempts a transition not listed in the valid transitions table
 **Multi-Session Transition Flow:** `IDLE → ACTIVE → ENDED → IDLE → (create new session) → ACTIVE`
 
 When this flow occurs, the following MUST happen in order or state machine breaks:
+
 1. `currentSessionId` changes in Zustand (via `setCurrentSession()`)
 2. `useWebSocket` hook dependency array includes `sessionId` → old WS client disconnects
 3. New WS client connects with new `sessionId` in auth payload
@@ -230,17 +243,18 @@ When this flow occurs, the following MUST happen in order or state machine break
 
 **Common Break Points (prevent these):**
 
-| Break Point | Symptom | Fix |
-| --- | --- | --- |
-| **currentSessionId doesn't update when WS SESSION:STATE_CHANGED to ACTIVE arrives** | Messages arrive but aren't routed to handlers | Auto-rebind: `handleSessionStateChanged` must call `setCurrentSession(event.sessionId)` when `state === 'ACTIVE'` and `currentSessionId !== event.sessionId` |
-| **Room members duplicated on event replay** | Player count inflates (DM count, player count, mock count all wrong) | Deduplication: Check if user already in room before appending in `ROOM:SESSION_TRANSITION_APPLIED` handler |
-| **WS event creates partial session shape** | Selectors break; downstream UI assumes fields exist | Guard before update: Check `state.sessions[event.sessionId]` exists before spreading into it; return early if missing |
-| **Old WS client still processing events** | New session messages match old client's sessionId | Ensure cleanup: `useWebSocket` cleanup must call `disconnect()` and set `manualDisconnect = true` before exiting effect |
-| **sessionId dependency missing from useWebSocket** | Session changes don't trigger WS client recreation | Verify dependency array includes `[enabled, onAuthFailure, sessionId, token, url]` |
+| Break Point                                                                         | Symptom                                                              | Fix                                                                                                                                                          |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **currentSessionId doesn't update when WS SESSION:STATE_CHANGED to ACTIVE arrives** | Messages arrive but aren't routed to handlers                        | Auto-rebind: `handleSessionStateChanged` must call `setCurrentSession(event.sessionId)` when `state === 'ACTIVE'` and `currentSessionId !== event.sessionId` |
+| **Room members duplicated on event replay**                                         | Player count inflates (DM count, player count, mock count all wrong) | Deduplication: Check if user already in room before appending in `ROOM:SESSION_TRANSITION_APPLIED` handler                                                   |
+| **WS event creates partial session shape**                                          | Selectors break; downstream UI assumes fields exist                  | Guard before update: Check `state.sessions[event.sessionId]` exists before spreading into it; return early if missing                                        |
+| **Old WS client still processing events**                                           | New session messages match old client's sessionId                    | Ensure cleanup: `useWebSocket` cleanup must call `disconnect()` and set `manualDisconnect = true` before exiting effect                                      |
+| **sessionId dependency missing from useWebSocket**                                  | Session changes don't trigger WS client recreation                   | Verify dependency array includes `[enabled, onAuthFailure, sessionId, token, url]`                                                                           |
 
 **Testing Multi-Session Transitions:**
 
 When testing session lifecycle, always cover:
+
 1. Start session (IDLE → ACTIVE)
 2. End session (ACTIVE → ENDED)
 3. Return to lobby (ENDED → IDLE or skip to step 4)
@@ -475,6 +489,33 @@ Transcript/summary processing rule:
 
 The `handleEnvironmentSet` WS handler in `audioPresetsSlice.ts` must update `roomEnvironmentNames` even when `parameters` is absent. `roomEnvironmentNames` drives the environment sync effect in `SessionInit.tsx`.
 
+### Leaf-Isolation Pattern for High-Frequency Per-User UI Bits
+
+Per-user transient state (speaking, presence online/offline, ghost mode, mic mute, typing, anything that flips at WS cadence) **must not** be threaded through participant projections such as `GroupParticipantStatus`, `MockPartyMember`, or any other `members[]` array shape. Doing so invalidates every participant on any single user's flip and rebuilds every surrounding Radix Tooltip/Popover/Dropdown subtree — the verified root cause of long-session memory growth and freeze regressions.
+
+**Pattern (mandatory for any new per-user transient bit):**
+
+1. Define a tiny `React.memo` leaf component whose only job is rendering that one bit.
+2. The leaf takes `{sessionId, userId, isSelf?}` props (and nothing else transient).
+3. Inside the leaf, subscribe to a **single primitive selector** via `useStore` so React's `Object.is` equality short-circuits re-renders to the exact moment the user's bit changes.
+4. Mount the leaf inside the avatar/row component (e.g. `AvatarOverlay`). Do **not** pass the transient value down as a prop.
+5. For cascading visual changes (e.g. ghost dimming the row), use CSS `:has(.leaf-class)` selectors driven by leaf mount/unmount — never parent className threading.
+
+**Canonical leaves in `frontend/src/components/workspaces/session/rooms/`:**
+
+- `SpeakingIndicator` — speaking state + combined mute
+- `PresenceIndicator` — online/offline dot
+- `GhostIndicator` — ghost-mode badge (drives `:has()` cascade)
+- `MicMutedIndicator` — mic_off badge (variants: `avatar` | `profile`)
+
+**Shared selector hook:** `frontend/src/hooks/useIsUserMuted.ts` combines own-mute + DM `MUTE` override + (for self) device PTT/mic into a single boolean. Any leaf that needs combined mute state must use this hook — never re-derive inline.
+
+**`AvatarOverlay` contract:** takes a single `presence?: {sessionId, userId, isSelf?, roomType?}` prop and mounts the four leaves itself. Callers must not pass `presenceState`, `ghost`, `isMuted`, or `speaking`.
+
+**For list-of-cards components where extracting per-card subscriptions is invasive** (e.g. `PartyPanel`): wrap the card in `React.memo` and ensure the parent merges with a reference-preserving helper (`mergeMembersPreservingReferences`). Default shallow compare + stable references gives the same isolation.
+
+**Structural exceptions (will not be leaf-isolated):** state that physically relocates a participant between rendered groups (e.g. DM voice target moving the DM avatar between groups in `GroupsPanel.session.tsx` / `dmDetachedParticipant` in `RoomSelector.tsx`). Recompute is bounded to the two affected groups and is acceptable.
+
 ### Workspace Scroll Containment Requires A Definite Height Chain
 
 Recurring failure pattern: panel-level scroll unexpectedly escapes to page/html scroll when a workspace panel relies on `height: 100%` or `flex: 1` without a definite ancestor height.
@@ -503,21 +544,22 @@ Rules:
 No source file may exceed **400 lines** (excluding blank lines and import blocks). When a file grows beyond this, it must be split.
 
 How to split:
+
 1. Identify logical domains within the file (data fetching, UI rendering, event handling, type definitions, constants).
 2. Extract each domain into its own co-located file.
 3. Leave the parent as a thin orchestrator that imports from the domain files.
 
 Naming conventions for split files:
 
-| Domain                  | Pattern                                  |
-| ----------------------- | ---------------------------------------- |
-| Sub-component           | `ComponentName.Part.tsx`                 |
-| Hook                    | `useFeatureName.ts`                      |
-| Event handlers / logic  | `featureName.handlers.ts`                |
-| Local types             | `featureName.types.ts`                   |
-| Local constants         | `featureName.constants.ts`               |
-| Backend route           | `resource.routes.ts` (one per resource)  |
-| Backend service         | `resource.service.ts`                    |
+| Domain                 | Pattern                                 |
+| ---------------------- | --------------------------------------- |
+| Sub-component          | `ComponentName.Part.tsx`                |
+| Hook                   | `useFeatureName.ts`                     |
+| Event handlers / logic | `featureName.handlers.ts`               |
+| Local types            | `featureName.types.ts`                  |
+| Local constants        | `featureName.constants.ts`              |
+| Backend route          | `resource.routes.ts` (one per resource) |
+| Backend service        | `resource.service.ts`                   |
 
 `SessionInit.tsx` at 3,500+ lines is the canonical example of what must not happen and is a priority refactor target.
 
@@ -540,6 +582,7 @@ The `shared/` package is the canonical source for anything used by two or more o
 - Component entry points should import the supporting types, constants, and hooks they need rather than re-declaring them in the component folder.
 
 **Always lives in `shared/`:**
+
 - WS event names and payload types → `shared/events/`
 - Session, room, role, message type, and presence enums → `shared/types/`
 - Session state utility functions → `shared/utils/session-state.ts`
@@ -547,6 +590,7 @@ The `shared/` package is the canonical source for anything used by two or more o
 - Input validators used by API and frontend → `shared/validators/`
 
 **Must be moved to `shared/` if needed by ≥ 2 sub-apps:**
+
 - Any formatting utility
 - Any hook or utility needed by both `frontend/` and `admin/`
 - Any constant or enum that mirrors an existing `shared/` value
@@ -612,12 +656,12 @@ Players should feel the magic of the world, not the machinery of the app.
 
 The following documents must be kept current as standing discipline — not as an afterthought. A change without a matching doc update is incomplete.
 
-| Document                    | Update trigger                                                           |
-| --------------------------- | ------------------------------------------------------------------------ |
-| `CHANGELOG.md`              | Every meaningful change — feature, fix, or contract update               |
-| `ROADMAP.md`                | When a feature is completed, added, or re-scoped                         |
-| `docs/CONTRACTS.md`         | When any API endpoint or WS event contract changes                       |
-| `docs/ARCHITECTURE-MAP.txt` | When new files, modules, or subsystems are added                         |
+| Document                    | Update trigger                                             |
+| --------------------------- | ---------------------------------------------------------- |
+| `CHANGELOG.md`              | Every meaningful change — feature, fix, or contract update |
+| `ROADMAP.md`                | When a feature is completed, added, or re-scoped           |
+| `docs/CONTRACTS.md`         | When any API endpoint or WS event contract changes         |
+| `docs/ARCHITECTURE-MAP.txt` | When new files, modules, or subsystems are added           |
 
 **Roadmap discipline**: `ROADMAP.md` is a tracking document only. It contains work-item status, dependencies, and brief acceptance criteria. All detailed acceptance criteria, design decisions, and implementation notes belong in the linked `docs/` files — not inline in the roadmap. When implementing a work unit, create or update the relevant doc alongside the code. Do not put implementation details into `ROADMAP.md`.
 
@@ -628,10 +672,10 @@ The following documents must be kept current as standing discipline — not as a
 This file (`copilot-instructions.md`) is itself a living document.
 
 **Propose an update to this file whenever:**
+
 - A new recurring pattern or cross-cutting contract is established during development.
 - A non-negotiable rule is changed, expanded, or found to be incomplete or incorrect.
 - A new feature area introduces concepts or constraints not yet covered here.
 - A pattern that has caused repeated rework is identified.
 
 Before implementing any significant feature, check whether it fits the existing contracts here. If it requires a new rule or changes an existing one, surface that as part of the work — propose the instruction update alongside the code change, not after it.
-

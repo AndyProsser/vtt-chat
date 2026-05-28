@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-05-27
+**Last Updated**: 2026-05-28
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -172,6 +172,13 @@ Evidence snapshot (2026-05-25):
 - Frontend runtime freeze triage guidance was added to developer docs with an explicit churn-debug flow (`docs/DEV-QUICK-REFERENCE.md`, `docs/subsystems/STATE-STORES.md`).
 - Opt-in store churn diagnostics now emit `store.churn` totals/deltas for high-churn collections (`VITE_DEBUG_CHURN_METRICS=1` or `window.__VTT_DEBUG_CHURN__ = true`).
 - High-frequency frontend reducers in chat/presence/greenroom/room/livekit were hardened with additional no-op guards and lower-allocation update paths to reduce GC pressure during WS-heavy sessions.
+
+Evidence snapshot (2026-05-28, v0.8.5):
+
+- Per-user transient UI state (speaking, presence online/offline, ghost mode, mic mute) was extracted into memoized leaf indicator components under `frontend/src/components/workspaces/session/rooms/` (`SpeakingIndicator`, `PresenceIndicator`, `GhostIndicator`, `MicMutedIndicator`), each subscribing to a single primitive Zustand selector. Flips no longer invalidate parent participant projections or rebuild surrounding Radix Tooltip/Popover subtrees.
+- `AvatarOverlay` API simplified to a single `presence` bundle prop; `GroupParticipantStatus` no longer carries `presenceState` / `ghost` / `isMuted`; cascading styles driven by CSS `:has()` instead of parent className threading.
+- `PartyPanel.PartyMemberCard` wrapped in `React.memo` so a single member's HERE/AWAY/NOT-HERE flip re-renders only that card.
+- Leaf-isolation pattern documented as a non-negotiable in `.github/copilot-instructions.md` and `docs/subsystems/STATE-STORES.md`; freeze triage flow in `docs/DEV-QUICK-REFERENCE.md` now includes a leaf-isolation check.
 
 ---
 

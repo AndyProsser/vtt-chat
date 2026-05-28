@@ -35,6 +35,42 @@ When enabled, logger domain `store.churn` emits totals/deltas for high-churn sto
 (messages, outgoing queue, typing/speaking sets, room members, LiveKit connections).
 Use this with browser profiler captures to correlate reducer churn with UI stalls.
 
+### Leaf-Isolation Pattern (UI Subscription Discipline)
+
+High-frequency per-user transient state — speaking, presence online/offline, ghost mode,
+mic mute — must be consumed by **memoized leaf indicator components** that each subscribe
+to a single primitive selector. Threading these bits through participant projections
+(`GroupParticipantStatus`, `MockPartyMember`, etc.) invalidates every participant on any
+flip and rebuilds every surrounding Radix Tooltip/Popover subtree, which is the verified
+root cause of long-session memory growth.
+
+Canonical leaves under `frontend/src/components/workspaces/session/rooms/`:
+
+- `SpeakingIndicator` — speaking + combined mute
+- `PresenceIndicator` — online/offline dot
+- `GhostIndicator` — ghost-mode badge (drives `:has()` cascade for parent dimming)
+- `MicMutedIndicator` — mic_off badge (variants `avatar` | `profile`)
+
+Shared hook: `frontend/src/hooks/useIsUserMuted.ts` collapses own-mute + DM `MUTE`
+override + (for self) device PTT/mic into a single boolean per user.
+
+`AvatarOverlay` takes a single `presence?: {sessionId, userId, isSelf?, roomType?}` prop
+and mounts the four leaves itself; callers do not pass `presenceState`, `ghost`, `isMuted`,
+or `speaking`.
+
+For list-of-cards components where extracting per-card subscriptions is invasive
+(e.g. `PartyPanel`): wrap the card in `React.memo` and ensure the parent merges with a
+reference-preserving helper (`mergeMembersPreservingReferences` in PartyPanel). Stable
+refs + default shallow compare deliver the same isolation.
+
+Structural exceptions (will not be leaf-isolated): state that physically relocates a
+participant between rendered groups (e.g. DM voice target moving the DM avatar between
+groups in `GroupsPanel.session.tsx` / `dmDetachedParticipant` in `RoomSelector.tsx`).
+Recompute is bounded to the two affected groups and is acceptable.
+
+See `.github/copilot-instructions.md` → "Leaf-Isolation Pattern for High-Frequency Per-User
+UI Bits" for the full contract.
+
 ---
 
 ## Store Overview
