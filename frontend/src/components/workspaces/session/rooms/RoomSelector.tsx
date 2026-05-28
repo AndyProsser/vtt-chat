@@ -1293,7 +1293,7 @@ export function RoomSelector({
   )
 
   return (
-    <TooltipProvider delayDuration={140}>
+    <TooltipProvider delayDuration={140} disableHoverableContent>
       <section className="room-selector" aria-label="Room Selector">
         <header className="room-selector-header">
           <h4>
