@@ -393,6 +393,88 @@ describe('knowledge panels', () => {
     expect(screen.queryByText('[Note Shared] Emerald Crown')).toBeNull()
   })
 
+  it('hides session bookends in history and prefers character names for messages', async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input)
+
+      if (url.includes(`/api/campaigns/${CAMPAIGN_ID}/sessions`)) {
+        return {
+          ok: true,
+          json: async () => ({
+            sessions: [
+              {
+                id: SESSION_ID,
+                name: 'The Emerald Crown #3',
+                state: 'ACTIVE',
+                createdAt: '2026-05-31T19:00:00.000Z',
+              },
+              {
+                id: SESSION_TWO_ID,
+                name: 'The Emerald Crown #2',
+                state: 'ENDED',
+                createdAt: '2026-05-24T19:00:00.000Z',
+                startedAt: '2026-05-24T19:00:00.000Z',
+              },
+            ],
+          }),
+        }
+      }
+
+      if (!url.includes(`/api/chat/messages/${SESSION_TWO_ID}`)) {
+        throw new Error(`Unexpected fetch call: ${url}`)
+      }
+
+      return {
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: 'bookend-1',
+              sessionId: SESSION_TWO_ID,
+              roomId: ROOM_ID,
+              userId: PLAYER_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Started] The Emerald Crown #2',
+              type: MessageType.SYSTEM,
+              createdAt: '2026-05-24T19:00:00.000Z',
+            },
+            {
+              id: 'ooc-1',
+              sessionId: SESSION_TWO_ID,
+              roomId: ROOM_ID,
+              userId: PLAYER_ID,
+              authorUsername: 'Tara',
+              authorCharacterName: 'Seraphina Vale',
+              content: 'Tara joined main room',
+              type: MessageType.OOC,
+              createdAt: '2026-05-24T19:05:00.000Z',
+            },
+          ],
+        }),
+      }
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <HistoryPanel
+        apiUrl="http://localhost:3000"
+        token="token"
+        campaignId={CAMPAIGN_ID}
+        sessionId={SESSION_ID}
+        role={Role.DM}
+        userId={PLAYER_ID}
+      />
+    )
+
+    expect(await screen.findByText('Tara joined main room')).toBeTruthy()
+    expect(screen.getByText('Seraphina Vale')).toBeTruthy()
+    expect(screen.queryByText(/^Tara$/)).toBeNull()
+    expect(screen.getByText('Tara joined main room')).toBeTruthy()
+    expect(screen.queryByText('[Session Started] The Emerald Crown #2')).toBeNull()
+    expect(screen.queryByText('STARTED')).toBeNull()
+  })
+
   it('does not refetch journal status on browser rerender when sessions are unchanged', async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input)

@@ -190,6 +190,7 @@ function mapStoredMessage(row: {
   campaignId?: string | null
   authorId: string
   authorUsername: string
+  authorCharacterName?: string | null
   content: string
   type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
   isDmOnly: boolean
@@ -211,6 +212,7 @@ function mapStoredMessage(row: {
     roomId: visibility.roomId,
     authorId: row.authorId as UUID,
     authorUsername: row.authorUsername,
+    authorCharacterName: row.authorCharacterName ?? undefined,
     content: row.content,
     type: row.type as MessageType,
     isDmOnly: row.isDmOnly,

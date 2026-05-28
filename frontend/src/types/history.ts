@@ -6,6 +6,7 @@ export interface SessionHistoryMessage {
   roomId?: string
   authorId: string
   authorUsername: string
+  authorCharacterName?: string
   content: string
   type: string
   isDmOnly?: boolean

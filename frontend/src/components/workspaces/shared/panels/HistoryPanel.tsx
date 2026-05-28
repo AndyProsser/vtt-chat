@@ -29,6 +29,15 @@ const HISTORY_MESSAGE_LIMIT = 180
 const GROUPING_WINDOW_MS = 5 * 60 * 1000
 const SESSION_RECAP_PREFIX = '[Last Session]'
 const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
+const SESSION_BOOKEND_PREFIXES = [
+  'Session Start:',
+  'Session End:',
+  '[Session Started]',
+  '[Session Ended]',
+  '[Session Paused]',
+  '[Session Resumed]',
+  '[Session Cooldown]',
+]
 
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -69,6 +78,7 @@ function matchesQuery(message: SessionHistoryMessage, query: string): boolean {
   }
 
   const haystack = [
+    message.authorCharacterName,
     message.authorUsername,
     message.content,
     String(message.type || ''),
@@ -218,6 +228,7 @@ export function HistoryPanel({
                 roomId?: string
                 authorId: string
                 authorUsername?: string
+                authorCharacterName?: string | null
                 content: string
                 type: string
                 isDmOnly?: boolean
@@ -237,6 +248,7 @@ export function HistoryPanel({
                 roomId: message.roomId,
                 authorId: message.authorId,
                 authorUsername: message.authorUsername || 'Unknown',
+                authorCharacterName: message.authorCharacterName ?? undefined,
                 content: message.content,
                 type: message.type,
                 isDmOnly: Boolean(message.isDmOnly),
@@ -472,13 +484,7 @@ export function HistoryPanel({
                   const isSessionRecap = isSystem && message.content.startsWith(recapPrefix)
                   const isSessionBookend =
                     isSystem &&
-                    (message.content.startsWith('[Session Started]') ||
-                      message.content.startsWith('Session Start:') ||
-                      message.content.startsWith('[Session Ended]') ||
-                      message.content.startsWith('Session End:') ||
-                      message.content.startsWith('[Session Paused]') ||
-                      message.content.startsWith('[Session Resumed]') ||
-                      message.content.startsWith('[Session Cooldown]'))
+                    SESSION_BOOKEND_PREFIXES.some((prefix) => message.content.startsWith(prefix))
                   const noteShared = isSystem
                     ? parseNoteSharedMessage({
                         content: message.content,
@@ -497,6 +503,7 @@ export function HistoryPanel({
                   )
                   const isSelf = message.authorId === userId
                   const variant = toMessageVariant(message.type)
+                  const authorLabel = message.authorCharacterName || message.authorUsername
 
                   if (isSessionRecap) {
                     const recapBody = message.content.slice(recapPrefix.length).trim()
@@ -546,7 +553,7 @@ export function HistoryPanel({
                               className={`session-message-list__message-avatar ${variant === 'system' ? 'session-message-list__message-avatar--system' : ''}`}
                               aria-hidden="true"
                             >
-                              {getAuthorInitial(message.authorUsername)}
+                              {getAuthorInitial(authorLabel)}
                             </span>
                           ) : (
                             <span
@@ -559,7 +566,7 @@ export function HistoryPanel({
                             {!isGroupedWithPrevious ? (
                               <div className="session-message-list__message-meta">
                                 <span className="session-message-list__message-author">
-                                  {message.authorUsername}
+                                  {authorLabel}
                                 </span>
                               </div>
                             ) : null}

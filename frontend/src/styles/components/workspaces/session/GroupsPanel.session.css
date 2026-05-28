@@ -1,7 +1,7 @@
 .session-groups-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 0.5rem;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
   min-height: 0;
   height: 100%;
   background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
@@ -385,4 +385,9 @@
 .session-groups-room-card__empty {
   font-size: 0.72rem;
   color: var(--color-text-secondary);
+}
+
+.session-groups-panel__footer {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--color-border-soft);
 }

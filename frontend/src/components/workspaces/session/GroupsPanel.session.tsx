@@ -242,9 +242,14 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     return counts
   }, [membersByRoomId, sessionRooms])
 
+  const whisperRoom = useMemo(() => {
+    return sessionRooms.find((room) => room.type === RoomType.PRIVATE) || null
+  }, [sessionRooms])
+
   const visibleRooms = useMemo(() => {
     return sessionRooms
       .filter((room) => (shouldHideGreenRoom ? !isGreenRoomName(room.name) : true))
+      .filter((room) => room.type !== RoomType.PRIVATE)
       .filter((room) => {
         if (canManageGroups) {
           return true
@@ -263,8 +268,6 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
         if (rightIsGreenRoom && !leftIsGreenRoom) return 1
         if (left.type === RoomType.MAIN && right.type !== RoomType.MAIN) return -1
         if (right.type === RoomType.MAIN && left.type !== RoomType.MAIN) return 1
-        if (left.type === RoomType.PRIVATE && right.type !== RoomType.PRIVATE) return 1
-        if (right.type === RoomType.PRIVATE && left.type !== RoomType.PRIVATE) return -1
         return left.name.localeCompare(right.name)
       })
   }, [canManageGroups, membersByRoomId, sessionRooms, shouldHideGreenRoom])
@@ -455,6 +458,27 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
           </div>
         )}
       </div>
+
+      {whisperRoom ? (
+        <div className="session-groups-panel__footer">
+          <SessionGroupCard
+            room={whisperRoom}
+            members={membersByRoomId[whisperRoom.id] || []}
+            environment={
+              roomEnvironmentNames[whisperRoom.id] || fallbackRoomEnvironments[whisperRoom.id]
+            }
+            isEmpty={(nonDmCountsByRoomId[whisperRoom.id] ?? 0) === 0}
+            canManage={canManageGroups}
+            isGreenroom={isGreenroom}
+            isGreenRoomCard={false}
+            isClosing={isClosing === whisperRoom.id}
+            isDeleting={isDeleting === whisperRoom.id}
+            onClose={() => handleCloseGroup(whisperRoom.id)}
+            onDelete={() => handleDeleteGroup(whisperRoom.id)}
+            onSetEnvironment={(env) => handleSetEnvironment(whisperRoom.id, env)}
+          />
+        </div>
+      ) : null}
     </section>
   )
 }

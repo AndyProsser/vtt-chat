@@ -121,6 +121,7 @@ export async function listSessionMessagesPage(params: {
     sessionId: string
     authorId: string
     authorUsername: string
+    authorCharacterName: string | null
     content: string
     type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
     isDmOnly: boolean
@@ -171,12 +172,40 @@ export async function listSessionMessagesPage(params: {
   const hasMore = rows.length > queryLimit
   const page = (hasMore ? rows.slice(0, queryLimit) : rows).reverse()
 
+  const session = await prisma.session.findUnique({
+    where: { id: params.sessionId },
+    select: { campaignId: true },
+  })
+
+  const authorCharacterNameByUserId = new Map<string, string>()
+  if (session?.campaignId) {
+    const authorIds = Array.from(new Set(page.map((row: any) => row.authorId)))
+    if (authorIds.length > 0) {
+      const activeCharacters = await prisma.character.findMany({
+        where: {
+          campaignId: session.campaignId,
+          userId: { in: authorIds },
+          isActive: true,
+        },
+        select: {
+          userId: true,
+          name: true,
+        },
+      })
+
+      activeCharacters.forEach((character) => {
+        authorCharacterNameByUserId.set(character.userId, character.name)
+      })
+    }
+  }
+
   return {
     rows: page.map((row: any) => ({
       id: row.id,
       sessionId: row.sessionId,
       authorId: row.authorId,
       authorUsername: row.authorUsername,
+      authorCharacterName: authorCharacterNameByUserId.get(row.authorId) ?? null,
       content: row.content,
       type: row.type,
       isDmOnly: row.isDmOnly,

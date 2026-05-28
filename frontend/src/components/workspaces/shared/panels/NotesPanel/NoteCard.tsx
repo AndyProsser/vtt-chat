@@ -362,7 +362,12 @@ export function NoteCard({
           </div>
         ) : (
           <div className="notes-note-body">
-            <MarkdownEditor value={note.content} readOnly variant="full" />
+            <MarkdownEditor
+              key={`${note.id}:${note.updatedAt}:${note.content.length}`}
+              value={note.content}
+              readOnly
+              variant="full"
+            />
           </div>
         )}
 

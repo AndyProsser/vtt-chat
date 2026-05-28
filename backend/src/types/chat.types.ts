@@ -3,6 +3,7 @@ import type { MessageEntity, UUID } from '@shared'
 export interface StoredMessage extends MessageEntity {
   sessionId?: UUID
   authorUsername: string
+  authorCharacterName?: string
   isDmOnly: boolean
   isOffTheRecord: boolean
   visibleTo?: UUID[]
