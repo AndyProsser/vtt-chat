@@ -45,6 +45,7 @@ type UseWorkspacesCampaignEntryOrchestrationParams = {
   setCurrentSession: (sessionId: UUID | null) => void
   openEditorCampaignWorkspace: (campaignId: UUID) => void
   onSessionCreated?: (sessionId: UUID) => void
+  onCampaignDeleted?: (campaignId: UUID) => void
 }
 
 export function useWorkspacesCampaignEntryOrchestration(
@@ -79,6 +80,7 @@ export function useWorkspacesCampaignEntryOrchestration(
     setCurrentSession,
     openEditorCampaignWorkspace,
     onSessionCreated,
+    onCampaignDeleted,
   } = params
 
   const getSessionStartName = useCallback(
@@ -490,6 +492,66 @@ export function useWorkspacesCampaignEntryOrchestration(
     [setError, setLobbyNotice]
   )
 
+  /**
+   * DM deletes the currently selected campaign.
+   * DEV: backend performs a hard delete (row removed).
+   * PROD: backend performs a soft delete (deletedAt timestamp); admin can restore.
+   * Callers must confirm intent before invoking — this function does not prompt.
+   */
+  const handleDeleteCampaign = useCallback(
+    async (campaignId: UUID) => {
+      setError(null)
+      const finalizeDeletion = async () => {
+        setCampaigns((prev) => prev.filter((campaign) => campaign.id !== campaignId))
+        setSelectedCampaignId('')
+        setCurrentSession(null)
+        setEditorWorkspaceView('lobby')
+        await refreshLobbyCampaignData({ showLoading: false, surfaceError: false })
+        onCampaignDeleted?.(campaignId)
+      }
+
+      try {
+        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaignId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          const message =
+            typeof errorData.message === 'string' ? errorData.message : 'Failed to delete campaign'
+
+          if (
+            response.status === 404 ||
+            (response.status === 409 && message.includes('already been deleted'))
+          ) {
+            await finalizeDeletion()
+            return
+          }
+
+          throw new Error(message)
+        }
+
+        await finalizeDeletion()
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An error occurred'
+        setError(message)
+      }
+    },
+    [
+      apiUrl,
+      fetchWithAuthGuard,
+      onCampaignDeleted,
+      refreshLobbyCampaignData,
+      setCurrentSession,
+      setCampaigns,
+      setEditorWorkspaceView,
+      setError,
+      setSelectedCampaignId,
+      token,
+    ]
+  )
+
   return {
     handleCreateCampaign,
     handleJoinCampaign,
@@ -497,5 +559,6 @@ export function useWorkspacesCampaignEntryOrchestration(
     startCampaignSession,
     handleJoinRequest,
     handleWatchCampaign,
+    handleDeleteCampaign,
   }
 }

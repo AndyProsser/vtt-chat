@@ -130,6 +130,7 @@ model Campaign {
   supportedPlatforms            SupportedPlatform[]    @default([ANY])
   currentDmId                   String                 @db.Uuid
   retiredAt                     DateTime?
+  deletedAt                     DateTime?
   currentDm                     User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
   members                       CampaignMembership[]
   characters                    Character[]
@@ -148,6 +149,7 @@ model Campaign {
   @@index([spectatorPolicy])
   @@index([createdAt])
   @@index([retiredAt])
+  @@index([deletedAt])
 }
 
 model CampaignMembership {

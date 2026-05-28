@@ -102,6 +102,8 @@ type BuildEditorWorkspacePropsParams = {
   onOpenUserSettings: ComponentProps<typeof EditorWorkspace>['onOpenUserSettings']
   onLaunch: ComponentProps<typeof EditorWorkspace>['onLaunch']
   onSaveCampaignInfo: ComponentProps<typeof EditorWorkspace>['onSaveCampaignInfo']
+  onDeleteCampaign: ComponentProps<typeof EditorWorkspace>['onDeleteCampaign']
+  isDeletingCampaign: boolean
 }
 
 export function buildEditorWorkspaceProps(
@@ -181,6 +183,8 @@ export function buildEditorWorkspaceProps(
     onOpenUserSettings: params.onOpenUserSettings,
     onLaunch: params.onLaunch,
     onSaveCampaignInfo: params.onSaveCampaignInfo,
+    onDeleteCampaign: params.onDeleteCampaign,
+    isDeletingCampaign: params.isDeletingCampaign,
     isLaunchDisabled: params.selectedCampaign
       ? getCampaignEntryAction(params.selectedCampaign).disabled
       : true,

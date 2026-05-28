@@ -1,6 +1,7 @@
 import { TooltipProvider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import { CampaignSettingsPanelPolicy } from './Policy'
+import { DeleteCampaignSection } from './DeleteCampaignSection'
 import type { CampaignSettingsPanelProps } from '@/types/campaignSettingsPanel'
 
 export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
@@ -88,6 +89,12 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
           />
           {props.sessionSettingsPanel}
         </div>
+
+        <DeleteCampaignSection
+          campaignName={props.campaignName || 'this campaign'}
+          isDeleting={props.isDeletingCampaign}
+          onDelete={props.onDeleteCampaign}
+        />
       </section>
     </TooltipProvider>
   )

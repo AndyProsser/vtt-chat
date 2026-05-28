@@ -261,84 +261,86 @@ export async function listCampaignsForUser(userId: string): Promise<
     })
   }
 
-  return memberships.map((m: any) => ({
-    ...(() => {
-      const latestSessionState = (m.campaign.sessions?.[0]?.state || null) as SessionState | null
-      const nowMs = Date.now()
+  return memberships
+    .filter((membership: any) => membership.campaign?.deletedAt == null)
+    .map((m: any) => ({
+      ...(() => {
+        const latestSessionState = (m.campaign.sessions?.[0]?.state || null) as SessionState | null
+        const nowMs = Date.now()
 
-      const latestSessionPresence = (m.campaign.sessions?.[0]?.presence || []) as Array<{
-        userId: string
-        state: 'ONLINE' | 'TYPING' | 'SPEAKING' | 'IDLE' | 'OFFLINE'
-        lastSeenAt: Date
-      }>
-      const nonMockMemberUserIds = new Set<string>(
-        (m.campaign.members || [])
-          .filter(
-            (member: { user?: { username?: string | null } | null }) =>
-              !member.user?.username?.startsWith(DEV_MOCK_PREFIX)
-          )
-          .map((member: { userId: string }) => member.userId)
-      )
+        const latestSessionPresence = (m.campaign.sessions?.[0]?.presence || []) as Array<{
+          userId: string
+          state: 'ONLINE' | 'TYPING' | 'SPEAKING' | 'IDLE' | 'OFFLINE'
+          lastSeenAt: Date
+        }>
+        const nonMockMemberUserIds = new Set<string>(
+          (m.campaign.members || [])
+            .filter(
+              (member: { user?: { username?: string | null } | null }) =>
+                !member.user?.username?.startsWith(DEV_MOCK_PREFIX)
+            )
+            .map((member: { userId: string }) => member.userId)
+        )
 
-      const onlineUserIds = new Set<string>(
-        latestSessionPresence
-          .filter((entry) => isLikelyConnectedPresence({ ...entry, nowMs }))
-          .map((entry) => entry.userId)
-          .filter((userId) => nonMockMemberUserIds.has(userId))
-      )
-      const roleByUserId = new Map<string, 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'>(
-        (m.campaign.members || []).map((member: { userId: string; role: string }) => [
-          member.userId,
-          member.role as 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM',
-        ])
-      )
+        const onlineUserIds = new Set<string>(
+          latestSessionPresence
+            .filter((entry) => isLikelyConnectedPresence({ ...entry, nowMs }))
+            .map((entry) => entry.userId)
+            .filter((userId) => nonMockMemberUserIds.has(userId))
+        )
+        const roleByUserId = new Map<string, 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'>(
+          (m.campaign.members || []).map((member: { userId: string; role: string }) => [
+            member.userId,
+            member.role as 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM',
+          ])
+        )
 
-      const connectedPlayers = Array.from(onlineUserIds).filter(
-        (id) => roleByUserId.get(id) === 'PLAYER'
-      ).length
-      const connectedSpectators = Array.from(onlineUserIds).filter(
-        (id) => roleByUserId.get(id) === 'SPECTATOR'
-      ).length
+        const connectedPlayers = Array.from(onlineUserIds).filter(
+          (id) => roleByUserId.get(id) === 'PLAYER'
+        ).length
+        const connectedSpectators = Array.from(onlineUserIds).filter(
+          (id) => roleByUserId.get(id) === 'SPECTATOR'
+        ).length
 
-      const hasRealtimeSession = isRealtimeSessionState(latestSessionState)
+        const hasRealtimeSession = isRealtimeSessionState(latestSessionState)
 
-      const connectedPlayersRounded = roundPresenceCountForPrivacy(connectedPlayers)
-      const connectedSpectatorsRounded = roundPresenceCountForPrivacy(connectedSpectators)
+        const connectedPlayersRounded = roundPresenceCountForPrivacy(connectedPlayers)
+        const connectedSpectatorsRounded = roundPresenceCountForPrivacy(connectedSpectators)
 
-      return {
-        latestSessionState,
-        displayState: deriveCampaignDisplayState(latestSessionState),
-        dmOnline: hasRealtimeSession && onlineUserIds.has(m.campaign.currentDmId),
-        connectedPlayers: hasRealtimeSession ? connectedPlayers : 0,
-        connectedPlayersRounded: hasRealtimeSession ? connectedPlayersRounded : 0,
-        connectedPlayersLabel: hasRealtimeSession
-          ? toPresenceCountLabel(connectedPlayers, connectedPlayersRounded)
-          : '0',
-        connectedSpectators: hasRealtimeSession ? connectedSpectators : 0,
-        connectedSpectatorsRounded: hasRealtimeSession ? connectedSpectatorsRounded : 0,
-        connectedSpectatorsLabel: toPresenceCountLabel(
-          hasRealtimeSession ? connectedSpectators : 0,
-          hasRealtimeSession ? connectedSpectatorsRounded : 0
-        ),
-      }
-    })(),
-    id: m.campaign.id,
-    name: m.campaign.name,
-    description: m.campaign.description,
-    posterUrl: m.campaign.posterUrl,
-    inviteCode: m.campaign.inviteCode,
-    extensionSyncPolicy: m.campaign.extensionSyncPolicy,
-    currentDmId: m.campaign.currentDmId,
-    dmUsername: m.campaign.currentDm?.username || 'dm',
-    dmDisplayName: m.campaign.currentDm?.displayName || m.campaign.currentDm?.username || 'DM',
-    dmAvatarUrl: m.campaign.currentDm?.avatarUrl || null,
-    memberRole: m.role,
-    createdAt: m.campaign.createdAt,
-    updatedAt: m.campaign.updatedAt,
-    discoverable: m.campaign.discoverable ?? false,
-    retiredAt: m.campaign.retiredAt ?? null,
-    pendingJoinRequests: (m.campaign.joinRequests || []).length,
-  }))
+        return {
+          latestSessionState,
+          displayState: deriveCampaignDisplayState(latestSessionState),
+          dmOnline: hasRealtimeSession && onlineUserIds.has(m.campaign.currentDmId),
+          connectedPlayers: hasRealtimeSession ? connectedPlayers : 0,
+          connectedPlayersRounded: hasRealtimeSession ? connectedPlayersRounded : 0,
+          connectedPlayersLabel: hasRealtimeSession
+            ? toPresenceCountLabel(connectedPlayers, connectedPlayersRounded)
+            : '0',
+          connectedSpectators: hasRealtimeSession ? connectedSpectators : 0,
+          connectedSpectatorsRounded: hasRealtimeSession ? connectedSpectatorsRounded : 0,
+          connectedSpectatorsLabel: toPresenceCountLabel(
+            hasRealtimeSession ? connectedSpectators : 0,
+            hasRealtimeSession ? connectedSpectatorsRounded : 0
+          ),
+        }
+      })(),
+      id: m.campaign.id,
+      name: m.campaign.name,
+      description: m.campaign.description,
+      posterUrl: m.campaign.posterUrl,
+      inviteCode: m.campaign.inviteCode,
+      extensionSyncPolicy: m.campaign.extensionSyncPolicy,
+      currentDmId: m.campaign.currentDmId,
+      dmUsername: m.campaign.currentDm?.username || 'dm',
+      dmDisplayName: m.campaign.currentDm?.displayName || m.campaign.currentDm?.username || 'DM',
+      dmAvatarUrl: m.campaign.currentDm?.avatarUrl || null,
+      memberRole: m.role,
+      createdAt: m.campaign.createdAt,
+      updatedAt: m.campaign.updatedAt,
+      discoverable: m.campaign.discoverable ?? false,
+      retiredAt: m.campaign.retiredAt ?? null,
+      pendingJoinRequests: (m.campaign.joinRequests || []).length,
+    }))
 }
 
 export async function createCampaignForUser(params: {
@@ -845,6 +847,7 @@ export async function listDiscoverableCampaigns(userId: string): Promise<
     campaigns = await prisma.campaign.findMany({
       where: {
         retiredAt: null,
+        deletedAt: null,
         ...(memberCampaignIds.length > 0 ? { id: { notIn: memberCampaignIds } } : {}),
         OR: [
           { discoverable: true },
@@ -1045,6 +1048,44 @@ export async function resolveJoinRequest(params: {
   })
 
   return { requestId: params.requestId, userId: request.userId, resolution: params.resolution }
+}
+
+/**
+ * Delete a campaign. In development (hard=true) the row is permanently removed.
+ * In production (hard=false) a soft-delete tombstone is set via `deletedAt`.
+ * Only allowed when no active or paused session exists.
+ */
+export async function deleteCampaign(
+  campaignId: string,
+  options: { hard: boolean }
+): Promise<{ success: true } | { error: 'NOT_FOUND' | 'ACTIVE_SESSION' | 'ALREADY_DELETED' }> {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    include: {
+      sessions: {
+        where: { state: { in: ['ACTIVE', 'PAUSED'] } },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  })
+
+  if (!campaign) return { error: 'NOT_FOUND' }
+  if (campaign.sessions.length > 0) return { error: 'ACTIVE_SESSION' }
+
+  if (options.hard) {
+    await prisma.campaign.delete({ where: { id: campaignId } })
+    return { success: true }
+  }
+
+  if (campaign.deletedAt !== null) return { error: 'ALREADY_DELETED' }
+
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { deletedAt: new Date() },
+  })
+
+  return { success: true }
 }
 
 /**

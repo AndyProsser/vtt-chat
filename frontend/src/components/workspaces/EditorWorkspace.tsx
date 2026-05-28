@@ -113,6 +113,12 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             onCopyInviteUrl: props.onCopyInviteUrl,
             onReissueInvite: props.onReissueInvite,
             onSave: props.onSaveCampaignSettings,
+            onDeleteCampaign: () => {
+              if (props.selectedCampaign) {
+                void props.onDeleteCampaign(props.selectedCampaign.id)
+              }
+            },
+            isDeletingCampaign: props.isDeletingCampaign,
           }}
           playerSettings={{
             campaignId: props.selectedCampaignId || null,

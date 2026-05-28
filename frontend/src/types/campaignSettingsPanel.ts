@@ -49,6 +49,8 @@ export type CampaignSettingsPanelProps = {
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onSave: () => void
+  onDeleteCampaign: () => void
+  isDeletingCampaign: boolean
   sessionSettingsPanel?: ReactNode
 }
 

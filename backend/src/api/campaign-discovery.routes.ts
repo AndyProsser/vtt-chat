@@ -12,6 +12,7 @@
  *   POST /:id/watch                         — linkless WATCH entry (non-member, PRIVATE watchable)
  *   POST /:id/retire                        — DM retires a campaign (soft-delete)
  *   POST /:id/resume                        — DM resumes a retired campaign
+ *   DELETE /:id                             — DM deletes a campaign (hard in DEV, soft in PROD)
  */
 
 import { Router, Request, Response, NextFunction } from 'express'
@@ -26,6 +27,7 @@ import {
   resolveJoinRequest,
   retireCampaign,
   resumeCampaign,
+  deleteCampaign,
   getCampaignDmId,
   listCampaignMemberIds,
 } from '@/repositories/campaign.repository'
@@ -452,6 +454,51 @@ router.post('/:id/resume', requireAuth, async (req: Request, res: Response) => {
     const event = makeCampaignEvent('CAMPAIGN:RESUMED', user.userId as UUID, {
       campaignId,
     })
+    await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, event)
+  }
+
+  return res.status(200).json({ ok: true })
+})
+
+// ---------------------------------------------------------------------------
+// DELETE /:id — DM deletes a campaign
+// DEV:  hard delete (row removed permanently)
+// PROD: soft delete (deletedAt timestamp set; admin can restore)
+// Blocked when an active or paused session exists.
+// ---------------------------------------------------------------------------
+
+router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
+  const user = getUser(req)
+  const campaignId = req.params.id
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaign id' })
+  }
+
+  const dmId = await getCampaignDmId(campaignId)
+  if (dmId !== user.userId) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Only the campaign DM can delete this campaign.',
+    })
+  }
+
+  const hard = process.env.NODE_ENV === 'development'
+  const result = await deleteCampaign(campaignId, { hard })
+
+  if ('error' in result) {
+    const errorMap: Record<string, [number, string]> = {
+      NOT_FOUND: [404, 'Campaign not found.'],
+      ACTIVE_SESSION: [409, 'Cannot delete a campaign with an active or paused session.'],
+      ALREADY_DELETED: [409, 'This campaign has already been deleted.'],
+    }
+    const [status, message] = errorMap[result.error] ?? [500, 'Unexpected error']
+    return res.status(status).json({ code: ErrorCode.FORBIDDEN, message })
+  }
+
+  // Notify all members that the campaign is gone before they lose access
+  if (eventBroadcaster.isReady()) {
+    const event = makeCampaignEvent('CAMPAIGN:DELETED', user.userId as UUID, { campaignId })
     await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, event)
   }
 

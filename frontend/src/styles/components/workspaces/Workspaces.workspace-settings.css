@@ -357,3 +357,161 @@
   border-color: color-mix(in srgb, var(--color-warn) 48%, transparent);
   color: var(--color-warn-text);
 }
+
+/* ---------------------------------------------------------------------------
+   Danger Zone — Delete Campaign
+   --------------------------------------------------------------------------- */
+
+.csp-danger-zone {
+  flex-shrink: 0;
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--color-error, #e53e3e) 35%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-error, #e53e3e) 5%, var(--color-surface));
+}
+
+.csp-danger-zone-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.csp-danger-zone-icon {
+  font-size: 1rem;
+  color: var(--color-error, #e53e3e);
+}
+
+.csp-danger-zone-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-error, #e53e3e);
+}
+
+.csp-danger-zone-body {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0 0 0.65rem;
+  line-height: 1.45;
+}
+
+.csp-danger-zone-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--color-error, #e53e3e) 55%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--color-error, #e53e3e);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    border-color var(--duration-fast);
+}
+
+.csp-danger-zone-trigger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-error, #e53e3e) 10%, transparent);
+  border-color: var(--color-error, #e53e3e);
+}
+
+.csp-danger-zone-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dialog */
+
+.csp-delete-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.csp-delete-dialog--anchored {
+  top: 72px;
+  transform: translateX(-50%);
+  max-height: calc(100dvh - 88px);
+  overflow-y: auto;
+  width: min(480px, 90vw);
+}
+
+.csp-delete-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--color-error, #e53e3e);
+}
+
+.csp-delete-dialog-desc {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.csp-delete-dialog-confirm-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.csp-delete-dialog-confirm-label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.csp-delete-dialog-confirm-input {
+  font-family: monospace;
+}
+
+.csp-delete-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.csp-delete-dialog-cancel {
+  padding: 0.38rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.csp-delete-dialog-cancel:hover:not(:disabled) {
+  background: var(--color-surface-subtle);
+}
+
+.csp-delete-dialog-confirm {
+  padding: 0.38rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid color-mix(in srgb, var(--color-error, #e53e3e) 65%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-error, #e53e3e) 12%, var(--color-surface));
+  color: var(--color-error, #e53e3e);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast),
+    border-color var(--duration-fast);
+}
+
+.csp-delete-dialog-confirm:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-error, #e53e3e) 22%, var(--color-surface));
+  border-color: var(--color-error, #e53e3e);
+}
+
+.csp-delete-dialog-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -88,6 +88,8 @@ export type EditorWorkspaceProps = {
       integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
     }
   ) => Promise<void>
+  onDeleteCampaign: (campaignId: UUID) => Promise<void>
+  isDeletingCampaign: boolean
   isLaunchDisabled: boolean
   launchDisabledReason: string
 }

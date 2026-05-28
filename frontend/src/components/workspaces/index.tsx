@@ -99,6 +99,7 @@ export function WorkspaceInitialization({
   const showToast = useToast()
   const { themeMode, toggleThemeMode } = useFrontendThemeMode()
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false)
+  const [isDeletingCampaign, setIsDeletingCampaign] = useState(false)
   const [newCampaignName, setNewCampaignName] = useState('')
   const [joinInviteInput, setJoinInviteInput] = useState('')
   const [isJoiningCampaign, setIsJoiningCampaign] = useState(false)
@@ -626,6 +627,7 @@ export function WorkspaceInitialization({
     startCampaignSession,
     handleJoinRequest,
     handleWatchCampaign,
+    handleDeleteCampaign,
   } = useWorkspacesCampaignEntryOrchestration({
     apiUrl,
     token,
@@ -655,6 +657,9 @@ export function WorkspaceInitialization({
     setCurrentSession,
     openEditorCampaignWorkspace,
     onSessionCreated,
+    onCampaignDeleted: () => {
+      setIsDeletingCampaign(false)
+    },
   })
 
   const {
@@ -937,6 +942,15 @@ export function WorkspaceInitialization({
     onOpenUserSettings: handleOpenUserSettingsModal,
     onLaunch: handleLaunchFromEditor,
     onSaveCampaignInfo: handleSaveCampaignInfoPanel,
+    onDeleteCampaign: async (campaignId) => {
+      setIsDeletingCampaign(true)
+      try {
+        await handleDeleteCampaign(campaignId)
+      } finally {
+        setIsDeletingCampaign(false)
+      }
+    },
+    isDeletingCampaign,
   })
 
   const sessionWorkspaceProps = buildSessionWorkspaceProps({
