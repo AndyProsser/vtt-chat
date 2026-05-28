@@ -12,6 +12,7 @@ const IGNORED_DIRS = new Set(['.git', 'node_modules', 'dist', 'coverage'])
 
 const cjsFiles = []
 const disallowedJsFiles = []
+const disallowedJsMapFiles = []
 
 function walk(dirPath) {
   const entries = fs.readdirSync(dirPath, { withFileTypes: true })
@@ -31,6 +32,11 @@ function walk(dirPath) {
 
     if (relativePath.endsWith('.cjs')) {
       cjsFiles.push(relativePath)
+      continue
+    }
+
+    if (relativePath.endsWith('.js.map')) {
+      disallowedJsMapFiles.push(relativePath)
       continue
     }
 
@@ -56,14 +62,15 @@ function printList(title, items) {
 function main() {
   walk(ROOT)
 
-  if (!cjsFiles.length && !disallowedJsFiles.length) {
-    console.log('ESM audit passed: no committed .cjs or .js files found.')
+  if (!cjsFiles.length && !disallowedJsFiles.length && !disallowedJsMapFiles.length) {
+    console.log('ESM audit passed: no committed .cjs, .js, or .js.map files found.')
     process.exit(0)
   }
 
   console.error('ESM audit failed.')
   printList('Disallowed .cjs files:', cjsFiles)
   printList('Disallowed committed .js files:', disallowedJsFiles)
+  printList('Disallowed committed .js.map files:', disallowedJsMapFiles)
   process.exit(1)
 }
 

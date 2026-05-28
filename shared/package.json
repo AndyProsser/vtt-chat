@@ -3,14 +3,19 @@
   "version": "0.8.5",
   "license": "AGPL-3.0-only",
   "description": "Shared types, events, permissions, and validators for VTT-Chat",
-  "main": "index.ts",
-  "types": "index.ts",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.d.ts",
   "exports": {
-    ".": "./index.ts"
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.ts"
+    },
+    "./*": "./*"
   },
   "private": true,
   "scripts": {
-    "lint": "tsc --noEmit"
+    "lint": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [
     "vtt-chat",
