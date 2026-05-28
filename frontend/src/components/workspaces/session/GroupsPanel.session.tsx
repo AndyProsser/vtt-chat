@@ -187,19 +187,16 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   const membersByRoomId = useMemo(() => {
     const next: Record<UUID, (typeof roomMembers)[UUID]> = {}
     const resolvedDmMember = dmMember || dmFallback?.member || null
-    const resolvedDmTargetRoomId = dmVoiceTargetGroupId || dmFallback?.targetRoomId || null
+    const greenRoomId = sessionRooms.find((room) => isGreenRoomName(room.name))?.id || null
+    const resolvedDmTargetRoomId = isGreenroom
+      ? greenRoomId || dmFallback?.targetRoomId || null
+      : dmVoiceTargetGroupId || dmFallback?.targetRoomId || null
 
     for (const room of sessionRooms) {
       next[room.id] = roomMembers[room.id] || EMPTY_ROOM_MEMBERS
     }
 
-    if (
-      canManageGroups &&
-      resolvedDmMember &&
-      resolvedDmTargetRoomId &&
-      next[resolvedDmTargetRoomId] &&
-      !shouldDetachDmFromRooms
-    ) {
+    if (canManageGroups && resolvedDmMember) {
       for (const roomId of Object.keys(next) as UUID[]) {
         const members = next[roomId]
         if (!members.some((member) => member.userId === resolvedDmMember.userId)) {
@@ -209,7 +206,9 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
         next[roomId] = members.filter((member) => member.userId !== resolvedDmMember.userId)
       }
 
-      next[resolvedDmTargetRoomId] = [resolvedDmMember, ...(next[resolvedDmTargetRoomId] || [])]
+      if (!shouldDetachDmFromRooms && resolvedDmTargetRoomId && next[resolvedDmTargetRoomId]) {
+        next[resolvedDmTargetRoomId] = [resolvedDmMember, ...(next[resolvedDmTargetRoomId] || [])]
+      }
     }
 
     for (const roomId of Object.keys(next) as UUID[]) {
@@ -222,6 +221,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     dmFallback,
     dmMember,
     dmVoiceTargetGroupId,
+    isGreenroom,
     roomMembers,
     sessionRooms,
     shouldDetachDmFromRooms,
