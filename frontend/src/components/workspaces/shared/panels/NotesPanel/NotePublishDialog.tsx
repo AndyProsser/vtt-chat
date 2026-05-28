@@ -27,17 +27,24 @@ export function NotePublishDialog(props: NotePublishDialogProps) {
           </DialogPrimitive.Description>
 
           <div className="mt-4 flex flex-col gap-2">
-            <button
-              type="button"
-              disabled={props.isSubmitting}
-              onClick={() => void props.onConfirmPublish({ audience: 'EVERYONE' })}
-              className="rounded-ui-sm border border-ui-border bg-ui-surface-subtle px-3 py-3 text-left text-sm text-ui-primary transition hover:bg-ui-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <div className="font-medium">Everyone</div>
-              <div className="mt-1 text-xs text-ui-secondary">
-                Post as a global handout card visible in everyone&apos;s chat.
-              </div>
-            </button>
+            {props.rooms.length > 1 && (
+              <button
+                type="button"
+                disabled={props.isSubmitting}
+                onClick={() =>
+                  void props.onConfirmPublish({
+                    audience: 'ALL_ROOMS',
+                    roomIds: props.rooms.map((r) => r.id),
+                  })
+                }
+                className="rounded-ui-sm border border-ui-border bg-ui-surface-subtle px-3 py-3 text-left text-sm text-ui-primary transition hover:bg-ui-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <div className="font-medium">All Rooms</div>
+                <div className="mt-1 text-xs text-ui-secondary">
+                  Post to every room with players.
+                </div>
+              </button>
+            )}
 
             {props.rooms.map((room) => {
               const memberCount = props.roomMemberIdsByRoomId[room.id]?.length || 0

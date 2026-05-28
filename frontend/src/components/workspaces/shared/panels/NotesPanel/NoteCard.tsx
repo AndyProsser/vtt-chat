@@ -186,7 +186,15 @@ export function NoteCard({
     setIsSaving(true)
     setError(null)
     try {
-      await onPublish(note.id, target)
+      // Handle ALL_ROOMS by publishing to each room sequentially
+      if (target.audience === 'ALL_ROOMS' && target.roomIds && target.roomIds.length > 0) {
+        for (const roomId of target.roomIds) {
+          await onPublish(note.id, { audience: 'ROOM', roomId })
+        }
+      } else {
+        await onPublish(note.id, target)
+      }
+
       setHasPublishedThisSession(true)
       setPublishDialogOpen(false)
     } catch (err) {
@@ -201,11 +209,18 @@ export function NoteCard({
       return
     }
 
-    if (publishRooms.length === 1 && publishRooms[0]?.type === RoomType.MAIN) {
-      await handleConfirmPublish({ audience: 'EVERYONE' })
+    // Only one room has players — publish directly to it
+    if (publishRooms.length === 1) {
+      const room = publishRooms[0]
+      if (room.type === RoomType.MAIN) {
+        await handleConfirmPublish({ audience: 'EVERYONE' })
+      } else {
+        await handleConfirmPublish({ audience: 'ROOM', roomId: room.id })
+      }
       return
     }
 
+    // Multiple rooms have players — show dialog to choose
     setPublishDialogOpen(true)
   }
 
@@ -256,8 +271,10 @@ export function NoteCard({
                     ? 'Publish is unavailable in greenroom'
                     : hasPublishedThisSession
                       ? 'Published this session (click to publish again)'
-                      : publishRooms.length === 1 && publishRooms[0]?.type === RoomType.MAIN
-                        ? 'Publish to everyone'
+                      : publishRooms.length === 1
+                        ? publishRooms[0]?.type === RoomType.MAIN
+                          ? 'Publish to everyone'
+                          : `Publish to ${publishRooms[0]?.name || 'group'}`
                         : 'Choose where to post'}
                 </TooltipContent>
               </Tooltip>
