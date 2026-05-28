@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-const fs = require('node:fs')
-const path = require('node:path')
+import fs from 'node:fs'
+import path from 'node:path'
 
 function parseArgs(argv) {
   const out = {
@@ -24,7 +24,6 @@ function parseArgs(argv) {
     }
     if (arg === '--json') {
       out.json = true
-      continue
     }
   }
 
@@ -64,10 +63,7 @@ function ensureFlow(bucket, flow) {
 
 function ensureGroup(flowBucket, group) {
   if (!flowBucket[group]) {
-    flowBucket[group] = {
-      starts: 0,
-      responses: 0,
-    }
+    flowBucket[group] = { starts: 0, responses: 0 }
   }
   return flowBucket[group]
 }
@@ -145,15 +141,15 @@ function readCounts(filePath) {
 
 function mergeFlows(before, after) {
   const out = new Set()
-  Object.keys(before).forEach((k) => out.add(k))
-  Object.keys(after).forEach((k) => out.add(k))
+  Object.keys(before).forEach((key) => out.add(key))
+  Object.keys(after).forEach((key) => out.add(key))
   return [...out].sort()
 }
 
 function mergeGroups(beforeFlow, afterFlow) {
   const out = new Set()
-  Object.keys(beforeFlow || {}).forEach((k) => out.add(k))
-  Object.keys(afterFlow || {}).forEach((k) => out.add(k))
+  Object.keys(beforeFlow || {}).forEach((key) => out.add(key))
+  Object.keys(afterFlow || {}).forEach((key) => out.add(key))
   return [...out].sort()
 }
 
@@ -190,7 +186,7 @@ function main() {
   const args = parseArgs(process.argv)
   if (!args.before && !args.after) {
     console.error(
-      'Usage: node scripts/qa/verify-request-counts.cjs --before <before.log> --after <after.log> [--json]'
+      'Usage: node scripts/qa/verify-request-counts.mjs --before <before.log> --after <after.log> [--json]'
     )
     process.exit(1)
   }

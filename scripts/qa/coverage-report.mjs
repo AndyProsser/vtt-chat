@@ -1,33 +1,19 @@
 #!/usr/bin/env node
 /**
- * scripts/qa/coverage-report.cjs
+ * scripts/qa/coverage-report.mjs
  *
  * W2: Workspace test report — per-package test and coverage delta
- *
- * Reads the coverage-summary.json from each package and prints:
- *  - Per-package coverage table (statements, branches, functions, lines)
- *  - Delta against configured release-gate thresholds
- *  - Pass/fail status per threshold
- *  - Workspace-level summary
- *
- * Usage:
- *   node scripts/qa/coverage-report.cjs
- *   node scripts/qa/coverage-report.cjs --json   # machine-readable output
- *
- * Exit code 0 = all packages meet thresholds, 1 = at least one failure.
- *
- * Run `npm run test:coverage` in each package first to generate fresh reports.
  */
 
-'use strict'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const fs = require('fs')
-const path = require('path')
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const ROOT = path.resolve(__dirname, '..', '..')
 const JSON_MODE = process.argv.includes('--json')
-
-// ── Release-gate thresholds (must match vitest.config.ts values) ──────────────
 
 const THRESHOLDS = {
   backend: { statements: 60, branches: 51, functions: 60, lines: 61 },
@@ -36,8 +22,6 @@ const THRESHOLDS = {
 }
 
 const PACKAGES = ['backend', 'frontend', 'admin']
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function pct(covered, total) {
   if (!total) return 0
@@ -69,8 +53,6 @@ function extractTotals(summary) {
   }
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
-
 let anyFail = false
 const report = {}
 
@@ -83,7 +65,7 @@ for (const pkg of PACKAGES) {
     report[pkg] = { error: `coverage-summary.json not found — run npm run test:coverage in ${pkg}` }
     if (!JSON_MODE) {
       console.log(`\n${pkg.toUpperCase()}`)
-      console.log(`  ⚠  No coverage data found. Run: npm --prefix ${pkg} run test:coverage`)
+      console.log(`  No coverage data found. Run: npm --prefix ${pkg} run test:coverage`)
     }
     continue
   }
@@ -92,61 +74,59 @@ for (const pkg of PACKAGES) {
   const checks = {}
   let pkgFail = false
 
-  for (const m of metrics) {
-    const actual = totals[m]
-    const threshold = thresholds[m]
+  for (const metric of metrics) {
+    const actual = totals[metric]
+    const threshold = thresholds[metric]
     const delta = parseFloat((actual - threshold).toFixed(2))
     const pass = actual >= threshold
     if (!pass) {
       pkgFail = true
       anyFail = true
     }
-    checks[m] = { actual, threshold, delta, pass }
+    checks[metric] = { actual, threshold, delta, pass }
   }
 
   report[pkg] = { totals, thresholds, checks, pass: !pkgFail }
 
   if (!JSON_MODE) {
-    const status = pkgFail ? '✗ FAIL' : '✓ PASS'
+    const status = pkgFail ? 'FAIL' : 'PASS'
     console.log(`\n${pkg.toUpperCase()}  ${status}`)
     console.log(
       `  ${'METRIC'.padEnd(12)} ${'ACTUAL'.padStart(7)} ${'THRESHOLD'.padStart(10)} ${'DELTA'.padStart(8)} STATUS`
     )
     console.log(`  ${'-'.repeat(52)}`)
-    for (const m of metrics) {
-      const c = checks[m]
-      const sign = c.delta >= 0 ? '+' : ''
-      const statusIcon = c.pass ? '✓' : '✗'
+    for (const metric of metrics) {
+      const check = checks[metric]
+      const sign = check.delta >= 0 ? '+' : ''
+      const statusIcon = check.pass ? 'PASS' : 'FAIL'
       console.log(
-        `  ${m.padEnd(12)} ${String(c.actual).padStart(6)}% ${String(c.threshold).padStart(9)}%` +
-          ` ${(sign + c.delta).padStart(7)}%  ${statusIcon}`
+        `  ${metric.padEnd(12)} ${String(check.actual).padStart(6)}% ${String(check.threshold).padStart(9)}%` +
+          ` ${(sign + check.delta).padStart(7)}%  ${statusIcon}`
       )
     }
     if (pkgFail) {
-      const failing = metrics.filter((m) => !checks[m].pass)
+      const failing = metrics.filter((metric) => !checks[metric].pass)
       console.log(`\n  Failing: ${failing.join(', ')}`)
     }
   }
 }
 
-// ── Workspace summary ─────────────────────────────────────────────────────────
-
 if (!JSON_MODE) {
-  console.log('\n' + '═'.repeat(56))
-  const passCount = PACKAGES.filter((p) => report[p]?.pass).length
-  const total = PACKAGES.filter((p) => report[p] && !report[p].error).length
+  console.log(`\n${'═'.repeat(56)}`)
+  const passCount = PACKAGES.filter((pkg) => report[pkg]?.pass).length
+  const total = PACKAGES.filter((pkg) => report[pkg] && !report[pkg].error).length
   console.log(`Workspace gate: ${passCount}/${total} packages passing all thresholds`)
   if (anyFail) {
-    console.log('Result: ✗ GATE FAILED — one or more packages below threshold')
+    console.log('Result: GATE FAILED — one or more packages below threshold')
   } else {
-    console.log('Result: ✓ GATE PASSED — all packages meet release thresholds')
+    console.log('Result: GATE PASSED — all packages meet release thresholds')
   }
   console.log()
 } else {
   const gateResult = {
     pass: !anyFail,
     packagesTotal: PACKAGES.length,
-    packagesPassing: PACKAGES.filter((p) => report[p]?.pass).length,
+    packagesPassing: PACKAGES.filter((pkg) => report[pkg]?.pass).length,
     thresholds: THRESHOLDS,
     packages: report,
   }

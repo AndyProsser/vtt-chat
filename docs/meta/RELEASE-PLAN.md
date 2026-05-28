@@ -46,7 +46,7 @@ Recommended scopes:
 
 ## 3. semantic-release Rules (Current)
 
-Configured in [release.config.js](../../release.config.js):
+Configured in [release.config.mjs](../../release.config.mjs):
 
 - `feat` -> minor
 - `fix` -> patch

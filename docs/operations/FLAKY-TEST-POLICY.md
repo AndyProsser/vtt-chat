@@ -160,7 +160,7 @@ If flaky test cannot be fixed:
 
 ### In Progress
 
-- [ ] Flaky test reporting in coverage-report.cjs
+- [ ] Flaky test reporting in coverage-report.mjs
 - [ ] CI enforcement in GitHub Actions
 - [ ] Flaky test registry (FLAKY-TESTS-REGISTRY.md)
 - [ ] Dashboard/metrics tracking

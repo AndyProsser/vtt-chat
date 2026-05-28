@@ -7,7 +7,7 @@
  * Used in CI pipeline to track and enforce flaky test thresholds.
  *
  * Usage:
- *   node scripts/qa/flaky-tests.cjs [options]
+ *   node scripts/qa/flaky-tests.mjs [options]
  *
  * Options:
  *   --runs=N          Number of test runs (default: 3)
@@ -17,34 +17,36 @@
  *   --verbose         Show detailed output for each run
  */
 
-const fs = require('fs')
-const os = require('os')
-const path = require('path')
-const { spawnSync } = require('child_process')
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // Configuration
 const BACKEND_DIR = path.join(__dirname, '..', '..', 'backend')
 const TESTS_DIR = path.join(BACKEND_DIR, 'tests')
 
 const THRESHOLDS = {
-  integrationTests: 0.02, // 2% flakiness allowed
-  unitTests: 0.0, // 0% flakiness allowed
-  contractTests: 0.0, // 0% flakiness allowed
-  overall: 0.015, // 1.5% overall flakiness target
+  integrationTests: 0.02,
+  unitTests: 0.0,
+  contractTests: 0.0,
+  overall: 0.015,
 }
 
-// Parse CLI args
 const args = process.argv.slice(2)
 const options = {
-  runs: parseInt(args.find((a) => a.startsWith('--runs='))?.split('=')[1] || '3'),
+  runs: parseInt(args.find((a) => a.startsWith('--runs='))?.split('=')[1] || '3', 10),
   integrationOnly: args.includes('--integration-only'),
   json: args.includes('--json'),
   strict: args.includes('--strict'),
   verbose: args.includes('--verbose'),
 }
 
-// State tracking
-const testResults = new Map() // test-name -> { passed, failed, file }
+const testResults = new Map()
 const flakyTests = []
 const failedTests = []
 
@@ -77,9 +79,6 @@ function getIntegrationTestFiles() {
     .sort()
 }
 
-/**
- * Run tests and capture results
- */
 function runTests(run) {
   try {
     if (options.verbose) {
@@ -87,15 +86,15 @@ function runTests(run) {
     }
 
     const reportPath = path.join(os.tmpdir(), `vtt-chat-vitest-run-${process.pid}-${run}.json`)
-    const args = ['vitest', 'run']
+    const vitestArgs = ['vitest', 'run']
 
     if (options.integrationOnly) {
-      args.push(...getIntegrationTestFiles())
+      vitestArgs.push(...getIntegrationTestFiles())
     }
 
-    args.push('--reporter=json', '--outputFile', reportPath)
+    vitestArgs.push('--reporter=json', '--outputFile', reportPath)
 
-    const result = spawnSync('npx', args, {
+    const result = spawnSync('npx', vitestArgs, {
       cwd: BACKEND_DIR,
       encoding: 'utf-8',
       stdio: options.verbose ? 'inherit' : 'pipe',
@@ -119,11 +118,11 @@ function runTests(run) {
         if (!testResults.has(testName)) {
           testResults.set(testName, { passed: 0, failed: 0, file: suite.name })
         }
-        const result = testResults.get(testName)
+        const testResult = testResults.get(testName)
         if (assertion.status === 'passed') {
-          result.passed += 1
+          testResult.passed += 1
         } else if (assertion.status === 'failed') {
-          result.failed += 1
+          testResult.failed += 1
         }
       }
     }
@@ -137,9 +136,6 @@ function runTests(run) {
   }
 }
 
-/**
- * Analyze results for flakiness
- */
 function analyzeResults() {
   let totalTests = 0
   let totalFlaky = 0
@@ -151,7 +147,6 @@ function analyzeResults() {
     const failRate = result.failed / options.runs
     const category = getSuiteCategory(result.file)
 
-    // Test is flaky if it doesn't have 100% consistency
     if (passRate > 0 && passRate < 1) {
       flakyTests.push({
         name: testName,
@@ -161,7 +156,7 @@ function analyzeResults() {
         failedRuns: result.failed,
         passRate: (passRate * 100).toFixed(1),
       })
-      totalFlaky++
+      totalFlaky += 1
     } else if (failRate === 1) {
       failedTests.push({
         name: testName,
@@ -181,13 +176,10 @@ function analyzeResults() {
   return { totalTests, totalFlaky, flakinessRate, thresholdBreaches }
 }
 
-/**
- * Generate report
- */
 function generateReport(stats) {
   const { totalTests, totalFlaky, flakinessRate, thresholdBreaches } = stats
 
-  const report = {
+  return {
     timestamp: new Date().toISOString(),
     runs: options.runs,
     summary: {
@@ -202,13 +194,8 @@ function generateReport(stats) {
     thresholdBreaches,
     thresholds: THRESHOLDS,
   }
-
-  return report
 }
 
-/**
- * Display report to console
- */
 function displayReport(report) {
   console.log('\nFlaky Test Report')
   console.log('='.repeat(60))
@@ -240,31 +227,24 @@ function displayReport(report) {
     })
   }
 
-  console.log('\n' + '='.repeat(60))
+  console.log(`\n${'='.repeat(60)}`)
 }
 
-/**
- * Main execution
- */
 function main() {
   console.log('Starting flaky test detection')
   console.log(
     `Configuration: ${options.runs} runs, ${options.integrationOnly ? 'integration only' : 'all tests'}`
   )
 
-  // Run tests multiple times
-  for (let i = 0; i < options.runs; i++) {
+  for (let i = 0; i < options.runs; i += 1) {
     runTests(i)
   }
 
-  // Analyze results
   const stats = analyzeResults()
   const report = generateReport(stats)
 
-  // Display report
   displayReport(report)
 
-  // Output JSON if requested
   if (options.json) {
     const reportPath = path.join(__dirname, '../../backend/coverage/flaky-tests-report.json')
     fs.mkdirSync(path.dirname(reportPath), { recursive: true })
@@ -272,7 +252,6 @@ function main() {
     console.log(`\nJSON report written to: ${reportPath}`)
   }
 
-  // Exit with appropriate code
   if (report.failedTests.length > 0) {
     console.error('\nConsistently failing tests detected')
     process.exit(1)
@@ -284,8 +263,6 @@ function main() {
   }
 
   console.log('\nFlaky test detection complete')
-  process.exit(0)
 }
 
-// Run main
 main()

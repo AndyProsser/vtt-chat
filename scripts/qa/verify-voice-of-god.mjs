@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const {
+import {
   Room,
   RoomEvent,
   AudioSource,
@@ -9,7 +9,7 @@ const {
   AudioStream,
   TrackPublishOptions,
   TrackSource,
-} = require('@livekit/rtc-node')
+} from '@livekit/rtc-node'
 
 const config = {
   apiBase: process.env.VOG_API_BASE || 'http://localhost:8080',
@@ -383,7 +383,6 @@ async function main() {
   try {
     const summary = await runVerification()
     console.log(JSON.stringify(summary, null, 2))
-    process.exit(0)
   } catch (error) {
     console.error('VERIFY_FAILURE')
     console.error(error && error.stack ? error.stack : String(error))
