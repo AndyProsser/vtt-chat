@@ -132,6 +132,7 @@ describe('notes routes websocket propagation', () => {
     const app = buildAppWithWs()
     mocks.mockCreateNote.mockResolvedValue({
       id: NOTE_ID,
+      created: true,
       sessionId: SESSION_ID,
       authorId: USER_ID,
       authorUsername: 'alice',
@@ -183,6 +184,12 @@ describe('notes routes websocket propagation', () => {
 
     mocks.mockGetNoteById.mockResolvedValue(note)
     mocks.mockGetVisibleNotes.mockResolvedValue([note])
+    mocks.mockUpdateNote.mockResolvedValueOnce({
+      ...note,
+      visibility: NoteVisibility.PLAYERS_VISIBLE,
+      allowedUsers: [],
+      updatedAt: Date.now(),
+    })
     mocks.mockMarkNotePublished.mockResolvedValue({
       ...note,
       publishedAt: Date.now(),

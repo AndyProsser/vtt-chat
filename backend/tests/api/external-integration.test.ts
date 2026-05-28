@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   mockCampaignExternalLinkUpdate: vi.fn(),
   mockGetSessionPresence: vi.fn(),
   mockAppendSessionAuditEvent: vi.fn(),
+  mockBroadcastPresenceProfileUpdate: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -77,6 +78,11 @@ vi.mock('@/services/runtime/runtime-streams.service', () => ({
   appendSessionAuditEvent: (...args: unknown[]) => mocks.mockAppendSessionAuditEvent(...args),
 }))
 
+vi.mock('@/services/session/presence-profile-broadcast.service', () => ({
+  broadcastPresenceProfileUpdate: (...args: unknown[]) =>
+    mocks.mockBroadcastPresenceProfileUpdate(...args),
+}))
+
 vi.mock('@/services/guest-auth', () => ({
   browseSpectatorCampaignsForUser: vi.fn(),
   getSpectatorWaitlistStatus: vi.fn(),
@@ -113,6 +119,7 @@ describe('external integration endpoints', () => {
 
     mocks.mockAdminAuditLogCreate.mockResolvedValue({ id: 'audit-1' })
     mocks.mockAppendSessionAuditEvent.mockResolvedValue(undefined)
+    mocks.mockBroadcastPresenceProfileUpdate.mockResolvedValue(undefined)
   })
 
   it('returns 400 for invalid campaignId on sync', async () => {
@@ -344,7 +351,14 @@ describe('external integration endpoints', () => {
         }),
       })
     )
-    expect(broadcastEventToSession).toHaveBeenCalledTimes(1)
+    expect(broadcastEventToSession).toHaveBeenCalledTimes(0)
+    expect(mocks.mockBroadcastPresenceProfileUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        wsManager: expect.objectContaining({ broadcastEventToSession }),
+        sessionIds: [CAMPAIGN_ID],
+        userId: USER_ID,
+      })
+    )
   })
 
   it('lists external links for campaign DM', async () => {

@@ -233,6 +233,7 @@ describe('notes routes', () => {
     const createdAt = Date.now()
     mocks.mockCreateNote.mockResolvedValueOnce({
       id: NOTE_ID,
+      created: true,
       sessionId: SESSION_ID,
       authorId: USER_ID,
       authorUsername: 'alice',
@@ -526,6 +527,11 @@ describe('notes routes', () => {
       campaignId: 'campaign-1',
     })
     mocks.mockGetVisibleNotes.mockResolvedValueOnce([note])
+    mocks.mockUpdateNote.mockResolvedValueOnce({
+      ...note,
+      visibility: NoteVisibility.PLAYERS_VISIBLE,
+      allowedUsers: [],
+    })
     mocks.mockMarkNotePublished.mockResolvedValueOnce(null)
     response = await request(app)
       .post(`/api/notes/${NOTE_ID}/publish`)
@@ -568,6 +574,11 @@ describe('notes routes', () => {
       campaignId: 'campaign-1',
     })
     mocks.mockGetVisibleNotes.mockResolvedValueOnce([note])
+    mocks.mockUpdateNote.mockResolvedValueOnce({
+      ...note,
+      visibility: NoteVisibility.PLAYERS_VISIBLE,
+      allowedUsers: [],
+    })
     mocks.mockMarkNotePublished.mockResolvedValueOnce({ ...note, publishedAt })
     mocks.mockSendMessage.mockResolvedValueOnce(message)
 
