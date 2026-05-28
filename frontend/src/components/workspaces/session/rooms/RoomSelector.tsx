@@ -1252,6 +1252,8 @@ export function RoomSelector({
       room={room}
       selected={room.id === selectedRoomId}
       participants={displayedParticipantsByRoom[room.id] || []}
+      sessionId={sessionId}
+      currentUserId={currentUser?.id ?? ('' as UUID)}
       canManageRooms={canManageRooms}
       isGreenroom={isGreenroom}
       isDenseRoomLayout={isDenseRoomLayout}
@@ -1389,9 +1391,13 @@ export function RoomSelector({
                           roleLabel={ROOM_ROLE_LABELS.dm}
                           metaLine={dmFlavorLine}
                           presenceState={dmDetachedParticipant.presenceState}
-                          isSpeaking={Boolean(dmDetachedParticipant.isSpeaking)}
                           isMuted={Boolean(dmDetachedParticipant.isMuted)}
                           isGhost={Boolean(dmDetachedParticipant.ghost)}
+                          speaking={{
+                            sessionId,
+                            userId: dmDetachedParticipant.userId as UUID,
+                            isSelf: dmDetachedParticipant.userId === currentUser?.id,
+                          }}
                         />
                       </button>
                     </TooltipTrigger>

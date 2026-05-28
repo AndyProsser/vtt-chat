@@ -14,6 +14,15 @@ import type { SessionPresence } from '@/types/room'
 export interface GroupMemberListProps {
   room: GroupPanelGroupWithParticipants
   participants: GroupParticipantWithGroupId[]
+  /**
+   * Session id is threaded through purely so the leaf SpeakingIndicator can
+   * subscribe to per-user speaking bits without us having to put `isSpeaking`
+   * on the participant data shape (which would re-render this whole list on
+   * every VAD tick). It is stable for the lifetime of the session.
+   */
+  sessionId: UUID
+  /** Local user id — used by the SpeakingIndicator to pick the self/device path. */
+  currentUserId: UUID
   canManageRooms: boolean
   isGreenroom: boolean
   touchFeedbackUserId: UUID | null
@@ -47,6 +56,8 @@ export interface GroupMemberListProps {
 interface GroupMemberItemProps {
   room: GroupPanelGroupWithParticipants
   member: GroupParticipantWithGroupId
+  sessionId: UUID
+  currentUserId: UUID
   canManageRooms: boolean
   isGreenroom: boolean
   isNarrowViewport: boolean
@@ -87,6 +98,8 @@ function areGroupMemberItemPropsEqual(
 
   return (
     previous.room === next.room &&
+    previous.sessionId === next.sessionId &&
+    previous.currentUserId === next.currentUserId &&
     previous.canManageRooms === next.canManageRooms &&
     previous.isGreenroom === next.isGreenroom &&
     previous.isNarrowViewport === next.isNarrowViewport &&
@@ -123,7 +136,6 @@ function areGroupMemberItemPropsEqual(
     left.ghost === right.ghost &&
     left.roleLabel === right.roleLabel &&
     left.isMuted === right.isMuted &&
-    left.isSpeaking === right.isSpeaking &&
     left.condition === right.condition &&
     left.distanceLabel === right.distanceLabel
   )
@@ -132,6 +144,8 @@ function areGroupMemberItemPropsEqual(
 const GroupMemberItem = memo(function GroupMemberItem({
   room,
   member,
+  sessionId,
+  currentUserId,
   canManageRooms,
   isGreenroom,
   isNarrowViewport,
@@ -252,8 +266,13 @@ const GroupMemberItem = memo(function GroupMemberItem({
         metaLine={getParticipantMetaLine(member)}
         presenceState={shownPresenceState}
         isMuted={isMuted}
-        isSpeaking={member.isSpeaking}
         isGhost={Boolean(member.ghost)}
+        speaking={{
+          sessionId,
+          userId: member.userId,
+          isSelf: member.userId === currentUserId,
+          roomType: room.type,
+        }}
       />
     </button>
   )
@@ -309,6 +328,8 @@ const GroupMemberItem = memo(function GroupMemberItem({
 export function GroupMemberList({
   room,
   participants,
+  sessionId,
+  currentUserId,
   canManageRooms,
   isGreenroom,
   touchFeedbackUserId,
@@ -356,6 +377,8 @@ export function GroupMemberList({
           key={member.userId}
           room={room}
           member={member}
+          sessionId={sessionId}
+          currentUserId={currentUserId}
           canManageRooms={canManageRooms}
           isGreenroom={isGreenroom}
           isNarrowViewport={isNarrowViewport}

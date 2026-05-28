@@ -11,7 +11,6 @@ export interface GroupMemberProfileCardParticipant {
   roleLabel?: string
   ghost?: boolean
   isMuted?: boolean
-  isSpeaking?: boolean
   distanceLabel?: string
   condition?: string
 }

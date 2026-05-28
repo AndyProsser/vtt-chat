@@ -4,7 +4,6 @@ import { PresenceState, RoomType } from '@shared'
 import { isGreenroomSessionState } from '@shared'
 import type { RoomUser } from '@/types/room'
 import { useStore } from '@/state/store'
-import { useShallow } from 'zustand/shallow'
 import { getUserDMOverride, type AudioDMOverridesByUser } from '@/utils/audioOverrides'
 import { isGreenRoomName, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
 import { LeftRailSummary } from './LeftRailSummary'
@@ -12,7 +11,6 @@ import { GroupsPanel } from '@/components/workspaces/session/rooms/GroupsPanel'
 
 // Stable empty objects to avoid creating new references on every render
 const EMPTY_USER_MUTE_MAP: Record<UUID, boolean> = {}
-const EMPTY_SPEAKING_MAP: Record<UUID, true> = {}
 const EMPTY_ROOM_MEMBERS: RoomUser[] = []
 
 interface LeftRailPanelProps {
@@ -74,14 +72,11 @@ export function LeftRailPanel({
 }: LeftRailPanelProps) {
   const device = useStore((state) => state.device)
   const pttActive = useStore((state) => state.pttActive)
-  // Unified speaking map: merges WS-presence (mock) speakers and LiveKit real speakers.
-  // useShallow provides stable output — only triggers re-render when actual speaker set changes.
-  const allSpeakingUsers = useStore(
-    useShallow((state) => ({
-      ...(state.presenceLkSpeakingBySession[sessionId] ?? EMPTY_SPEAKING_MAP),
-      ...(state.presenceSpeakingBySession[sessionId] ?? EMPTY_SPEAKING_MAP),
-    }))
-  )
+  // NOTE: speaking state is intentionally NOT read here.
+  // It is consumed only by the leaf <SpeakingIndicator /> rendered inside each
+  // <AvatarOverlay />. Threading speaking through participant data would
+  // recompute groupPanelRooms (and rebuild every Radix Tooltip/Popover subtree)
+  // on every VAD tick — the root cause of the long-session memory leak.
   const userMuteState = useStore((state) => state.userMuteState[sessionId] ?? EMPTY_USER_MUTE_MAP)
 
   const isGreenroom = isGreenroomSessionState(sessionState)
@@ -118,21 +113,6 @@ export function LeftRailPanel({
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
 
   const localUserMuted = device.pttEnabled ? !pttActive : !device.microphoneOn
-
-  // Include current user in speaking list if they're transmitting audio
-  // LiveKit's activeSpeakers might not include the local participant (publisher),
-  // so we detect this locally from whether the user has their mic on with active VAD.
-  const isCurrentUserSpeaking = !localUserMuted && device.isSpeaking
-
-  const allSpeakingUsersWithLocal = useMemo(() => {
-    const speaking: Record<UUID, true> = { ...allSpeakingUsers }
-    if (isCurrentUserSpeaking) {
-      speaking[currentUserId] = true
-    } else {
-      delete speaking[currentUserId]
-    }
-    return speaking
-  }, [allSpeakingUsers, isCurrentUserSpeaking, currentUserId])
 
   const hasNamedGreenRoom = rooms.some((room) => isGreenRoomName(room.name))
 
@@ -203,10 +183,6 @@ export function LeftRailPanel({
           const userOwnMuted = userMuteState[member.userId] ?? false
           const dmMuted = overrideMuted
           const isMutedCombined = userOwnMuted || dmMuted
-          const isActivelySpeaking =
-            room.type === RoomType.PRIVATE
-              ? false
-              : Boolean(allSpeakingUsersWithLocal[member.userId]) && !isMutedCombined
 
           return {
             userId: member.userId,
@@ -228,7 +204,6 @@ export function LeftRailPanel({
             presenceState: member.presenceState,
             ghost: member.ghost,
             isMuted: isSelf ? localUserMuted || isMutedCombined : isMutedCombined,
-            isSpeaking: isActivelySpeaking,
             distanceLabel: isGreenroom ? undefined : overrideDistance,
             condition: isGreenroom
               ? undefined
@@ -243,7 +218,6 @@ export function LeftRailPanel({
         ),
     }))
   }, [
-    allSpeakingUsersWithLocal,
     currentConditionName,
     currentUserId,
     dmOverrides,

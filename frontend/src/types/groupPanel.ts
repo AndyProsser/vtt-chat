@@ -24,7 +24,6 @@ export interface GroupParticipantStatus {
   ghost?: boolean
   roleLabel?: 'DM' | 'PLAYER' | 'SPECTATOR'
   isMuted?: boolean
-  isSpeaking?: boolean
   condition?: string
   distanceLabel?: string
 }

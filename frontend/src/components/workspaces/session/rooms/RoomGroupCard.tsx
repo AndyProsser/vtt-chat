@@ -18,6 +18,12 @@ export interface GroupCardProps {
   room: GroupPanelGroupWithParticipants
   selected: boolean
   participants: GroupParticipantWithGroupId[]
+  /**
+   * Threaded through to the leaf SpeakingIndicator inside each member tile.
+   * Speaking-bit changes do not flow as data through this card.
+   */
+  sessionId: UUID
+  currentUserId: UUID
   canManageRooms: boolean
   isGreenroom: boolean
   isDenseRoomLayout: boolean
@@ -89,7 +95,6 @@ function areSameParticipant(
     previous.presenceState === next.presenceState &&
     previous.ghost === next.ghost &&
     previous.isMuted === next.isMuted &&
-    previous.isSpeaking === next.isSpeaking &&
     previous.condition === next.condition &&
     previous.distanceLabel === next.distanceLabel
   )
@@ -128,6 +133,8 @@ function areGroupCardPropsEqual(previous: GroupCardProps, next: GroupCardProps):
     previous.environmentPickerRoomId === next.environmentPickerRoomId &&
     previous.touchFeedbackUserId === next.touchFeedbackUserId &&
     previous.dmUserId === next.dmUserId &&
+    previous.sessionId === next.sessionId &&
+    previous.currentUserId === next.currentUserId &&
     previous.activeTakeoverUserId === next.activeTakeoverUserId &&
     previous.environmentPickerLayerRef === next.environmentPickerLayerRef &&
     previous.distanceTargets === next.distanceTargets &&
@@ -166,6 +173,8 @@ function RoomGroupCardComponent({
   room,
   selected,
   participants,
+  sessionId,
+  currentUserId,
   canManageRooms,
   isGreenroom,
   isDenseRoomLayout,
@@ -448,6 +457,8 @@ function RoomGroupCardComponent({
         <GroupMemberList
           room={room}
           participants={participants}
+          sessionId={sessionId}
+          currentUserId={currentUserId}
           canManageRooms={canManageRooms}
           isGreenroom={isGreenroom}
           touchFeedbackUserId={touchFeedbackUserId}

@@ -1,5 +1,6 @@
-import type { PresenceState } from '@shared'
+import { RoomType, type PresenceState, type UUID } from '@shared'
 import { DEFAULT_AVATAR_META_LINES, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
+import { SpeakingIndicator } from './SpeakingIndicator'
 import '@/styles/components/workspaces/session/rooms/AvatarOverlay.css'
 
 interface AvatarOverlayProps {
@@ -8,9 +9,23 @@ interface AvatarOverlayProps {
   roleLabel?: 'DM' | 'PLAYER' | 'SPECTATOR'
   metaLine?: string
   presenceState?: PresenceState
-  isSpeaking?: boolean
   isMuted?: boolean
   isGhost?: boolean
+  /**
+   * Speaking-indicator wiring. When provided, a leaf SpeakingIndicator
+   * subscribes directly to the per-user speaking bits from the store.
+   * The parent does not see speaking changes and is not re-rendered when
+   * this user starts or stops speaking — the only DOM change is a single
+   * child <span> mounting/unmounting on the avatar glyph.
+   *
+   * Omit to render the avatar without any speaking visualisation.
+   */
+  speaking?: {
+    sessionId: UUID
+    userId: UUID
+    isSelf?: boolean
+    roomType?: RoomType
+  }
 }
 
 function initialFor(name: string): string {
@@ -23,9 +38,9 @@ export function AvatarOverlay({
   avatarUrl,
   roleLabel,
   metaLine,
-  isSpeaking = false,
   isMuted = false,
   isGhost = false,
+  speaking,
 }: AvatarOverlayProps) {
   const resolvedMetaLine =
     metaLine?.trim() ||
@@ -34,19 +49,22 @@ export function AvatarOverlay({
       : DEFAULT_AVATAR_META_LINES.player)
 
   return (
-    <div
-      className={`avatar-overlay ${isSpeaking ? 'avatar-overlay--speaking' : ''}`}
-      data-testid="avatar-overlay"
-    >
-      <div
-        className={`avatar-glyph ${isGhost ? 'avatar-glyph--ghost' : ''} ${isSpeaking ? 'avatar-glyph--speaking' : ''}`}
-        aria-hidden="true"
-      >
+    <div className="avatar-overlay" data-testid="avatar-overlay">
+      <div className={`avatar-glyph ${isGhost ? 'avatar-glyph--ghost' : ''}`} aria-hidden="true">
         {avatarUrl ? (
           <img src={avatarUrl} alt="" className="avatar-glyph__image" />
         ) : (
           initialFor(username)
         )}
+        {speaking ? (
+          <SpeakingIndicator
+            sessionId={speaking.sessionId}
+            userId={speaking.userId}
+            isSelf={Boolean(speaking.isSelf)}
+            isMuted={isMuted}
+            roomType={speaking.roomType ?? RoomType.GROUP}
+          />
+        ) : null}
         {isMuted ? (
           <span className="avatar-muted-badge" aria-label="Muted microphone" role="img">
             <span className="material-symbols-outlined" aria-hidden="true">

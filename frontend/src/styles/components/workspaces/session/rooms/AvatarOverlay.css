@@ -29,20 +29,19 @@
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 80%, var(--color-brand));
 }
 
-.avatar-overlay--speaking {
-  border-color: color-mix(in srgb, var(--color-brand) 42%, var(--color-border-soft));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--color-brand) 24%, transparent),
-    0 4px 10px color-mix(in srgb, var(--color-brand) 16%, transparent);
-}
-
-.avatar-glyph--speaking {
-  border-color: color-mix(in srgb, var(--color-brand) 56%, #ffffff 44%);
+.avatar-glyph__speaking-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--color-brand) 56%, #ffffff 44%);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--color-brand) 26%, transparent),
-    0 0 8px color-mix(in srgb, var(--color-brand) 24%, transparent);
+    0 0 8px color-mix(in srgb, var(--color-brand) 24%, transparent),
+    0 4px 10px color-mix(in srgb, var(--color-brand) 16%, transparent);
   animation: avatar-speaking-pulse 220ms ease-out 1;
   will-change: transform;
+  z-index: 1;
 }
 
 @keyframes avatar-speaking-pulse {
@@ -180,7 +179,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .avatar-glyph--speaking {
+  .avatar-glyph__speaking-ring {
     animation: none;
   }
 }

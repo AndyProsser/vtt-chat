@@ -59,7 +59,6 @@ describe('AvatarOverlay', () => {
         roleLabel="PLAYER"
         presenceState={PresenceState.SPEAKING}
         metaLine="Wizard | Level 7 | Elf"
-        isSpeaking
         isMuted
       />
     )
@@ -98,7 +97,6 @@ describe('RoomSelector', () => {
                 roleLabel: 'DM',
                 presenceState: PresenceState.ONLINE,
                 isMuted: false,
-                isSpeaking: false,
               },
               {
                 userId: asUuid('user-2'),
@@ -106,7 +104,6 @@ describe('RoomSelector', () => {
                 roleLabel: 'PLAYER',
                 presenceState: PresenceState.SPEAKING,
                 isMuted: true,
-                isSpeaking: true,
                 characterClass: 'Rogue',
                 level: 5,
                 characterRace: 'Halfling',
