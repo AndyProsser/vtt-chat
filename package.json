@@ -27,11 +27,12 @@
     "ci:lint:strict": "npm run ci:lint",
     "qa:coverage-report": "node scripts/qa/coverage-report.mjs",
     "qa:coverage-report:json": "node scripts/qa/coverage-report.mjs --json",
+    "qa:esm-audit": "node scripts/qa/esm-audit.mjs",
     "qa:flaky-tests": "node scripts/qa/flaky-tests.mjs",
     "qa:flaky-tests:json": "node scripts/qa/flaky-tests.mjs --json",
     "qa:flaky-tests:strict": "node scripts/qa/flaky-tests.mjs --strict",
     "qa:flaky-tests:ci": "node scripts/qa/flaky-tests.mjs --runs=3 --integration-only --json --strict",
-    "qa:all": "npm run qa:coverage-report && npm run qa:flaky-tests:json"
+    "qa:all": "npm run qa:coverage-report && npm run qa:flaky-tests:json && npm run qa:esm-audit"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^5.8.6",
