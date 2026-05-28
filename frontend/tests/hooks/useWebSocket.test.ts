@@ -94,8 +94,8 @@ describe('useWebSocket', () => {
       handleGreenroomMessageEdited: vi.fn(),
       handleGreenroomMessageDeleted: vi.fn(),
       handleRoomContextCleared: vi.fn(),
-      handleTypingStarted: vi.fn(() => calls.push('CHAT:TYPING_STARTED')),
-      handleTypingStopped: vi.fn(),
+      handlePresenceTypingStarted: vi.fn(() => calls.push('CHAT:TYPING_STARTED')),
+      handlePresenceTypingStopped: vi.fn(),
       handleNoteCreated: vi.fn(),
       handleNoteUpdated: vi.fn(),
       handleNoteDeleted: vi.fn(),
@@ -330,7 +330,7 @@ describe('useWebSocket', () => {
     })
 
     expect(store.handleMessageSent).toHaveBeenCalledTimes(1)
-    expect(store.handleTypingStarted).toHaveBeenCalledTimes(1)
+    expect(store.handlePresenceTypingStarted).toHaveBeenCalledTimes(1)
     expect(store.calls).toEqual(['CHAT:MESSAGE_SENT', 'CHAT:TYPING_STARTED'])
   })
 
@@ -379,6 +379,10 @@ describe('useWebSocket', () => {
     })
 
     const onError = clientInstances[0].options.onError
+    await waitFor(() => {
+      expect(clientInstances[0].connect).toHaveBeenCalledTimes(1)
+    })
+
     act(() => {
       onError?.(new Error('needs retry'))
     })
@@ -704,7 +708,7 @@ describe('useWebSocket', () => {
     })
 
     expect(store.handleRoomContextCleared).toHaveBeenCalledTimes(1)
-    expect(store.handleTypingStopped).toHaveBeenCalledTimes(1)
+    expect(store.handlePresenceTypingStopped).toHaveBeenCalledTimes(1)
     expect(store.handleNoteCreated).toHaveBeenCalledTimes(1)
     expect(store.handleNoteUpdated).toHaveBeenCalledTimes(1)
     expect(store.handleNoteDeleted).toHaveBeenCalledTimes(1)

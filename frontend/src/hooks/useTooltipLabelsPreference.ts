@@ -16,7 +16,17 @@ function readTooltipLabelsEnabled(): boolean {
     return true
   }
 
-  return parseStoredFlag(window.localStorage.getItem(TOOLTIP_LABELS_STORAGE_KEY))
+  try {
+    const storage = window.localStorage
+    if (!storage) {
+      return true
+    }
+
+    return parseStoredFlag(storage.getItem(TOOLTIP_LABELS_STORAGE_KEY))
+  } catch {
+    // Some test/runtime environments expose `window` but block storage access.
+    return true
+  }
 }
 
 export function setTooltipLabelsEnabled(enabled: boolean): void {
@@ -24,7 +34,13 @@ export function setTooltipLabelsEnabled(enabled: boolean): void {
     return
   }
 
-  window.localStorage.setItem(TOOLTIP_LABELS_STORAGE_KEY, enabled ? '1' : '0')
+  try {
+    const storage = window.localStorage
+    storage?.setItem(TOOLTIP_LABELS_STORAGE_KEY, enabled ? '1' : '0')
+  } catch {
+    // Ignore storage write failures (private mode/test env restrictions).
+  }
+
   window.dispatchEvent(
     new CustomEvent(TOOLTIP_LABELS_EVENT, {
       detail: { enabled },
