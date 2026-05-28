@@ -35,7 +35,7 @@ describe('CampaignInformationPanel', () => {
       />
     )
 
-    expect(screen.getByText('Campaign Info')).toBeTruthy()
+    expect(screen.getByText('Campaign Information')).toBeTruthy()
     expect(screen.getByText(/Sessions/i)).toBeTruthy()
     expect(screen.getByText(/Total played/i)).toBeTruthy()
     expect(screen.getByText(/Players/i)).toBeTruthy()
@@ -55,7 +55,7 @@ describe('CampaignInformationPanel', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign info' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
 
     await waitFor(() => {
       expect(screen.getByLabelText('Bold')).toBeTruthy()
@@ -77,7 +77,7 @@ describe('CampaignInformationPanel', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign info' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
 
     const nameInput = await screen.findByDisplayValue('Test Campaign')
     const descInput = screen.getByDisplayValue('A test campaign description')
@@ -85,7 +85,7 @@ describe('CampaignInformationPanel', () => {
     fireEvent.change(nameInput, { target: { value: 'Updated Campaign' } })
     fireEvent.change(descInput, { target: { value: 'Updated description' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save campaign info' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save campaign information' }))
 
     await waitFor(() => {
       expect(onSaveCampaignInfo).toHaveBeenCalledWith(
@@ -111,7 +111,7 @@ describe('CampaignInformationPanel', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign info' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
 
     const nameInput = await screen.findByDisplayValue('Test Campaign')
     fireEvent.change(nameInput, { target: { value: 'Changed Campaign' } })
@@ -133,7 +133,7 @@ describe('CampaignInformationPanel', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign info' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit campaign information' }))
 
     await waitFor(() => {
       expect(screen.queryByText(/Poster URL/i)).toBeNull()
@@ -172,7 +172,7 @@ describe('CampaignInformationPanel', () => {
       />
     )
 
-    expect(screen.getByText('Campaign Info')).toBeTruthy()
+    expect(screen.getByText('Campaign Information')).toBeTruthy()
     expect(
       screen.getByText('Select a campaign to view its metadata and activity summary.')
     ).toBeTruthy()
