@@ -53,6 +53,8 @@ interface StoreChurnSnapshot {
   totalWsSpeakers: number
   totalLiveKitSpeakers: number
   totalRoomMembers: number
+  totalSessionPresenceEntries: number
+  totalPresenceDeviceSessions: number
   totalLiveKitConnections: number
 }
 
@@ -95,6 +97,16 @@ function collectChurnSnapshot(state: Store): StoreChurnSnapshot {
     totalRoomMembers += state.roomMembers[_roomId]?.length || 0
   }
 
+  let totalSessionPresenceEntries = 0
+  let totalPresenceDeviceSessions = 0
+  for (const _sessionId in state.sessionPresence) {
+    const byUser = state.sessionPresence[_sessionId]
+    totalSessionPresenceEntries += countRecordKeys(byUser)
+    for (const _userId in byUser) {
+      totalPresenceDeviceSessions += byUser[_userId]?.deviceSessions?.length || 0
+    }
+  }
+
   return {
     totalSessionMessages,
     totalOutgoingQueueMessages,
@@ -102,6 +114,8 @@ function collectChurnSnapshot(state: Store): StoreChurnSnapshot {
     totalWsSpeakers,
     totalLiveKitSpeakers,
     totalRoomMembers,
+    totalSessionPresenceEntries,
+    totalPresenceDeviceSessions,
     totalLiveKitConnections: countRecordKeys(state.livekitConnections),
   }
 }
@@ -198,6 +212,12 @@ if (typeof window !== 'undefined') {
           deltaLiveKitSpeakers:
             nextSnapshot.totalLiveKitSpeakers - previousChurnSnapshot.totalLiveKitSpeakers,
           deltaRoomMembers: nextSnapshot.totalRoomMembers - previousChurnSnapshot.totalRoomMembers,
+          deltaSessionPresenceEntries:
+            nextSnapshot.totalSessionPresenceEntries -
+            previousChurnSnapshot.totalSessionPresenceEntries,
+          deltaPresenceDeviceSessions:
+            nextSnapshot.totalPresenceDeviceSessions -
+            previousChurnSnapshot.totalPresenceDeviceSessions,
           deltaLiveKitConnections:
             nextSnapshot.totalLiveKitConnections - previousChurnSnapshot.totalLiveKitConnections,
         })
