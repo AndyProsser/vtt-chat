@@ -1,5 +1,6 @@
 import { Slider, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
+import { getLateJoinPolicyLabel, LATE_JOIN_POLICY_OPTIONS } from '@/constants/sessionUi.constants'
 import type { ModalsProps } from '@/types/modals'
 
 type CampaignSettingsHomeContentProps = Pick<
@@ -400,33 +401,18 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
           Late join policy
         </label>
         <div className="session-toggle-group" role="group" aria-label="Late join policy">
-          <button
-            type="button"
-            className={`session-toggle-button ${props.settingsLateJoinPolicy === 'OPEN' ? 'is-active' : ''}`}
-            aria-pressed={props.settingsLateJoinPolicy === 'OPEN'}
-            onClick={() => props.onSettingsLateJoinPolicyChange('OPEN')}
-            disabled={props.isSettingsSaving}
-          >
-            OPEN
-          </button>
-          <button
-            type="button"
-            className={`session-toggle-button ${props.settingsLateJoinPolicy === 'SCREENED' ? 'is-active' : ''}`}
-            aria-pressed={props.settingsLateJoinPolicy === 'SCREENED'}
-            onClick={() => props.onSettingsLateJoinPolicyChange('SCREENED')}
-            disabled={props.isSettingsSaving}
-          >
-            SCREENED
-          </button>
-          <button
-            type="button"
-            className={`session-toggle-button ${props.settingsLateJoinPolicy === 'BLOCKED' ? 'is-active' : ''}`}
-            aria-pressed={props.settingsLateJoinPolicy === 'BLOCKED'}
-            onClick={() => props.onSettingsLateJoinPolicyChange('BLOCKED')}
-            disabled={props.isSettingsSaving}
-          >
-            BLOCKED
-          </button>
+          {LATE_JOIN_POLICY_OPTIONS.map((policy) => (
+            <button
+              key={policy}
+              type="button"
+              className={`session-toggle-button ${props.settingsLateJoinPolicy === policy ? 'is-active' : ''}`}
+              aria-pressed={props.settingsLateJoinPolicy === policy}
+              onClick={() => props.onSettingsLateJoinPolicyChange(policy)}
+              disabled={props.isSettingsSaving}
+            >
+              {getLateJoinPolicyLabel(policy)}
+            </button>
+          ))}
         </div>
 
         <label className="session-label" htmlFor="campaign-settings-late-join-grace">

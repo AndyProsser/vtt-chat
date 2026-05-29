@@ -1,6 +1,11 @@
 import { useState, useEffect, type CSSProperties } from 'react'
 import { Slider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
+import {
+  getLateJoinPolicyLabel,
+  LATE_JOIN_POLICY_OPTIONS,
+  type LateJoinPolicy,
+} from '@/constants/sessionUi.constants'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 /**
@@ -12,8 +17,8 @@ export interface CampaignSessionPolicyBindings {
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
 
-  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
-  onSettingsLateJoinPolicyChange: (value: 'OPEN' | 'SCREENED' | 'BLOCKED') => void
+  settingsLateJoinPolicy: LateJoinPolicy
+  onSettingsLateJoinPolicyChange: (value: LateJoinPolicy) => void
   settingsLateJoinGraceMinutes: number
   onSettingsLateJoinGraceMinutesChange: (value: number) => void
 
@@ -249,7 +254,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
               role="group"
               aria-labelledby="label-late-join-policy"
             >
-              {(['OPEN', 'SCREENED', 'BLOCKED'] as const).map((p) => (
+              {LATE_JOIN_POLICY_OPTIONS.map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -258,7 +263,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
                   onClick={() => policy.onSettingsLateJoinPolicyChange(p)}
                   disabled={disabledBase}
                 >
-                  {p === 'OPEN' ? 'Open' : p === 'SCREENED' ? 'Screened' : 'Blocked'}
+                  {getLateJoinPolicyLabel(p)}
                 </button>
               ))}
             </div>

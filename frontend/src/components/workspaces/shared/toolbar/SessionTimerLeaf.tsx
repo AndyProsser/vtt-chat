@@ -24,7 +24,7 @@
  */
 
 import { memo, useState, useEffect, useRef } from 'react'
-import type { UUID } from '@shared'
+import { SessionState, type UUID } from '@shared'
 import { useStore } from '@/state/store'
 import {
   DEFAULT_COOLDOWN_MS,
@@ -32,6 +32,7 @@ import {
   formatTimestamp,
   toFiniteTimestamp,
 } from '@/constants/sessionToolbar.constants'
+import { getSessionStateLabel, SESSION_TIMER_COPY } from '@/constants/sessionUi.constants'
 import { Icon } from '@/components/ui/Icon'
 
 // ── Zustand anchor ────────────────────────────────────────────────────────────
@@ -39,7 +40,7 @@ import { Icon } from '@/components/ui/Icon'
 // when a server WS event arrives — never on clock ticks.
 
 interface SessionTimerAnchor {
-  state: string
+  state: SessionState | string
   createdAt: number | undefined
   startedAt: number | undefined
   pausedAt: number | undefined
@@ -51,7 +52,7 @@ interface SessionTimerAnchor {
 }
 
 const EMPTY_ANCHOR: SessionTimerAnchor = {
-  state: 'IDLE',
+  state: SessionState.IDLE,
   createdAt: undefined,
   startedAt: undefined,
   pausedAt: undefined,
@@ -136,12 +137,16 @@ function SessionTimerLeafInner({
 
   // Clock driver: interval for live states, one-shot for COOLDOWN, nothing otherwise.
   useEffect(() => {
-    if (anchor.state === 'ACTIVE' || anchor.state === 'PAUSED' || anchor.state === 'IDLE') {
+    if (
+      anchor.state === SessionState.ACTIVE ||
+      anchor.state === SessionState.PAUSED ||
+      anchor.state === SessionState.IDLE
+    ) {
       const id = window.setInterval(() => setCurrentTimeMs(Date.now()), 1000)
       return () => window.clearInterval(id)
     }
 
-    if (anchor.state === 'COOLDOWN') {
+    if (anchor.state === SessionState.COOLDOWN) {
       setCurrentTimeMs(Date.now())
 
       const safeDuration = Number.isFinite(cooldownDurationMs)
@@ -175,13 +180,13 @@ function SessionTimerLeafInner({
   /** Active session time (pauses excluded). Backend-synced via cumulativePauseMs. */
   const activeElapsedSeconds = (() => {
     if (!startedAtMs) return 0
-    if (anchor.state === 'ACTIVE') {
+    if (anchor.state === SessionState.ACTIVE) {
       return Math.max(
         0,
         Math.floor((currentTimeMs - startedAtMs - anchor.cumulativePauseMs) / 1000)
       )
     }
-    if (anchor.state === 'PAUSED' && pausedAtMs) {
+    if (anchor.state === SessionState.PAUSED && pausedAtMs) {
       return Math.max(0, Math.floor((pausedAtMs - startedAtMs - anchor.cumulativePauseMs) / 1000))
     }
     if (endedAtMs) {
@@ -192,20 +197,20 @@ function SessionTimerLeafInner({
 
   /** Duration of the current pause segment. */
   const pausedElapsedSeconds =
-    anchor.state === 'PAUSED' && pausedAtMs
+    anchor.state === SessionState.PAUSED && pausedAtMs
       ? Math.max(0, Math.floor((currentTimeMs - pausedAtMs) / 1000))
       : 0
 
   /** Total pause time including any active pause segment. */
   const totalPauseSeconds = Math.floor(
     (anchor.cumulativePauseMs +
-      (anchor.state === 'PAUSED' && pausedAtMs ? currentTimeMs - pausedAtMs : 0)) /
+      (anchor.state === SessionState.PAUSED && pausedAtMs ? currentTimeMs - pausedAtMs : 0)) /
       1000
   )
 
   /** Cooldown seconds remaining. */
   const cooldownRemainingSeconds = (() => {
-    if (anchor.state !== 'COOLDOWN') return 0
+    if (anchor.state !== SessionState.COOLDOWN) return 0
     const endsAt = cooldownEndsAtMs ?? (endedAtMs ? endedAtMs + safeDuration : undefined)
     if (!endsAt) return 0
     return Math.max(0, Math.floor((endsAt - currentTimeMs) / 1000))
@@ -213,15 +218,17 @@ function SessionTimerLeafInner({
 
   /** Seconds since session ended (ENDED / CLEANUP states). */
   const endedElapsedSeconds =
-    (anchor.state === 'ENDED' || anchor.state === 'CLEANUP') && endedAtMs
+    (anchor.state === SessionState.ENDED || anchor.state === SessionState.CLEANUP) && endedAtMs
       ? Math.max(0, Math.floor((currentTimeMs - endedAtMs) / 1000))
       : 0
 
   /** Seconds since the session was created — backend-authoritative, same for all users. */
   const greenroomElapsedSeconds =
-    anchor.state === 'IDLE' && anchor.createdAt
+    anchor.state === SessionState.IDLE && anchor.createdAt
       ? Math.max(0, Math.floor((currentTimeMs - anchor.createdAt) / 1000))
       : 0
+
+  const stateLabel = getSessionStateLabel(anchor.state)
 
   // ── Primary display ────────────────────────────────────────────────────────
 
@@ -229,24 +236,24 @@ function SessionTimerLeafInner({
   let primaryStateClass: string
 
   switch (anchor.state) {
-    case 'ACTIVE':
+    case SessionState.ACTIVE:
       primaryLabel = formatDuration(activeElapsedSeconds)
       primaryStateClass = 'is-active'
       break
-    case 'PAUSED':
+    case SessionState.PAUSED:
       primaryLabel = formatDuration(pausedElapsedSeconds)
       primaryStateClass = 'is-paused'
       break
-    case 'COOLDOWN':
+    case SessionState.COOLDOWN:
       primaryLabel = formatDuration(cooldownRemainingSeconds)
       primaryStateClass = 'is-ended'
       break
-    case 'ENDED':
-    case 'CLEANUP':
+    case SessionState.ENDED:
+    case SessionState.CLEANUP:
       primaryLabel = formatDuration(endedElapsedSeconds)
       primaryStateClass = ''
       break
-    case 'IDLE':
+    case SessionState.IDLE:
     default:
       primaryLabel = formatDuration(greenroomElapsedSeconds)
       primaryStateClass = ''
@@ -254,11 +261,11 @@ function SessionTimerLeafInner({
 
   // Popper is available for all non-greenroom states
   const canShowPopper =
-    anchor.state === 'ACTIVE' ||
-    anchor.state === 'PAUSED' ||
-    anchor.state === 'COOLDOWN' ||
-    anchor.state === 'ENDED' ||
-    anchor.state === 'CLEANUP'
+    anchor.state === SessionState.ACTIVE ||
+    anchor.state === SessionState.PAUSED ||
+    anchor.state === SessionState.COOLDOWN ||
+    anchor.state === SessionState.ENDED ||
+    anchor.state === SessionState.CLEANUP
 
   return (
     <div className="session-toolbar__timer-group">
@@ -281,16 +288,16 @@ function SessionTimerLeafInner({
         <button
           type="button"
           className={`session-toolbar__timer-pill${canShowPopper ? ' session-toolbar__timer-pill--interactive' : ''}`}
-          aria-label={`Session timer: ${primaryLabel}.${canShowPopper ? ' Hover for details.' : ''}`}
+          aria-label={`${SESSION_TIMER_COPY.ariaLabelPrefix}: ${primaryLabel}.${canShowPopper ? ` ${SESSION_TIMER_COPY.hoverForDetails}` : ''}`}
           aria-expanded={canShowPopper ? showPopper : undefined}
         >
           <span className="session-toolbar__timer-main">
-            <Icon name={anchor.state === 'COOLDOWN' ? 'hourglass' : 'timer'} />
+            <Icon name={anchor.state === SessionState.COOLDOWN ? 'hourglass' : 'timer'} />
             <strong>{primaryLabel}</strong>
           </span>
           <span className="session-toolbar__timer-state-wrap">
             <span className={`session-toolbar__timer-state ${primaryStateClass}`}>
-              {anchor.state}
+              {stateLabel}
             </span>
           </span>
         </button>
@@ -299,33 +306,33 @@ function SessionTimerLeafInner({
           <div
             className="session-toolbar__timer-popper"
             role="region"
-            aria-label="Session timer details"
+            aria-label={SESSION_TIMER_COPY.detailsAriaLabel}
           >
             <div className="session-toolbar__timer-popper-row">
-              <span>Started</span>
+              <span>{SESSION_TIMER_COPY.startedLabel}</span>
               <strong>{formatTimestamp(startedAtMs)}</strong>
             </div>
             <div className="session-toolbar__timer-popper-row">
-              <span>Active time</span>
+              <span>{SESSION_TIMER_COPY.activeTimeLabel}</span>
               <strong>{formatDuration(activeElapsedSeconds)}</strong>
             </div>
-            {anchor.state === 'PAUSED' ? (
+            {anchor.state === SessionState.PAUSED ? (
               <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--highlight">
-                <span>Paused for</span>
+                <span>{SESSION_TIMER_COPY.pausedForLabel}</span>
                 <strong>{formatDuration(pausedElapsedSeconds)}</strong>
               </div>
             ) : null}
             <div className="session-toolbar__timer-popper-row">
-              <span>Total pause time</span>
+              <span>{SESSION_TIMER_COPY.totalPauseTimeLabel}</span>
               <strong>{formatDuration(totalPauseSeconds)}</strong>
             </div>
             <div className="session-toolbar__timer-popper-row">
-              <span>Times paused</span>
+              <span>{SESSION_TIMER_COPY.timesPausedLabel}</span>
               <strong>{anchor.pauseCount}</strong>
             </div>
-            {anchor.state === 'COOLDOWN' ? (
+            {anchor.state === SessionState.COOLDOWN ? (
               <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--ended">
-                <span>Cooldown left</span>
+                <span>{SESSION_TIMER_COPY.cooldownLeftLabel}</span>
                 <strong>{formatDuration(cooldownRemainingSeconds)}</strong>
               </div>
             ) : null}
