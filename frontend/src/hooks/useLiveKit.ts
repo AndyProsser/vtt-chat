@@ -809,6 +809,13 @@ export function useLiveKit(
         logRoomListenerSnapshot('teardown')
       }
 
+      if (connectionAttemptRef.current !== attemptId || !isMountedRef.current) {
+        teardownRoomListeners()
+        await nextRoom.disconnect()
+        teardownRoomListeners()
+        return
+      }
+
       // Connect to room
       await nextRoom.connect(tokenData.url, tokenData.token, {
         autoSubscribe: true,
@@ -842,7 +849,8 @@ export function useLiveKit(
       connectionKeyRef.current = targetConnectionKey
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
-      const expectedDisconnect = isExpectedDisconnectError(err)
+      const supersededAttempt = connectionAttemptRef.current !== attemptId || !isMountedRef.current
+      const expectedDisconnect = isExpectedDisconnectError(err) || supersededAttempt
 
       if (nextRoom && roomRef.current === nextRoom) {
         roomRef.current = null
