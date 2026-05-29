@@ -1,2 +1,0 @@
--- AlterEnum
-ALTER TYPE "SessionState" ADD VALUE IF NOT EXISTS 'CLEANUP';

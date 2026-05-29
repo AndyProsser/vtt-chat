@@ -1,147 +1,171 @@
-import * as TabsPrimitive from '@radix-ui/react-tabs'
+import { useState, useEffect } from 'react'
+import { Slider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 export interface CampaignSessionSettingsPanelProps {
   campaignId: string | null
   sessionName: string
-  sessionDescription: string
   plannedDurationMinutes: number
+  defaultSessionDurationMinutes: number
   sessionStateLabel: string
   canEditSessionSettings: boolean
   onSessionNameChange: (value: string) => void
-  onSessionDescriptionChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void
   isSessionSaving: boolean
-  dmAutoTarget: boolean
-  onDmAutoTargetChange: (value: boolean) => void
-  onSaveDmAutoTarget: () => void
   isSaving: boolean
   isLoading: boolean
   standalone?: boolean
+  sessionElapsedSeconds?: number
+}
+
+/** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
+function formatSessionDuration(mins: number): string {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+/** Formats elapsed time as "Xh Ym" or "Xm Ys" */
+function formatElapsedTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+
+  if (h > 0) {
+    return m === 0 ? `${h}h` : `${h}h ${m}m`
+  }
+  return m === 0 ? `${s}s` : `${m}m ${s}s`
 }
 
 export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanelProps) {
+  const [isSaving, setIsSaving] = useState(false)
+  const elapsed = props.sessionElapsedSeconds || 0
+  const durationSecs = props.plannedDurationMinutes * 60
+  const remainingSecs = Math.max(0, durationSecs - elapsed)
+  const remainingMins = Math.ceil(remainingSecs / 60)
+
+  // Determine timer color: orange at 15 mins or less, red when duration exceeded
+  const getTimerColor = (): 'default' | 'warning' | 'critical' => {
+    if (elapsed >= durationSecs) return 'critical'
+    if (remainingMins <= 15) return 'warning'
+    return 'default'
+  }
+
+  const timerColor = getTimerColor()
+
+  const handleSave = async () => {
+    setIsSaving(true)
+    await props.onSaveSessionSettings()
+    setIsSaving(false)
+  }
+
   const heading = (
-    <h3 className="crbs-heading">
-      <Icon name="settings" />
-      Campaign Settings
-    </h3>
+    <div className="session-campaign-settings-header">
+      <div>
+        <h4 className="session-inline-form-title session-inline-form-title--with-icon">
+          <Icon name="settings" />
+          <span>Session Settings</span>
+        </h4>
+      </div>
+      <button
+        type="button"
+        className="session-icon-action"
+        aria-label={isSaving ? 'Saving settings' : 'Save session settings'}
+        disabled={isSaving || !props.campaignId || !props.canEditSessionSettings}
+        onClick={handleSave}
+      >
+        <span className="material-symbols-outlined" aria-hidden="true">
+          {isSaving ? 'hourglass_top' : 'save'}
+        </span>
+      </button>
+    </div>
   )
 
   const content = (
-    <>
-      <section className="crbs-section">
-        <h4 className="crbs-section-heading">Session</h4>
-        <p className="crbs-description">State: {props.sessionStateLabel}</p>
+    <div className="session-campaign-settings-panel session-campaign-settings-workspace-root">
+      <div className="csp-cards-grid">
+        <div className="csp-col">
+          <div className="csp-card">
+            <h5 className="crbs-heading csp-card-heading">Session</h5>
 
-        <label className="crbs-field" htmlFor="crbs-session-name">
-          <span className="crbs-field-label">Session name</span>
-          <input
-            id="crbs-session-name"
-            type="text"
-            className="crbs-input"
-            value={props.sessionName}
-            onChange={(event) => props.onSessionNameChange(event.target.value)}
-            disabled={!props.canEditSessionSettings || props.isSessionSaving}
-          />
-        </label>
+            <label className="session-label" htmlFor="css-session-name">
+              Session name
+            </label>
+            <input
+              id="css-session-name"
+              type="text"
+              className="session-input"
+              value={props.sessionName}
+              onChange={(event) => props.onSessionNameChange(event.target.value)}
+              disabled={!props.canEditSessionSettings || props.isSessionSaving}
+              placeholder="Session name"
+              maxLength={255}
+            />
 
-        <label className="crbs-field" htmlFor="crbs-session-description">
-          <span className="crbs-field-label">Session description</span>
-          <textarea
-            id="crbs-session-description"
-            className="crbs-textarea"
-            value={props.sessionDescription}
-            onChange={(event) => props.onSessionDescriptionChange(event.target.value)}
-            disabled={!props.canEditSessionSettings || props.isSessionSaving}
-          />
-        </label>
-
-        <label className="crbs-field" htmlFor="crbs-session-duration">
-          <span className="crbs-field-label">Planned duration (minutes)</span>
-          <input
-            id="crbs-session-duration"
-            type="number"
-            min={15}
-            max={720}
-            step={15}
-            className="crbs-input"
-            value={props.plannedDurationMinutes}
-            onChange={(event) => props.onPlannedDurationMinutesChange(Number(event.target.value))}
-            disabled={!props.canEditSessionSettings || props.isSessionSaving}
-          />
-        </label>
-
-        <div className="crbs-actions">
-          <button
-            type="button"
-            className="session-button"
-            disabled={!props.campaignId || !props.canEditSessionSettings || props.isSessionSaving}
-            onClick={props.onSaveSessionSettings}
-          >
-            {props.isSessionSaving ? 'Saving...' : 'Save session settings'}
-          </button>
+            <label className="session-label" id="label-session-duration">
+              Session duration: {formatSessionDuration(props.plannedDurationMinutes)}
+            </label>
+            <Slider
+              id="campaign-session-settings-duration"
+              className="session-slider"
+              aria-labelledby="label-session-duration"
+              min={60}
+              max={720}
+              step={15}
+              value={props.plannedDurationMinutes}
+              onValueChange={(nextValue) => props.onPlannedDurationMinutesChange(nextValue)}
+              disabled={!props.canEditSessionSettings || props.isSessionSaving}
+            />
+          </div>
         </div>
-        {!props.canEditSessionSettings ? (
-          <p className="crbs-muted">
-            Session settings are editable only while inactive, active, or paused.
-          </p>
-        ) : null}
-      </section>
 
-      <section className="crbs-section">
-        <h4 className="crbs-section-heading">Voice Targeting</h4>
-        <p className="crbs-description">
-          Automatically switch DM voice target to a group when the first player joins it.
-        </p>
+        <div className="csp-col">
+          <div className={`csp-card csp-card--timer csp-card--timer-${timerColor}`}>
+            <h5 className="crbs-heading csp-card-heading">Session Timer</h5>
 
-        <TabsPrimitive.Root
-          value={props.dmAutoTarget ? 'on' : 'off'}
-          onValueChange={(next) => props.onDmAutoTargetChange(next === 'on')}
-          className="crbs-toggle-tabs"
-        >
-          <TabsPrimitive.List className="crbs-toggle-tabs-list" aria-label="DM auto-target">
-            <TabsPrimitive.Trigger
-              value="on"
-              className="crbs-toggle-tab-trigger"
-              disabled={props.isLoading || props.isSaving}
-            >
-              ON
-            </TabsPrimitive.Trigger>
-            <TabsPrimitive.Trigger
-              value="off"
-              className="crbs-toggle-tab-trigger"
-              disabled={props.isLoading || props.isSaving}
-            >
-              OFF
-            </TabsPrimitive.Trigger>
-          </TabsPrimitive.List>
-        </TabsPrimitive.Root>
+            <div className="csp-timer-display">
+              <div className="csp-timer-value">{formatElapsedTime(elapsed)}</div>
+              <div className="csp-timer-label">elapsed</div>
+            </div>
 
-        <div className="crbs-actions">
-          <button
-            type="button"
-            className="session-button"
-            disabled={!props.campaignId || props.isLoading || props.isSaving}
-            onClick={props.onSaveDmAutoTarget}
-          >
-            {props.isSaving ? 'Saving...' : 'Save'}
-          </button>
+            <div className="csp-timer-remaining">
+              <span className="csp-timer-remaining-label">
+                {elapsed >= durationSecs ? 'Over by' : 'Remaining'}
+              </span>
+              <span className={`csp-timer-remaining-value csp-timer-remaining-${timerColor}`}>
+                {elapsed >= durationSecs
+                  ? formatElapsedTime(elapsed - durationSecs)
+                  : formatElapsedTime(remainingSecs)}
+              </span>
+            </div>
+
+            {timerColor === 'warning' && (
+              <p className="csp-timer-warning">15 minutes remaining</p>
+            )}
+            {timerColor === 'critical' && (
+              <p className="csp-timer-critical">Session duration exceeded</p>
+            )}
+          </div>
         </div>
-      </section>
-    </>
+      </div>
+    </div>
   )
 
   if (props.standalone) {
     return (
-      <div className="crbs-panel" aria-label="Campaign settings">
+      <div className="crbs-panel" aria-label="Session settings">
         {heading}
         <div className="crbs-tab-content">{content}</div>
       </div>
     )
   }
 
-  return content
+  return (
+    <>
+      {heading}
+      {content}
+    </>
+  )
 }

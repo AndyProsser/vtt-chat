@@ -1,3 +1,4 @@
+-- Migration: 20260429000000_initial
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('DM', 'PLAYER', 'SPECTATOR', 'SYSTEM');
 
@@ -603,4 +604,232 @@ ALTER TABLE "SpectatorWaitlist" ADD CONSTRAINT "SpectatorWaitlist_campaignId_fke
 
 -- AddForeignKey
 ALTER TABLE "SpectatorWaitlist" ADD CONSTRAINT "SpectatorWaitlist_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+
+-- Migration: 20260502000000_add_audio_room_state_and_dm_override
+-- CreateTable
+CREATE TABLE "AudioRoomState" (
+    "id" UUID NOT NULL,
+    "sessionId" UUID NOT NULL,
+    "roomId" UUID NOT NULL,
+    "environmentName" TEXT NOT NULL,
+    "environmentId" TEXT NOT NULL,
+    "parameters" JSONB,
+    "setBy" UUID NOT NULL,
+    "setAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AudioRoomState_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AudioDMOverride" (
+    "id" UUID NOT NULL,
+    "sessionId" UUID NOT NULL,
+    "targetUserId" UUID NOT NULL,
+    "overrideType" TEXT NOT NULL,
+    "parameters" JSONB,
+    "appliedBy" UUID NOT NULL,
+    "appliedAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AudioDMOverride_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AudioRoomState_sessionId_roomId_key" ON "AudioRoomState"("sessionId", "roomId");
+
+-- CreateIndex
+CREATE INDEX "AudioRoomState_sessionId_idx" ON "AudioRoomState"("sessionId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AudioDMOverride_sessionId_targetUserId_overrideType_key" ON "AudioDMOverride"("sessionId", "targetUserId", "overrideType");
+
+-- CreateIndex
+CREATE INDEX "AudioDMOverride_sessionId_idx" ON "AudioDMOverride"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "AudioDMOverride_targetUserId_idx" ON "AudioDMOverride"("targetUserId");
+
+-- AddForeignKey
+ALTER TABLE "AudioRoomState" ADD CONSTRAINT "AudioRoomState_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AudioDMOverride" ADD CONSTRAINT "AudioDMOverride_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Migration: 20260504045049_campaign_late_join_and_settings_fields
+-- CreateEnum
+CREATE TYPE "LateJoinPolicy" AS ENUM ('OPEN', 'SCREENED', 'BLOCKED');
+
+-- AlterTable
+ALTER TABLE "Campaign" ADD COLUMN     "lateJoinGraceMinutes" INTEGER NOT NULL DEFAULT 30,
+ADD COLUMN     "lateJoinPolicy" "LateJoinPolicy" NOT NULL DEFAULT 'OPEN',
+ALTER COLUMN "extensionSyncPolicy" SET DEFAULT 'DM_AND_PLAYERS';
+
+-- Migration: 20260504113000_add_campaign_poster_url
+-- Persist campaign poster image across users by storing data URL on campaign.
+ALTER TABLE "Campaign"
+ADD COLUMN "posterUrl" TEXT;
+
+-- Migration: 20260506041309_add_password_reset_tokens
+-- CreateTable
+CREATE TABLE "PasswordResetToken" (
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "usedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PasswordResetToken_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PasswordResetToken_tokenHash_key" ON "PasswordResetToken"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "PasswordResetToken_userId_idx" ON "PasswordResetToken"("userId");
+
+-- CreateIndex
+CREATE INDEX "PasswordResetToken_expiresAt_idx" ON "PasswordResetToken"("expiresAt");
+
+-- AddForeignKey
+ALTER TABLE "PasswordResetToken" ADD CONSTRAINT "PasswordResetToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Migration: 20260509085714_add_post_session_chat_settings
+-- AlterTable
+ALTER TABLE "Campaign" ADD COLUMN     "postSessionChatDurationMs" INTEGER NOT NULL DEFAULT 300000,
+ADD COLUMN     "postSessionChatEnabled" BOOLEAN NOT NULL DEFAULT true;
+
+-- Migration: 20260511054341_add_campaign_dm_auto_target_first_player_join_setting
+-- AlterTable
+ALTER TABLE "Campaign" ADD COLUMN     "dmAutoTargetOnFirstPlayerJoin" BOOLEAN NOT NULL DEFAULT true;
+
+-- Migration: 20260511234000_add_session_cleanup_state
+-- AlterEnum
+ALTER TYPE "SessionState" ADD VALUE IF NOT EXISTS 'CLEANUP';
+
+-- Migration: 20260513022137_add_pause_stats_to_session
+-- AlterTable
+ALTER TABLE "Session" ADD COLUMN     "cumulativePauseMs" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "pauseCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "plannedDurationMinutes" INTEGER;
+
+-- Migration: 20260513022233_add_pause_started_at_to_session
+-- AlterTable
+ALTER TABLE "Session" ADD COLUMN     "pauseStartedAt" TIMESTAMP(3);
+
+-- Migration: 20260516000000_add_session_cooldown_state
+-- Add COOLDOWN to the SessionState enum.
+-- COOLDOWN is entered when the DM ends the session (ACTIVE/PAUSED → COOLDOWN).
+-- The cooldown timer expires and the session auto-transitions to ENDED.
+ALTER TYPE "SessionState" ADD VALUE IF NOT EXISTS 'COOLDOWN';
+
+-- Migration: 20260517140315_add_campaign_chat_messages_support
+-- Add campaignId support to ChatMessage
+-- Allows greenroom messages to be stored at campaign level
+-- Session chat messages retain sessionId, greenroom messages use campaignId only
+
+-- Make sessionId nullable
+ALTER TABLE "ChatMessage" ALTER COLUMN "sessionId" DROP NOT NULL;
+
+-- Add campaignId column
+ALTER TABLE "ChatMessage" ADD COLUMN "campaignId" UUID;
+
+-- Add foreign key to Campaign
+ALTER TABLE "ChatMessage" ADD CONSTRAINT "ChatMessage_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE;
+
+-- Add index for campaign-scoped queries
+CREATE INDEX "ChatMessage_campaignId_createdAt_idx" ON "ChatMessage"("campaignId", "createdAt");
+
+-- Update existing indexes to be more efficient
+CREATE INDEX "ChatMessage_sessionId_createdAt_idx" ON "ChatMessage"("sessionId", "createdAt") WHERE "sessionId" IS NOT NULL;
+
+-- Migration: 20260520025203_campaign_join_requests_retire_field
+-- CreateEnum
+CREATE TYPE "CampaignJoinRequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
+-- CreateEnum
+CREATE TYPE "DmVoiceMode" AS ENUM ('TARGET_GROUP', 'BROADCAST');
+
+-- AlterEnum
+ALTER TYPE "MessageType" ADD VALUE 'DM';
+
+-- DropForeignKey
+ALTER TABLE "ChatMessage" DROP CONSTRAINT "ChatMessage_campaignId_fkey";
+
+-- DropIndex
+DROP INDEX "ChatMessage_campaignId_createdAt_idx";
+
+-- AlterTable
+ALTER TABLE "Campaign" ADD COLUMN     "retiredAt" TIMESTAMP(3);
+
+-- AlterTable
+ALTER TABLE "ChatMessage" ADD COLUMN     "isOffTheRecord" BOOLEAN NOT NULL DEFAULT false;
+
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "dmBackgroundVolume" DOUBLE PRECISION NOT NULL DEFAULT 0.3,
+ADD COLUMN     "dmVoiceMode" "DmVoiceMode" NOT NULL DEFAULT 'TARGET_GROUP';
+
+-- CreateTable
+CREATE TABLE "CampaignJoinRequest" (
+    "id" UUID NOT NULL,
+    "campaignId" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "message" VARCHAR(300),
+    "status" "CampaignJoinRequestStatus" NOT NULL DEFAULT 'PENDING',
+    "requestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "resolvedAt" TIMESTAMP(3),
+
+    CONSTRAINT "CampaignJoinRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "CampaignJoinRequest_campaignId_idx" ON "CampaignJoinRequest"("campaignId");
+
+-- CreateIndex
+CREATE INDEX "CampaignJoinRequest_userId_idx" ON "CampaignJoinRequest"("userId");
+
+-- CreateIndex
+CREATE INDEX "CampaignJoinRequest_status_idx" ON "CampaignJoinRequest"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CampaignJoinRequest_campaignId_userId_key" ON "CampaignJoinRequest"("campaignId", "userId");
+
+-- CreateIndex
+CREATE INDEX "Campaign_retiredAt_idx" ON "Campaign"("retiredAt");
+
+-- CreateIndex
+CREATE INDEX "ChatMessage_campaignId_idx" ON "ChatMessage"("campaignId");
+
+-- AddForeignKey
+ALTER TABLE "CampaignJoinRequest" ADD CONSTRAINT "CampaignJoinRequest_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "CampaignJoinRequest" ADD CONSTRAINT "CampaignJoinRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ChatMessage" ADD CONSTRAINT "ChatMessage_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Migration: 20260523000000_campaign_session_duration_and_supported_platforms
+-- CreateEnum
+CREATE TYPE "SupportedPlatform" AS ENUM ('ANY', 'DDB', 'ROLL20', 'FOUNDRY');
+
+-- AlterTable
+ALTER TABLE "Campaign"
+  ADD COLUMN "defaultSessionDurationMins" INTEGER NOT NULL DEFAULT 240,
+  ADD COLUMN "supportedPlatforms" "SupportedPlatform"[] DEFAULT ARRAY['ANY']::"SupportedPlatform"[];
+
+-- Migration: 20260528000000_add_chat_message_metadata
+ALTER TABLE "ChatMessage"
+ADD COLUMN "metadata" JSONB;
+
+-- Migration: 20260528132830_add_campaign_deleted_at
+-- AlterTable
+ALTER TABLE "Campaign" ADD COLUMN     "deletedAt" TIMESTAMP(3);
+
+-- CreateIndex
+CREATE INDEX "Campaign_deletedAt_idx" ON "Campaign"("deletedAt");
 
