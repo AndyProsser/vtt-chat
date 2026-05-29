@@ -10,6 +10,17 @@ const mocks = vi.hoisted(() => ({
   loggerError: vi.fn(),
   loggerDebug: vi.fn(),
   randomUUID: vi.fn(() => 'req-uuid-1'),
+  createRequestMetricsContext: vi.fn(
+    (params: { requestId: string; method: string; path: string }) => ({
+      requestId: params.requestId,
+      method: params.method,
+      path: params.path,
+      queryCount: 0,
+      totalQueryDurationMs: 0,
+      slowQueryCount: 0,
+    })
+  ),
+  runWithRequestMetrics: vi.fn((_context: unknown, callback: () => void) => callback()),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -31,6 +42,11 @@ vi.mock('@/utils/logger', () => ({
     error: mocks.loggerError,
     debug: mocks.loggerDebug,
   },
+}))
+
+vi.mock('@/infra/db/observability', () => ({
+  createRequestMetricsContext: mocks.createRequestMetricsContext,
+  runWithRequestMetrics: mocks.runWithRequestMetrics,
 }))
 
 vi.mock('crypto', () => ({
@@ -355,9 +371,20 @@ describe('http middleware', () => {
     expect(req.requestId).toBe('incoming-id')
     expect(headerStore.get('X-Request-Id')).toBe('incoming-id')
     expect(next).toHaveBeenCalledTimes(1)
+    expect(mocks.createRequestMetricsContext).toHaveBeenCalledWith({
+      requestId: 'incoming-id',
+      method: 'POST',
+      path: '/api/test',
+    })
+    expect(mocks.runWithRequestMetrics).toHaveBeenCalledTimes(1)
 
     res.__finish()
-    expect(mocks.loggerDebug).toHaveBeenCalled()
+    expect(mocks.loggerDebug).toHaveBeenCalledWith('http', 'POST   /api/test [200] 0ms', {
+      requestId: 'incoming-id',
+      queryCount: 0,
+      dbDurationMs: 0,
+      slowQueryCount: 0,
+    })
   })
 
   it('requestLoggingMiddleware generates request id when absent', () => {

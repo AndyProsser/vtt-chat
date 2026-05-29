@@ -2,9 +2,126 @@ import { logger } from './logger'
 import { generateClientId } from './uuid'
 
 const MAX_LOGGED_BODY_LENGTH = 240
-const HTTP_CLIENT_DEBUG_ENABLED = false
+const STORAGE_KEY = 'vtt-debug-http'
+const QUERY_PARAM = 'debugHttp'
 
 let installed = false
+
+declare global {
+  interface Window {
+    __VTT_DEBUG_HTTP__?: boolean
+  }
+}
+
+function parseBooleanFlag(rawValue: string | null): boolean | undefined {
+  if (!rawValue) {
+    return undefined
+  }
+
+  const normalized = rawValue.trim().toLowerCase()
+  if (normalized === '1' || normalized === 'true' || normalized === 'on' || normalized === 'yes') {
+    return true
+  }
+
+  if (normalized === '0' || normalized === 'false' || normalized === 'off' || normalized === 'no') {
+    return false
+  }
+
+  return undefined
+}
+
+function readStoredFlag(): boolean | undefined {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  try {
+    return parseBooleanFlag(window.localStorage.getItem(STORAGE_KEY))
+  } catch {
+    return undefined
+  }
+}
+
+function persistFlag(enabled: boolean): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, enabled ? '1' : '0')
+  } catch {
+    // Ignore storage failures in private/incognito contexts.
+  }
+}
+
+function readQueryFlag(): boolean | 'toggle' | undefined {
+  if (typeof window === 'undefined') {
+    return undefined
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  const raw = params.get(QUERY_PARAM)
+  if (!raw) {
+    return undefined
+  }
+
+  const normalized = raw.trim().toLowerCase()
+  if (normalized === 'toggle') {
+    return 'toggle'
+  }
+
+  return parseBooleanFlag(raw)
+}
+
+export function isHttpClientDebugEnabled(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  if (typeof window.__VTT_DEBUG_HTTP__ === 'boolean') {
+    return window.__VTT_DEBUG_HTTP__
+  }
+
+  return import.meta.env.VITE_DEBUG_HTTP === '1'
+}
+
+export function initHttpClientDebugFlag(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const envEnabled = import.meta.env.VITE_DEBUG_HTTP === '1'
+  const runtimeOverride = window.__VTT_DEBUG_HTTP__
+  const queryFlag = readQueryFlag()
+  const storedFlag = readStoredFlag()
+
+  const defaultValue =
+    typeof runtimeOverride === 'boolean'
+      ? runtimeOverride
+      : typeof storedFlag === 'boolean'
+        ? storedFlag
+        : envEnabled
+
+  const resolvedEnabled =
+    queryFlag === 'toggle'
+      ? !defaultValue
+      : typeof queryFlag === 'boolean'
+        ? queryFlag
+        : defaultValue
+
+  window.__VTT_DEBUG_HTTP__ = resolvedEnabled
+  persistFlag(resolvedEnabled)
+
+  if (queryFlag !== undefined) {
+    const params = new URLSearchParams(window.location.search)
+    params.delete(QUERY_PARAM)
+    const query = params.toString()
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
+    window.history.replaceState({}, '', nextUrl)
+  }
+
+  return resolvedEnabled
+}
 
 function summarizeBody(body: BodyInit | null | undefined): string | undefined {
   if (body === null || body === undefined) {
@@ -64,6 +181,8 @@ export function installFetchDebugLogging(): void {
   if (typeof window === 'undefined') return
   if (installed) return
 
+  const debugEnabled = initHttpClientDebugFlag()
+
   const originalFetch = window.fetch.bind(window)
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -73,8 +192,9 @@ export function installFetchDebugLogging(): void {
     const url = request.url
     const requestId = generateClientId('request')
     const startedAt = performance.now()
+    const httpClientDebugEnabled = isHttpClientDebugEnabled()
 
-    if (HTTP_CLIENT_DEBUG_ENABLED) {
+    if (httpClientDebugEnabled) {
       logger.debug('http.client', 'Request start', {
         requestId,
         method,
@@ -88,7 +208,7 @@ export function installFetchDebugLogging(): void {
       const response = await originalFetch(input, init)
       const durationMs = Math.round(performance.now() - startedAt)
 
-      if (HTTP_CLIENT_DEBUG_ENABLED) {
+      if (httpClientDebugEnabled) {
         logger.debug('http.client', 'Response received', {
           requestId,
           method,
@@ -117,7 +237,9 @@ export function installFetchDebugLogging(): void {
   }
 
   installed = true
-  if (HTTP_CLIENT_DEBUG_ENABLED) {
-    logger.debug('http.client', 'Fetch debug logging enabled')
+  if (debugEnabled) {
+    logger.debug('http.client', 'Fetch debug logging enabled', {
+      enabled: true,
+    })
   }
 }
