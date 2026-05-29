@@ -205,7 +205,9 @@ export function useConnectionStatus({
     if (statusContext === StatusContext.INSIDE_CAMPAIGN && sessionId && roomId) {
       const connectionKey = buildLiveKitConnectionKey(sessionId, roomId, 'room')
       const snapshot = livekitConnections[connectionKey] ?? null
-      livekitState = deriveLiveKitState(snapshot)
+      // A selected room implies voice connection should be active; while the
+      // first snapshot is pending, surface CONNECTING rather than NOT_APPLICABLE.
+      livekitState = snapshot ? deriveLiveKitState(snapshot) : LiveKitConnectionState.CONNECTING
     }
 
     const { statusIconState, statusColorKey, label } = computeStatus(

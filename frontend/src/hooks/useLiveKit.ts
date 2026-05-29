@@ -326,6 +326,29 @@ export function useLiveKit(
     [roomId, roomListenerDiagEnabled, sessionId, tokenChannel]
   )
 
+  const logConnectionStartDiag = useCallback(
+    (reason: string, extra?: Record<string, unknown>) => {
+      if (!roomListenerDiagEnabled) {
+        return
+      }
+
+      logger.debug('useLiveKit', 'Connection start diagnostic', {
+        reason,
+        sessionId,
+        roomId,
+        tokenChannel,
+        hasUserActivation,
+        hasActiveRoom: Boolean(roomRef.current),
+        isConnecting: isConnectingRef.current,
+        hasLocalAudioTrack: Boolean(localAudioRef.current),
+        connectingTarget: connectingTargetRef.current,
+        activeConnectionKey: connectionKeyRef.current,
+        ...extra,
+      })
+    },
+    [hasUserActivation, roomId, roomListenerDiagEnabled, sessionId, tokenChannel]
+  )
+
   const teardownRoomListeners = useCallback(() => {
     if (teardownRoomListenersRef.current) {
       teardownRoomListenersRef.current()
@@ -479,6 +502,7 @@ export function useLiveKit(
    */
   const connect = useCallback(async () => {
     if (isConnectingRef.current || roomRef.current) {
+      logConnectionStartDiag('connect_skipped_already_active')
       return
     }
 
@@ -494,6 +518,8 @@ export function useLiveKit(
       setIsConnecting(true)
       setError(null)
     }
+    logConnectionStartDiag('connect_start', { targetConnectionKey, attemptId })
+
     publishConnectionSnapshot({
       connectionState: ConnectionState.Connecting,
       isConnected: false,
@@ -877,6 +903,7 @@ export function useLiveKit(
     getHasLocalPublication,
     incrementRoomListenerCount,
     isExpectedDisconnectError,
+    logConnectionStartDiag,
     logRoomListenerSnapshot,
     publishConnectionSnapshot,
     roomId,
@@ -1110,7 +1137,9 @@ export function useLiveKit(
    */
   useEffect(() => {
     if (!sessionId || !roomId) {
+      logConnectionStartDiag('effect_early_return_missing_session_or_room')
       if (roomRef.current || isConnectingRef.current || localAudioRef.current) {
+        logConnectionStartDiag('effect_disconnect_due_to_missing_session_or_room')
         void disconnect()
       }
       return
@@ -1122,8 +1151,11 @@ export function useLiveKit(
     const startConnection = async () => {
       await Promise.resolve()
       if (cancelled) {
+        logConnectionStartDiag('effect_early_return_cancelled_before_start')
         return
       }
+
+      logConnectionStartDiag('effect_start_connection', { targetConnectionKey })
 
       // If room target changed, replace stale connection work before connecting.
       const hasStaleConnectedRoom =
@@ -1132,8 +1164,10 @@ export function useLiveKit(
         isConnectingRef.current && connectingTargetRef.current !== targetConnectionKey
 
       if (hasStaleConnectedRoom) {
+        logConnectionStartDiag('effect_disconnect_stale_connected_room', { targetConnectionKey })
         await disconnect()
       } else if (hasStaleInFlightRoom) {
+        logConnectionStartDiag('effect_invalidate_stale_inflight_room', { targetConnectionKey })
         // Avoid disconnecting while offer negotiation is in-flight; invalidate and replace.
         connectionAttemptRef.current += 1
         isConnectingRef.current = false
@@ -1151,11 +1185,12 @@ export function useLiveKit(
       }
 
       if (!cancelled) {
-        if (!hasUserActivation) {
-          return
-        }
-
+        // WebRTC signaling/socket setup does not require a user gesture.
+        // Keep autoplay handling gesture-gated via startRoomAudioAfterGesture.
+        logConnectionStartDiag('effect_call_connect', { targetConnectionKey })
         await connect()
+      } else {
+        logConnectionStartDiag('effect_early_return_cancelled_before_connect')
       }
     }
 
@@ -1170,7 +1205,7 @@ export function useLiveKit(
     tokenChannel,
     connect,
     disconnect,
-    hasUserActivation,
+    logConnectionStartDiag,
     teardownRoomListeners,
   ])
 
