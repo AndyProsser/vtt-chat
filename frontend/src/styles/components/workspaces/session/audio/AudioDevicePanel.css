@@ -153,6 +153,12 @@
   text-transform: uppercase;
 }
 
+.session-audio-device-panel__mode-pill-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
 .session-audio-device-panel__mode-pill-badge {
   width: 0.42rem;
   height: 0.42rem;

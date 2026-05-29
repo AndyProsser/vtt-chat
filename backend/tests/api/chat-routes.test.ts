@@ -261,6 +261,32 @@ describe('chat routes', () => {
     expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
   })
 
+  it('returns 400 for non-OOC chat during COOLDOWN', async () => {
+    const app = buildApp()
+    mocks.getSession.mockResolvedValueOnce({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.COOLDOWN,
+    })
+    mocks.prismaSessionFindUnique.mockResolvedValueOnce({
+      campaign: { postSessionChatEnabled: true },
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'in character during cooldown',
+        type: MessageType.IC,
+      })
+
+    expect(response.status).toBe(400)
+    expect(response.body.message).toBe('Cooldown chat only supports OOC messages')
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+  })
+
   it('returns 403 for spectator cooldown chat when campaign disables post-session chat', async () => {
     const app = buildApp()
     mocks.verifyToken.mockReturnValue({

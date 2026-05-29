@@ -64,7 +64,11 @@ export function SessionWorkspaceCenterPane(props: SessionWorkspaceCenterPaneProp
                 user={props.effectiveSessionUser}
                 messageGroupingWindowMs={props.messageGroupingWindowMs}
                 sendWsEvent={props.sendWsEvent}
-                forceMessageType={props.isGreenroomChatMode ? MessageType.OOC : undefined}
+                forceMessageType={
+                  props.isGreenroomChatMode || props.currentSessionState === SessionState.COOLDOWN
+                    ? MessageType.OOC
+                    : undefined
+                }
                 onPendingNewMessageCountChange={props.onPendingNewMessageCountChange}
               />
             ) : (

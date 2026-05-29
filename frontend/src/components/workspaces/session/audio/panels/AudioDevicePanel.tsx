@@ -4,15 +4,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { UUID } from '@shared'
 import type { AudioDeviceState } from '@/types/audio'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
+import { ConnectionStatusIndicator } from '../indicators/ConnectionStatusIndicator'
+import { ModeStatusPill } from '../indicators/ModeStatusPill'
 import {
-  AUDIO_CONNECTION_STATUS_TITLES,
   AUDIO_CONTROL_COPY,
   AUDIO_SETTINGS_COPY,
   type AudioConnectionStatusState,
-  getAudioModeLabel,
   getAudioQuickPanelAriaLabel,
   getAudioQuickPanelCountLabel,
-  getLiveKitBadgeLabel,
   getMicrophoneControlLabel,
 } from '@/constants/audioUi.constants'
 
@@ -76,19 +75,7 @@ export function AudioDevicePanel({
     isVoiceConnected,
   })
 
-  // Use combined mute state (own mute + DM override + device state)
-  const isMuted = isCombinedMuted
-  const mutedLabel = getAudioModeLabel(isMuted)
-
   const effectsOpen = effectsHovered
-  const lkBadgeState =
-    statusState === 'disconnected'
-      ? 'disconnected'
-      : statusState === 'connecting'
-        ? 'connecting'
-        : hasLocalPublication
-          ? 'connected-publishing'
-          : 'connected-idle'
   const primaryControlClass = device.pttEnabled
     ? `session-audio-device-panel__control session-audio-device-panel__control--ptt ${pttActive ? 'is-active' : ''}`
     : `session-audio-device-panel__control ${device.microphoneOn ? 'is-danger' : isVoiceConnected ? 'is-success' : ''}`
@@ -154,25 +141,11 @@ export function AudioDevicePanel({
     return <Icon name="status" className="session-audio-device-panel__detail-icon" />
   }
 
-  const liveKitBadgeLabel = getLiveKitBadgeLabel({
-    statusState,
-    hasLocalPublication,
-  })
-
   return (
     <TooltipProvider delayDuration={140}>
       <footer className="session-audio-device-panel__controls">
-        {/* Connection status indicator */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className="session-audio-device-panel__status-dot"
-              data-state={statusState}
-              aria-label={AUDIO_CONNECTION_STATUS_TITLES[statusState]}
-            />
-          </TooltipTrigger>
-          <TooltipContent side="top">{AUDIO_CONNECTION_STATUS_TITLES[statusState]}</TooltipContent>
-        </Tooltip>
+        {/* Connection status indicator — leaf component prevents parent re-render on status changes */}
+        <ConnectionStatusIndicator statusState={statusState} />
 
         {/* Mic toggle: go live / mute / unmute */}
         <Tooltip>
@@ -220,21 +193,10 @@ export function AudioDevicePanel({
           <span ref={txMeterFillRef} className="session-audio-device-panel__tx-meter-fill" />
         </span>
 
-        <span
-          className={`session-audio-device-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}
-        >
-          {mutedLabel}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                className="session-audio-device-panel__mode-pill-badge"
-                data-state={lkBadgeState}
-                aria-label={liveKitBadgeLabel}
-              />
-            </TooltipTrigger>
-            <TooltipContent side="top">{liveKitBadgeLabel}</TooltipContent>
-          </Tooltip>
-        </span>
+        {/* Mode status pill — leaf component subscribed only to mute state */}
+        <div className="session-audio-device-panel__mode-pill-wrapper">
+          <ModeStatusPill sessionId={sessionId} userId={userId} />
+        </div>
 
         {/* Spacer pushes right-side controls to the edge */}
         <span className="session-audio-device-panel__controls-spacer" aria-hidden="true" />

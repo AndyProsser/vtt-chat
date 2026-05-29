@@ -289,6 +289,14 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       postSessionChatEnabled &&
       (room.type === RoomType.MAIN || (room.type === RoomType.GROUP && isGreenRoomName(room.name)))
 
+    if (session.state === SessionState.COOLDOWN && type !== MessageType.OOC) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Cooldown chat only supports OOC messages',
+        field: 'type',
+      })
+    }
+
     if (isGreenRoomName(room.name) && type !== MessageType.OOC) {
       return res.status(400).json({
         code: ErrorCode.INVALID_INPUT,

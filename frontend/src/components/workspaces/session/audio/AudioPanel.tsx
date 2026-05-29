@@ -211,39 +211,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     }
   }, [livekit.room, sessionId, setPresenceSpeakingUsers])
 
-  /**
-   * Sync device state with actual audio connection after room changes.
-   * When switching rooms, LiveKit briefly disconnects/reconnects. This ensures
-   * the UI mute state reflects reality (if audio is not publishing, mark as muted).
-   */
-  useEffect(() => {
-    if (!isVoiceConnected || !device.enabled) {
-      return
-    }
-
-    const hasPublishedAudio = hasLocalPublication
-    const shouldBePublishing = device.microphoneOn && (!device.pttEnabled || pttActive)
-
-    // If we should be publishing but aren't, or vice versa after connection is ready,
-    // the state is out of sync. Force a refresh.
-    if (shouldBePublishing !== hasPublishedAudio) {
-      // Connection is ready but publication state doesn't match intent.
-      // Re-publish or unpublish to sync state.
-      if (shouldBePublishing && !hasPublishedAudio && device.microphoneOn) {
-        void livekit.publishAudio().catch(() => undefined)
-      }
-    }
-  }, [
-    roomId,
-    isVoiceConnected,
-    hasLocalPublication,
-    device.microphoneOn,
-    device.pttEnabled,
-    pttActive,
-    device.enabled,
-    livekit,
-  ])
-
   useEffect(() => {
     if (effectiveRole !== Role.DM) {
       return
@@ -435,6 +402,39 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const isVoiceConnected = canonicalIsConnected
   const hasLocalPublication = sharedLiveKitState?.hasLocalPublication ?? false
   const liveKitError = sharedLiveKitState?.error ?? livekit.error
+
+  /**
+   * Sync device state with actual audio connection after room changes.
+   * When switching rooms, LiveKit briefly disconnects/reconnects. This ensures
+   * the UI mute state reflects reality (if audio is not publishing, mark as muted).
+   */
+  useEffect(() => {
+    if (!isVoiceConnected || !device.enabled) {
+      return
+    }
+
+    const hasPublishedAudio = hasLocalPublication
+    const shouldBePublishing = device.microphoneOn && (!device.pttEnabled || pttActive)
+
+    // If we should be publishing but aren't, or vice versa after connection is ready,
+    // the state is out of sync. Force a refresh.
+    if (shouldBePublishing !== hasPublishedAudio) {
+      // Connection is ready but publication state doesn't match intent.
+      // Re-publish or unpublish to sync state.
+      if (shouldBePublishing && !hasPublishedAudio && device.microphoneOn) {
+        void livekit.publishAudio().catch(() => undefined)
+      }
+    }
+  }, [
+    roomId,
+    isVoiceConnected,
+    hasLocalPublication,
+    device.microphoneOn,
+    device.pttEnabled,
+    pttActive,
+    device.enabled,
+    livekit,
+  ])
 
   useEffect(() => {
     audioEngine.setLocalGain(device.volumeLevel / 100)
