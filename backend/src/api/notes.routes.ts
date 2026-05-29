@@ -185,7 +185,7 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
 
 router.post('/', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
-  const { campaignId, sessionId, title, content, visibility, tags, allowedUsers } =
+  const { campaignId, sessionId, title, content, visibility, tags, allowedUsers, attachments } =
     parseCreateNoteRequest(req.body)
 
   if (!isValidUUID(campaignId)) {
@@ -257,6 +257,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     visibility,
     tags,
     allowedUsers: visibility === NoteVisibility.CUSTOM ? allowedUsers : [],
+    attachments,
   })
   const created = note.created
 
@@ -274,6 +275,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       noteVisibility: note.visibility,
       tagCount: note.tags.length,
       allowedUserCount: note.allowedUsers?.length ?? 0,
+      attachmentCount: note.attachments?.length ?? 0,
       published: Boolean((note as { publishedAt?: number | null }).publishedAt),
     },
   })
@@ -298,6 +300,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
         visibility: note.visibility,
         tags: note.tags,
         allowedUsers: note.allowedUsers,
+        attachments: note.attachments,
       },
     }
 
@@ -319,7 +322,9 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
 router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { noteId } = req.params
-  const { title, content, visibility, tags, allowedUsers } = parseUpdateNoteRequest(req.body)
+  const { title, content, visibility, tags, allowedUsers, attachments } = parseUpdateNoteRequest(
+    req.body
+  )
 
   if (!isValidUUID(noteId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_NOTE_ID, message: 'Invalid noteId' })
@@ -377,6 +382,7 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
         visibility === NoteVisibility.CUSTOM || allowedUsers !== undefined
           ? allowedUsers
           : undefined,
+      attachments,
     })
   } catch (err: any) {
     if (err?.code === 'VISIBILITY_CONSTRAINT') {
@@ -419,6 +425,7 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
       noteVisibility: note.visibility,
       tagCount: note.tags.length,
       allowedUserCount: note.allowedUsers?.length ?? 0,
+      attachmentCount: note.attachments?.length ?? 0,
       published: Boolean((note as { publishedAt?: number | null }).publishedAt),
     },
   })
@@ -441,6 +448,7 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
         visibility: note.visibility,
         tags: note.tags,
         allowedUsers: note.allowedUsers,
+        attachments: note.attachments,
       },
     }
 

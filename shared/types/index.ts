@@ -172,6 +172,7 @@ export type {
   RoomEntity,
   MessageEntity,
   NoteEntity,
+  NoteAttachmentEntity,
   NoteSharedMessageMetadata,
   PresenceEntity,
 } from './entities'

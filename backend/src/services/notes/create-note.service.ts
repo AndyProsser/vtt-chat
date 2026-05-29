@@ -25,6 +25,7 @@ export async function createNote(params: {
   visibility: NoteVisibility
   tags?: string[]
   allowedUsers?: UUID[]
+  attachments?: StoredNote['attachments']
 }): Promise<StoredNote & { created: boolean }> {
   if (isJournalNoteCandidate({ title: params.title, tags: params.tags })) {
     const existingJournal = (await listSessionNotes(params.sessionId)).find((row) => {
@@ -41,6 +42,7 @@ export async function createNote(params: {
         visibility: params.visibility,
         tags: params.tags || [],
         allowedUsers: params.allowedUsers || [],
+        attachments: (params.attachments || []) as any,
         updatedAt: new Date(now),
         publishedAt: existingJournal.publishedAt,
       })
@@ -52,6 +54,7 @@ export async function createNote(params: {
         visibility: params.visibility,
         tags: params.tags || [],
         allowedUsers: params.allowedUsers,
+        attachments: params.attachments || [],
         updatedAt: now,
         created: false,
       }
@@ -70,6 +73,7 @@ export async function createNote(params: {
     visibility: params.visibility,
     tags: params.tags || [],
     allowedUsers: params.allowedUsers,
+    attachments: params.attachments || [],
     createdAt: now,
     updatedAt: now,
   }
@@ -84,6 +88,7 @@ export async function createNote(params: {
     visibility: note.visibility,
     tags: note.tags,
     allowedUsers: note.allowedUsers || [],
+    attachments: (note.attachments || []) as any,
     createdAt: new Date(note.createdAt),
     updatedAt: new Date(note.updatedAt),
   })

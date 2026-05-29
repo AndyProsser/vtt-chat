@@ -306,6 +306,7 @@ model Note {
   visibility     NoteVisibility @default(DM_ONLY)
   tags           Json?
   allowedUsers   Json?
+  attachments    Json?
   publishedAt    DateTime?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt

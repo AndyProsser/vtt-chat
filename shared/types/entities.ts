@@ -105,9 +105,19 @@ export interface NoteEntity {
   visibility: NoteVisibility
   tags: string[]
   allowedUsers?: UUID[]
+  attachments?: NoteAttachmentEntity[]
   publishedAt?: number
   createdAt: number
   updatedAt: number
+}
+
+export interface NoteAttachmentEntity {
+  id: UUID
+  campaignId?: UUID
+  mime: string
+  name: string
+  uri: string
+  createdAt: number
 }
 
 export interface PresenceEntity {
