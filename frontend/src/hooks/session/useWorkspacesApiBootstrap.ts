@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import {
   createCampaignSettingsController,
   createCharacterSettingsController,
@@ -18,6 +18,7 @@ type UseWorkspacesApiBootstrapParams = {
  */
 export function useWorkspacesApiBootstrap(params: UseWorkspacesApiBootstrapParams) {
   const { apiUrl, token } = params
+  const inFlightGetRequestsRef = useRef<Map<string, Promise<Response>>>(new Map())
 
   const clearPersistedActiveSessionContext = useCallback(() => {
     sessionStorage.removeItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY)
@@ -33,38 +34,64 @@ export function useWorkspacesApiBootstrap(params: UseWorkspacesApiBootstrapParam
 
   const fetchWithAuthGuard = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      const response = await window.fetch(input, init)
+      const resolvedMethod = (
+        init?.method || (input instanceof Request ? input.method : 'GET')
+      ).toUpperCase()
+      const requestUrl =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      const canDedupeGet = resolvedMethod === 'GET'
+      const requestKey = `${resolvedMethod} ${requestUrl}`
 
-      if (response.status === 401) {
-        forceLogoutToAuthScreen()
-        throw new Error('Authentication failed (401)')
-      }
+      const runFetchWithGuard = async (): Promise<Response> => {
+        const response = await window.fetch(input, init)
 
-      if (response.status === 403) {
-        // 403 is frequently a normal authorization denial (not an auth expiry).
-        // Only force logout when backend explicitly marks it as unauthorized/authentication failure.
-        try {
-          const payload = (await response
-            .clone()
-            .json()
-            .catch(() => null)) as { code?: string; message?: string } | null
-          const code = payload?.code?.toUpperCase() || ''
-          const message = payload?.message?.toLowerCase() || ''
-          const shouldForceLogout =
-            code === 'UNAUTHORIZED' ||
-            message.includes('authentication required') ||
-            message.includes('missing authorization')
-
-          if (shouldForceLogout) {
-            forceLogoutToAuthScreen()
-            throw new Error('Authentication failed (403)')
-          }
-        } catch {
-          // If payload cannot be parsed, keep caller-level handling for 403.
+        if (response.status === 401) {
+          forceLogoutToAuthScreen()
+          throw new Error('Authentication failed (401)')
         }
+
+        if (response.status === 403) {
+          // 403 is frequently a normal authorization denial (not an auth expiry).
+          // Only force logout when backend explicitly marks it as unauthorized/authentication failure.
+          try {
+            const payload = (await response
+              .clone()
+              .json()
+              .catch(() => null)) as { code?: string; message?: string } | null
+            const code = payload?.code?.toUpperCase() || ''
+            const message = payload?.message?.toLowerCase() || ''
+            const shouldForceLogout =
+              code === 'UNAUTHORIZED' ||
+              message.includes('authentication required') ||
+              message.includes('missing authorization')
+
+            if (shouldForceLogout) {
+              forceLogoutToAuthScreen()
+              throw new Error('Authentication failed (403)')
+            }
+          } catch {
+            // If payload cannot be parsed, keep caller-level handling for 403.
+          }
+        }
+
+        return response
       }
 
-      return response
+      if (!canDedupeGet) {
+        return runFetchWithGuard()
+      }
+
+      let inFlightRequest = inFlightGetRequestsRef.current.get(requestKey)
+      if (!inFlightRequest) {
+        inFlightRequest = runFetchWithGuard().finally(() => {
+          if (inFlightGetRequestsRef.current.get(requestKey) === inFlightRequest) {
+            inFlightGetRequestsRef.current.delete(requestKey)
+          }
+        })
+        inFlightGetRequestsRef.current.set(requestKey, inFlightRequest)
+      }
+
+      return (await inFlightRequest).clone()
     },
     [forceLogoutToAuthScreen]
   )

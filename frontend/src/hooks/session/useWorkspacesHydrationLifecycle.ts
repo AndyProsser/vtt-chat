@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { ConnectionState } from '@/ws/client'
 import type { Session as SessionRecord } from '@/types/session'
@@ -66,6 +66,8 @@ type UseWorkspacesHydrationLifecycleParams = {
   prevWsStateRef: MutableRefObject<ConnectionState>
 }
 
+const RECENT_SESSION_CHANGE_RECONNECT_SUPPRESS_MS = 500
+
 /**
  * Rehydrates session topology and audio state whenever the active session changes
  * or the websocket reconnects, keeping local state aligned with backend authority.
@@ -93,6 +95,8 @@ export function useWorkspacesHydrationLifecycle(
     lastHydratedSessionFingerprintRef,
     prevWsStateRef,
   } = params
+  const inFlightHydrationFingerprintRef = useRef<string | null>(null)
+  const recentSessionChangeHydratedAtRef = useRef<number | null>(null)
 
   useEffect(() => {
     const prev = prevWsStateRef.current
@@ -111,9 +115,27 @@ export function useWorkspacesHydrationLifecycle(
       return
     }
 
+    if (!sessionChanged && isReconnect) {
+      const recentSessionChangeHydratedAt = recentSessionChangeHydratedAtRef.current
+      if (
+        recentSessionChangeHydratedAt !== null &&
+        Date.now() - recentSessionChangeHydratedAt < RECENT_SESSION_CHANGE_RECONNECT_SUPPRESS_MS
+      ) {
+        return
+      }
+    }
+
+    if (inFlightHydrationFingerprintRef.current === sessionFingerprint) {
+      return
+    }
+
     lastHydratedSessionFingerprintRef.current = sessionFingerprint
+    inFlightHydrationFingerprintRef.current = sessionFingerprint
+
+    const hydrationTriggeredBySessionChange = sessionChanged
 
     const loadPresenceAndRooms = async () => {
+      let hydrationApplied = false
       try {
         const [roomsResponse, presenceResponse, audioStateResponse] = await Promise.all([
           fetchWithAuthGuard(`${apiUrl}/api/rooms/session/${currentSession.id}`, {
@@ -232,8 +254,16 @@ export function useWorkspacesHydrationLifecycle(
         }).catch(() => {
           // Non-critical: snapshot recovery failure does not block UI updates.
         })
+
+        hydrationApplied = true
       } catch {
         // Websocket updates can continue to converge state after hydration errors.
+      } finally {
+        inFlightHydrationFingerprintRef.current = null
+
+        if (hydrationTriggeredBySessionChange && hydrationApplied) {
+          recentSessionChangeHydratedAtRef.current = Date.now()
+        }
       }
     }
 
