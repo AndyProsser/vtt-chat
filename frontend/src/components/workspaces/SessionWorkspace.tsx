@@ -48,13 +48,8 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             statusLabel={props.connectionStatus.label}
             coreWsState={props.connectionStatus.coreWsState}
             livekitState={props.connectionStatus.livekitState}
+            sessionId={currentSession.id}
             sessionState={currentSession.state}
-            sessionStartedAt={currentSession.startedAt}
-            sessionPausedAt={currentSession.pausedAt ?? props.currentPauseStats.pauseStartedAt}
-            sessionEndedAt={currentSession.endedAt}
-            cooldownEndsAt={currentSession.cooldownExpiresAt}
-            cumulativePauseMs={props.currentPauseStats.cumulativePauseMs}
-            pauseCount={props.currentPauseStats.pauseCount}
             cooldownDurationMs={props.configuredCooldownDurationMs}
             canStartSession={props.canStartFromGreenroom}
             canPauseSession={props.canPauseFromActive}

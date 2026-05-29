@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { LiveKitConnectionState, CoreWsState, SessionState, StatusColorKey } from '@shared'
+import { useState } from 'react'
+import type {
+  LiveKitConnectionState,
+  CoreWsState,
+  SessionState,
+  StatusColorKey,
+  UUID,
+} from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
-import {
-  DEFAULT_COOLDOWN_MS,
-  formatDuration,
-  formatTimestamp,
-  toFiniteTimestamp,
-  toneFromAudioState,
-  toneFromCoreState,
-} from '@/constants/sessionToolbar.constants'
+import { toneFromAudioState, toneFromCoreState } from '@/constants/sessionToolbar.constants'
 import { Icon } from '@/components/ui/Icon'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
+import { SessionTimerLeaf } from './SessionTimerLeaf'
 import type { ToolbarActionModel } from '@/types/toolbar'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '@/tokens'
 import '@/styles/components/workspaces/shared/toolbar/SessionToolbar.css'
@@ -21,13 +21,8 @@ interface SessionToolbarProps {
   statusLabel: string
   coreWsState: CoreWsState
   livekitState: LiveKitConnectionState
+  sessionId: UUID
   sessionState: SessionState
-  sessionStartedAt?: number
-  sessionPausedAt?: number
-  sessionEndedAt?: number
-  cooldownEndsAt?: number
-  cumulativePauseMs: number
-  pauseCount: number
   cooldownDurationMs?: number
   canStartSession: boolean
   canPauseSession: boolean
@@ -52,14 +47,9 @@ export function SessionToolbar({
   statusLabel,
   coreWsState,
   livekitState,
+  sessionId,
   sessionState,
-  sessionStartedAt,
-  sessionPausedAt,
-  sessionEndedAt,
-  cooldownEndsAt,
-  cumulativePauseMs,
-  pauseCount,
-  cooldownDurationMs = DEFAULT_COOLDOWN_MS,
+  cooldownDurationMs,
   canStartSession,
   canPauseSession,
   canStopSession,
@@ -86,201 +76,6 @@ export function SessionToolbar({
   }
 
   const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
-  const [showTimerPopper, setShowTimerPopper] = useState(false)
-  const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now())
-  const [greenroomEnteredAtMs, setGreenroomEnteredAtMs] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (sessionState === 'IDLE') {
-      setGreenroomEnteredAtMs((previous) => previous ?? Date.now())
-      return
-    }
-
-    setGreenroomEnteredAtMs(null)
-  }, [sessionState])
-
-  // Keep second-level ticking only for states that require a live clock.
-  // COOLDOWN gets a one-shot timeout to avoid rebuilding the entire toolbar
-  // tooltip/popper subtree every second.
-  useEffect(() => {
-    const needsSecondTick = sessionState === 'ACTIVE' || sessionState === 'PAUSED'
-
-    if (needsSecondTick) {
-      const timer = window.setInterval(() => {
-        setCurrentTimeMs(Date.now())
-      }, 1000)
-
-      return () => {
-        window.clearInterval(timer)
-      }
-    }
-
-    if (sessionState !== 'COOLDOWN') {
-      return
-    }
-
-    setCurrentTimeMs(Date.now())
-
-    const safeCooldownDurationForEffect = Number.isFinite(cooldownDurationMs)
-      ? cooldownDurationMs
-      : DEFAULT_COOLDOWN_MS
-    const cooldownEndsAtMsForEffect = toFiniteTimestamp(cooldownEndsAt)
-    const sessionEndedAtMsForEffect = toFiniteTimestamp(sessionEndedAt)
-
-    const resolvedCooldownEndsAtMs =
-      cooldownEndsAtMsForEffect ||
-      (sessionEndedAtMsForEffect
-        ? sessionEndedAtMsForEffect + safeCooldownDurationForEffect
-        : undefined)
-
-    if (!resolvedCooldownEndsAtMs) {
-      return
-    }
-
-    const remainingMs = resolvedCooldownEndsAtMs - Date.now()
-
-    if (remainingMs <= 0) {
-      setCurrentTimeMs(Date.now())
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setCurrentTimeMs(Date.now())
-    }, remainingMs)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [cooldownDurationMs, cooldownEndsAt, sessionEndedAt, sessionState])
-
-  // ── Timer values ──────────────────────────────────────────────────────────
-
-  const sessionStartedAtMs = toFiniteTimestamp(sessionStartedAt)
-  const sessionPausedAtMs = toFiniteTimestamp(sessionPausedAt)
-  const sessionEndedAtMs = toFiniteTimestamp(sessionEndedAt)
-  const cooldownEndsAtMs = toFiniteTimestamp(cooldownEndsAt)
-  const safeCumulativePauseMs = Number.isFinite(cumulativePauseMs) ? cumulativePauseMs : 0
-  const safeCooldownDurationMs = Number.isFinite(cooldownDurationMs)
-    ? cooldownDurationMs
-    : DEFAULT_COOLDOWN_MS
-
-  /** Seconds the session has been actively running (pauses excluded). */
-  const activeElapsedSeconds = useMemo(() => {
-    if (!currentTimeMs) return 0
-    if (!sessionStartedAtMs) return 0
-    if (sessionState === 'ACTIVE') {
-      return Math.max(
-        0,
-        Math.floor((currentTimeMs - sessionStartedAtMs - safeCumulativePauseMs) / 1000)
-      )
-    }
-    if (sessionState === 'PAUSED' && sessionPausedAtMs) {
-      return Math.max(
-        0,
-        Math.floor((sessionPausedAtMs - sessionStartedAtMs - safeCumulativePauseMs) / 1000)
-      )
-    }
-    if (
-      (sessionState === 'COOLDOWN' ||
-        sessionState === 'ENDED' ||
-        sessionState === 'CLEANUP' ||
-        sessionState === 'IDLE') &&
-      sessionEndedAtMs
-    ) {
-      return Math.max(
-        0,
-        Math.floor((sessionEndedAtMs - sessionStartedAtMs - safeCumulativePauseMs) / 1000)
-      )
-    }
-    return 0
-  }, [
-    currentTimeMs,
-    sessionState,
-    sessionStartedAtMs,
-    sessionPausedAtMs,
-    sessionEndedAtMs,
-    safeCumulativePauseMs,
-  ])
-
-  /** Seconds since the current pause began. */
-  const pausedElapsedSeconds = useMemo(() => {
-    if (!currentTimeMs) return 0
-    if (sessionState !== 'PAUSED' || !sessionPausedAtMs) return 0
-    return Math.max(0, Math.floor((currentTimeMs - sessionPausedAtMs) / 1000))
-  }, [currentTimeMs, sessionState, sessionPausedAtMs])
-
-  /** Seconds remaining in the post-session cooldown window. */
-  const cooldownRemainingSeconds = useMemo(() => {
-    if (!currentTimeMs) return 0
-    if (sessionState !== 'COOLDOWN') return 0
-
-    const resolvedCooldownEndsAtMs =
-      cooldownEndsAtMs ?? (sessionEndedAtMs ? sessionEndedAtMs + safeCooldownDurationMs : undefined)
-
-    if (!resolvedCooldownEndsAtMs) return 0
-
-    return Math.max(0, Math.floor((resolvedCooldownEndsAtMs - currentTimeMs) / 1000))
-  }, [currentTimeMs, sessionState, cooldownEndsAtMs, sessionEndedAtMs, safeCooldownDurationMs])
-
-  /** Seconds elapsed since the session entered ENDED/CLEANUP state. */
-  const endedElapsedSeconds = useMemo(() => {
-    if (!currentTimeMs) return 0
-    if ((sessionState !== 'ENDED' && sessionState !== 'CLEANUP') || !sessionEndedAtMs) return 0
-    return Math.max(0, Math.floor((currentTimeMs - sessionEndedAtMs) / 1000))
-  }, [currentTimeMs, sessionState, sessionEndedAtMs])
-
-  /** Seconds since the user entered the greenroom (local clock). */
-  const greenroomElapsedSeconds = useMemo(() => {
-    if (!currentTimeMs || !greenroomEnteredAtMs) return 0
-    if (sessionState !== 'IDLE') return 0
-    return Math.max(0, Math.floor((currentTimeMs - greenroomEnteredAtMs) / 1000))
-  }, [currentTimeMs, greenroomEnteredAtMs, sessionState])
-
-  // ── Primary timer display ─────────────────────────────────────────────────
-
-  const { primaryLabel, primaryStateClass } = useMemo(() => {
-    switch (sessionState) {
-      case 'ACTIVE':
-        return {
-          primaryLabel: formatDuration(activeElapsedSeconds),
-          primaryStateClass: 'is-active',
-        }
-      case 'PAUSED':
-        return {
-          primaryLabel: formatDuration(pausedElapsedSeconds),
-          primaryStateClass: 'is-paused',
-        }
-      case 'COOLDOWN':
-        return {
-          primaryLabel: formatDuration(cooldownRemainingSeconds),
-          primaryStateClass: 'is-ended',
-        }
-      case 'ENDED':
-        return { primaryLabel: formatDuration(endedElapsedSeconds), primaryStateClass: '' }
-      case 'CLEANUP':
-        return {
-          primaryLabel: formatDuration(endedElapsedSeconds),
-          primaryStateClass: '',
-        }
-      case 'IDLE':
-      default:
-        return { primaryLabel: formatDuration(greenroomElapsedSeconds), primaryStateClass: '' }
-    }
-  }, [
-    sessionState,
-    activeElapsedSeconds,
-    pausedElapsedSeconds,
-    cooldownRemainingSeconds,
-    endedElapsedSeconds,
-    greenroomElapsedSeconds,
-  ])
-
-  const canShowPopper =
-    sessionState === 'ACTIVE' ||
-    sessionState === 'PAUSED' ||
-    sessionState === 'COOLDOWN' ||
-    sessionState === 'ENDED' ||
-    sessionState === 'CLEANUP'
 
   const handleToggleTheme = () => {
     if (typeof document === 'undefined') {
@@ -308,92 +103,8 @@ export function SessionToolbar({
   const coreToneClass = toneFromCoreState(coreWsState)
   const audioToneClass = toneFromAudioState(livekitState)
 
-  // Timer state label text
-  const timerStateLabel = sessionState
-
   const centerContent = (
-    <div className="session-toolbar__timer-group">
-      <div
-        className="session-toolbar__timer-wrap"
-        onMouseEnter={canShowPopper ? () => setShowTimerPopper(true) : undefined}
-        onMouseLeave={canShowPopper ? () => setShowTimerPopper(false) : undefined}
-        onFocus={canShowPopper ? () => setShowTimerPopper(true) : undefined}
-        onBlur={
-          canShowPopper
-            ? (event) => {
-                const nextTarget = event.relatedTarget as Node | null
-                if (!event.currentTarget.contains(nextTarget)) {
-                  setShowTimerPopper(false)
-                }
-              }
-            : undefined
-        }
-      >
-        <button
-          type="button"
-          className={`session-toolbar__timer-pill ${canShowPopper ? 'session-toolbar__timer-pill--interactive' : ''}`}
-          aria-label={`Session timer: ${primaryLabel}. ${canShowPopper ? 'Hover for details.' : ''}`}
-          aria-expanded={canShowPopper ? showTimerPopper : undefined}
-        >
-          <span className="session-toolbar__timer-main">
-            <Icon name={sessionState === 'COOLDOWN' ? 'hourglass' : 'timer'} />
-            <strong>{primaryLabel}</strong>
-          </span>
-          <span className="session-toolbar__timer-state-wrap">
-            <span className={`session-toolbar__timer-state ${primaryStateClass}`}>
-              {timerStateLabel}
-            </span>
-          </span>
-        </button>
-
-        {canShowPopper && showTimerPopper ? (
-          <div
-            className="session-toolbar__timer-popper"
-            role="region"
-            aria-label="Session timer details"
-          >
-            <div className="session-toolbar__timer-popper-row">
-              <span>Started</span>
-              <strong>{formatTimestamp(sessionStartedAtMs)}</strong>
-            </div>
-            <div className="session-toolbar__timer-popper-row">
-              <span>Active time</span>
-              <strong>{formatDuration(activeElapsedSeconds)}</strong>
-            </div>
-            {sessionState === 'PAUSED' ? (
-              <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--highlight">
-                <span>Paused for</span>
-                <strong>{formatDuration(pausedElapsedSeconds)}</strong>
-              </div>
-            ) : null}
-            <div className="session-toolbar__timer-popper-row">
-              <span>Total pause time</span>
-              <strong>
-                {formatDuration(
-                  Math.floor(
-                    (cumulativePauseMs +
-                      (sessionState === 'PAUSED' && sessionPausedAtMs
-                        ? currentTimeMs - sessionPausedAtMs
-                        : 0)) /
-                      1000
-                  )
-                )}
-              </strong>
-            </div>
-            <div className="session-toolbar__timer-popper-row">
-              <span>Times paused</span>
-              <strong>{pauseCount}</strong>
-            </div>
-            {sessionState === 'COOLDOWN' ? (
-              <div className="session-toolbar__timer-popper-row session-toolbar__timer-popper-row--ended">
-                <span>Cooldown left</span>
-                <strong>{formatDuration(cooldownRemainingSeconds)}</strong>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-    </div>
+    <SessionTimerLeaf sessionId={sessionId} cooldownDurationMs={cooldownDurationMs} />
   )
 
   const sessionActionButtons = hasExtraButtons ? (
