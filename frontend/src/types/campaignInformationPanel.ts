@@ -1,7 +1,6 @@
 import type { ChangeEvent, ReactNode } from 'react'
 import type { SessionLifecycleState, UUID } from '@shared'
-
-export type IntegrationSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
+import type { ExtensionSyncPolicy } from '@/constants/sessionUi.constants'
 
 export type CampaignInformationPanelCampaign = {
   id: UUID
@@ -35,7 +34,7 @@ export type CampaignInformationPanelProps = {
       name: string
       description: string
       posterUrl: string | null
-      integrationSyncPolicy: IntegrationSyncPolicy
+      integrationSyncPolicy: ExtensionSyncPolicy
     }
   ) => Promise<void>
 }

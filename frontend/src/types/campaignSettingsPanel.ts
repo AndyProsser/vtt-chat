@@ -1,4 +1,9 @@
 import type { ChangeEvent, ReactNode } from 'react'
+import type {
+  CampaignVisibility,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+} from '@/constants/sessionUi.constants'
 import type { CampaignSettingsPayload } from '@/types/session/campaign'
 
 export type CampaignSettingsPanelProps = {
@@ -15,8 +20,8 @@ export type CampaignSettingsPanelProps = {
   settingsPosterUrl: string
   onSettingsPosterUrlChange: (value: string) => void
   onRemovePoster: () => void
-  settingsVisibility: 'PUBLIC' | 'PRIVATE'
-  onSettingsVisibilityChange: (value: 'PUBLIC' | 'PRIVATE') => void
+  settingsVisibility: CampaignVisibility
+  onSettingsVisibilityChange: (value: CampaignVisibility) => void
   settingsSpectatorsEnabled: boolean
   onSettingsSpectatorsEnabledChange: (value: boolean) => void
   settingsSpectatorMax: number
@@ -29,10 +34,10 @@ export type CampaignSettingsPanelProps = {
   onSettingsPostSessionChatEnabledChange: (value: boolean) => void
   settingsPostSessionChatDurationMinutes: number
   onSettingsPostSessionChatDurationMinutesChange: (value: number) => void
-  settingsExtensionSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
-  onSettingsExtensionSyncPolicyChange: (value: 'ALLOW' | 'DM_ONLY' | 'NONE') => void
-  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
-  onSettingsLateJoinPolicyChange: (value: 'OPEN' | 'SCREENED' | 'BLOCKED') => void
+  settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  onSettingsExtensionSyncPolicyChange: (value: ExtensionSyncPolicy) => void
+  settingsLateJoinPolicy: LateJoinPolicy
+  onSettingsLateJoinPolicyChange: (value: LateJoinPolicy) => void
   settingsLateJoinGraceMinutes: number
   onSettingsLateJoinGraceMinutesChange: (value: number) => void
   settingsDmAutoTargetOnFirstPlayerJoin: boolean

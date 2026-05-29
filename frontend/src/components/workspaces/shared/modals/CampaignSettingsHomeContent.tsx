@@ -3,6 +3,7 @@ import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/Cam
 import {
   CAMPAIGN_VISIBILITY_OPTIONS,
   EXTENSION_SYNC_POLICY_OPTIONS,
+  getBooleanToggleLabel,
   getCampaignVisibilityLabel,
   getExtensionSyncPolicyLabel,
   getLateJoinPolicyLabel,
@@ -255,7 +256,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
             onClick={() => props.onSettingsSpectatorsEnabledChange(true)}
             disabled={props.isSettingsSaving}
           >
-            ON
+            {getBooleanToggleLabel(true)}
           </button>
           <button
             type="button"
@@ -264,7 +265,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
             onClick={() => props.onSettingsSpectatorsEnabledChange(false)}
             disabled={props.isSettingsSaving}
           >
-            OFF
+            {getBooleanToggleLabel(false)}
           </button>
         </div>
 
@@ -293,7 +294,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
             onClick={() => props.onSettingsSpectatorWaitlistEnabledChange(true)}
             disabled={props.isSettingsSaving || !props.settingsSpectatorsEnabled}
           >
-            ON
+            {getBooleanToggleLabel(true)}
           </button>
           <button
             type="button"
@@ -302,7 +303,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
             onClick={() => props.onSettingsSpectatorWaitlistEnabledChange(false)}
             disabled={props.isSettingsSaving || !props.settingsSpectatorsEnabled}
           >
-            OFF
+            {getBooleanToggleLabel(false)}
           </button>
         </div>
 
@@ -333,7 +334,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
             onClick={() => props.onSettingsPostSessionChatEnabledChange(true)}
             disabled={props.isSettingsSaving}
           >
-            ON
+            {getBooleanToggleLabel(true)}
           </button>
           <button
             type="button"
@@ -342,7 +343,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
             onClick={() => props.onSettingsPostSessionChatEnabledChange(false)}
             disabled={props.isSettingsSaving}
           >
-            OFF
+            {getBooleanToggleLabel(false)}
           </button>
         </div>
 

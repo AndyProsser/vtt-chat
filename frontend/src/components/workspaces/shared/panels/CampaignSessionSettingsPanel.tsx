@@ -2,6 +2,7 @@ import { useState, useEffect, type CSSProperties } from 'react'
 import { Slider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import {
+  getBooleanToggleLabel,
   getLateJoinPolicyLabel,
   LATE_JOIN_POLICY_OPTIONS,
   type LateJoinPolicy,
@@ -92,7 +93,7 @@ function TogglePair({
         onClick={() => onChange(true)}
         disabled={disabled}
       >
-        ON
+        {getBooleanToggleLabel(true)}
       </button>
       <button
         type="button"
@@ -101,7 +102,7 @@ function TogglePair({
         onClick={() => onChange(false)}
         disabled={disabled}
       >
-        OFF
+        {getBooleanToggleLabel(false)}
       </button>
     </div>
   )
@@ -299,7 +300,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
               <span
                 className={`csp-status-pill ${policy.settingsSpectatorsEnabled ? 'csp-status-pill--on' : 'csp-status-pill--off'}`}
               >
-                {policy.settingsSpectatorsEnabled ? 'ON' : 'OFF'}
+                {getBooleanToggleLabel(policy.settingsSpectatorsEnabled)}
               </span>
               <span
                 className="material-symbols-outlined csp-card-collapsible-chevron"

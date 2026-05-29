@@ -1,5 +1,6 @@
 import { Slider } from '@/components/ui'
 import {
+  getBooleanToggleLabel,
   CAMPAIGN_VISIBILITY_OPTIONS,
   EXTENSION_SYNC_POLICY_OPTIONS,
   getCampaignVisibilityLabel,
@@ -37,7 +38,7 @@ function TogglePair({
         onClick={() => onChange(true)}
         disabled={disabled}
       >
-        ON
+        {getBooleanToggleLabel(true)}
       </button>
       <button
         type="button"
@@ -46,7 +47,7 @@ function TogglePair({
         onClick={() => onChange(false)}
         disabled={disabled}
       >
-        OFF
+        {getBooleanToggleLabel(false)}
       </button>
     </div>
   )

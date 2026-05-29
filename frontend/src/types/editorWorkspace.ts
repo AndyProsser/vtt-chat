@@ -1,5 +1,10 @@
 import { type CoreWsState, type Role, type SessionState, type UUID } from '@shared'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type {
+  CampaignVisibility,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+} from '@/constants/sessionUi.constants'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { Session } from '@/types/session'
 import type { EditorWorkspaceView } from '@/types/workspaces'
@@ -33,15 +38,15 @@ export type EditorWorkspaceProps = {
   settingsName: string
   settingsDescription: string
   settingsPosterUrl: string
-  settingsVisibility: 'PUBLIC' | 'PRIVATE'
+  settingsVisibility: CampaignVisibility
   settingsSpectatorsEnabled: boolean
   settingsSpectatorMax: number
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
-  settingsExtensionSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
-  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsLateJoinPolicy: LateJoinPolicy
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number
@@ -55,15 +60,15 @@ export type EditorWorkspaceProps = {
   onSettingsDescriptionChange: (value: string) => void
   onPosterFileSelected: (event: React.ChangeEvent<HTMLInputElement>) => void
   onSettingsPosterUrlChange: (value: string) => void
-  onSettingsVisibilityChange: (value: 'PUBLIC' | 'PRIVATE') => void
+  onSettingsVisibilityChange: (value: CampaignVisibility) => void
   onSettingsSpectatorsEnabledChange: (value: boolean) => void
   onSettingsSpectatorMaxChange: (value: number) => void
   onSettingsSpectatorWaitlistEnabledChange: (value: boolean) => void
   onSettingsSpectatorReconnectGraceSecsChange: (value: number) => void
   onSettingsPostSessionChatEnabledChange: (value: boolean) => void
   onSettingsPostSessionChatDurationMinutesChange: (value: number) => void
-  onSettingsExtensionSyncPolicyChange: (value: 'ALLOW' | 'DM_ONLY' | 'NONE') => void
-  onSettingsLateJoinPolicyChange: (value: 'OPEN' | 'SCREENED' | 'BLOCKED') => void
+  onSettingsExtensionSyncPolicyChange: (value: ExtensionSyncPolicy) => void
+  onSettingsLateJoinPolicyChange: (value: LateJoinPolicy) => void
   onSettingsLateJoinGraceMinutesChange: (value: number) => void
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
@@ -85,7 +90,7 @@ export type EditorWorkspaceProps = {
       name: string
       description: string
       posterUrl: string | null
-      integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+      integrationSyncPolicy: ExtensionSyncPolicy
     }
   ) => Promise<void>
   onDeleteCampaign: (campaignId: UUID) => Promise<void>

@@ -80,6 +80,11 @@ export const SPECTATOR_WAIT_SCREEN_COPY = {
   },
 } as const
 
+export const BOOLEAN_TOGGLE_COPY = {
+  on: 'ON',
+  off: 'OFF',
+} as const
+
 export function getSessionStateLabel(state: SessionState | string): string {
   return SESSION_STATE_LABELS[state as SessionState] ?? toDisplayLabel(state)
 }
@@ -94,6 +99,10 @@ export function getCampaignVisibilityLabel(visibility: CampaignVisibility): stri
 
 export function getExtensionSyncPolicyLabel(policy: ExtensionSyncPolicy): string {
   return EXTENSION_SYNC_POLICY_LABELS[policy]
+}
+
+export function getBooleanToggleLabel(value: boolean): string {
+  return value ? BOOLEAN_TOGGLE_COPY.on : BOOLEAN_TOGGLE_COPY.off
 }
 
 function toDisplayLabel(value: string): string {
