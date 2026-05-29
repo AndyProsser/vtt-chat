@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { EventEnvelope, UUID } from '../../../shared'
+import { SessionState } from '../../../shared'
 import { useStore } from '../../src/state/store'
 import type { Room, RoomUser } from '../../src/types/room'
 
@@ -596,6 +597,71 @@ describe('roomSlice', () => {
         sessionPresenceBeforeStop
       )
       expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('ONLINE')
+    })
+
+    it('keeps speaking and online indicators in sync through IDLE -> ENDED -> CLEANUP sequences', () => {
+      useStore.getState().replaceSessions([
+        {
+          id: SESSION_A,
+          name: 'Session A',
+          dmId: DM_ID,
+          state: SessionState.IDLE,
+          createdAt: NOW,
+        } as any,
+      ])
+      useStore.getState().setCurrentSession(SESSION_A)
+
+      useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+        })
+      )
+
+      const roomMembersRef = useStore.getState().roomMembers[ROOM_ID_1]
+
+      const runCycleForSessionState = (
+        state: SessionState,
+        speakingAt: number,
+        onlineAt: number
+      ) => {
+        useStore.getState().updateSession(SESSION_A, { state })
+
+        useStore.getState().handlePresenceStateChanged(
+          makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+            roomId: ROOM_ID_1,
+            userId: USER_ID_1,
+            username: 'alice',
+            newState: 'SPEAKING',
+            changedAt: speakingAt,
+          })
+        )
+
+        expect(useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]).toBe(true)
+        expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('SPEAKING')
+
+        useStore.getState().handlePresenceStateChanged(
+          makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+            roomId: ROOM_ID_1,
+            userId: USER_ID_1,
+            username: 'alice',
+            newState: 'ONLINE',
+            changedAt: onlineAt,
+          })
+        )
+
+        expect(
+          useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]
+        ).toBeUndefined()
+        expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('ONLINE')
+        expect(useStore.getState().roomMembers[ROOM_ID_1]).toBe(roomMembersRef)
+      }
+
+      runCycleForSessionState(SessionState.IDLE, NOW + 30, NOW + 31)
+      runCycleForSessionState(SessionState.ENDED, NOW + 40, NOW + 41)
+      runCycleForSessionState(SessionState.CLEANUP, NOW + 50, NOW + 51)
     })
   })
 
