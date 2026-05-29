@@ -113,11 +113,18 @@ Privacy enforced at:
 SECTION 6 — SESSION LIFECYCLE
 ████████████████████████████████████████████████████████████████████████████████
 
- ┌──────┐   start  ┌────────┐   pause   ┌────────┐  end   ┌──────┐
+ ┌──────┐   start ┌────────┐   pause   ┌────────┐  end   ┌──────┐
  │ idle │────────▶│ active │──────────▶│ paused │───────▶│ ended│
- └──────┘          └────────┘           └────────┘        └──────┘
-                       ▲                         │
-                       └──────── resume ─────────┘
+ └──────┘         └────────┘           └────────┘        └──────┘
+                     ▲                         │
+                     └──────── resume ─────────┘
+
+Lifecycle authority boundaries:
+   • Session controls room assignment/routing and recording boundaries.
+   • Campaign membership + role controls conversation eligibility.
+   • Session transitions remap policy/routing; they do not grant campaign authority.
+   • Audio transport continuity may survive session-state transitions; whisper/spectator
+      privacy policy remains authoritative regardless of transport continuity.
 
 
 ████████████████████████████████████████████████████████████████████████████████

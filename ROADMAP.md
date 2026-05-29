@@ -182,6 +182,30 @@ Evidence snapshot (2026-05-28, v0.8.5):
 
 ---
 
+### W4-Conversation-Authority: Campaign-Scoped Conversation, Session-Scoped Routing
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 High
+**Depends on**: W0-State-Machine, W1-Runtime-Recovery
+
+**Scope**: Decouple conversation authority from session lifecycle. Campaign membership/role determines whether a user can participate in conversation; session lifecycle determines room assignment, policy gates, and recording boundaries.
+
+**Acceptance Criteria**:
+
+- [ ] Contracts explicitly define campaign as conversation authority and session as routing/policy authority.
+- [ ] API validation order is enforced: campaign authorization → lifecycle policy → room routing.
+- [ ] Session transitions reassign rooms without implying participant transport identity teardown.
+- [ ] Audio continuity across session transitions is documented and implemented as policy remap (not reconnect/reset), while preserving whisper/spectator privacy rules.
+- [ ] Recording boundaries remain session-authoritative via persisted bookends and transcript/summary consumption rules.
+
+**Related Docs**:
+
+- [docs/CONTRACTS.md](docs/CONTRACTS.md)
+- [docs/architecture/SESSION-LIFECYCLE.md](docs/architecture/SESSION-LIFECYCLE.md)
+- [docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
+
+---
+
 ## Phase 1: UI/UX Foundation 🟡
 
 _Unblock user experience. DMs need clean, responsive controls. Players/spectators need clarity on state._

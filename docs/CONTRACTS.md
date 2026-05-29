@@ -43,6 +43,46 @@ Players must never be left without a valid room assignment.
 - If any presence record is detected with no valid `primaryRoomId`, reconciliation must move that user to `MAIN`.
 - Group deletion must migrate all remaining members to `MAIN` before final delete completes.
 
+### Campaign Conversation Authority Contract
+
+Conversation authority is campaign-scoped. Session state is policy- and routing-scoped.
+
+- Campaign membership (`CampaignMembership`) is the authoritative gate for whether a user can participate in campaign conversation surfaces (voice eligibility, chat eligibility, handout visibility), subject to role policy.
+- Session membership determines runtime placement (`primaryRoomId`, private-room projection) and lifecycle policy application, but does not by itself grant campaign conversation authority.
+- A session transition may move users between rooms, but must not be treated as a transport/audio identity reset.
+- If a user is not campaign-authorized, session room assignment cannot elevate them into conversation channels.
+
+Required enforcement order for conversational actions:
+
+1. Validate campaign membership + role policy.
+2. Validate session lifecycle policy (state gates, spectator windows, recording rules).
+3. Apply room routing / delivery scope.
+4. Persist + broadcast.
+
+Examples:
+
+- User is in the room but not campaign-authorized: reject chat/voice participation (`403 FORBIDDEN`).
+- User is campaign-authorized but session is paused with policy denying runtime speech: transport may remain connected, but speaking delivery remains policy-muted.
+- Session state changes (`ACTIVE` → `PAUSED` → `COOLDOWN`) remap policy/routing only; they do not imply identity teardown of conversation participants.
+
+### Session Room Assignment Contract
+
+Session state controls where users are assigned, not who is campaign-authorized to converse.
+
+- Session transitions may remap `primaryRoomId` according to lifecycle rules (for example, move to `MAIN`, greenroom, or private whisper handling).
+- Room reassignment must preserve participant identity continuity for transport/presence reconciliation.
+- Room reassignment events (`ROOM:SESSION_TRANSITION_APPLIED`, `ROOM:USER_JOINED`, `ROOM:USER_LEFT`) are topology/routing contracts and must not encode campaign authorization decisions.
+- Campaign authorization decisions remain upstream and explicit in API validation and permission checks.
+
+### Audio Runtime Persistence and Session Policy Contract
+
+Audio transport continuity should be decoupled from session lifecycle boundaries.
+
+- Audio runtime identity is campaign-scoped (or campaign-participant scoped) and may survive session state transitions.
+- Session lifecycle controls policy overlays: recording windows, spectator interaction windows, DM override applicability, and room-based mix/routing targets.
+- Whisper/private and spectator privacy constraints remain hard policy boundaries regardless of transport continuity.
+- Recording bookends remain session-authoritative (`[Session Started]`, `[Session Paused]`, `[Session Resumed]`, `[Session Ended]`) even when transport/audio state remains continuous.
+
 ### Audio Broadcast Terminology (Canonical + Legacy Aliases)
 
 Canonical runtime naming for DM session-wide narration is **broadcast**.

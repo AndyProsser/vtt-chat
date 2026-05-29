@@ -49,6 +49,8 @@ export type {
 } from '@/types/groupPanel'
 
 const OPTIMISTIC_ROOM_MAX_AGE_MS = 15000
+const GROUP_CARD_DISTANCE_TARGETS = DISTANCE_PRESETS
+const GROUP_CARD_CONDITION_TARGETS = [...CONDITION_PRESETS, RADIAL_MENU_COPY.none]
 
 interface OptimisticRoomEntry {
   room: GroupPanelGroupWithParticipants
@@ -1227,6 +1229,53 @@ export function RoomSelector({
     selectedRoomId,
   ])
 
+  const handleGroupCardApplyEnvironment = useCallback(
+    (roomId: UUID, environmentName: string) => {
+      void handleApplyEnvironment(roomId, environmentName)
+    },
+    [handleApplyEnvironment]
+  )
+
+  const handleGroupCardToggleEnvironmentPicker = useCallback((roomId: UUID) => {
+    setShowCreateGroupModal(false)
+    setEnvironmentPickerRoomId((current) => (current === roomId ? null : roomId))
+  }, [])
+
+  const handleGroupCardApplyDistanceOverride = useCallback(
+    (userId: UUID, distanceName: string) => {
+      void handleApplyDistanceOverride(userId, distanceName)
+    },
+    [handleApplyDistanceOverride]
+  )
+
+  const handleGroupCardApplyConditionOverride = useCallback(
+    (userId: UUID, conditionName: string) => {
+      void handleApplyConditionOverride(userId, conditionName)
+    },
+    [handleApplyConditionOverride]
+  )
+
+  const handleGroupCardApplyMuteOverride = useCallback(
+    (userId: UUID, nextMuted: boolean) => {
+      void handleApplyMuteOverride(userId, nextMuted)
+    },
+    [handleApplyMuteOverride]
+  )
+
+  const handleGroupCardClearMemberEffects = useCallback(
+    (userId: UUID) => {
+      void handleClearMemberEffects(userId)
+    },
+    [handleClearMemberEffects]
+  )
+
+  const handleGroupCardTakeOverPlayer = useCallback(
+    (userId: UUID) => {
+      void handleTakeOverPlayer(userId)
+    },
+    [handleTakeOverPlayer]
+  )
+
   const renderRoomCard = (room: GroupPanelGroupWithParticipants) => (
     <GroupCard
       key={room.id}
@@ -1250,36 +1299,21 @@ export function RoomSelector({
       touchFeedbackUserId={touchFeedbackUserId}
       setTouchFeedbackUserId={setTouchFeedbackUserId}
       dmUserId={dmUserId}
-      onApplyEnvironment={(roomId, environmentName) => {
-        void handleApplyEnvironment(roomId, environmentName)
-      }}
-      onToggleEnvironmentPicker={(roomId) => {
-        setShowCreateGroupModal(false)
-        setEnvironmentPickerRoomId((current) => (current === roomId ? null : roomId))
-      }}
+      onApplyEnvironment={handleGroupCardApplyEnvironment}
+      onToggleEnvironmentPicker={handleGroupCardToggleEnvironmentPicker}
       onSelectRoom={onSelectRoom}
       onSetDmVoiceRoom={handleSetDmVoiceRoom}
       onDeleteGroup={handleDeleteGroup}
       onRoomDragOver={roomMoves.handleRoomDragOver}
       onRoomDrop={roomMoves.handleRoomDrop}
-      distanceTargets={[...DISTANCE_PRESETS]}
-      conditionTargets={[...CONDITION_PRESETS, RADIAL_MENU_COPY.none]}
+      distanceTargets={GROUP_CARD_DISTANCE_TARGETS}
+      conditionTargets={GROUP_CARD_CONDITION_TARGETS}
       activeTakeoverUserId={activeTakeoverUserId || null}
-      onApplyDistanceOverride={(userId, distanceName) => {
-        void handleApplyDistanceOverride(userId, distanceName)
-      }}
-      onApplyConditionOverride={(userId, conditionName) => {
-        void handleApplyConditionOverride(userId, conditionName)
-      }}
-      onApplyMuteOverride={(userId, nextMuted) => {
-        void handleApplyMuteOverride(userId, nextMuted)
-      }}
-      onClearMemberEffects={(userId) => {
-        void handleClearMemberEffects(userId)
-      }}
-      onTakeOverPlayer={(userId) => {
-        void handleTakeOverPlayer(userId)
-      }}
+      onApplyDistanceOverride={handleGroupCardApplyDistanceOverride}
+      onApplyConditionOverride={handleGroupCardApplyConditionOverride}
+      onApplyMuteOverride={handleGroupCardApplyMuteOverride}
+      onClearMemberEffects={handleGroupCardClearMemberEffects}
+      onTakeOverPlayer={handleGroupCardTakeOverPlayer}
       onMemberDragStart={roomMoves.handleMemberDragStart}
       onMemberDragEnd={roomMoves.handleMemberDragEnd}
       getDisplayRoomName={getDisplayGroupName}

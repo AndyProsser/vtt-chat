@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { RoomType, type UUID } from '@shared'
 import { DEFAULT_AVATAR_META_LINES, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
 import { SpeakingIndicator } from './SpeakingIndicator'
@@ -34,7 +35,7 @@ function initialFor(name: string): string {
   return normalized ? normalized.charAt(0).toUpperCase() : '?'
 }
 
-export function AvatarOverlay({
+function AvatarOverlayComponent({
   username,
   avatarUrl,
   roleLabel,
@@ -85,3 +86,24 @@ export function AvatarOverlay({
     </div>
   )
 }
+
+function areAvatarOverlayPropsEqual(
+  previous: AvatarOverlayProps,
+  next: AvatarOverlayProps
+): boolean {
+  const previousPresence = previous.presence
+  const nextPresence = next.presence
+
+  return (
+    previous.username === next.username &&
+    previous.avatarUrl === next.avatarUrl &&
+    previous.roleLabel === next.roleLabel &&
+    previous.metaLine === next.metaLine &&
+    previousPresence?.sessionId === nextPresence?.sessionId &&
+    previousPresence?.userId === nextPresence?.userId &&
+    previousPresence?.isSelf === nextPresence?.isSelf &&
+    previousPresence?.roomType === nextPresence?.roomType
+  )
+}
+
+export const AvatarOverlay = memo(AvatarOverlayComponent, areAvatarOverlayPropsEqual)

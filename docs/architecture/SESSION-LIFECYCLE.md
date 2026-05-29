@@ -16,6 +16,15 @@ The lifecycle is intentionally simple, predictable, and resilient to reconnectio
 
 ## 1. Core Principles
 
+### **1.0 Authority split: campaign vs session**
+
+Lifecycle behavior follows an explicit authority split:
+
+- Campaign membership + role determine whether a user can participate in conversation surfaces.
+- Session state determines room assignment, lifecycle policy gates, and recording boundaries.
+- Session transitions may move users between rooms but do not, by themselves, grant conversation authority.
+- Audio transport continuity may survive session transitions; policy overlays still enforce whisper/spectator/privacy constraints.
+
 ### **1.1 Sessions are state machines**
 
 A session always exists in exactly one state.
@@ -43,6 +52,13 @@ Clients can reconnect at any time and reconstruct the current session state.
 ### **1.5 State is visible to all**
 
 All participants can see the current session state, regardless of role.
+
+### **1.6 Recording boundaries remain session-authoritative**
+
+Even when transport/audio remains continuous, session lifecycle remains authoritative for recording and transcript boundaries.
+
+- Session boundary bookends (`Started`, `Paused`, `Resumed`, `Ended`) are durable and required.
+- Runtime policy during `PAUSED`/Whisper remains off-the-record unless explicitly configured otherwise.
 
 ---
 
