@@ -115,6 +115,13 @@ export function useLiveKit(
   const [remoteParticipants, setRemoteParticipants] = useState<Map<string, RemoteParticipant>>(
     () => new Map()
   )
+  const [hasUserActivation, setHasUserActivation] = useState(() => {
+    if (typeof navigator === 'undefined') {
+      return true
+    }
+
+    return Boolean(navigator.userActivation?.hasBeenActive)
+  })
 
   const roomRef = useRef<Room | null>(null)
   const localAudioRef = useRef<LocalAudioTrack | null>(null)
@@ -203,6 +210,48 @@ export function useLiveKit(
       setRoom(nextRoom)
     }
   }, [])
+
+  const startRoomAudioAfterGesture = useCallback(async (targetRoom: Room | null) => {
+    if (!targetRoom) {
+      return
+    }
+
+    const roomWithStartAudio = targetRoom as Room & {
+      startAudio?: () => Promise<void>
+    }
+
+    if (typeof roomWithStartAudio.startAudio !== 'function') {
+      return
+    }
+
+    try {
+      await roomWithStartAudio.startAudio()
+    } catch (err) {
+      logger.info(
+        'useLiveKit',
+        `Audio playback resume deferred: ${err instanceof Error ? err.message : String(err)}`
+      )
+    }
+  }, [])
+
+  useEffect(() => {
+    if (hasUserActivation || typeof window === 'undefined') {
+      return
+    }
+
+    const markActivated = () => {
+      setHasUserActivation(true)
+      void startRoomAudioAfterGesture(roomRef.current)
+    }
+
+    window.addEventListener('pointerdown', markActivated, { once: true, passive: true })
+    window.addEventListener('keydown', markActivated, { once: true })
+
+    return () => {
+      window.removeEventListener('pointerdown', markActivated)
+      window.removeEventListener('keydown', markActivated)
+    }
+  }, [hasUserActivation, startRoomAudioAfterGesture])
 
   const setLocalAudioTrackState = useCallback((nextTrack: LocalAudioTrack | null) => {
     localAudioRef.current = nextTrack
@@ -961,6 +1010,10 @@ export function useLiveKit(
       }
 
       if (!cancelled) {
+        if (!hasUserActivation) {
+          return
+        }
+
         await connect()
       }
     }
@@ -970,7 +1023,7 @@ export function useLiveKit(
     return () => {
       cancelled = true
     }
-  }, [sessionId, roomId, tokenChannel, connect, disconnect])
+  }, [sessionId, roomId, tokenChannel, connect, disconnect, hasUserActivation])
 
   useEffect(() => {
     if (!sessionId || !roomId) {

@@ -129,6 +129,10 @@ describe('useLiveKit', () => {
       key: vi.fn(),
       length: 0,
     })
+    Object.defineProperty(globalThis.navigator, 'userActivation', {
+      configurable: true,
+      value: { hasBeenActive: true },
+    })
   })
 
   it('ignores a completed connect after disconnect is requested', async () => {
