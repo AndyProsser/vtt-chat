@@ -301,6 +301,38 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           existing.state === 'CLEANUP' ||
           existing.startedAt === undefined)
 
+      // Compute pause stats first so they can be mirrored into the session record.
+      // All timestamps here come from event.timestamp (server-set), so every
+      // connected client accumulates identical values regardless of when the WS
+      // event is locally delivered.
+      const prevStats: SessionPauseStats = state.pauseStats[event.sessionId] ?? {
+        cumulativePauseMs: existing.cumulativePauseMs ?? 0,
+        pauseCount: existing.pauseCount ?? 0,
+        pauseStartedAt: existing.pauseStartedAt,
+      }
+      let nextStats = prevStats
+
+      if (isFreshSessionStart) {
+        nextStats = { cumulativePauseMs: 0, pauseCount: 0, pauseStartedAt: undefined }
+      } else if (payload.state === 'PAUSED') {
+        // Record when this pause began (server timestamp → same for all clients)
+        nextStats = { ...prevStats, pauseStartedAt: event.timestamp }
+      } else if (payload.state === 'ACTIVE' && prevStats.pauseStartedAt !== undefined) {
+        // Resuming from pause — accumulate using the server-provided resume timestamp
+        const pauseSegmentMs = event.timestamp - prevStats.pauseStartedAt
+        nextStats = {
+          cumulativePauseMs: prevStats.cumulativePauseMs + pauseSegmentMs,
+          pauseCount: prevStats.pauseCount + 1,
+          pauseStartedAt: undefined,
+        }
+      } else if (
+        payload.state === 'IDLE' ||
+        payload.state === 'ENDED' ||
+        payload.state === 'CLEANUP'
+      ) {
+        nextStats = { ...prevStats, pauseStartedAt: undefined }
+      }
+
       const nextSessions = {
         ...state.sessions,
         [event.sessionId]: {
@@ -328,6 +360,13 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
                   payload.state === 'CLEANUP'
                 ? undefined
                 : existing.cooldownExpiresAt,
+          // Mirror accumulated pause stats so the session record is always the
+          // single authoritative source for timer anchors.  All values are
+          // derived from server-provided event timestamps and are therefore
+          // identical across every connected client.
+          cumulativePauseMs: nextStats.cumulativePauseMs,
+          pauseCount: nextStats.pauseCount,
+          pauseStartedAt: nextStats.pauseStartedAt,
         },
       }
 
@@ -346,40 +385,6 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       const currentSession = state.currentSessionId
         ? sessionById(nextSessions, state.currentSessionId)
         : null
-
-      // Accumulate pause stats client-side for server-synchronized timer
-      const prevStats: SessionPauseStats = state.pauseStats[event.sessionId] ?? {
-        cumulativePauseMs: 0,
-        pauseCount: 0,
-        pauseStartedAt: undefined,
-      }
-      let nextStats = prevStats
-
-      if (isFreshSessionStart) {
-        nextStats = {
-          cumulativePauseMs: 0,
-          pauseCount: 0,
-          pauseStartedAt: undefined,
-        }
-      } else if (payload.state === 'PAUSED') {
-        // Record when this pause began
-        nextStats = { ...prevStats, pauseStartedAt: event.timestamp }
-      } else if (payload.state === 'ACTIVE' && prevStats.pauseStartedAt !== undefined) {
-        // Resuming from pause — accumulate the pause segment
-        const pauseSegmentMs = event.timestamp - prevStats.pauseStartedAt
-        nextStats = {
-          cumulativePauseMs: prevStats.cumulativePauseMs + pauseSegmentMs,
-          pauseCount: prevStats.pauseCount + 1,
-          pauseStartedAt: undefined,
-        }
-      } else if (
-        payload.state === 'IDLE' ||
-        payload.state === 'ENDED' ||
-        payload.state === 'CLEANUP'
-      ) {
-        // Session ended or reset — keep stats until explicit clear
-        nextStats = { ...prevStats, pauseStartedAt: undefined }
-      }
 
       return {
         sessions: nextSessions,

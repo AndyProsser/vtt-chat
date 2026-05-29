@@ -98,9 +98,7 @@ function SessionTimerLeafInner({
 
   const anchor = useStore((state) => {
     const sessions = state.sessions as Record<string, (typeof state.sessions)[UUID]>
-    const pauseStats = state.pauseStats as Record<string, (typeof state.pauseStats)[UUID]>
     const session = sessions[sessionId]
-    const stats = pauseStats[sessionId]
 
     if (!session) {
       // Return the same EMPTY_ANCHOR constant — always the same reference.
@@ -109,6 +107,9 @@ function SessionTimerLeafInner({
       return EMPTY_ANCHOR
     }
 
+    // All fields read directly from the session record.  Every timestamp is
+    // server-provided (set by the backend and mirrored into the record on each
+    // WS state-change event), so all connected clients compute identical timers.
     const next: SessionTimerAnchor = {
       state: session.state as string,
       createdAt: session.createdAt,
@@ -116,9 +117,9 @@ function SessionTimerLeafInner({
       pausedAt: session.pausedAt,
       endedAt: session.endedAt,
       cooldownExpiresAt: session.cooldownExpiresAt,
-      cumulativePauseMs: stats?.cumulativePauseMs ?? 0,
-      pauseCount: stats?.pauseCount ?? 0,
-      pauseStartedAt: stats?.pauseStartedAt,
+      cumulativePauseMs: session.cumulativePauseMs ?? 0,
+      pauseCount: session.pauseCount ?? 0,
+      pauseStartedAt: session.pauseStartedAt,
     }
 
     // Return cached reference when fields haven't changed — this keeps
