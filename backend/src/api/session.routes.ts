@@ -1098,6 +1098,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     const transition = await applySessionStateRoomTransition({
       sessionId: session.id,
       dmId: session.dmId,
+      previousState: previousSession?.state || null,
       nextState: requestedState,
       users: users.map((member) => ({
         id: member.id,

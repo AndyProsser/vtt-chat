@@ -207,6 +207,7 @@ describe('session state room orchestration', () => {
     expect(mocks.mockApplySessionStateRoomTransition).toHaveBeenCalledWith({
       sessionId: SESSION_ID,
       dmId: DM_ID,
+      previousState: 'IDLE',
       nextState: 'ACTIVE',
       users: [
         { id: DM_ID, username: 'dm-user' },

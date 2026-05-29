@@ -88,4 +88,122 @@ describe('useWorkspacesSessionOrchestration', () => {
     expect(updateSession).toHaveBeenCalledTimes(1)
     expect(setError).toHaveBeenCalledWith(null)
   })
+
+  it('replays a queued resume request after a fast pause click sequence settles', async () => {
+    const pauseDeferred = createDeferred<Response>()
+    const resumeDeferred = createDeferred<Response>()
+    const fetchWithAuthGuard = vi
+      .fn<UseWorkspacesSessionOrchestrationParams['fetchWithAuthGuard']>()
+      .mockReturnValueOnce(pauseDeferred.promise)
+      .mockReturnValueOnce(resumeDeferred.promise)
+    const updateSession = vi.fn()
+
+    const { result, rerender } = renderHook(
+      ({ currentSession }) =>
+        useWorkspacesSessionOrchestration({
+          apiUrl: 'https://api.test',
+          token: 'token',
+          userId: USER_ID,
+          currentSession,
+          selectedCampaignId: CAMPAIGN_ID,
+          sessionList: [],
+          fetchWithAuthGuard,
+          startCampaignSession: vi.fn(async () => null),
+          updateSession,
+          setBroadcastState: vi.fn(),
+          setCooldownExtensionCount: vi.fn(),
+          setIsGreenroom: vi.fn(),
+          resetToolbarActionsState: vi.fn(),
+          setSelectedRoomIdOverride: vi.fn(),
+          setCurrentSession: vi.fn(),
+          clearPersistedActiveSessionContext: vi.fn(),
+          forceLogoutToAuthScreen: vi.fn(),
+          setShowStopSessionModal: vi.fn(),
+          showStopSessionModal: false,
+          setShowExitSessionModal: vi.fn(),
+          setExitUpgradeError: vi.fn(),
+          exitUpgradePassword: '',
+          setExitUpgradePassword: vi.fn(),
+          setExitUpgradeLoading: vi.fn(),
+          setError: vi.fn(),
+        }),
+      {
+        initialProps: {
+          currentSession: {
+            id: SESSION_ID,
+            name: 'Session Alpha',
+            dmId: USER_ID,
+            state: SessionState.ACTIVE,
+            createdAt: Date.now(),
+            startedAt: Date.now() - 1_000,
+          },
+        },
+      }
+    )
+
+    await act(async () => {
+      void result.current.handlePauseSession(SESSION_ID)
+    })
+
+    rerender({
+      currentSession: {
+        id: SESSION_ID,
+        name: 'Session Alpha',
+        dmId: USER_ID,
+        state: SessionState.PAUSED,
+        createdAt: Date.now(),
+        startedAt: Date.now() - 1_000,
+        pausedAt: Date.now(),
+      },
+    })
+
+    await act(async () => {
+      void result.current.handlePauseSession(SESSION_ID)
+    })
+
+    expect(fetchWithAuthGuard).toHaveBeenCalledTimes(1)
+
+    pauseDeferred.resolve({
+      ok: true,
+      json: async () => ({
+        id: SESSION_ID,
+        name: 'Session Alpha',
+        dmId: USER_ID,
+        state: SessionState.PAUSED,
+        createdAt: Date.now(),
+        startedAt: Date.now() - 1_000,
+        pausedAt: Date.now(),
+      }),
+    } as Response)
+
+    await waitFor(() => {
+      expect(fetchWithAuthGuard).toHaveBeenCalledTimes(2)
+    })
+
+    resumeDeferred.resolve({
+      ok: true,
+      json: async () => ({
+        id: SESSION_ID,
+        name: 'Session Alpha',
+        dmId: USER_ID,
+        state: SessionState.ACTIVE,
+        createdAt: Date.now(),
+        startedAt: Date.now() - 1_000,
+      }),
+    } as Response)
+
+    await waitFor(() => {
+      expect(result.current.activeTransitionSessionId).toBeNull()
+    })
+
+    expect(fetchWithAuthGuard.mock.calls[0]?.[0]).toContain(`/api/session/${SESSION_ID}/state`)
+    expect(fetchWithAuthGuard.mock.calls[1]?.[0]).toContain(`/api/session/${SESSION_ID}/state`)
+    expect(fetchWithAuthGuard.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({ state: SessionState.PAUSED })
+    )
+    expect(fetchWithAuthGuard.mock.calls[1]?.[1]?.body).toBe(
+      JSON.stringify({ state: SessionState.ACTIVE })
+    )
+    expect(updateSession).toHaveBeenCalledTimes(2)
+  })
 })

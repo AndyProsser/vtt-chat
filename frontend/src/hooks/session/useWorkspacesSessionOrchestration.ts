@@ -71,17 +71,26 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
     setError,
   } = params
   const pendingTransitionBySessionIdRef = useRef<Map<UUID, SessionState>>(new Map())
+  const queuedTransitionBySessionIdRef = useRef<Map<UUID, SessionState>>(new Map())
   const [activeTransitionSessionId, setActiveTransitionSessionId] = useState<UUID | null>(null)
 
   const handleTransitionSession = useCallback(
-    async (sessionId: UUID, state: SessionState) => {
-      if (pendingTransitionBySessionIdRef.current.has(sessionId)) {
+    async function runTransition(sessionId: UUID, state: SessionState) {
+      const pendingState = pendingTransitionBySessionIdRef.current.get(sessionId)
+      if (pendingState) {
+        if (pendingState !== state) {
+          queuedTransitionBySessionIdRef.current.set(sessionId, state)
+        }
         return
       }
 
       setError(null)
       pendingTransitionBySessionIdRef.current.set(sessionId, state)
+      queuedTransitionBySessionIdRef.current.delete(sessionId)
       setActiveTransitionSessionId(sessionId)
+
+      let transitionSucceeded = false
+      let completedState = state
 
       try {
         const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${sessionId}/state`, {
@@ -121,6 +130,8 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
           ...updatedSession,
           ...localTransitionFallbacks,
         })
+        transitionSucceeded = true
+        completedState = updatedSession.state
 
         if (isGreenroomSessionState(state)) {
           setSelectedRoomIdOverride('')
@@ -134,6 +145,13 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
       } finally {
         pendingTransitionBySessionIdRef.current.delete(sessionId)
         setActiveTransitionSessionId((current) => (current === sessionId ? null : current))
+
+        const queuedState = queuedTransitionBySessionIdRef.current.get(sessionId)
+        queuedTransitionBySessionIdRef.current.delete(sessionId)
+
+        if (transitionSucceeded && queuedState && queuedState !== completedState) {
+          await runTransition(sessionId, queuedState)
+        }
       }
     },
     [
