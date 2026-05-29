@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
 import { RoomType } from '@shared'
 import { isGreenroomSessionState } from '@shared'
@@ -7,9 +7,75 @@ import { getUserDMOverride, type AudioDMOverridesByUser } from '@/utils/audioOve
 import { isGreenRoomName, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
 import { LeftRailSummary } from './LeftRailSummary'
 import { GroupsPanel } from '@/components/workspaces/session/rooms/GroupsPanel'
+import type { GroupPanelGroupWithParticipants, GroupParticipantStatus } from '@/types/groupPanel'
 
 // Stable empty objects to avoid creating new references on every render
 const EMPTY_ROOM_MEMBERS: RoomUser[] = []
+
+function isSameParticipantProjection(
+  previous: GroupParticipantStatus,
+  next: GroupParticipantStatus
+): boolean {
+  return (
+    previous.userId === next.userId &&
+    previous.username === next.username &&
+    previous.avatarUrl === next.avatarUrl &&
+    previous.characterName === next.characterName &&
+    previous.playerName === next.playerName &&
+    previous.characterClass === next.characterClass &&
+    previous.characterSubclass === next.characterSubclass &&
+    previous.characterRace === next.characterRace &&
+    previous.level === next.level &&
+    previous.characterStats === next.characterStats &&
+    previous.roleLabel === next.roleLabel &&
+    previous.condition === next.condition &&
+    previous.distanceLabel === next.distanceLabel
+  )
+}
+
+function isSameGroupProjection(
+  previous: GroupPanelGroupWithParticipants,
+  next: GroupPanelGroupWithParticipants
+): boolean {
+  if (
+    previous.id !== next.id ||
+    previous.name !== next.name ||
+    previous.type !== next.type ||
+    previous.memberCount !== next.memberCount ||
+    previous.environmentName !== next.environmentName ||
+    previous.participants.length !== next.participants.length
+  ) {
+    return false
+  }
+
+  for (let index = 0; index < previous.participants.length; index += 1) {
+    if (!isSameParticipantProjection(previous.participants[index], next.participants[index])) {
+      return false
+    }
+  }
+
+  return true
+}
+
+function mergeGroupProjectionsPreservingReferences(
+  previous: GroupPanelGroupWithParticipants[],
+  next: GroupPanelGroupWithParticipants[]
+): GroupPanelGroupWithParticipants[] {
+  const previousById = new Map(previous.map((group) => [group.id, group]))
+  let hasChanges = previous.length !== next.length
+
+  const merged = next.map((group) => {
+    const previousGroup = previousById.get(group.id)
+    if (previousGroup && isSameGroupProjection(previousGroup, group)) {
+      return previousGroup
+    }
+
+    hasChanges = true
+    return group
+  })
+
+  return hasChanges ? merged : previous
+}
 
 interface LeftRailPanelProps {
   apiUrl: string
@@ -140,7 +206,7 @@ export function LeftRailPanel({
     [hasNamedGreenRoom, isGreenroom, role, roomMembersByRoomId, rooms, selectedRoomId]
   )
 
-  const groupPanelRooms = useMemo(() => {
+  const rawGroupPanelRooms = useMemo<GroupPanelGroupWithParticipants[]>(() => {
     return visibleRooms.map((room) => ({
       id: room.id,
       name: room.name,
@@ -157,8 +223,6 @@ export function LeftRailPanel({
             return null
           }
 
-          const isSelf = member.userId === currentUserId
-          void isSelf
           const distanceOverride = getUserDMOverride(dmOverrides, member.userId, 'DISTANCE')
           const conditionOverride =
             getUserDMOverride(dmOverrides, member.userId, 'CONDITION') ||
@@ -216,6 +280,16 @@ export function LeftRailPanel({
     sessionState,
     visibleRooms,
   ])
+
+  const previousGroupPanelRoomsRef = useRef<GroupPanelGroupWithParticipants[]>([])
+  const groupPanelRooms = useMemo(() => {
+    const merged = mergeGroupProjectionsPreservingReferences(
+      previousGroupPanelRoomsRef.current,
+      rawGroupPanelRooms
+    )
+    previousGroupPanelRoomsRef.current = merged
+    return merged
+  }, [rawGroupPanelRooms])
 
   return (
     <>

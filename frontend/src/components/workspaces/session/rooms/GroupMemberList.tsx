@@ -86,7 +86,11 @@ function areGroupMemberItemPropsEqual(
   const right = next.member
 
   return (
-    previous.room === next.room &&
+    previous.room.id === next.room.id &&
+    previous.room.name === next.room.name &&
+    previous.room.type === next.room.type &&
+    previous.room.memberCount === next.room.memberCount &&
+    previous.room.environmentName === next.room.environmentName &&
     previous.sessionId === next.sessionId &&
     previous.currentUserId === next.currentUserId &&
     previous.canManageRooms === next.canManageRooms &&
