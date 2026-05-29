@@ -49,7 +49,6 @@ export type {
 } from '@/types/groupPanel'
 
 const OPTIMISTIC_ROOM_MAX_AGE_MS = 15000
-const EMPTY_SESSION_PRESENCE: Record<UUID, SessionPresence> = {}
 
 interface OptimisticRoomEntry {
   room: GroupPanelGroupWithParticipants
@@ -92,10 +91,14 @@ export function RoomSelector({
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
-  const sessionPresenceByUser = useStore(
-    (state) => state.sessionPresence[sessionId] || EMPTY_SESSION_PRESENCE
-  )
+  // Narrow subscription: only the DM's own presence entry. When other users' ghost bits flip,
+  // applySessionPresenceStateChange spreads the per-session map but preserves existing per-user
+  // object references — so this selector returns the same reference and does NOT cause a re-render.
   const currentUser = useStore((state) => state.currentUser)
+  const dmSelfPresence = useStore((state) => {
+    const uid = state.currentUser?.id
+    return uid ? (state.sessionPresence[sessionId]?.[uid] ?? null) : null
+  })
   const activeTakeoverUserId = useStore((state) => state.mockTakeoverUserIdBySession[sessionId])
   const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
 
@@ -168,9 +171,13 @@ export function RoomSelector({
     [allRooms]
   )
 
+  // Imperative read: avoids subscribing to the entire sessionPresence[sessionId] map.
+  // Ghost flips for any user recreate that map reference, which would invalidate this
+  // callback and cascade re-renders across every GroupMemberItem row.
   const getDeviceSessions = useCallback(
-    (userId: UUID) => sessionPresenceByUser[userId]?.deviceSessions || [],
-    [sessionPresenceByUser]
+    (userId: UUID) =>
+      useStore.getState().sessionPresence[sessionId]?.[userId]?.deviceSessions ?? [],
+    [sessionId]
   )
 
   const dmParticipant = useMemo(
@@ -664,7 +671,7 @@ export function RoomSelector({
       return null
     }
 
-    const selfPresence = sessionPresenceByUser[currentUser.id]
+    const selfPresence = dmSelfPresence
 
     return {
       userId: currentUser.id,
@@ -685,9 +692,9 @@ export function RoomSelector({
     canManageRooms,
     currentUser,
     dmParticipant,
+    dmSelfPresence,
     dmVoiceTargetRoom,
     isGreenroom,
-    sessionPresenceByUser,
   ])
 
   const dmDetachedEnvironmentName = useMemo(() => {

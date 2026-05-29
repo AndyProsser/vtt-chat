@@ -20,7 +20,7 @@ import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/state/store'
 import { useToast } from '@/hooks/useToast'
 import { logger } from '@/utils/logger'
-import type { RoomUser, SessionPresence } from '@/types/room'
+import type { RoomUser } from '@/types/room'
 import {
   createSessionGroup,
   fetchSessionGroups,
@@ -32,10 +32,6 @@ import { isGreenRoomName } from '@/constants/roomPresence.constants'
 import '@/styles/components/workspaces/session/GroupsPanel.session.css'
 import SessionGroupCard from './GroupCard.session'
 
-const EMPTY_SESSION_PRESENCE: Record<UUID, SessionPresence> = Object.freeze({}) as Record<
-  UUID,
-  SessionPresence
->
 const EMPTY_ROOM_MEMBERS: RoomUser[] = []
 
 function compareMembers(left: RoomUser, right: RoomUser): number {
@@ -98,9 +94,12 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   )
   const roomMembers = useStore((state) => state.roomMembers)
   const currentUser = useStore((state) => state.currentUser)
-  const sessionPresenceByUser = useStore(
-    useShallow((state) => state.sessionPresence[sessionId] || EMPTY_SESSION_PRESENCE)
-  )
+  // Narrow subscription: only the DM's own presence entry. Ghost flips for other users
+  // preserve the per-user object reference in the spread, so this stays stable.
+  const dmSelfPresence = useStore((state) => {
+    const uid = state.currentUser?.id
+    return uid ? (state.sessionPresence[sessionId]?.[uid] ?? null) : null
+  })
   const roomEnvironmentNames = useStore(useShallow((state) => state.roomEnvironmentNames))
   const fallbackRoomEnvironments = useStore(
     useShallow((state) => state.sessionGroupEnvironments[sessionId] || {})
@@ -139,7 +138,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       return null
     }
 
-    const selfPresence = sessionPresenceByUser[currentUser.id]
+    const selfPresence = dmSelfPresence
     const availableRoomIds = new Set(sessionRooms.map((room) => room.id))
     const greenRoom = sessionRooms.find((room) => isGreenRoomName(room.name))
     const mainRoom = sessionRooms.find((room) => room.type === RoomType.MAIN)
@@ -182,7 +181,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       member: fallbackDmMember,
       targetRoomId,
     }
-  }, [canManageGroups, currentUser, dmVoiceTargetGroupId, sessionPresenceByUser, sessionRooms])
+  }, [canManageGroups, currentUser, dmVoiceTargetGroupId, dmSelfPresence, sessionRooms])
 
   const membersByRoomId = useMemo(() => {
     const next: Record<UUID, (typeof roomMembers)[UUID]> = {}

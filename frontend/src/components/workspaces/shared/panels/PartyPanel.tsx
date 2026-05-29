@@ -424,13 +424,6 @@ export function PartyPanel({
   const sessionPresenceByUserRef = useRef<Record<UUID, SessionPresence>>(EMPTY_SESSION_PRESENCE)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const dmOverridesRef = useRef(dmOverrides)
-  const sessionPresenceByUser = useStore((state) => {
-    if (!currentSessionId) {
-      return EMPTY_SESSION_PRESENCE
-    }
-
-    return state.sessionPresence[currentSessionId] || EMPTY_SESSION_PRESENCE
-  })
 
   const currentUserSnapshot = useMemo(
     () => snapshotMembers.find((member) => member.userId === currentUserId) || null,
@@ -444,9 +437,18 @@ export function PartyPanel({
   const isCurrentUserRuntimeVisible =
     currentUserSnapshot?.status === 'HERE' || currentUserSnapshot?.status === 'AWAY'
 
+  // Imperative subscription: presence is read via the ref inside applyMergedMembers, so we
+  // don't need a reactive hook that re-renders this panel on every WS presence event
+  // (including ghost flips). store.subscribe keeps the ref current without triggering renders.
   useEffect(() => {
-    sessionPresenceByUserRef.current = sessionPresenceByUser
-  }, [sessionPresenceByUser])
+    const sync = (state: { sessionPresence: Record<string, Record<string, SessionPresence>> }) => {
+      sessionPresenceByUserRef.current = currentSessionId
+        ? (state.sessionPresence[currentSessionId] ?? EMPTY_SESSION_PRESENCE)
+        : EMPTY_SESSION_PRESENCE
+    }
+    sync(useStore.getState())
+    return useStore.subscribe(sync)
+  }, [currentSessionId])
 
   useEffect(() => {
     dmOverridesRef.current = dmOverrides
@@ -529,8 +531,9 @@ export function PartyPanel({
       return
     }
 
+    // sessionPresence is read from the ref (always current) — no reactive dep needed.
     applyMergedMembers(snapshotMembers)
-  }, [sessionPresenceByUser, snapshotMembers, applyMergedMembers])
+  }, [snapshotMembers, applyMergedMembers])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {

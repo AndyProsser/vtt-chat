@@ -85,7 +85,9 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   })
 
   const device = useStore((state) => state.device)
-  const sessionPresenceByUser = useStore((state) => state.sessionPresence[sessionId])
+  // Presence is read imperatively in the effect below to avoid subscribing to the
+  // entire sessionPresence[sessionId] map. Ghost flips recreate that map reference
+  // and would cause this panel to re-render on every mock ghost toggle.
   const selectedRoom = useStore((state) => state.rooms[sessionId]?.[roomId])
   const pttActive = useStore((state) => state.pttActive)
   const activeEffects = useStore((state) => state.activeEffects)
@@ -423,7 +425,10 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       : configuredBackgroundGain
 
     for (const [trackId, participantUserId] of trackEntries) {
-      const participantPresence = sessionPresenceByUser?.[participantUserId]
+      // Imperative read: avoids a reactive sessionPresence[sessionId] subscription
+      // that would re-run this effect on every ghost flip. Only primaryRoomId matters here.
+      const participantPresence =
+        useStore.getState().sessionPresence[sessionId]?.[participantUserId]
       if (!participantPresence?.primaryRoomId || !roomId) {
         audioEngine.setTrackMixGain(trackId, 1)
         continue
@@ -432,14 +437,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       const isInTargetRoom = participantPresence.primaryRoomId === roomId
       audioEngine.setTrackMixGain(trackId, isInTargetRoom ? 1 : effectiveBackgroundGain)
     }
-  }, [
-    audioEngine,
-    device.backgroundAudioLevel,
-    effectiveRole,
-    isWhisperMode,
-    roomId,
-    sessionPresenceByUser,
-  ])
+  }, [audioEngine, device.backgroundAudioLevel, effectiveRole, isWhisperMode, roomId, sessionId])
 
   const effectItems = useMemo(() => {
     const items: Array<{ kind: string; name: string; description: string }> = []
