@@ -133,6 +133,7 @@ export function useLiveKit(
   const connectionKeyRef = useRef<string | null>(null)
   const hasLocalPublicationRef = useRef(false)
   const trackSubscriptionsRef = useRef<TrackSubscription[]>([])
+  const teardownRoomListenersRef = useRef<(() => void) | null>(null)
   const remoteAudioElementsRef = useRef(new Map<string, HTMLMediaElement>())
   const onTrackSubscribedRef = useRef(onTrackSubscribed)
   const onTrackUnsubscribedRef = useRef(onTrackUnsubscribed)
@@ -272,6 +273,13 @@ export function useLiveKit(
     remoteAudioElementsRef.current.clear()
   }, [])
 
+  const teardownRoomListeners = useCallback(() => {
+    if (teardownRoomListenersRef.current) {
+      teardownRoomListenersRef.current()
+      teardownRoomListenersRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     // StrictMode runs effect cleanup probes in dev; reset mounted flag on each setup.
     isMountedRef.current = true
@@ -291,9 +299,18 @@ export function useLiveKit(
       roomRef.current = null
       connectionKeyRef.current = null
 
+      teardownRoomListeners()
+
       if (activeRoom) {
         void activeRoom.disconnect()
       }
+
+      // Post-disconnect parity: run teardown again in case transport-level callbacks
+      // registered late and populated the teardown ref while disconnect was in flight.
+      teardownRoomListeners()
+
+      trackSubscriptionsRef.current = []
+      clearRemoteAudioElements()
 
       const clearLocalInputTrack = setLiveKitLocalInputTrackRef.current
       if (typeof clearLocalInputTrack === 'function') {
@@ -302,7 +319,7 @@ export function useLiveKit(
 
       isMountedRef.current = false
     }
-  }, [])
+  }, [clearRemoteAudioElements, teardownRoomListeners])
 
   // Keep callback refs up to date without triggering reconnects
   useEffect(() => {
@@ -467,8 +484,10 @@ export function useLiveKit(
       roomRef.current = nextRoom
       setRoomState(nextRoom)
 
-      // Event handlers
-      nextRoom.on(RoomEvent.Connected, () => {
+      // Remove any stale listener set before attaching handlers for this room.
+      teardownRoomListeners()
+
+      const handleConnected = () => {
         if (roomRef.current !== nextRoom || connectionAttemptRef.current !== attemptId) {
           return
         }
@@ -480,9 +499,9 @@ export function useLiveKit(
         }
         isConnectingRef.current = false
         connectingTargetRef.current = null
-      })
+      }
 
-      const syncConnectionFlags = () => {
+      const handleConnectionFlags = () => {
         const activeRoom = roomRef.current
         if (!activeRoom || activeRoom !== nextRoom || connectionAttemptRef.current !== attemptId) {
           return
@@ -513,12 +532,7 @@ export function useLiveKit(
         })
       }
 
-      nextRoom.on(RoomEvent.ConnectionStateChanged, syncConnectionFlags)
-      nextRoom.on(RoomEvent.Reconnecting, syncConnectionFlags)
-      nextRoom.on(RoomEvent.SignalReconnecting, syncConnectionFlags)
-      nextRoom.on(RoomEvent.Reconnected, syncConnectionFlags)
-
-      nextRoom.on(RoomEvent.Disconnected, () => {
+      const handleDisconnected = () => {
         if (roomRef.current !== nextRoom) {
           return
         }
@@ -538,9 +552,9 @@ export function useLiveKit(
           hasLocalPublication: false,
           error: null,
         })
-      })
+      }
 
-      nextRoom.on(RoomEvent.LocalTrackPublished, () => {
+      const handleLocalTrackPublished = () => {
         const activeRoom = roomRef.current ?? nextRoom
         if (!activeRoom) {
           return
@@ -557,9 +571,9 @@ export function useLiveKit(
           hasLocalPublication: getHasLocalPublication(activeRoom),
           error: null,
         })
-      })
+      }
 
-      nextRoom.on(RoomEvent.LocalTrackUnpublished, () => {
+      const handleLocalTrackUnpublished = () => {
         const activeRoom = roomRef.current ?? nextRoom
         if (!activeRoom) {
           return
@@ -576,18 +590,18 @@ export function useLiveKit(
           hasLocalPublication: getHasLocalPublication(activeRoom),
           error: null,
         })
-      })
+      }
 
-      nextRoom.on(RoomEvent.ParticipantConnected, (participant) => {
+      const handleParticipantConnected = (participant: RemoteParticipant) => {
         if (roomRef.current !== nextRoom || !isMountedRef.current) {
           return
         }
 
         logger.info('useLiveKit', `Participant connected: ${participant.identity}`)
         setRemoteParticipants((prev) => new Map(prev).set(participant.sid, participant))
-      })
+      }
 
-      nextRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
+      const handleParticipantDisconnected = (participant: RemoteParticipant) => {
         if (roomRef.current !== nextRoom || !isMountedRef.current) {
           return
         }
@@ -598,9 +612,13 @@ export function useLiveKit(
           updated.delete(participant.sid)
           return updated
         })
-      })
+      }
 
-      nextRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      const handleTrackSubscribed = (
+        track: { kind: string; mediaStreamTrack: MediaStreamTrack; attach: () => HTMLMediaElement },
+        publication: { trackSid: string; trackName: string },
+        participant: { sid: string; identity: string }
+      ) => {
         if (roomRef.current !== nextRoom) {
           return
         }
@@ -630,9 +648,12 @@ export function useLiveKit(
             remoteAudioElementsRef.current.set(publication.trackSid, audioElement)
           }
         }
-      })
+      }
 
-      nextRoom.on(RoomEvent.TrackUnsubscribed, (track, publication) => {
+      const handleTrackUnsubscribed = (
+        track: { kind: string; detach: () => void },
+        publication: { trackSid: string }
+      ) => {
         if (roomRef.current !== nextRoom) {
           return
         }
@@ -652,17 +673,48 @@ export function useLiveKit(
           audioElement.remove()
           remoteAudioElementsRef.current.delete(publication.trackSid)
         }
-      })
+      }
+
+      const roomWithListeners = nextRoom
+      roomWithListeners.on(RoomEvent.Connected, handleConnected)
+      roomWithListeners.on(RoomEvent.ConnectionStateChanged, handleConnectionFlags)
+      roomWithListeners.on(RoomEvent.Reconnecting, handleConnectionFlags)
+      roomWithListeners.on(RoomEvent.SignalReconnecting, handleConnectionFlags)
+      roomWithListeners.on(RoomEvent.Reconnected, handleConnectionFlags)
+      roomWithListeners.on(RoomEvent.Disconnected, handleDisconnected)
+      roomWithListeners.on(RoomEvent.LocalTrackPublished, handleLocalTrackPublished)
+      roomWithListeners.on(RoomEvent.LocalTrackUnpublished, handleLocalTrackUnpublished)
+      roomWithListeners.on(RoomEvent.ParticipantConnected, handleParticipantConnected)
+      roomWithListeners.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
+      roomWithListeners.on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
+      roomWithListeners.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
+
+      teardownRoomListenersRef.current = () => {
+        roomWithListeners.off(RoomEvent.Connected, handleConnected)
+        roomWithListeners.off(RoomEvent.ConnectionStateChanged, handleConnectionFlags)
+        roomWithListeners.off(RoomEvent.Reconnecting, handleConnectionFlags)
+        roomWithListeners.off(RoomEvent.SignalReconnecting, handleConnectionFlags)
+        roomWithListeners.off(RoomEvent.Reconnected, handleConnectionFlags)
+        roomWithListeners.off(RoomEvent.Disconnected, handleDisconnected)
+        roomWithListeners.off(RoomEvent.LocalTrackPublished, handleLocalTrackPublished)
+        roomWithListeners.off(RoomEvent.LocalTrackUnpublished, handleLocalTrackUnpublished)
+        roomWithListeners.off(RoomEvent.ParticipantConnected, handleParticipantConnected)
+        roomWithListeners.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
+        roomWithListeners.off(RoomEvent.TrackSubscribed, handleTrackSubscribed)
+        roomWithListeners.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
+      }
 
       // Connect to room
       await nextRoom.connect(tokenData.url, tokenData.token, {
         autoSubscribe: true,
       })
 
-      syncConnectionFlags()
+      handleConnectionFlags()
 
       if (roomRef.current !== nextRoom || connectionAttemptRef.current !== attemptId) {
+        teardownRoomListeners()
         await nextRoom.disconnect()
+        teardownRoomListeners()
         return
       }
 
@@ -694,7 +746,9 @@ export function useLiveKit(
 
       if (nextRoom) {
         try {
+          teardownRoomListeners()
           await nextRoom.disconnect()
+          teardownRoomListeners()
         } catch {
           // Ignore cleanup failures after a failed connection attempt.
         }
@@ -746,6 +800,7 @@ export function useLiveKit(
     roomId,
     sessionId,
     setRoomState,
+    teardownRoomListeners,
     tokenChannel,
   ])
 
@@ -918,7 +973,9 @@ export function useLiveKit(
 
     if (activeRoom) {
       try {
+        teardownRoomListeners()
         await activeRoom.disconnect()
+        teardownRoomListeners()
       } catch (err) {
         if (!isExpectedDisconnectError(err)) {
           logger.warn(
@@ -963,6 +1020,7 @@ export function useLiveKit(
     setLocalAudioTrackState,
     setLocalVideoTrackState,
     setRoomState,
+    teardownRoomListeners,
   ])
 
   /**
@@ -998,6 +1056,7 @@ export function useLiveKit(
         connectionAttemptRef.current += 1
         isConnectingRef.current = false
         connectingTargetRef.current = null
+        teardownRoomListeners()
         roomRef.current = null
         connectionKeyRef.current = null
 
@@ -1023,7 +1082,15 @@ export function useLiveKit(
     return () => {
       cancelled = true
     }
-  }, [sessionId, roomId, tokenChannel, connect, disconnect, hasUserActivation])
+  }, [
+    sessionId,
+    roomId,
+    tokenChannel,
+    connect,
+    disconnect,
+    hasUserActivation,
+    teardownRoomListeners,
+  ])
 
   useEffect(() => {
     if (!sessionId || !roomId) {
