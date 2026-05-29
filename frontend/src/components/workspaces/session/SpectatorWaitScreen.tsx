@@ -51,14 +51,32 @@ export function SpectatorWaitScreen({
   const remainingMs = computeRemaining(sessionEndedAt, cooldownDurationMs, nowMs)
 
   useEffect(() => {
-    if (sessionState !== SessionState.COOLDOWN) return
+    if (sessionState !== SessionState.COOLDOWN) {
+      return
+    }
 
-    const id = setInterval(() => {
+    setNowMs(Date.now())
+
+    if (!sessionEndedAt || sessionEndedAt === 0 || cooldownDurationMs <= 0) {
+      return
+    }
+
+    const expiresAtMs = sessionEndedAt + cooldownDurationMs
+    const remaining = expiresAtMs - Date.now()
+
+    if (remaining <= 0) {
       setNowMs(Date.now())
-    }, 1000)
+      return
+    }
 
-    return () => clearInterval(id)
-  }, [sessionState])
+    const timeoutId = window.setTimeout(() => {
+      setNowMs(Date.now())
+    }, remaining)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [cooldownDurationMs, sessionEndedAt, sessionState])
 
   if (sessionState === SessionState.IDLE || sessionState === SessionState.PAUSED) {
     return (

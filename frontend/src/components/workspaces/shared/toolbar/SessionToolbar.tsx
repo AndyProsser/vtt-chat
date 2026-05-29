@@ -87,32 +87,71 @@ export function SessionToolbar({
 
   const [themeMode, setThemeMode] = useState<FrontendThemeMode>(detectThemeMode)
   const [showTimerPopper, setShowTimerPopper] = useState(false)
-  const [currentTimeMs, setCurrentTimeMs] = useState(0)
+  const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now())
   const [greenroomEnteredAtMs, setGreenroomEnteredAtMs] = useState<number | null>(null)
 
-  // Tick every second whenever the session is in a state that needs a live clock
   useEffect(() => {
-    const needsTick =
-      sessionState === 'ACTIVE' ||
-      sessionState === 'PAUSED' ||
-      sessionState === 'COOLDOWN' ||
-      sessionState === 'ENDED' ||
-      sessionState === 'IDLE' ||
-      sessionState === 'CLEANUP'
-    if (!needsTick) return
+    if (sessionState === 'IDLE') {
+      setGreenroomEnteredAtMs((previous) => previous ?? Date.now())
+      return
+    }
 
-    const timer = window.setInterval(() => {
-      const now = Date.now()
-      setCurrentTimeMs(now)
-      setGreenroomEnteredAtMs((previous) => {
-        if (sessionState !== 'IDLE') {
-          return null
-        }
-        return previous ?? now
-      })
-    }, 1000)
-    return () => window.clearInterval(timer)
+    setGreenroomEnteredAtMs(null)
   }, [sessionState])
+
+  // Keep second-level ticking only for states that require a live clock.
+  // COOLDOWN gets a one-shot timeout to avoid rebuilding the entire toolbar
+  // tooltip/popper subtree every second.
+  useEffect(() => {
+    const needsSecondTick = sessionState === 'ACTIVE' || sessionState === 'PAUSED'
+
+    if (needsSecondTick) {
+      const timer = window.setInterval(() => {
+        setCurrentTimeMs(Date.now())
+      }, 1000)
+
+      return () => {
+        window.clearInterval(timer)
+      }
+    }
+
+    if (sessionState !== 'COOLDOWN') {
+      return
+    }
+
+    setCurrentTimeMs(Date.now())
+
+    const safeCooldownDurationForEffect = Number.isFinite(cooldownDurationMs)
+      ? cooldownDurationMs
+      : DEFAULT_COOLDOWN_MS
+    const cooldownEndsAtMsForEffect = toFiniteTimestamp(cooldownEndsAt)
+    const sessionEndedAtMsForEffect = toFiniteTimestamp(sessionEndedAt)
+
+    const resolvedCooldownEndsAtMs =
+      cooldownEndsAtMsForEffect ||
+      (sessionEndedAtMsForEffect
+        ? sessionEndedAtMsForEffect + safeCooldownDurationForEffect
+        : undefined)
+
+    if (!resolvedCooldownEndsAtMs) {
+      return
+    }
+
+    const remainingMs = resolvedCooldownEndsAtMs - Date.now()
+
+    if (remainingMs <= 0) {
+      setCurrentTimeMs(Date.now())
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCurrentTimeMs(Date.now())
+    }, remainingMs)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [cooldownDurationMs, cooldownEndsAt, sessionEndedAt, sessionState])
 
   // ── Timer values ──────────────────────────────────────────────────────────
 

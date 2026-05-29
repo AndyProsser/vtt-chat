@@ -2,5 +2,6 @@ node_modules/
 dist/
 .env
 *.log
-logs/
+logs/*
+!logs/log-retention.json
 prisma/*.db
