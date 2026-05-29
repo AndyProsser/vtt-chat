@@ -59,5 +59,7 @@
     "chat.agent.maxRequests": 100,
     "powershell.cwd": "vtt-chat",
     "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "telemetry.editStats.enabled": false,
+    "telemetry.feedback.enabled": false,
   },
 }
