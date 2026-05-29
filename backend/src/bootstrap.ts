@@ -89,6 +89,9 @@ export async function bootstrap(): Promise<BootstrapResult> {
   // Server Lifecycle
   // ========================================================================
 
+  // Inject WebSocket manager into cleanup job for CLEANUP→archive transition broadcasts
+  sessionCleanupJobService.setWebSocketManager(wsManager)
+
   const start = async (): Promise<void> => {
     return new Promise((resolve, reject) => {
       try {
