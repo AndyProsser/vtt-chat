@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { sendMessage } from '@/services/chat.service'
+import { sendCampaignGreenroomMessage, sendMessage } from '@/services/chat.service'
 import { resolveRoomAudience, uniqueVisibleAudience } from '@/services/chat-visibility.service'
 import { isGreenRoomName } from '@/utils'
 import { DEV_MOCK_CHAT_MESSAGES } from '@/constants/dev-mock-chat-messages.constants'
@@ -15,6 +15,7 @@ import {
   DEV_MOCK_SPEAKING_STABILITY_TICKS,
 } from '@/constants/dev-mock-simulation.constants'
 import { getRedisClient } from '@/infra/redis'
+import { findSessionById } from '@/repositories/session.repository'
 import { getSession } from '@/services/session/core.service'
 import { getSessionPresence, getRooms, updatePresenceState } from '@/services/room.service'
 import { DeviceClass, MessageType, PresenceState, Role, RoomType, SessionState } from '@shared'
@@ -502,28 +503,30 @@ function broadcastTypingStopped(sessionId: UUID, user: MockPresenceUser): void {
   })
 }
 
-function buildMessageSentEvent(message: StoredMessage, actorUserId: UUID): EventEnvelope {
-  if (!message.sessionId) {
-    throw new Error('Simulation message must have sessionId')
-  }
+function buildMessageSentEvent(params: {
+  message: StoredMessage
+  actorUserId: UUID
+  sessionId: UUID
+  roomId?: UUID
+}): EventEnvelope {
   return {
     id: randomUUID() as UUID,
     type: 'CHAT:MESSAGE_SENT',
     version: 1,
-    userId: actorUserId,
+    userId: params.actorUserId,
     userRole: Role.PLAYER,
-    sessionId: message.sessionId as UUID,
-    roomId: message.roomId || null,
-    timestamp: message.createdAt,
+    sessionId: params.sessionId,
+    roomId: params.roomId || params.message.roomId || null,
+    timestamp: params.message.createdAt,
     payload: {
-      messageId: message.id,
-      roomId: message.roomId,
-      authorId: message.authorId,
-      authorUsername: message.authorUsername,
-      content: message.content,
-      type: message.type,
-      isDmOnly: message.isDmOnly,
-      visibleTo: message.visibleTo,
+      messageId: params.message.id,
+      roomId: params.roomId || params.message.roomId,
+      authorId: params.message.authorId,
+      authorUsername: params.message.authorUsername,
+      content: params.message.content,
+      type: params.message.type,
+      isDmOnly: params.message.isDmOnly,
+      visibleTo: params.message.visibleTo,
     },
   }
 }
@@ -909,21 +912,46 @@ async function emitPersistedChatMessage(params: {
     return
   }
 
-  const stored = await sendMessage({
-    sessionId: params.sessionId,
-    roomId: messageRoomId,
-    authorId: params.author.userId,
-    authorUsername: params.author.username,
-    dmId: session.dmId,
-    content,
-    type,
-    recipientId,
-    visibleTo,
-  })
+  const stored = !isActiveSession
+    ? await (async () => {
+        const sessionRecord = await findSessionById(params.sessionId)
+        if (!sessionRecord?.campaignId) {
+          return null
+        }
+
+        return sendCampaignGreenroomMessage({
+          campaignId: sessionRecord.campaignId as UUID,
+          authorId: params.author.userId,
+          authorUsername: params.author.username,
+          dmId: session.dmId,
+          content,
+          visibleTo,
+        })
+      })()
+    : await sendMessage({
+        sessionId: params.sessionId,
+        roomId: messageRoomId,
+        authorId: params.author.userId,
+        authorUsername: params.author.username,
+        dmId: session.dmId,
+        content,
+        type,
+        recipientId,
+        visibleTo,
+      })
+
+  if (!stored) {
+    return
+  }
 
   recordMessageSent(params.runtime, type, stored.createdAt)
 
-  const event = buildMessageSentEvent(stored, params.author.userId)
+  const event = buildMessageSentEvent({
+    message: stored,
+    actorUserId: params.author.userId,
+    sessionId: params.sessionId,
+    roomId: messageRoomId,
+  })
   broadcastEvent(params.sessionId, event, stored.visibleTo)
 }
 

@@ -9,15 +9,22 @@ const AUTHOR_ID = '55555555-5555-4555-8555-555555555555'
 
 const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
+  sendCampaignGreenroomMessage: vi.fn(),
   getSession: vi.fn(),
+  findSessionById: vi.fn(),
 }))
 
 vi.mock('@/services/chat.service', () => ({
   sendMessage: mocks.sendMessage,
+  sendCampaignGreenroomMessage: mocks.sendCampaignGreenroomMessage,
 }))
 
 vi.mock('@/services/session/core.service', () => ({
   getSession: mocks.getSession,
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  findSessionById: mocks.findSessionById,
 }))
 
 vi.mock('@/services/room.service', () => ({
@@ -60,6 +67,22 @@ describe('mock simulation service greenroom gating', () => {
       isDmOnly: false,
       createdAt: 123,
       visibleTo: undefined,
+    })
+    mocks.sendCampaignGreenroomMessage.mockResolvedValue({
+      id: 'aaaaaaaa-9999-4999-8999-999999999999',
+      sessionId: undefined,
+      roomId: undefined,
+      authorId: AUTHOR_ID,
+      authorUsername: 'dev_mock_alpha',
+      content: 'Testing mock chatter',
+      type: MessageType.OOC,
+      isDmOnly: false,
+      createdAt: 123,
+      visibleTo: undefined,
+    })
+    mocks.findSessionById.mockResolvedValue({
+      id: SESSION_ID,
+      campaignId: '88888888-8888-4888-8888-888888888888',
     })
   })
 
@@ -168,11 +191,12 @@ describe('mock simulation service greenroom gating', () => {
       ]),
     })
 
-    expect(mocks.sendMessage).toHaveBeenCalledWith(
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+    expect(mocks.sendCampaignGreenroomMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        sessionId: SESSION_ID,
-        roomId: GREEN_ROOM_ID,
-        type: MessageType.OOC,
+        campaignId: '88888888-8888-4888-8888-888888888888',
+        authorId: AUTHOR_ID,
+        authorUsername: 'dev_mock_alpha',
       })
     )
   })
@@ -181,6 +205,7 @@ describe('mock simulation service greenroom gating', () => {
     const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.99)
     mocks.getSession.mockResolvedValue({
       id: SESSION_ID,
+      campaignId: '88888888-8888-4888-8888-888888888888',
       dmId: DM_ID,
       state: SessionState.ACTIVE,
     })
@@ -252,6 +277,7 @@ describe('mock simulation service greenroom gating', () => {
 
     mocks.getSession.mockResolvedValue({
       id: SESSION_ID,
+      campaignId: '88888888-8888-4888-8888-888888888888',
       dmId: DM_ID,
       state: SessionState.ACTIVE,
     })
