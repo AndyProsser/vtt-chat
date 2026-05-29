@@ -623,7 +623,12 @@ export function ChatWindow({
         continue
       }
 
-      if (bookendState && bookendState !== 'started' && bookendState !== 'ended') {
+      if (
+        bookendState &&
+        bookendState !== 'started' &&
+        bookendState !== 'ended' &&
+        bookendState !== 'cooldown'
+      ) {
         continue
       }
 

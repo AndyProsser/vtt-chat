@@ -421,9 +421,7 @@ function MessageListComponent({
 
           if (
             hideIntermissionMarkers &&
-            (sessionBookendState === 'paused' ||
-              sessionBookendState === 'resumed' ||
-              sessionBookendState === 'cooldown')
+            (sessionBookendState === 'paused' || sessionBookendState === 'resumed')
           ) {
             return null
           }

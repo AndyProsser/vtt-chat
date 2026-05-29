@@ -337,6 +337,7 @@ export function LeftRailPanel({
           apiUrl={apiUrl}
           token={token}
           sessionId={sessionId}
+          sessionState={sessionState}
           dmUserId={dmUserId}
           isGreenroom={isGreenroom}
           headerModeCopy={greenroomHeaderCopy}

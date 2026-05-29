@@ -49,7 +49,7 @@ export type {
 } from '@/types/groupPanel'
 
 const OPTIMISTIC_ROOM_MAX_AGE_MS = 15000
-const GROUP_CARD_DISTANCE_TARGETS = DISTANCE_PRESETS
+const GROUP_CARD_DISTANCE_TARGETS = [...DISTANCE_PRESETS]
 const GROUP_CARD_CONDITION_TARGETS = [...CONDITION_PRESETS, RADIAL_MENU_COPY.none]
 
 interface OptimisticRoomEntry {
@@ -65,6 +65,7 @@ export function RoomSelector({
   apiUrl,
   token,
   sessionId,
+  sessionState,
   dmUserId,
   isGreenroom = false,
   headerModeCopy,
@@ -465,6 +466,7 @@ export function RoomSelector({
     apiUrl,
     token,
     sessionId,
+    sessionState,
     dmUserId,
     allRooms,
     displayedParticipantsByRoom: roomMoves.displayedParticipantsByRoom,

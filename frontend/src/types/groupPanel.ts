@@ -1,4 +1,4 @@
-import type { UUID } from '@shared'
+import type { UUID, SessionState } from '@shared'
 import { RoomType } from '@shared'
 
 export interface GroupPanelGroup {
@@ -47,6 +47,7 @@ export interface GroupsPanelProps {
   apiUrl: string
   token: string
   sessionId: UUID
+  sessionState: SessionState
   dmUserId: UUID
   isGreenroom?: boolean
   headerModeCopy?: string

@@ -245,7 +245,11 @@ function getBoundaryRoomIds(params: {
   mainRoomId: UUID
   greenRoomId: UUID
 }): UUID[] {
-  if (params.boundaryType === 'SESSION_STARTED' || params.boundaryType === 'SESSION_ENDED') {
+  if (
+    params.boundaryType === 'SESSION_STARTED' ||
+    params.boundaryType === 'SESSION_COOLDOWN' ||
+    params.boundaryType === 'SESSION_ENDED'
+  ) {
     return Array.from(new Set([params.mainRoomId, params.greenRoomId]))
   }
 

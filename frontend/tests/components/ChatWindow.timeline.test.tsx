@@ -61,6 +61,7 @@ describe('ChatWindow timeline behavior', () => {
   })
 
   it('shows only greenroom messages while in greenroom mode', async () => {
+    const now = Date.now()
     const fetchMock = vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -73,7 +74,7 @@ describe('ChatWindow timeline behavior', () => {
             content: '[Session Started] Session Alpha',
             type: MessageType.SYSTEM,
             isDmOnly: false,
-            createdAt: 100,
+            createdAt: now - 400,
           },
           {
             id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -83,7 +84,7 @@ describe('ChatWindow timeline behavior', () => {
             content: '[Session Paused] Session Alpha',
             type: MessageType.SYSTEM,
             isDmOnly: false,
-            createdAt: 200,
+            createdAt: now - 300,
           },
           {
             id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
@@ -93,7 +94,17 @@ describe('ChatWindow timeline behavior', () => {
             content: '[Session Resumed] Session Alpha',
             type: MessageType.SYSTEM,
             isDmOnly: false,
-            createdAt: 300,
+            createdAt: now - 200,
+          },
+          {
+            id: 'edededed-eeee-4eee-8eee-eeeeeeeeeeee',
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Cooldown] Session Alpha',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: now - 100,
           },
           {
             id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -103,7 +114,7 @@ describe('ChatWindow timeline behavior', () => {
             content: 'Greenroom table talk',
             type: MessageType.OOC,
             isDmOnly: false,
-            createdAt: 400,
+            createdAt: now,
           },
         ],
       }),
@@ -132,6 +143,7 @@ describe('ChatWindow timeline behavior', () => {
     })
 
     expect(screen.getByText('Greenroom table talk')).toBeTruthy()
+    expect(screen.getByText('CLOSED')).toBeTruthy()
     expect(screen.queryByText('[Session Started] Session Alpha')).toBeNull()
     expect(screen.queryByText('[Session Paused] Session Alpha')).toBeNull()
     expect(screen.queryByText('[Session Resumed] Session Alpha')).toBeNull()

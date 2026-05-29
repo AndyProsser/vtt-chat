@@ -274,7 +274,7 @@ describe('session state room orchestration', () => {
       expect.objectContaining({
         sessionId: SESSION_ID,
         boundaryType: 'SESSION_COOLDOWN',
-        roomIds: [MAIN_ROOM_ID],
+        roomIds: [MAIN_ROOM_ID, GREEN_ROOM_ID],
       })
     )
   })
