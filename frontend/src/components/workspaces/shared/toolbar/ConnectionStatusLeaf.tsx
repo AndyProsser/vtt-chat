@@ -2,7 +2,13 @@ import { memo, useMemo } from 'react'
 import type { UUID, CoreWsState, LiveKitConnectionState } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { useConnectionStatus } from '@/hooks/useConnectionStatus'
-import { toneFromAudioState, toneFromCoreState } from '@/constants/sessionToolbar.constants'
+import {
+  CONNECTION_STATUS_COPY,
+  getCoreWsStateLabel,
+  getLiveKitConnectionStateLabel,
+  toneFromAudioState,
+  toneFromCoreState,
+} from '@/constants/sessionToolbar.constants'
 import '@/styles/components/workspaces/shared/toolbar/SessionToolbar.css'
 
 interface ConnectionStatusLeafProps {
@@ -61,14 +67,14 @@ export const ConnectionStatusLeaf = memo(function ConnectionStatusLeafInner({
         align="end"
         className="session-toolbar__tooltip-content--status"
       >
-        <div className="session-toolbar__status-tooltip-title">Status</div>
+        <div className="session-toolbar__status-tooltip-title">{CONNECTION_STATUS_COPY.title}</div>
         <div className="session-toolbar__status-tooltip-row">
-          <span>Core</span>
-          <strong className={coreToneClass}>{coreWsState}</strong>
+          <span>{CONNECTION_STATUS_COPY.coreLabel}</span>
+          <strong className={coreToneClass}>{getCoreWsStateLabel(coreWsState)}</strong>
         </div>
         <div className="session-toolbar__status-tooltip-row">
-          <span>Audio</span>
-          <strong className={audioToneClass}>{livekitState}</strong>
+          <span>{CONNECTION_STATUS_COPY.audioLabel}</span>
+          <strong className={audioToneClass}>{getLiveKitConnectionStateLabel(livekitState)}</strong>
         </div>
       </TooltipContent>
     </Tooltip>

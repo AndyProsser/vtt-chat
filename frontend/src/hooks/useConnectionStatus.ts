@@ -19,6 +19,7 @@ import {
 } from '@shared'
 import { useStore } from './useStore'
 import { buildLiveKitConnectionKey } from './useLiveKit'
+import { CONNECTION_STATUS_COPY } from '@/constants/sessionToolbar.constants'
 import type { ConnectionState as WsConnectionState } from '../types/ws'
 
 export type { CoreWsState, LiveKitConnectionState, StatusContext, StatusIconState, StatusColorKey }
@@ -94,7 +95,7 @@ function computeStatus(
       return {
         statusIconState: StatusIconState.OK,
         statusColorKey: StatusColorKey.GREEN,
-        label: 'Connected',
+        label: CONNECTION_STATUS_COPY.aggregate.connected,
       }
     }
 
@@ -102,14 +103,14 @@ function computeStatus(
       return {
         statusIconState: StatusIconState.CONNECTING,
         statusColorKey: StatusColorKey.YELLOW,
-        label: 'Connecting…',
+        label: CONNECTION_STATUS_COPY.aggregate.connecting,
       }
     }
 
     return {
       statusIconState: StatusIconState.ERROR,
       statusColorKey: StatusColorKey.RED,
-      label: 'Connection error',
+      label: CONNECTION_STATUS_COPY.aggregate.connectionError,
     }
   }
 
@@ -118,7 +119,7 @@ function computeStatus(
     return {
       statusIconState: StatusIconState.ERROR,
       statusColorKey: StatusColorKey.RED,
-      label: 'Connection error',
+      label: CONNECTION_STATUS_COPY.aggregate.connectionError,
     }
   }
 
@@ -127,14 +128,14 @@ function computeStatus(
       return {
         statusIconState: StatusIconState.ERROR,
         statusColorKey: StatusColorKey.RED,
-        label: 'Connection error',
+        label: CONNECTION_STATUS_COPY.aggregate.connectionError,
       }
     }
 
     return {
       statusIconState: StatusIconState.CONNECTING,
       statusColorKey: StatusColorKey.YELLOW,
-      label: 'Connecting…',
+      label: CONNECTION_STATUS_COPY.aggregate.connecting,
     }
   }
 
@@ -143,7 +144,7 @@ function computeStatus(
     return {
       statusIconState: StatusIconState.OK,
       statusColorKey: StatusColorKey.GREEN,
-      label: 'Connected',
+      label: CONNECTION_STATUS_COPY.aggregate.connected,
     }
   }
 
@@ -151,7 +152,7 @@ function computeStatus(
     return {
       statusIconState: StatusIconState.OK_PARTIAL,
       statusColorKey: StatusColorKey.PALE_GREEN,
-      label: 'Voice connecting…',
+      label: CONNECTION_STATUS_COPY.aggregate.voiceConnecting,
     }
   }
 
@@ -159,7 +160,7 @@ function computeStatus(
     return {
       statusIconState: StatusIconState.DEGRADED_AUDIO,
       statusColorKey: StatusColorKey.ORANGE,
-      label: 'Voice unavailable',
+      label: CONNECTION_STATUS_COPY.aggregate.voiceUnavailable,
     }
   }
 
@@ -167,7 +168,7 @@ function computeStatus(
   return {
     statusIconState: StatusIconState.OK,
     statusColorKey: StatusColorKey.GREEN,
-    label: 'Connected',
+    label: CONNECTION_STATUS_COPY.aggregate.connected,
   }
 }
 
