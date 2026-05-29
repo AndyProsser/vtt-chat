@@ -1,6 +1,10 @@
 import type { UseCampaignSettingsActions } from '../../hooks/useCampaignSettings'
 import type { UseCharacterSettingsActions } from '../../hooks/useCharacterSettings'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import {
+  normalizeExtensionSyncPolicy,
+  serializeExtensionSyncPolicy,
+} from '@/constants/sessionUi.normalizers'
 import type {
   CampaignVisibility,
   ExtensionSyncPolicy,
@@ -38,7 +42,7 @@ export function applyCampaignSettingsPayload(
     settings.dmAutoTargetOnFirstPlayerJoin ?? true
   )
   campaignSettingsActions.setSettingsExtensionSyncPolicy(
-    settings.extensionSyncPolicy === 'DM_AND_PLAYERS' ? 'ALLOW' : settings.extensionSyncPolicy
+    normalizeExtensionSyncPolicy(settings.extensionSyncPolicy)
   )
   campaignSettingsActions.setSettingsLateJoinPolicy(settings.lateJoinPolicy)
   campaignSettingsActions.setSettingsLateJoinGraceMinutes(settings.lateJoinGraceMinutes)
@@ -82,7 +86,7 @@ export function buildCampaignSettingsSavePayload(params: {
     spectatorReconnectGraceSecs: params.settingsSpectatorsEnabled
       ? params.settingsSpectatorReconnectGraceSecs
       : 60,
-    extensionSyncPolicy: params.settingsExtensionSyncPolicy,
+    extensionSyncPolicy: serializeExtensionSyncPolicy(params.settingsExtensionSyncPolicy),
     postSessionChatEnabled: Boolean(params.settingsPostSessionChatEnabled),
     postSessionChatDurationMs:
       toValidPostSessionDurationMinutes(params.settingsPostSessionChatDurationMinutes) * 60_000,

@@ -1,6 +1,8 @@
 import type { ChangeEvent, ReactNode } from 'react'
 import type { SessionLifecycleState, UUID } from '@shared'
-import type { ExtensionSyncPolicy } from '@/constants/sessionUi.types'
+import type { ExtensionSyncPolicy, PersistedExtensionSyncPolicy } from '@/constants/sessionUi.types'
+
+export type IntegrationSyncPolicy = ExtensionSyncPolicy
 
 export type CampaignInformationPanelCampaign = {
   id: UUID
@@ -19,7 +21,7 @@ export type CampaignInformationPanelCampaign = {
   connectedPlayersRounded?: number
   connectedSpectatorsRounded?: number
   latestSessionState?: SessionLifecycleState | null
-  extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
+  extensionSyncPolicy?: PersistedExtensionSyncPolicy
 }
 
 export type CampaignInformationPanelProps = {

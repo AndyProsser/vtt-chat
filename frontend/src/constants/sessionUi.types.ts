@@ -1,4 +1,5 @@
 export type LateJoinPolicy = 'OPEN' | 'SCREENED' | 'BLOCKED'
 export type CampaignVisibility = 'PUBLIC' | 'PRIVATE'
 export type ExtensionSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
+export type PersistedExtensionSyncPolicy = 'DM_AND_PLAYERS' | 'DM_ONLY' | 'NONE'
 export type SupportedPlatform = 'ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY'

@@ -1,6 +1,10 @@
 import { Role, SessionState, deriveCampaignDisplayState } from '@shared'
 import type { UUID } from '@shared'
-import type { LateJoinPolicy, SupportedPlatform } from '@/constants/sessionUi.types'
+import type {
+  LateJoinPolicy,
+  PersistedExtensionSyncPolicy,
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 
 export interface CampaignSummary {
   id: UUID
@@ -9,7 +13,7 @@ export interface CampaignSummary {
   createdAt?: number | string
   updatedAt?: number | string
   posterUrl?: string | null
-  extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
+  extensionSyncPolicy?: PersistedExtensionSyncPolicy
   inviteCode?: string
   spectatorInviteCode?: string | null
   spectatorInviteActive?: boolean
@@ -51,7 +55,7 @@ export type CampaignSettingsPayload = {
   spectatorMax: number | null
   spectatorWaitlistEnabled: boolean
   spectatorReconnectGraceSecs: number
-  extensionSyncPolicy: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
+  extensionSyncPolicy: PersistedExtensionSyncPolicy
   lateJoinPolicy: LateJoinPolicy
   lateJoinGraceMinutes: number
   inviteCode: string

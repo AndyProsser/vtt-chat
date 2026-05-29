@@ -1,7 +1,12 @@
 import type { ComponentProps } from 'react'
 import type { UUID } from '@shared'
 import { EditorWorkspace } from '@/components/workspaces/EditorWorkspace'
-import type { SupportedPlatform } from '@/constants/sessionUi.types'
+import type {
+  CampaignVisibility,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 import type { Session } from '@/types/session'
 import { getCampaignEntryAction } from '@/types/session/campaign'
 
@@ -30,15 +35,15 @@ type BuildEditorWorkspacePropsParams = {
   settingsName: string
   settingsDescription: string
   settingsPosterUrl: string
-  settingsVisibility: 'PUBLIC' | 'PRIVATE'
+  settingsVisibility: CampaignVisibility
   settingsSpectatorsEnabled: boolean
   settingsSpectatorMax: number
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
-  settingsExtensionSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
-  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsLateJoinPolicy: LateJoinPolicy
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number

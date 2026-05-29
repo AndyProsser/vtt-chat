@@ -1,6 +1,10 @@
 import { useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { UUID } from '@shared'
+import {
+  normalizeExtensionSyncPolicy,
+  serializeExtensionSyncPolicy,
+} from '@/constants/sessionUi.normalizers'
 import type {
   CampaignVisibility,
   ExtensionSyncPolicy,
@@ -340,7 +344,7 @@ export function useWorkspacesSettingsOrchestration(
         name: string
         description: string
         posterUrl: string | null
-        integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+        integrationSyncPolicy: ExtensionSyncPolicy
       }
     ) => {
       setError(null)
@@ -355,7 +359,7 @@ export function useWorkspacesSettingsOrchestration(
           name: updates.name,
           description: updates.description,
           posterUrl: updates.posterUrl,
-          extensionSyncPolicy: updates.integrationSyncPolicy,
+          extensionSyncPolicy: serializeExtensionSyncPolicy(updates.integrationSyncPolicy),
         }),
       })
 
@@ -374,9 +378,7 @@ export function useWorkspacesSettingsOrchestration(
         campaignSettingsActions.setSettingsDescription(payload.campaign.description || '')
         campaignSettingsActions.setSettingsPosterUrl(payload.campaign.posterUrl || '')
         campaignSettingsActions.setSettingsExtensionSyncPolicy(
-          payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
-            ? 'ALLOW'
-            : payload.campaign.extensionSyncPolicy
+          normalizeExtensionSyncPolicy(payload.campaign.extensionSyncPolicy)
         )
       }
 

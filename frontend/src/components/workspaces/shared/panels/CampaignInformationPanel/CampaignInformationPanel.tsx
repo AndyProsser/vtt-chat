@@ -1,26 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { TooltipProvider } from '@/components/ui'
+import { normalizeExtensionSyncPolicy } from '@/constants/sessionUi.normalizers'
 import { useToast } from '@/hooks/useToast'
-import type {
-  CampaignInformationPanelProps,
-  IntegrationSyncPolicy,
-} from '@/types/campaignInformationPanel'
+import type { CampaignInformationPanelProps } from '@/types/campaignInformationPanel'
 import { CampaignInformationStatusLine } from './StatusLine'
 import { CampaignInformationEditBody } from './EditBody'
 import { CampaignInformationReadOnlyBody } from './ReadOnlyBody'
 import { CampaignInformationHeader } from './Header'
 import '@/styles/components/workspaces/shared/panels/CampaignInformationPanel.css'
-
-function toUiIntegrationPolicy(
-  value: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS' | undefined
-): IntegrationSyncPolicy {
-  if (value === 'NONE' || value === 'DM_ONLY') {
-    return value
-  }
-
-  return 'ALLOW'
-}
 
 export function CampaignInformationPanel({
   campaign,
@@ -121,7 +109,7 @@ export function CampaignInformationPanel({
         name: nameDraft.trim(),
         description: descriptionDraft,
         posterUrl: posterUrlDraft?.trim() ? posterUrlDraft.trim() : null,
-        integrationSyncPolicy: toUiIntegrationPolicy(campaign.extensionSyncPolicy),
+        integrationSyncPolicy: normalizeExtensionSyncPolicy(campaign.extensionSyncPolicy),
       })
       setIsEditing(false)
     } catch (err) {

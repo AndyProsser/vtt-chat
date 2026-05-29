@@ -11,6 +11,7 @@ import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { GroupsPanelSession } from '@/components/workspaces/session/GroupsPanel.session'
 import { RightRailContent } from '@/components/workspaces/session/RightRailContent'
+import type { ExtensionSyncPolicy } from '@/constants/sessionUi.types'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
 
@@ -27,7 +28,7 @@ type SessionWorkspaceRightRailTabProps = {
       name: string
       description: string
       posterUrl: string | null
-      integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+      integrationSyncPolicy: ExtensionSyncPolicy
     }
   ) => Promise<void>
   campaignId: UUID | undefined
