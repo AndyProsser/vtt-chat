@@ -154,6 +154,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             onPlannedDurationMinutesChange={props.onPlannedDurationMinutesChange}
             onSaveSessionSettings={props.onSaveSessionSettings}
             isSessionSettingsSaving={props.isSessionSettingsSaving}
+            sessionCampaignPolicy={props.sessionCampaignPolicy}
             campaignIdForSettings={props.campaignIdForSettings}
             characterDraft={props.characterDraft}
             onCharacterFieldChange={props.onCharacterFieldChange}

@@ -8,6 +8,7 @@ import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, RoomUser as RoomMember } from '@/types/room'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { CampaignSessionPolicyBindings } from '@/components/workspaces/shared/panels/CampaignSessionSettingsPanel'
 import { LeftRailPanel } from '@/components/workspaces/session/LeftRailPanel'
 import { SessionWorkspaceFrame } from '@/components/workspaces/session/WorkspaceFrame'
 import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
@@ -90,6 +91,7 @@ export type SessionWorkspaceProps = {
   onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void
   isSessionSettingsSaving: boolean
+  sessionCampaignPolicy?: CampaignSessionPolicyBindings
   characterDraft: PlayerSettingsPanel
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
   onSaveCharacterSettings: () => void

@@ -4,6 +4,7 @@ import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/
 import { PartyPanel } from '@/components/workspaces/shared/panels/PartyPanel'
 import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { CampaignSessionPolicyBindings } from '@/components/workspaces/shared/panels/CampaignSessionSettingsPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
 import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
@@ -49,6 +50,7 @@ type SessionWorkspaceRightRailTabProps = {
   onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void
   isSessionSettingsSaving: boolean
+  sessionCampaignPolicy?: CampaignSessionPolicyBindings
   campaignIdForSettings: UUID | ''
   characterDraft: PlayerSettingsPanel
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
@@ -201,6 +203,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
             isSessionSaving: props.isSessionSettingsSaving,
             isSaving: false,
             isLoading: false,
+            campaignPolicy: props.sessionCampaignPolicy,
           }}
           playerSettings={{
             campaignId: props.campaignIdForSettings || null,

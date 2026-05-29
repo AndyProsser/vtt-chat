@@ -1015,8 +1015,35 @@ export function WorkspaceInitialization({
     onPlannedDurationMinutesChange: handlePlannedDurationMinutesChange,
     onSaveSessionSettings: () => {
       void saveSessionSettings()
+      void saveCampaignSettings()
     },
     isSessionSettingsSaving,
+    sessionCampaignPolicy: {
+      settingsDmAutoTargetOnFirstPlayerJoin,
+      onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value) =>
+        campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value),
+      settingsLateJoinPolicy,
+      onSettingsLateJoinPolicyChange: (value) =>
+        campaignSettingsActions.setSettingsLateJoinPolicy(value),
+      settingsLateJoinGraceMinutes,
+      onSettingsLateJoinGraceMinutesChange: (value) =>
+        campaignSettingsActions.setSettingsLateJoinGraceMinutes(value),
+      settingsSpectatorsEnabled,
+      onSettingsSpectatorsEnabledChange: (value) =>
+        campaignSettingsActions.setSettingsSpectatorsEnabled(value),
+      settingsSpectatorMax,
+      onSettingsSpectatorMaxChange: (value) =>
+        campaignSettingsActions.setSettingsSpectatorMax(value),
+      settingsSpectatorWaitlistEnabled,
+      onSettingsSpectatorWaitlistEnabledChange: (value) =>
+        campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(value),
+      settingsSpectatorReconnectGraceSecs,
+      onSettingsSpectatorReconnectGraceSecsChange: (value) =>
+        campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(value),
+      settingsPostSessionChatEnabled,
+      onSettingsPostSessionChatEnabledChange: (value) =>
+        campaignSettingsActions.setSettingsPostSessionChatEnabled(value),
+    },
     characterDraft: characterSettingsPanel,
     onCharacterFieldChange: handleCharacterFieldChange,
     onSaveCharacterSettings: () => {

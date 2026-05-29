@@ -420,3 +420,91 @@
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* ── In-session single-column layout ─────────────────────────────────── */
+.csp-single-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.csp-slider-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Collapsible card ────────────────────────────────────────────────── */
+.csp-card--collapsible {
+  padding: 0;
+}
+
+.csp-card-collapsible-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  background: transparent;
+  border: none;
+  border-radius: inherit;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.csp-card-collapsible-header:hover {
+  background: var(--color-surface-raised);
+}
+
+.csp-card-collapsible-header:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: -2px;
+}
+
+.csp-card-collapsible-title-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.csp-card-collapsible-chevron {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+}
+
+.csp-card-heading--inline {
+  margin: 0;
+}
+
+.csp-card-collapsible-body {
+  padding: 0 0.8rem 0.8rem;
+  border-top: 1px solid var(--color-border-soft);
+  padding-top: 0.6rem;
+}
+
+/* ── ON/OFF status pill ──────────────────────────────────────────────── */
+.csp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-soft);
+}
+
+.csp-status-pill--on {
+  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
+  color: var(--color-brand);
+  border-color: color-mix(in srgb, var(--color-brand) 45%, transparent);
+}
+
+.csp-status-pill--off {
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+}

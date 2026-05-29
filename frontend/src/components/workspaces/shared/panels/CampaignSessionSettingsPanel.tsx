@@ -3,6 +3,32 @@ import { Slider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
+/**
+ * Campaign-level policy fields surfaced inside the in-session settings panel.
+ * Mirrors a subset of the editor's policy bindings so the DM can adjust the
+ * same controls without leaving the session.
+ */
+export interface CampaignSessionPolicyBindings {
+  settingsDmAutoTargetOnFirstPlayerJoin: boolean
+  onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
+
+  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  onSettingsLateJoinPolicyChange: (value: 'OPEN' | 'SCREENED' | 'BLOCKED') => void
+  settingsLateJoinGraceMinutes: number
+  onSettingsLateJoinGraceMinutesChange: (value: number) => void
+
+  settingsSpectatorsEnabled: boolean
+  onSettingsSpectatorsEnabledChange: (value: boolean) => void
+  settingsSpectatorMax: number
+  onSettingsSpectatorMaxChange: (value: number) => void
+  settingsSpectatorWaitlistEnabled: boolean
+  onSettingsSpectatorWaitlistEnabledChange: (value: boolean) => void
+  settingsSpectatorReconnectGraceSecs: number
+  onSettingsSpectatorReconnectGraceSecsChange: (value: number) => void
+  settingsPostSessionChatEnabled: boolean
+  onSettingsPostSessionChatEnabledChange: (value: boolean) => void
+}
+
 export interface CampaignSessionSettingsPanelProps {
   campaignId: string | null
   sessionName: string
@@ -13,11 +39,13 @@ export interface CampaignSessionSettingsPanelProps {
   canEditSessionSettings: boolean
   onSessionNameChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
+  /** Save handler — when campaignPolicy is provided, this should also persist campaign settings. */
   onSaveSessionSettings: () => void
   isSessionSaving: boolean
   isSaving: boolean
   isLoading: boolean
   standalone?: boolean
+  campaignPolicy?: CampaignSessionPolicyBindings
 }
 
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
@@ -27,26 +55,60 @@ function formatSessionDuration(mins: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`
 }
 
-/** Formats elapsed time as "Xh Ym" or "Xm Ys" */
+/** Formats elapsed time as "Xh Ym" or "Xm Ys". */
 function formatElapsedTime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   const s = seconds % 60
-
   if (h > 0) {
     return m === 0 ? `${h}h` : `${h}h ${m}m`
   }
   return m === 0 ? `${s}s` : `${m}m ${s}s`
 }
 
+/** Reusable ON/OFF toggle pair matching the editor pattern. */
+function TogglePair({
+  id,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string
+  value: boolean
+  onChange: (v: boolean) => void
+  disabled: boolean
+}) {
+  return (
+    <div className="session-toggle-group" role="group" aria-labelledby={`${id}-label`}>
+      <button
+        type="button"
+        className={`session-toggle-button ${value ? 'is-active' : ''}`}
+        aria-pressed={value}
+        onClick={() => onChange(true)}
+        disabled={disabled}
+      >
+        ON
+      </button>
+      <button
+        type="button"
+        className={`session-toggle-button ${!value ? 'is-active' : ''}`}
+        aria-pressed={!value}
+        onClick={() => onChange(false)}
+        disabled={disabled}
+      >
+        OFF
+      </button>
+    </div>
+  )
+}
+
 export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanelProps) {
   const [isSaving, setIsSaving] = useState(false)
-  const [currentTimeMs, setCurrentTimeMs] = useState(Date.now())
+  const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now())
+  const [isSpectatorsExpanded, setIsSpectatorsExpanded] = useState(false)
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTimeMs(Date.now())
-    }, 1000)
+    const interval = setInterval(() => setCurrentTimeMs(Date.now()), 1000)
     return () => clearInterval(interval)
   }, [])
 
@@ -57,13 +119,12 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
   const remainingSecs = Math.max(0, durationSecs - elapsed)
   const remainingMins = Math.ceil(remainingSecs / 60)
 
-  // Determine timer color: orange at 15 mins or less, red when duration exceeded
   const getTimerColor = (): 'default' | 'warning' | 'critical' => {
+    if (sessionStartedAtMs === 0) return 'default'
     if (elapsed >= durationSecs) return 'critical'
     if (remainingMins <= 15) return 'warning'
     return 'default'
   }
-
   const timerColor = getTimerColor()
 
   const handleSave = async () => {
@@ -71,6 +132,10 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
     await props.onSaveSessionSettings()
     setIsSaving(false)
   }
+
+  const policy = props.campaignPolicy
+  const disabledBase = !props.canEditSessionSettings || props.isSessionSaving
+  const spectatorChildDisabled = disabledBase || (policy ? !policy.settingsSpectatorsEnabled : true)
 
   const heading = (
     <div className="session-campaign-settings-header">
@@ -95,70 +160,207 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
   )
 
   const content = (
-    <div className="session-campaign-settings-panel session-campaign-settings-workspace-root">
-      <div className="csp-cards-grid">
-        <div className="csp-col">
-          <div className="csp-card">
-            <h5 className="crbs-heading csp-card-heading">Session</h5>
+    <div className="session-campaign-settings-panel session-campaign-settings-workspace-root csp-single-col">
+      {sessionStartedAtMs > 0 && (
+        <div className={`csp-card csp-card--timer csp-card--timer-${timerColor}`}>
+          <h5 className="crbs-heading csp-card-heading">Session Timer</h5>
+          <div className="csp-timer-display">
+            <div className="csp-timer-value">{formatElapsedTime(elapsed)}</div>
+            <div className="csp-timer-label">elapsed</div>
+          </div>
+          <div className="csp-timer-remaining">
+            <span className="csp-timer-remaining-label">
+              {elapsed >= durationSecs ? 'Over by' : 'Remaining'}
+            </span>
+            <span className={`csp-timer-remaining-value csp-timer-remaining-${timerColor}`}>
+              {elapsed >= durationSecs
+                ? formatElapsedTime(elapsed - durationSecs)
+                : formatElapsedTime(remainingSecs)}
+            </span>
+          </div>
+          {timerColor === 'warning' && <p className="csp-timer-warning">15 minutes remaining</p>}
+          {timerColor === 'critical' && (
+            <p className="csp-timer-critical">Session duration exceeded</p>
+          )}
+        </div>
+      )}
 
-            <label className="session-label" htmlFor="css-session-name">
-              Session name
+      <div className="csp-card">
+        <h5 className="crbs-heading csp-card-heading">Session</h5>
+
+        <label className="session-label" htmlFor="css-session-name">
+          Session Name <span className="csp-session-name-badge">This session</span>
+        </label>
+        <input
+          id="css-session-name"
+          type="text"
+          className="session-input"
+          value={props.sessionName}
+          onChange={(event) => props.onSessionNameChange(event.target.value)}
+          disabled={disabledBase}
+          placeholder="Session name"
+          maxLength={255}
+        />
+
+        <label className="session-label" id="label-session-duration">
+          Session duration: {formatSessionDuration(props.plannedDurationMinutes)}
+        </label>
+        <Slider
+          id="campaign-session-settings-duration"
+          className="session-slider"
+          aria-labelledby="label-session-duration"
+          min={60}
+          max={720}
+          step={15}
+          value={props.plannedDurationMinutes}
+          onValueChange={(nextValue) => props.onPlannedDurationMinutesChange(nextValue)}
+          disabled={disabledBase}
+        />
+        <p className="csp-slider-hint">
+          Campaign default: {formatSessionDuration(props.defaultSessionDurationMinutes)}
+        </p>
+
+        {policy && (
+          <>
+            <label className="session-label" id="label-dm-auto-target">
+              Auto-target voice on player move
             </label>
-            <input
-              id="css-session-name"
-              type="text"
-              className="session-input"
-              value={props.sessionName}
-              onChange={(event) => props.onSessionNameChange(event.target.value)}
-              disabled={!props.canEditSessionSettings || props.isSessionSaving}
-              placeholder="Session name"
-              maxLength={255}
+            <TogglePair
+              id="dm-auto-target"
+              value={policy.settingsDmAutoTargetOnFirstPlayerJoin}
+              onChange={policy.onSettingsDmAutoTargetOnFirstPlayerJoinChange}
+              disabled={disabledBase}
             />
 
-            <label className="session-label" id="label-session-duration">
-              Session duration: {formatSessionDuration(props.plannedDurationMinutes)}
+            <label className="session-label" id="label-late-join-policy">
+              Late join policy
+            </label>
+            <div
+              className="session-toggle-group"
+              role="group"
+              aria-labelledby="label-late-join-policy"
+            >
+              {(['OPEN', 'SCREENED', 'BLOCKED'] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`session-toggle-button ${policy.settingsLateJoinPolicy === p ? 'is-active' : ''}`}
+                  aria-pressed={policy.settingsLateJoinPolicy === p}
+                  onClick={() => policy.onSettingsLateJoinPolicyChange(p)}
+                  disabled={disabledBase}
+                >
+                  {p === 'OPEN' ? 'Open' : p === 'SCREENED' ? 'Screened' : 'Blocked'}
+                </button>
+              ))}
+            </div>
+
+            <label className="session-label" id="label-late-join-grace">
+              Late join grace: {policy.settingsLateJoinGraceMinutes} min
             </label>
             <Slider
-              id="campaign-session-settings-duration"
+              id="campaign-session-settings-late-join-grace"
               className="session-slider"
-              aria-labelledby="label-session-duration"
-              min={60}
-              max={720}
-              step={15}
-              value={props.plannedDurationMinutes}
-              onValueChange={(nextValue) => props.onPlannedDurationMinutesChange(nextValue)}
-              disabled={!props.canEditSessionSettings || props.isSessionSaving}
+              aria-labelledby="label-late-join-grace"
+              min={30}
+              max={90}
+              step={10}
+              value={policy.settingsLateJoinGraceMinutes}
+              onValueChange={(v) => policy.onSettingsLateJoinGraceMinutesChange(v)}
+              disabled={disabledBase || policy.settingsLateJoinPolicy === 'OPEN'}
             />
-          </div>
-        </div>
-
-        <div className="csp-col">
-          <div className={`csp-card csp-card--timer csp-card--timer-${timerColor}`}>
-            <h5 className="crbs-heading csp-card-heading">Session Timer</h5>
-
-            <div className="csp-timer-display">
-              <div className="csp-timer-value">{formatElapsedTime(elapsed)}</div>
-              <div className="csp-timer-label">elapsed</div>
-            </div>
-
-            <div className="csp-timer-remaining">
-              <span className="csp-timer-remaining-label">
-                {elapsed >= durationSecs ? 'Over by' : 'Remaining'}
-              </span>
-              <span className={`csp-timer-remaining-value csp-timer-remaining-${timerColor}`}>
-                {elapsed >= durationSecs
-                  ? formatElapsedTime(elapsed - durationSecs)
-                  : formatElapsedTime(remainingSecs)}
-              </span>
-            </div>
-
-            {timerColor === 'warning' && <p className="csp-timer-warning">15 minutes remaining</p>}
-            {timerColor === 'critical' && (
-              <p className="csp-timer-critical">Session duration exceeded</p>
-            )}
-          </div>
-        </div>
+          </>
+        )}
       </div>
+
+      {policy && (
+        <div className="csp-card csp-card--collapsible">
+          <button
+            type="button"
+            className="csp-card-collapsible-header"
+            aria-expanded={isSpectatorsExpanded}
+            onClick={() => setIsSpectatorsExpanded((v) => !v)}
+          >
+            <span className="csp-card-collapsible-title-group">
+              <span
+                className="material-symbols-outlined csp-card-collapsible-chevron"
+                aria-hidden="true"
+              >
+                {isSpectatorsExpanded ? 'expand_more' : 'chevron_right'}
+              </span>
+              <h5 className="crbs-heading csp-card-heading csp-card-heading--inline">Spectators</h5>
+            </span>
+            <span
+              className={`csp-status-pill ${policy.settingsSpectatorsEnabled ? 'csp-status-pill--on' : 'csp-status-pill--off'}`}
+            >
+              {policy.settingsSpectatorsEnabled ? 'ON' : 'OFF'}
+            </span>
+          </button>
+
+          {isSpectatorsExpanded && (
+            <div className="csp-card-collapsible-body">
+              <label className="session-label" id="label-spectators">
+                Spectators
+              </label>
+              <TogglePair
+                id="spectators"
+                value={policy.settingsSpectatorsEnabled}
+                onChange={policy.onSettingsSpectatorsEnabledChange}
+                disabled={disabledBase}
+              />
+
+              <label className="session-label" id="label-spectator-max">
+                Max spectators: {policy.settingsSpectatorMax}
+              </label>
+              <Slider
+                id="campaign-session-settings-spectator-max"
+                className="session-slider"
+                aria-labelledby="label-spectator-max"
+                min={5}
+                max={50}
+                step={5}
+                value={policy.settingsSpectatorMax}
+                onValueChange={(v) => policy.onSettingsSpectatorMaxChange(v)}
+                disabled={spectatorChildDisabled}
+              />
+
+              <label className="session-label" id="label-waitlist">
+                Spectator waitlist
+              </label>
+              <TogglePair
+                id="waitlist"
+                value={policy.settingsSpectatorWaitlistEnabled}
+                onChange={policy.onSettingsSpectatorWaitlistEnabledChange}
+                disabled={spectatorChildDisabled}
+              />
+
+              <label className="session-label" id="label-reconnect-grace">
+                Reconnect grace: {policy.settingsSpectatorReconnectGraceSecs}s
+              </label>
+              <Slider
+                id="campaign-session-settings-reconnect-grace"
+                className="session-slider"
+                aria-labelledby="label-reconnect-grace"
+                min={30}
+                max={90}
+                step={5}
+                value={policy.settingsSpectatorReconnectGraceSecs}
+                onValueChange={(v) => policy.onSettingsSpectatorReconnectGraceSecsChange(v)}
+                disabled={spectatorChildDisabled}
+              />
+
+              <label className="session-label" id="label-post-session-chat">
+                Can spectators chat during cooldown?
+              </label>
+              <TogglePair
+                id="post-session-chat"
+                value={policy.settingsPostSessionChatEnabled}
+                onChange={policy.onSettingsPostSessionChatEnabledChange}
+                disabled={spectatorChildDisabled}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 

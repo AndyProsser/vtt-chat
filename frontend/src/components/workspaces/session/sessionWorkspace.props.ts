@@ -67,6 +67,7 @@ type BuildSessionWorkspacePropsParams = {
   >['onPlannedDurationMinutesChange']
   onSaveSessionSettings: ComponentProps<typeof SessionWorkspace>['onSaveSessionSettings']
   isSessionSettingsSaving: boolean
+  sessionCampaignPolicy: ComponentProps<typeof SessionWorkspace>['sessionCampaignPolicy']
   characterDraft: ComponentProps<typeof SessionWorkspace>['characterDraft']
   onCharacterFieldChange: ComponentProps<typeof SessionWorkspace>['onCharacterFieldChange']
   onSaveCharacterSettings: ComponentProps<typeof SessionWorkspace>['onSaveCharacterSettings']
@@ -141,6 +142,7 @@ export function buildSessionWorkspaceProps(
     onPlannedDurationMinutesChange: params.onPlannedDurationMinutesChange,
     onSaveSessionSettings: params.onSaveSessionSettings,
     isSessionSettingsSaving: params.isSessionSettingsSaving,
+    sessionCampaignPolicy: params.sessionCampaignPolicy,
     characterDraft: params.characterDraft,
     onCharacterFieldChange: params.onCharacterFieldChange,
     onSaveCharacterSettings: params.onSaveCharacterSettings,
