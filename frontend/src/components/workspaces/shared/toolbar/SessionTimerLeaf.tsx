@@ -40,6 +40,7 @@ import { Icon } from '@/components/ui/Icon'
 
 interface SessionTimerAnchor {
   state: string
+  createdAt: number | undefined
   startedAt: number | undefined
   pausedAt: number | undefined
   endedAt: number | undefined
@@ -51,6 +52,7 @@ interface SessionTimerAnchor {
 
 const EMPTY_ANCHOR: SessionTimerAnchor = {
   state: 'IDLE',
+  createdAt: undefined,
   startedAt: undefined,
   pausedAt: undefined,
   endedAt: undefined,
@@ -64,6 +66,7 @@ const EMPTY_ANCHOR: SessionTimerAnchor = {
 function anchorEqual(a: SessionTimerAnchor, b: SessionTimerAnchor): boolean {
   return (
     a.state === b.state &&
+    a.createdAt === b.createdAt &&
     a.startedAt === b.startedAt &&
     a.pausedAt === b.pausedAt &&
     a.endedAt === b.endedAt &&
@@ -108,6 +111,7 @@ function SessionTimerLeafInner({
 
     const next: SessionTimerAnchor = {
       state: session.state as string,
+      createdAt: session.createdAt,
       startedAt: session.startedAt,
       pausedAt: session.pausedAt,
       endedAt: session.endedAt,
@@ -129,23 +133,9 @@ function SessionTimerLeafInner({
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now())
   const [showPopper, setShowPopper] = useState(false)
 
-  // Greenroom entry time is local-only; no backend equivalent.
-  const greenroomEnteredAtRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    if (anchor.state === 'IDLE') {
-      if (greenroomEnteredAtRef.current === null) {
-        greenroomEnteredAtRef.current = Date.now()
-        setCurrentTimeMs(Date.now())
-      }
-    } else {
-      greenroomEnteredAtRef.current = null
-    }
-  }, [anchor.state])
-
   // Clock driver: interval for live states, one-shot for COOLDOWN, nothing otherwise.
   useEffect(() => {
-    if (anchor.state === 'ACTIVE' || anchor.state === 'PAUSED') {
+    if (anchor.state === 'ACTIVE' || anchor.state === 'PAUSED' || anchor.state === 'IDLE') {
       const id = window.setInterval(() => setCurrentTimeMs(Date.now()), 1000)
       return () => window.clearInterval(id)
     }
@@ -226,10 +216,10 @@ function SessionTimerLeafInner({
       ? Math.max(0, Math.floor((currentTimeMs - endedAtMs) / 1000))
       : 0
 
-  /** Seconds spent in greenroom (local clock; resets on each session). */
+  /** Seconds since the session was created — backend-authoritative, same for all users. */
   const greenroomElapsedSeconds =
-    anchor.state === 'IDLE' && greenroomEnteredAtRef.current
-      ? Math.max(0, Math.floor((currentTimeMs - greenroomEnteredAtRef.current) / 1000))
+    anchor.state === 'IDLE' && anchor.createdAt
+      ? Math.max(0, Math.floor((currentTimeMs - anchor.createdAt) / 1000))
       : 0
 
   // ── Primary display ────────────────────────────────────────────────────────
