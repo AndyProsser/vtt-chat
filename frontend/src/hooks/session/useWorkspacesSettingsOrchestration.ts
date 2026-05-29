@@ -1,6 +1,12 @@
 import { useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { UUID } from '@shared'
+import type {
+  CampaignVisibility,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 import type { UseCampaignSettingsActions } from '../../hooks/useCampaignSettings'
 import {
   applyCampaignSettingsPayload,
@@ -28,19 +34,19 @@ type UseWorkspacesSettingsOrchestrationParams = {
   settingsName: string
   settingsDescription: string
   settingsPosterUrl: string
-  settingsVisibility: 'PUBLIC' | 'PRIVATE'
+  settingsVisibility: CampaignVisibility
   settingsSpectatorsEnabled: boolean
   settingsSpectatorMax: number
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
-  settingsExtensionSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+  settingsExtensionSyncPolicy: ExtensionSyncPolicy
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
-  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  settingsLateJoinPolicy: LateJoinPolicy
   settingsLateJoinGraceMinutes: number
   settingsDefaultSessionDurationMins: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
-  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  settingsSupportedPlatforms: SupportedPlatform[]
   settingsData: CampaignSettingsPayload | null
   setCampaigns: Dispatch<SetStateAction<CampaignSummary[]>>
   setSelectedCampaignId: Dispatch<SetStateAction<UUID | ''>>

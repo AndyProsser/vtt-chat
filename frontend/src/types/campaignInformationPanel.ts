@@ -1,6 +1,6 @@
 import type { ChangeEvent, ReactNode } from 'react'
 import type { SessionLifecycleState, UUID } from '@shared'
-import type { ExtensionSyncPolicy } from '@/constants/sessionUi.constants'
+import type { ExtensionSyncPolicy } from '@/constants/sessionUi.types'
 
 export type CampaignInformationPanelCampaign = {
   id: UUID

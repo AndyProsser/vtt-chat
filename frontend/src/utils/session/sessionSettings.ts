@@ -1,6 +1,12 @@
 import type { UseCampaignSettingsActions } from '../../hooks/useCampaignSettings'
 import type { UseCharacterSettingsActions } from '../../hooks/useCharacterSettings'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type {
+  CampaignVisibility,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { UserCharacterRecord } from '@/types/session/workspaces'
 import {
@@ -41,7 +47,7 @@ export function applyCampaignSettingsPayload(
     settings.defaultSessionDurationMins ?? 240
   )
   campaignSettingsActions.setSettingsSupportedPlatforms(
-    (settings.supportedPlatforms ?? ['ANY']) as ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+    (settings.supportedPlatforms ?? ['ANY']) as SupportedPlatform[]
   )
 }
 
@@ -49,19 +55,19 @@ export function buildCampaignSettingsSavePayload(params: {
   settingsName: string
   settingsDescription: string
   settingsPosterUrl: string
-  settingsVisibility: 'PUBLIC' | 'PRIVATE'
+  settingsVisibility: CampaignVisibility
   settingsSpectatorsEnabled: boolean
   settingsSpectatorMax: number
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
-  settingsExtensionSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+  settingsExtensionSyncPolicy: ExtensionSyncPolicy
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
-  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  settingsLateJoinPolicy: LateJoinPolicy
   settingsLateJoinGraceMinutes: number
   settingsDefaultSessionDurationMins: number
-  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  settingsSupportedPlatforms: SupportedPlatform[]
 }) {
   return {
     name: params.settingsName,

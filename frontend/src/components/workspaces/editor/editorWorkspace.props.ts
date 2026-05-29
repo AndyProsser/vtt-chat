@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { UUID } from '@shared'
 import { EditorWorkspace } from '@/components/workspaces/EditorWorkspace'
+import type { SupportedPlatform } from '@/constants/sessionUi.types'
 import type { Session } from '@/types/session'
 import { getCampaignEntryAction } from '@/types/session/campaign'
 
@@ -41,7 +42,7 @@ type BuildEditorWorkspacePropsParams = {
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number
-  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  settingsSupportedPlatforms: SupportedPlatform[]
   sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: ComponentProps<typeof EditorWorkspace>['characterSettingsPanel']

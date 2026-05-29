@@ -3,7 +3,8 @@ import type {
   CampaignVisibility,
   ExtensionSyncPolicy,
   LateJoinPolicy,
-} from '@/constants/sessionUi.constants'
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 import type { CampaignSettingsPayload } from '@/types/session/campaign'
 
 export type CampaignSettingsPanelProps = {
@@ -44,8 +45,8 @@ export type CampaignSettingsPanelProps = {
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
   settingsDefaultSessionDurationMins: number
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
-  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
-  onSettingsSupportedPlatformsChange: (value: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]) => void
+  settingsSupportedPlatforms: SupportedPlatform[]
+  onSettingsSupportedPlatformsChange: (value: SupportedPlatform[]) => void
   sessionNameBase: string
   onSessionNameBaseChange: (value: string) => void
   sessionNameContext: 'CURRENT' | 'NEXT'

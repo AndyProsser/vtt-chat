@@ -6,6 +6,12 @@
 
 import { useMemo, useState } from 'react'
 import type { UUID } from '@shared'
+import type {
+  CampaignVisibility,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignSettingsPayload, CampaignSettingsHomeTab } from '@/types/session/campaign'
 import { toValidPostSessionDurationMinutes } from '@/utils/session/sessionController'
@@ -25,20 +31,20 @@ interface UseCampaignSettingsState {
   settingsData: CampaignSettingsPayload | null
   settingsName: string
   settingsDescription: string
-  settingsVisibility: 'PUBLIC' | 'PRIVATE'
+  settingsVisibility: CampaignVisibility
   settingsSpectatorsEnabled: boolean
   settingsSpectatorMax: number
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
-  settingsExtensionSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+  settingsExtensionSyncPolicy: ExtensionSyncPolicy
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
-  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  settingsLateJoinPolicy: LateJoinPolicy
   settingsLateJoinGraceMinutes: number
   settingsPosterUrl: string
   settingsDefaultSessionDurationMins: number
-  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  settingsSupportedPlatforms: SupportedPlatform[]
 }
 
 interface UseCampaignSettingsActions {
@@ -56,20 +62,20 @@ interface UseCampaignSettingsActions {
   setSettingsData: (value: CampaignSettingsPayload | null) => void
   setSettingsName: (value: string) => void
   setSettingsDescription: (value: string) => void
-  setSettingsVisibility: (value: 'PUBLIC' | 'PRIVATE') => void
+  setSettingsVisibility: (value: CampaignVisibility) => void
   setSettingsSpectatorsEnabled: (value: boolean) => void
   setSettingsSpectatorMax: (value: number) => void
   setSettingsSpectatorWaitlistEnabled: (value: boolean) => void
   setSettingsSpectatorReconnectGraceSecs: (value: number) => void
-  setSettingsExtensionSyncPolicy: (value: 'ALLOW' | 'DM_ONLY' | 'NONE') => void
+  setSettingsExtensionSyncPolicy: (value: ExtensionSyncPolicy) => void
   setSettingsPostSessionChatEnabled: (value: boolean) => void
   setSettingsPostSessionChatDurationMinutes: (value: number) => void
   setSettingsDmAutoTargetOnFirstPlayerJoin: (value: boolean) => void
-  setSettingsLateJoinPolicy: (value: 'OPEN' | 'SCREENED' | 'BLOCKED') => void
+  setSettingsLateJoinPolicy: (value: LateJoinPolicy) => void
   setSettingsLateJoinGraceMinutes: (value: number) => void
   setSettingsPosterUrl: (value: string) => void
   setSettingsDefaultSessionDurationMins: (value: number) => void
-  setSettingsSupportedPlatforms: (value: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]) => void
+  setSettingsSupportedPlatforms: (value: SupportedPlatform[]) => void
 }
 
 export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSettingsActions] {
@@ -89,28 +95,25 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
   const [settingsData, setSettingsData] = useState<CampaignSettingsPayload | null>(null)
   const [settingsName, setSettingsName] = useState('')
   const [settingsDescription, setSettingsDescription] = useState('')
-  const [settingsVisibility, setSettingsVisibility] = useState<'PUBLIC' | 'PRIVATE'>('PRIVATE')
+  const [settingsVisibility, setSettingsVisibility] = useState<CampaignVisibility>('PRIVATE')
   const [settingsSpectatorsEnabled, setSettingsSpectatorsEnabled] = useState(false)
   const [settingsSpectatorMax, setSettingsSpectatorMax] = useState(10)
   const [settingsSpectatorWaitlistEnabled, setSettingsSpectatorWaitlistEnabled] = useState(false)
   const [settingsSpectatorReconnectGraceSecs, setSettingsSpectatorReconnectGraceSecs] = useState(60)
-  const [settingsExtensionSyncPolicy, setSettingsExtensionSyncPolicy] = useState<
-    'ALLOW' | 'DM_ONLY' | 'NONE'
-  >('ALLOW')
+  const [settingsExtensionSyncPolicy, setSettingsExtensionSyncPolicy] =
+    useState<ExtensionSyncPolicy>('ALLOW')
   const [settingsPostSessionChatEnabled, setSettingsPostSessionChatEnabled] = useState(true)
   const [settingsPostSessionChatDurationMinutes, setSettingsPostSessionChatDurationMinutes] =
     useState(5)
   const [settingsDmAutoTargetOnFirstPlayerJoin, setSettingsDmAutoTargetOnFirstPlayerJoin] =
     useState(true)
-  const [settingsLateJoinPolicy, setSettingsLateJoinPolicy] = useState<
-    'OPEN' | 'SCREENED' | 'BLOCKED'
-  >('OPEN')
+  const [settingsLateJoinPolicy, setSettingsLateJoinPolicy] = useState<LateJoinPolicy>('OPEN')
   const [settingsLateJoinGraceMinutes, setSettingsLateJoinGraceMinutes] = useState(30)
   const [settingsPosterUrl, setSettingsPosterUrl] = useState('')
   const [settingsDefaultSessionDurationMins, setSettingsDefaultSessionDurationMins] = useState(240)
-  const [settingsSupportedPlatforms, setSettingsSupportedPlatforms] = useState<
-    ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
-  >(['ANY'])
+  const [settingsSupportedPlatforms, setSettingsSupportedPlatforms] = useState<SupportedPlatform[]>(
+    ['ANY']
+  )
 
   const state: UseCampaignSettingsState = useMemo(
     () => ({

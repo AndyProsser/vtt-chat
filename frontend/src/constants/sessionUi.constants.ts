@@ -1,8 +1,10 @@
 import { SessionState } from '@shared'
-
-export type LateJoinPolicy = 'OPEN' | 'SCREENED' | 'BLOCKED'
-export type CampaignVisibility = 'PUBLIC' | 'PRIVATE'
-export type ExtensionSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
+import type {
+  CampaignVisibility,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 
 export const SESSION_STATE_LABELS: Record<SessionState, string> = {
   [SessionState.IDLE]: 'Greenroom',
@@ -59,6 +61,27 @@ export const EXTENSION_SYNC_POLICY_OPTIONS: readonly ExtensionSyncPolicy[] = [
   'NONE',
 ] as const
 
+export const SUPPORTED_PLATFORM_OPTIONS: readonly SupportedPlatform[] = [
+  'ANY',
+  'DDB',
+  'ROLL20',
+  'FOUNDRY',
+] as const
+
+export const SUPPORTED_PLATFORM_LABELS: Record<SupportedPlatform, string> = {
+  ANY: 'Any',
+  DDB: 'D&D Beyond',
+  ROLL20: 'Roll20',
+  FOUNDRY: 'Foundry VTT',
+}
+
+export const SUPPORTED_PLATFORM_TRUNCATED_LABELS: Record<SupportedPlatform, string> = {
+  ANY: 'Any',
+  DDB: 'D&D Bey...',
+  ROLL20: 'Roll20',
+  FOUNDRY: 'Foundry...',
+}
+
 export const SPECTATOR_WAIT_SCREEN_COPY = {
   idle: {
     title: 'Please wait',
@@ -99,6 +122,14 @@ export function getCampaignVisibilityLabel(visibility: CampaignVisibility): stri
 
 export function getExtensionSyncPolicyLabel(policy: ExtensionSyncPolicy): string {
   return EXTENSION_SYNC_POLICY_LABELS[policy]
+}
+
+export function getSupportedPlatformLabel(platform: SupportedPlatform): string {
+  return SUPPORTED_PLATFORM_LABELS[platform]
+}
+
+export function getSupportedPlatformTruncatedLabel(platform: SupportedPlatform): string {
+  return SUPPORTED_PLATFORM_TRUNCATED_LABELS[platform]
 }
 
 export function getBooleanToggleLabel(value: boolean): string {

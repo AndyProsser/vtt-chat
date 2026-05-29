@@ -1,5 +1,6 @@
 import { Role, SessionState, deriveCampaignDisplayState } from '@shared'
 import type { UUID } from '@shared'
+import type { LateJoinPolicy, SupportedPlatform } from '@/constants/sessionUi.types'
 
 export interface CampaignSummary {
   id: UUID
@@ -51,7 +52,7 @@ export type CampaignSettingsPayload = {
   spectatorWaitlistEnabled: boolean
   spectatorReconnectGraceSecs: number
   extensionSyncPolicy: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
-  lateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  lateJoinPolicy: LateJoinPolicy
   lateJoinGraceMinutes: number
   inviteCode: string
   inviteActive: boolean
@@ -61,7 +62,7 @@ export type CampaignSettingsPayload = {
   postSessionChatDurationMs: number
   dmAutoTargetOnFirstPlayerJoin: boolean
   defaultSessionDurationMins: number
-  supportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  supportedPlatforms: SupportedPlatform[]
 }
 
 export type CampaignEntryAction =

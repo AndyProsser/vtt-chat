@@ -6,8 +6,12 @@ import {
   getCampaignVisibilityLabel,
   getExtensionSyncPolicyLabel,
   getLateJoinPolicyLabel,
+  getSupportedPlatformLabel,
+  getSupportedPlatformTruncatedLabel,
   LATE_JOIN_POLICY_OPTIONS,
+  SUPPORTED_PLATFORM_OPTIONS,
 } from '@/constants/sessionUi.constants'
+import type { SupportedPlatform } from '@/constants/sessionUi.types'
 import type { CampaignSettingsPanelPolicyProps } from '@/types/campaignSettingsPanel'
 
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
@@ -53,25 +57,11 @@ function TogglePair({
   )
 }
 
-const SUPPORTED_PLATFORM_LABELS: Record<string, string> = {
-  ANY: 'Any',
-  DDB: 'D&D Beyond',
-  ROLL20: 'Roll20',
-  FOUNDRY: 'Foundry VTT',
-}
-
-const SUPPORTED_PLATFORM_TRUNCATED_LABELS: Record<string, string> = {
-  ANY: 'Any',
-  DDB: 'D&D Bey...',
-  ROLL20: 'Roll20',
-  FOUNDRY: 'Foundry...',
-}
-
 export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyProps) {
   const sessionLocked = props.isSessionActive || props.isSaving
   const cooldownMins = props.settingsPostSessionChatDurationMinutes
 
-  function handlePlatformToggle(platform: 'ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY') {
+  function handlePlatformToggle(platform: SupportedPlatform) {
     const current = props.settingsSupportedPlatforms
     if (platform === 'ANY') {
       props.onSettingsSupportedPlatformsChange(['ANY'])
@@ -246,9 +236,9 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
               role="group"
               aria-labelledby="label-supported-platforms"
             >
-              {(['ANY', 'DDB', 'ROLL20', 'FOUNDRY'] as const).map((platform) => {
+              {SUPPORTED_PLATFORM_OPTIONS.map((platform) => {
                 const isSelected = props.settingsSupportedPlatforms.includes(platform)
-                const fullLabel = SUPPORTED_PLATFORM_LABELS[platform]
+                const fullLabel = getSupportedPlatformLabel(platform)
                 return (
                   <button
                     key={platform}
@@ -261,7 +251,7 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
                     disabled={sessionLocked}
                   >
                     <span className="csp-platform-label">
-                      {SUPPORTED_PLATFORM_TRUNCATED_LABELS[platform]}
+                      {getSupportedPlatformTruncatedLabel(platform)}
                     </span>
                   </button>
                 )

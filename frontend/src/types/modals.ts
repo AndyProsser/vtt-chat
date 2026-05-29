@@ -4,7 +4,7 @@ import type {
   CampaignVisibility,
   ExtensionSyncPolicy,
   LateJoinPolicy,
-} from '@/constants/sessionUi.constants'
+} from '@/constants/sessionUi.types'
 import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignSettingsHomeTab, CampaignSettingsPayload } from '@/types/session/campaign'
 

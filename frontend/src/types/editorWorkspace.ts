@@ -4,7 +4,8 @@ import type {
   CampaignVisibility,
   ExtensionSyncPolicy,
   LateJoinPolicy,
-} from '@/constants/sessionUi.constants'
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { Session } from '@/types/session'
 import type { EditorWorkspaceView } from '@/types/workspaces'
@@ -50,7 +51,7 @@ export type EditorWorkspaceProps = {
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number
-  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  settingsSupportedPlatforms: SupportedPlatform[]
   sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: PlayerSettingsPanel
@@ -72,7 +73,7 @@ export type EditorWorkspaceProps = {
   onSettingsLateJoinGraceMinutesChange: (value: number) => void
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
-  onSettingsSupportedPlatformsChange: (value: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]) => void
+  onSettingsSupportedPlatformsChange: (value: SupportedPlatform[]) => void
   onSessionNameChange: (value: string) => void
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void

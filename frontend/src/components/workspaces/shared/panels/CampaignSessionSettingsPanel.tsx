@@ -5,8 +5,8 @@ import {
   getBooleanToggleLabel,
   getLateJoinPolicyLabel,
   LATE_JOIN_POLICY_OPTIONS,
-  type LateJoinPolicy,
 } from '@/constants/sessionUi.constants'
+import type { LateJoinPolicy } from '@/constants/sessionUi.types'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 /**
