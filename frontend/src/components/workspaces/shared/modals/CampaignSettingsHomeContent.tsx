@@ -1,6 +1,13 @@
 import { Slider, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
-import { getLateJoinPolicyLabel, LATE_JOIN_POLICY_OPTIONS } from '@/constants/sessionUi.constants'
+import {
+  CAMPAIGN_VISIBILITY_OPTIONS,
+  EXTENSION_SYNC_POLICY_OPTIONS,
+  getCampaignVisibilityLabel,
+  getExtensionSyncPolicyLabel,
+  getLateJoinPolicyLabel,
+  LATE_JOIN_POLICY_OPTIONS,
+} from '@/constants/sessionUi.constants'
 import type { ModalsProps } from '@/types/modals'
 
 type CampaignSettingsHomeContentProps = Pick<
@@ -223,24 +230,18 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
           Visibility
         </label>
         <div className="session-toggle-group" role="group" aria-label="Visibility">
-          <button
-            type="button"
-            className={`session-toggle-button ${props.settingsVisibility === 'PUBLIC' ? 'is-active' : ''}`}
-            aria-pressed={props.settingsVisibility === 'PUBLIC'}
-            onClick={() => props.onSettingsVisibilityChange('PUBLIC')}
-            disabled={props.isSettingsSaving}
-          >
-            Public
-          </button>
-          <button
-            type="button"
-            className={`session-toggle-button ${props.settingsVisibility === 'PRIVATE' ? 'is-active' : ''}`}
-            aria-pressed={props.settingsVisibility === 'PRIVATE'}
-            onClick={() => props.onSettingsVisibilityChange('PRIVATE')}
-            disabled={props.isSettingsSaving}
-          >
-            Private
-          </button>
+          {CAMPAIGN_VISIBILITY_OPTIONS.map((visibility) => (
+            <button
+              key={visibility}
+              type="button"
+              className={`session-toggle-button ${props.settingsVisibility === visibility ? 'is-active' : ''}`}
+              aria-pressed={props.settingsVisibility === visibility}
+              onClick={() => props.onSettingsVisibilityChange(visibility)}
+              disabled={props.isSettingsSaving}
+            >
+              {getCampaignVisibilityLabel(visibility)}
+            </button>
+          ))}
         </div>
 
         <label className="session-label" htmlFor="campaign-settings-spectators">
@@ -368,33 +369,18 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
           Extension sync policy
         </label>
         <div className="session-toggle-group" role="group" aria-label="Extension sync policy">
-          <button
-            type="button"
-            className={`session-toggle-button ${props.settingsExtensionSyncPolicy === 'ALLOW' ? 'is-active' : ''}`}
-            aria-pressed={props.settingsExtensionSyncPolicy === 'ALLOW'}
-            onClick={() => props.onSettingsExtensionSyncPolicyChange('ALLOW')}
-            disabled={props.isSettingsSaving}
-          >
-            ALLOW
-          </button>
-          <button
-            type="button"
-            className={`session-toggle-button ${props.settingsExtensionSyncPolicy === 'DM_ONLY' ? 'is-active' : ''}`}
-            aria-pressed={props.settingsExtensionSyncPolicy === 'DM_ONLY'}
-            onClick={() => props.onSettingsExtensionSyncPolicyChange('DM_ONLY')}
-            disabled={props.isSettingsSaving}
-          >
-            DM_ONLY
-          </button>
-          <button
-            type="button"
-            className={`session-toggle-button ${props.settingsExtensionSyncPolicy === 'NONE' ? 'is-active' : ''}`}
-            aria-pressed={props.settingsExtensionSyncPolicy === 'NONE'}
-            onClick={() => props.onSettingsExtensionSyncPolicyChange('NONE')}
-            disabled={props.isSettingsSaving}
-          >
-            NONE
-          </button>
+          {EXTENSION_SYNC_POLICY_OPTIONS.map((policy) => (
+            <button
+              key={policy}
+              type="button"
+              className={`session-toggle-button ${props.settingsExtensionSyncPolicy === policy ? 'is-active' : ''}`}
+              aria-pressed={props.settingsExtensionSyncPolicy === policy}
+              onClick={() => props.onSettingsExtensionSyncPolicyChange(policy)}
+              disabled={props.isSettingsSaving}
+            >
+              {getExtensionSyncPolicyLabel(policy)}
+            </button>
+          ))}
         </div>
 
         <label className="session-label" htmlFor="campaign-settings-late-join-policy">

@@ -1,6 +1,8 @@
 import { SessionState } from '@shared'
 
 export type LateJoinPolicy = 'OPEN' | 'SCREENED' | 'BLOCKED'
+export type CampaignVisibility = 'PUBLIC' | 'PRIVATE'
+export type ExtensionSyncPolicy = 'ALLOW' | 'DM_ONLY' | 'NONE'
 
 export const SESSION_STATE_LABELS: Record<SessionState, string> = {
   [SessionState.IDLE]: 'Greenroom',
@@ -29,10 +31,32 @@ export const LATE_JOIN_POLICY_LABELS: Record<LateJoinPolicy, string> = {
   BLOCKED: 'Blocked',
 }
 
+export const CAMPAIGN_VISIBILITY_LABELS: Record<CampaignVisibility, string> = {
+  PUBLIC: 'Public',
+  PRIVATE: 'Private',
+}
+
+export const EXTENSION_SYNC_POLICY_LABELS: Record<ExtensionSyncPolicy, string> = {
+  ALLOW: 'All players',
+  DM_ONLY: 'DM only',
+  NONE: 'Disabled',
+}
+
 export const LATE_JOIN_POLICY_OPTIONS: readonly LateJoinPolicy[] = [
   'OPEN',
   'SCREENED',
   'BLOCKED',
+] as const
+
+export const CAMPAIGN_VISIBILITY_OPTIONS: readonly CampaignVisibility[] = [
+  'PUBLIC',
+  'PRIVATE',
+] as const
+
+export const EXTENSION_SYNC_POLICY_OPTIONS: readonly ExtensionSyncPolicy[] = [
+  'ALLOW',
+  'DM_ONLY',
+  'NONE',
 ] as const
 
 export const SPECTATOR_WAIT_SCREEN_COPY = {
@@ -62,6 +86,14 @@ export function getSessionStateLabel(state: SessionState | string): string {
 
 export function getLateJoinPolicyLabel(policy: LateJoinPolicy): string {
   return LATE_JOIN_POLICY_LABELS[policy]
+}
+
+export function getCampaignVisibilityLabel(visibility: CampaignVisibility): string {
+  return CAMPAIGN_VISIBILITY_LABELS[visibility]
+}
+
+export function getExtensionSyncPolicyLabel(policy: ExtensionSyncPolicy): string {
+  return EXTENSION_SYNC_POLICY_LABELS[policy]
 }
 
 function toDisplayLabel(value: string): string {

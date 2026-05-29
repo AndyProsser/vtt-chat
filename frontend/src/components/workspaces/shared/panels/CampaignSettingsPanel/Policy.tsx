@@ -1,4 +1,12 @@
 import { Slider } from '@/components/ui'
+import {
+  CAMPAIGN_VISIBILITY_OPTIONS,
+  EXTENSION_SYNC_POLICY_OPTIONS,
+  getCampaignVisibilityLabel,
+  getExtensionSyncPolicyLabel,
+  getLateJoinPolicyLabel,
+  LATE_JOIN_POLICY_OPTIONS,
+} from '@/constants/sessionUi.constants'
 import type { CampaignSettingsPanelPolicyProps } from '@/types/campaignSettingsPanel'
 
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
@@ -98,24 +106,18 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
               Visibility
             </label>
             <div className="session-toggle-group" role="group" aria-labelledby="label-visibility">
-              <button
-                type="button"
-                className={`session-toggle-button ${props.settingsVisibility === 'PUBLIC' ? 'is-active' : ''}`}
-                aria-pressed={props.settingsVisibility === 'PUBLIC'}
-                onClick={() => props.onSettingsVisibilityChange('PUBLIC')}
-                disabled={sessionLocked}
-              >
-                Public
-              </button>
-              <button
-                type="button"
-                className={`session-toggle-button ${props.settingsVisibility === 'PRIVATE' ? 'is-active' : ''}`}
-                aria-pressed={props.settingsVisibility === 'PRIVATE'}
-                onClick={() => props.onSettingsVisibilityChange('PRIVATE')}
-                disabled={sessionLocked}
-              >
-                Private
-              </button>
+              {CAMPAIGN_VISIBILITY_OPTIONS.map((visibility) => (
+                <button
+                  key={visibility}
+                  type="button"
+                  className={`session-toggle-button ${props.settingsVisibility === visibility ? 'is-active' : ''}`}
+                  aria-pressed={props.settingsVisibility === visibility}
+                  onClick={() => props.onSettingsVisibilityChange(visibility)}
+                  disabled={sessionLocked}
+                >
+                  {getCampaignVisibilityLabel(visibility)}
+                </button>
+              ))}
             </div>
 
             <label className="session-label" id="label-cooldown">
@@ -194,7 +196,7 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
               role="group"
               aria-labelledby="label-late-join-policy"
             >
-              {(['OPEN', 'SCREENED', 'BLOCKED'] as const).map((policy) => (
+              {LATE_JOIN_POLICY_OPTIONS.map((policy) => (
                 <button
                   key={policy}
                   type="button"
@@ -203,7 +205,7 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
                   onClick={() => props.onSettingsLateJoinPolicyChange(policy)}
                   disabled={sessionLocked}
                 >
-                  {policy === 'OPEN' ? 'Open' : policy === 'SCREENED' ? 'Screened' : 'Blocked'}
+                  {getLateJoinPolicyLabel(policy)}
                 </button>
               ))}
             </div>
@@ -273,33 +275,18 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
               role="group"
               aria-labelledby="label-extension-sync-policy"
             >
-              <button
-                type="button"
-                className={`session-toggle-button ${props.settingsExtensionSyncPolicy === 'ALLOW' ? 'is-active' : ''}`}
-                aria-pressed={props.settingsExtensionSyncPolicy === 'ALLOW'}
-                onClick={() => props.onSettingsExtensionSyncPolicyChange('ALLOW')}
-                disabled={sessionLocked}
-              >
-                All players
-              </button>
-              <button
-                type="button"
-                className={`session-toggle-button ${props.settingsExtensionSyncPolicy === 'DM_ONLY' ? 'is-active' : ''}`}
-                aria-pressed={props.settingsExtensionSyncPolicy === 'DM_ONLY'}
-                onClick={() => props.onSettingsExtensionSyncPolicyChange('DM_ONLY')}
-                disabled={sessionLocked}
-              >
-                DM only
-              </button>
-              <button
-                type="button"
-                className={`session-toggle-button ${props.settingsExtensionSyncPolicy === 'NONE' ? 'is-active' : ''}`}
-                aria-pressed={props.settingsExtensionSyncPolicy === 'NONE'}
-                onClick={() => props.onSettingsExtensionSyncPolicyChange('NONE')}
-                disabled={sessionLocked}
-              >
-                Disabled
-              </button>
+              {EXTENSION_SYNC_POLICY_OPTIONS.map((policy) => (
+                <button
+                  key={policy}
+                  type="button"
+                  className={`session-toggle-button ${props.settingsExtensionSyncPolicy === policy ? 'is-active' : ''}`}
+                  aria-pressed={props.settingsExtensionSyncPolicy === policy}
+                  onClick={() => props.onSettingsExtensionSyncPolicyChange(policy)}
+                  disabled={sessionLocked}
+                >
+                  {getExtensionSyncPolicyLabel(policy)}
+                </button>
+              ))}
             </div>
           </div>
 
