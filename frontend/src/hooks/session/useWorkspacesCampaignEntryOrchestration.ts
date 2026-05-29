@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction, SubmitEventHandler } from 'react'
 import { normalizeCampaignSessionBaseName, type UUID } from '@shared'
 import { SessionState } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
-import type { CampaignSummary } from '@/types/session/campaign'
+import type { CampaignJoinRequestSummary, CampaignSummary } from '@/types/session/campaign'
 import {
   buildDefaultChapterName,
   getPreferredSession,
@@ -492,6 +492,64 @@ export function useWorkspacesCampaignEntryOrchestration(
     [setError, setLobbyNotice]
   )
 
+  const handleLoadPendingJoinRequests = useCallback(
+    async (campaignId: UUID): Promise<CampaignJoinRequestSummary[]> => {
+      setError(null)
+
+      const response = await fetchWithAuthGuard(
+        `${apiUrl}/api/campaigns/${campaignId}/join-request`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to load pending join requests')
+      }
+
+      const payload = (await response.json()) as {
+        requests?: CampaignJoinRequestSummary[]
+      }
+
+      return payload.requests || []
+    },
+    [apiUrl, fetchWithAuthGuard, setError, token]
+  )
+
+  const handleResolveJoinRequest = useCallback(
+    async (campaignId: UUID, requestId: UUID, resolution: 'APPROVED' | 'REJECTED') => {
+      setError(null)
+      setLobbyNotice(null)
+
+      const actionPath = resolution === 'APPROVED' ? 'approve' : 'reject'
+      const response = await fetchWithAuthGuard(
+        `${apiUrl}/api/campaigns/${campaignId}/join-request/${requestId}/${actionPath}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to resolve join request')
+      }
+
+      await refreshLobbyCampaignData({ showLoading: false, surfaceError: false })
+      setLobbyNotice(
+        resolution === 'APPROVED'
+          ? 'Join request approved. The player can now launch the campaign.'
+          : 'Join request rejected.'
+      )
+    },
+    [apiUrl, fetchWithAuthGuard, refreshLobbyCampaignData, setError, setLobbyNotice, token]
+  )
+
   /**
    * DM deletes the currently selected campaign.
    * DEV: backend performs a hard delete (row removed).
@@ -559,6 +617,8 @@ export function useWorkspacesCampaignEntryOrchestration(
     startCampaignSession,
     handleJoinRequest,
     handleWatchCampaign,
+    handleLoadPendingJoinRequests,
+    handleResolveJoinRequest,
     handleDeleteCampaign,
   }
 }

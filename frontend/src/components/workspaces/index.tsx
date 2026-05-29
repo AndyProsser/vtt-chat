@@ -626,6 +626,8 @@ export function WorkspaceInitialization({
     startCampaignSession,
     handleJoinRequest,
     handleWatchCampaign,
+    handleLoadPendingJoinRequests,
+    handleResolveJoinRequest,
     handleDeleteCampaign,
   } = useWorkspacesCampaignEntryOrchestration({
     apiUrl,
@@ -847,6 +849,8 @@ export function WorkspaceInitialization({
     },
     onJoinRequest: handleJoinRequest,
     onWatchCampaign: handleWatchCampaign,
+    onLoadPendingJoinRequests: handleLoadPendingJoinRequests,
+    onResolveJoinRequest: handleResolveJoinRequest,
     onError: setError,
   })
 

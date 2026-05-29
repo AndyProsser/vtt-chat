@@ -928,11 +928,12 @@ Private card visual rules for non-members:
 
 - `POST /api/campaigns/:id/join-request` — authenticated full user submits a join request with an optional message (max 300 chars). Returns `201` with the pending request record.
 - If the user already has a pending or approved membership, return `409 Conflict`.
+- `GET /api/campaigns/:id/join-request` — DM-only. Returns the current pending request list for inline lobby review, including requester username, display name, avatar, timestamp, and optional message.
 - `POST /api/campaigns/:id/join-request/:requestId/approve` — DM-only. Converts pending request to `CampaignMembership` with role `PLAYER`.
 - `POST /api/campaigns/:id/join-request/:requestId/reject` — DM-only. Deletes the pending request.
 - WS event `CAMPAIGN:JOIN_REQUEST_RECEIVED` is broadcast to the DM immediately after a request is persisted. Payload: `{ campaignId, requestId, userId, displayName, avatarUrl, requestedAt, message? }`.
 - DM's campaign card in the lobby shows a notification badge with the count of pending join requests. Clicking the badge opens an inline approval panel showing: requester username, avatar, requested-at timestamp, and optional message with approve/reject buttons.
-- On approval, the WS event `CAMPAIGN:JOIN_REQUEST_RESOLVED` is broadcast to the requester so their lobby card updates immediately.
+- On approval, the WS event `CAMPAIGN:JOIN_REQUEST_RESOLVED` is broadcast to the requester so their lobby card updates immediately. Frontend lobby clients also treat join-request received/resolved campaign events as list-refresh signals so DM badge counts converge without a manual reload.
 
 ### WATCH Entry for Full Users
 

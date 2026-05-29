@@ -8,10 +8,12 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  type CampaignJoinRequestSummary,
   type CampaignSummary,
   getCampaignEntryAction,
   getPrivacyCounterLabel,
 } from '@/types/session/campaign'
+import { LobbyJoinRequestsPanel } from './LobbyJoinRequestsPanel'
 
 type CampaignVisualState = 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'IDLE' | 'ENDED' | 'INACTIVE'
 
@@ -205,6 +207,14 @@ export type CampaignCardProps = {
   onEnterCampaign: (id: CampaignSummary['id']) => void
   onJoinRequest: (campaign: CampaignSummary) => void
   onWatchCampaign: (campaign: CampaignSummary) => void
+  onLoadPendingJoinRequests: (
+    campaignId: CampaignSummary['id']
+  ) => Promise<CampaignJoinRequestSummary[]>
+  onResolveJoinRequest: (
+    campaignId: CampaignSummary['id'],
+    requestId: CampaignJoinRequestSummary['id'],
+    resolution: 'APPROVED' | 'REJECTED'
+  ) => Promise<void>
   onError: (message: string) => void
 }
 
@@ -216,6 +226,8 @@ export function CampaignCard({
   onEnterCampaign,
   onJoinRequest,
   onWatchCampaign,
+  onLoadPendingJoinRequests,
+  onResolveJoinRequest,
   onError,
 }: CampaignCardProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
@@ -483,31 +495,13 @@ export function CampaignCard({
 
         {/* DM: pending join request badge */}
         {campaign.memberRole === 'DM' && (campaign.pendingJoinRequests ?? 0) > 0 ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="session-card-action-button session-card-action-button--badge"
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  onOpenCampaignSettings(campaign.id)
-                }}
-                aria-label={`${campaign.pendingJoinRequests} pending join requests`}
-              >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  person_add
-                </span>
-                <span className="session-card-action-button__badge">
-                  {campaign.pendingJoinRequests}
-                </span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              {campaign.pendingJoinRequests} pending join{' '}
-              {campaign.pendingJoinRequests === 1 ? 'request' : 'requests'}
-            </TooltipContent>
-          </Tooltip>
+          <LobbyJoinRequestsPanel
+            campaignId={campaign.id}
+            pendingCount={campaign.pendingJoinRequests ?? 0}
+            onLoadPendingJoinRequests={onLoadPendingJoinRequests}
+            onResolveJoinRequest={onResolveJoinRequest}
+            onError={onError}
+          />
         ) : null}
 
         {/* Primary entry action: Launch / Request to Join / Watch / Invite Only */}

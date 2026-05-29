@@ -371,6 +371,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('CAMPAIGN:LIST_INVALIDATED', (event) => {
       onCampaignListInvalidatedRef.current?.(event)
     })
+    dispatcher.register('CAMPAIGN:JOIN_REQUEST_RECEIVED', (event) => {
+      onCampaignListInvalidatedRef.current?.(event)
+    })
+    dispatcher.register('CAMPAIGN:JOIN_REQUEST_RESOLVED', (event) => {
+      onCampaignListInvalidatedRef.current?.(event)
+    })
     dispatcher.register('CAMPAIGN:LOBBY_STATS_UPDATED', (event) =>
       onLobbyStatsUpdatedRef.current?.(event)
     )

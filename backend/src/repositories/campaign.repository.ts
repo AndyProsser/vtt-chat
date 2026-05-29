@@ -1005,6 +1005,49 @@ export async function createJoinRequest(params: {
 }
 
 /**
+ * List pending join requests for a campaign so the DM can review them from the lobby.
+ */
+export async function listPendingJoinRequests(campaignId: string): Promise<
+  Array<{
+    id: string
+    userId: string
+    username: string
+    displayName: string
+    avatarUrl: string | null
+    message: string | null
+    requestedAt: Date
+  }>
+> {
+  const requests = await prisma.campaignJoinRequest.findMany({
+    where: { campaignId, status: 'PENDING' },
+    orderBy: [{ requestedAt: 'asc' }],
+    select: {
+      id: true,
+      userId: true,
+      message: true,
+      requestedAt: true,
+      user: {
+        select: {
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+        },
+      },
+    },
+  })
+
+  return requests.map((request) => ({
+    id: request.id,
+    userId: request.userId,
+    username: request.user?.username || 'user',
+    displayName: request.user?.displayName || request.user?.username || 'Player',
+    avatarUrl: request.user?.avatarUrl || null,
+    message: request.message,
+    requestedAt: request.requestedAt,
+  }))
+}
+
+/**
  * Resolve (approve or reject) a pending join request.
  * On approve: creates a PLAYER membership and resolves the request.
  */

@@ -323,7 +323,7 @@ Evidence snapshot (2026-05-27):
 - [x] Compact lobby stats strip is shown between topbar and card list (active sessions, connected personas, total played, extra rollups)
 - [ ] Campaign visibility: PRIVATE campaigns show a dimmed locked card to non-members when spectators are disabled or no session is active; show a normal card with a lock icon + WATCH when spectators are enabled and an active session has DM/players present
 - [ ] Non-member + PUBLIC campaign → REQUEST TO JOIN button; requires optional message; DM approves/rejects via notification badge on their card
-- [ ] DM lobby card shows a badge with pending join-request count; clicking opens inline approval panel (username, avatar, timestamp, message)
+- [x] DM lobby card shows a badge with pending join-request count; clicking opens inline approval panel (username, avatar, timestamp, message)
 - [ ] Non-member + PRIVATE campaign without active watchable session → dimmed card, lock icon, no action (no invite link = no entry)
 - [ ] Full user + campaign with spectators enabled + active session with DM/players present → WATCH button (applies to both PUBLIC and PRIVATE campaigns; no invite link required)
 - [x] Players can join via invite link or code
@@ -364,6 +364,12 @@ Evidence snapshot (2026-05-20 - Part 2):
 - Error handling migration complete for campaign operations: all validation/save errors now surface via toast notifications instead of inline error states.
 - Session lobby workspace panel layout refined with CSS grid and flex adjustments to maintain full-height viewport without overflow leakage to document scroll.
 - Campaign info panel now supports edit mode with textarea for description (height increased for better usability) and poster image upload with validation (type check, size limit ≤2MB).
+
+Evidence snapshot (2026-05-30):
+
+- DM lobby cards now expose an inline join-request review panel from the pending badge, with requester avatar, username, requested-at timestamp, optional message, and approve/reject actions directly in the lobby card surface.
+- Added a DM-only pending-request read endpoint (`GET /api/campaigns/:id/join-request`) so the lobby panel reads authoritative request data instead of relying on stale badge counts.
+- Frontend lobby refresh now treats `CAMPAIGN:JOIN_REQUEST_RECEIVED` and `CAMPAIGN:JOIN_REQUEST_RESOLVED` as campaign-list invalidation signals so badge counts reconcile without a manual reload.
 
 ---
 

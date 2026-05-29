@@ -1,5 +1,5 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
-import { type CampaignSummary } from '@/types/session/campaign'
+import { type CampaignJoinRequestSummary, type CampaignSummary } from '@/types/session/campaign'
 import type { LobbyConnectionStatus, LobbyStats } from '@/types/session/lobby'
 import { CampaignCard } from './LobbyView.CampaignCard'
 import { LobbyToolbar } from '@/components/workspaces/shared/toolbar/LobbyToolbar'
@@ -25,6 +25,14 @@ type LobbyViewProps = {
   onError: (message: string) => void
   onJoinRequest: (campaign: CampaignSummary) => void
   onWatchCampaign: (campaign: CampaignSummary) => void
+  onLoadPendingJoinRequests: (
+    campaignId: CampaignSummary['id']
+  ) => Promise<CampaignJoinRequestSummary[]>
+  onResolveJoinRequest: (
+    campaignId: CampaignSummary['id'],
+    requestId: CampaignJoinRequestSummary['id'],
+    resolution: 'APPROVED' | 'REJECTED'
+  ) => Promise<void>
 }
 
 export function LobbyView(props: LobbyViewProps) {
@@ -167,6 +175,8 @@ export function LobbyView(props: LobbyViewProps) {
                         onEnterCampaign={props.onEnterCampaign}
                         onJoinRequest={props.onJoinRequest}
                         onWatchCampaign={props.onWatchCampaign}
+                        onLoadPendingJoinRequests={props.onLoadPendingJoinRequests}
+                        onResolveJoinRequest={props.onResolveJoinRequest}
                         onError={props.onError}
                       />
                     ))}
@@ -206,6 +216,8 @@ export function LobbyView(props: LobbyViewProps) {
                           onEnterCampaign={props.onEnterCampaign}
                           onJoinRequest={props.onJoinRequest}
                           onWatchCampaign={props.onWatchCampaign}
+                          onLoadPendingJoinRequests={props.onLoadPendingJoinRequests}
+                          onResolveJoinRequest={props.onResolveJoinRequest}
                           onError={props.onError}
                         />
                       ))}

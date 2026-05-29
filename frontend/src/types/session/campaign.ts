@@ -38,6 +38,16 @@ export interface CampaignSummary {
   isMember?: boolean
 }
 
+export interface CampaignJoinRequestSummary {
+  id: UUID
+  userId: UUID
+  username: string
+  displayName: string
+  avatarUrl: string | null
+  message: string | null
+  requestedAt: number | string
+}
+
 export type CampaignMembershipRole = CampaignSummary['memberRole']
 
 export type CampaignSettingsHomeTab = 'home' | 'notes' | 'journal'
