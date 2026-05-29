@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { Slider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
@@ -106,6 +106,8 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
   const [isSaving, setIsSaving] = useState(false)
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now())
   const [isSpectatorsExpanded, setIsSpectatorsExpanded] = useState(false)
+  const durationMin = 60
+  const durationMax = 720
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTimeMs(Date.now()), 1000)
@@ -126,6 +128,11 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
     return 'default'
   }
   const timerColor = getTimerColor()
+  const defaultDurationMarkerPercent =
+    ((Math.min(durationMax, Math.max(durationMin, props.defaultSessionDurationMinutes)) -
+      durationMin) /
+      (durationMax - durationMin)) *
+    100
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -207,18 +214,20 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
         </label>
         <Slider
           id="campaign-session-settings-duration"
-          className="session-slider"
+          className="session-slider csp-session-duration-slider"
           aria-labelledby="label-session-duration"
-          min={60}
-          max={720}
+          style={
+            {
+              '--csp-default-marker-position': `${defaultDurationMarkerPercent}%`,
+            } as CSSProperties
+          }
+          min={durationMin}
+          max={durationMax}
           step={15}
           value={props.plannedDurationMinutes}
           onValueChange={(nextValue) => props.onPlannedDurationMinutesChange(nextValue)}
           disabled={disabledBase}
         />
-        <p className="csp-slider-hint">
-          Campaign default: {formatSessionDuration(props.defaultSessionDurationMinutes)}
-        </p>
 
         {policy && (
           <>
@@ -280,19 +289,19 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
             aria-expanded={isSpectatorsExpanded}
             onClick={() => setIsSpectatorsExpanded((v) => !v)}
           >
-            <span className="csp-card-collapsible-title-group">
+            <h5 className="crbs-heading csp-card-heading csp-card-heading--inline">Spectators</h5>
+            <span className="csp-card-collapsible-header-right">
+              <span
+                className={`csp-status-pill ${policy.settingsSpectatorsEnabled ? 'csp-status-pill--on' : 'csp-status-pill--off'}`}
+              >
+                {policy.settingsSpectatorsEnabled ? 'ON' : 'OFF'}
+              </span>
               <span
                 className="material-symbols-outlined csp-card-collapsible-chevron"
                 aria-hidden="true"
               >
                 {isSpectatorsExpanded ? 'expand_more' : 'chevron_right'}
               </span>
-              <h5 className="crbs-heading csp-card-heading csp-card-heading--inline">Spectators</h5>
-            </span>
-            <span
-              className={`csp-status-pill ${policy.settingsSpectatorsEnabled ? 'csp-status-pill--on' : 'csp-status-pill--off'}`}
-            >
-              {policy.settingsSpectatorsEnabled ? 'ON' : 'OFF'}
             </span>
           </button>
 

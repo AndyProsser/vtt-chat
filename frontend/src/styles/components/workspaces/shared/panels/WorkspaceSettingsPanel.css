@@ -425,19 +425,33 @@
 .csp-single-col {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.csp-slider-hint {
-  margin: 0.25rem 0 0;
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-  font-style: italic;
+.csp-session-duration-slider {
+  position: relative;
 }
 
-/* ── Collapsible card ────────────────────────────────────────────────── */
+.csp-session-duration-slider::after {
+  content: '';
+  position: absolute;
+  left: var(--csp-default-marker-position, 50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-muted) 80%, white 20%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-surface) 65%, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ── Collapsible (card-styled, matches Session card) ─────────────────── */
 .csp-card--collapsible {
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .csp-card-collapsible-header {
@@ -446,7 +460,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.6rem 0.8rem;
+  /* Match .csp-card inner horizontal padding so heading underline aligns with card edge */
+  padding: 0.45rem 0;
   background: transparent;
   border: none;
   border-radius: inherit;
@@ -457,7 +472,7 @@
 }
 
 .csp-card-collapsible-header:hover {
-  background: var(--color-surface-raised);
+  box-shadow: none !important;
 }
 
 .csp-card-collapsible-header:focus-visible {
@@ -465,10 +480,10 @@
   outline-offset: -2px;
 }
 
-.csp-card-collapsible-title-group {
+.csp-card-collapsible-header-right {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .csp-card-collapsible-chevron {
@@ -476,22 +491,25 @@
   color: var(--color-text-muted);
 }
 
-.csp-card-heading--inline {
+/* Heading inside collapsible header: drop its own underline/padding (header carries it) */
+.csp-card-heading.csp-card-heading--inline {
   margin: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  width: auto;
 }
 
 .csp-card-collapsible-body {
-  padding: 0 0.8rem 0.8rem;
   border-top: 1px solid var(--color-border-soft);
-  padding-top: 0.6rem;
+  padding: 0.6rem 0;
 }
 
 /* ── ON/OFF status pill ──────────────────────────────────────────────── */
 .csp-status-pill {
   display: inline-flex;
   align-items: center;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.7rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   border-radius: 999px;
