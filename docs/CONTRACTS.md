@@ -93,7 +93,7 @@ Party presence status contract:
 
 - PARTY rows use canonical campaign-context labels: `HERE`, `AWAY`, `LOBBY`, `NOT HERE`, `OFFLINE`.
 - `HERE` means runtime-connected in the same campaign session.
-- `AWAY` maps to runtime presence `IDLE` in the same campaign session.
+- `AWAY` maps to runtime presence `IDLE` only while the selected runtime session is live (`ACTIVE`/`PAUSED`/`COOLDOWN`).
 - `LOBBY` means connected to platform transport but not runtime-bound.
 - `NOT HERE` means runtime-connected in another campaign context.
 - `OFFLINE` means no active runtime/lobby transport presence detected.

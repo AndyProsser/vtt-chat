@@ -446,6 +446,8 @@ describe('roomSlice', () => {
       })
       useStore.getState().handleUserJoined(joinEvent)
 
+      const previousRoomMembersRef = useStore.getState().roomMembers[ROOM_ID_1]
+
       const event = makeEvent('PRESENCE:USER_GHOST_MODE_CHANGED', SESSION_A, {
         roomId: ROOM_ID_1,
         userId: USER_ID_1,
@@ -455,6 +457,7 @@ describe('roomSlice', () => {
 
       useStore.getState().handlePresenceGhostModeChanged(event)
       expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.ghost).toBe(true)
+      expect(useStore.getState().roomMembers[ROOM_ID_1]).toBe(previousRoomMembersRef)
     })
 
     it('hydrates previousGroupId from presence payloads', () => {

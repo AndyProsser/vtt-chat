@@ -5,7 +5,6 @@ import { ParticipantDeviceList } from './ParticipantDeviceList'
 import { PresenceIndicator } from './PresenceIndicator'
 import { MicMutedIndicator } from './MicMutedIndicator'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
-import { useStore } from '@/state/store'
 
 export interface GroupMemberProfileCardParticipant {
   userId: UUID
@@ -20,7 +19,7 @@ export interface GroupMemberProfileCardParticipant {
 
 interface GroupMemberProfileCardProps {
   /**
-   * Per-user presence wiring. Mute, ghost and presence-dot leaves subscribe
+   * Per-user presence wiring. Mute and presence-dot leaves subscribe
    * directly to per-user store bits using these identifiers — so a mute or
    * presence flip never re-renders the whole profile card or its parent.
    */
@@ -51,14 +50,10 @@ export function GroupMemberProfileCard({
 }: GroupMemberProfileCardProps) {
   const displayName = getDisplayName(member)
 
-  // Subscribe to mute and ghost bits locally for the status pills at the
-  // bottom of the card. These are primitive boolean selectors so the card
-  // re-renders only when THIS user's mute or ghost bit flips, never on any
-  // other user's changes.
+  // Subscribe to mute bit locally for its status pill.
+  // PresenceIndicator handles presence + ghost as a separate leaf in the
+  // title row so ghost flips do not invalidate this profile card subtree.
   const isMuted = useIsUserMuted(sessionId, member.userId, isSelf)
-  const isGhost = useStore((state) =>
-    Boolean(state.sessionPresence[sessionId]?.[member.userId]?.ghost)
-  )
 
   const avatarVisual = (
     <>
@@ -155,18 +150,7 @@ export function GroupMemberProfileCard({
               {STATUS_PILL_LABELS.muted}
             </span>
           ) : null}
-          {isGhost ? (
-            <span className="room-selector-status-pill ghost">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                visibility_off
-              </span>
-              Ghost Mode
-            </span>
-          ) : null}
         </div>
-        {/* GhostIndicator mounted invisibly is unnecessary — we already subscribe
-            to ghost above to render the pill. Avatar's ghost badge is on the
-            AvatarOverlay tree, not here. */}
       </div>
     </div>
   )

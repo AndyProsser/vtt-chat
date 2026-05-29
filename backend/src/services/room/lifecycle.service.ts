@@ -206,11 +206,7 @@ export async function applySessionStateRoomTransition(params: {
     params.nextState === SessionState.COOLDOWN
   const targetRoom = toMainRoom ? mainRoom : greenRoom
   const targetState =
-    params.nextState === SessionState.ENDED
-      ? PresenceState.OFFLINE
-      : toMainRoom
-        ? PresenceState.ONLINE
-        : PresenceState.IDLE
+    params.nextState === SessionState.ENDED ? PresenceState.OFFLINE : PresenceState.ONLINE
 
   const presence = await getSessionPresence(params.sessionId)
   const transitionUsers = new Map<UUID, { id: UUID; username: string }>()

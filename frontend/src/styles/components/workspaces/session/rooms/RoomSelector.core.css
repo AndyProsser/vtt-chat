@@ -700,6 +700,10 @@
   background: color-mix(in srgb, var(--color-error, #ef4444) 88%, #ffffff 12%);
 }
 
+.room-selector-presence-dot[data-state='ghost'] .room-selector-presence-dot__inner {
+  background: color-mix(in srgb, var(--color-text-secondary) 88%, #ffffff 12%);
+}
+
 .room-selector-profile__avatar {
   position: relative;
   width: 3rem;
@@ -963,12 +967,6 @@
   border-color: color-mix(in srgb, var(--color-error, #ef4444) 44%, var(--color-border-soft));
   color: color-mix(in srgb, var(--color-error, #ef4444) 72%, var(--color-text-primary));
   background: color-mix(in srgb, var(--color-error, #ef4444) 12%, transparent);
-}
-
-.room-selector-status-pill.ghost {
-  border-color: color-mix(in srgb, var(--color-text-secondary) 44%, var(--color-border-soft));
-  color: color-mix(in srgb, var(--color-text-secondary) 86%, #f8fafc 14%);
-  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
 }
 
 .room-selector-status-pill.condition {

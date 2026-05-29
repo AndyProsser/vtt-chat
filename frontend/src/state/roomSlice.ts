@@ -619,59 +619,10 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     const roomId = payload.roomId || existingPresence?.primaryRoomId
     const nextGhostMode = payload.ghostMode || false
 
-    set((state) => {
-      if (roomId) {
-        const updated = replaceMemberInRoom(state.roomMembers, roomId, payload.userId, (member) => {
-          if (member.ghost === nextGhostMode) {
-            return member
-          }
-
-          return {
-            ...member,
-            ghost: nextGhostMode,
-          }
-        })
-
-        if (updated) {
-          return {
-            roomMembers: updated,
-          }
-        }
-      }
-
-      let nextRoomMembers: Record<UUID, RoomUser[]> | null = null
-      for (const [memberRoomId, members] of Object.entries(state.roomMembers)) {
-        const memberIndex = members.findIndex((member) => member.userId === payload.userId)
-        if (memberIndex === -1) {
-          continue
-        }
-
-        const currentMember = members[memberIndex]
-        if (currentMember.ghost === nextGhostMode) {
-          return state
-        }
-
-        const nextMembersForRoom = members.slice()
-        nextMembersForRoom[memberIndex] = {
-          ...currentMember,
-          ghost: nextGhostMode,
-        }
-
-        nextRoomMembers = {
-          ...state.roomMembers,
-          [memberRoomId as UUID]: nextMembersForRoom,
-        }
-        break
-      }
-
-      if (!nextRoomMembers) {
-        return state
-      }
-
-      return {
-        roomMembers: nextRoomMembers,
-      }
-    })
+    // Ghost is a high-frequency transient bit. Keep it out of roomMembers
+    // projections so list/card trees are not invalidated by ghost flips.
+    // Leaf components (GhostIndicator, PresenceIndicator) subscribe directly to
+    // sessionPresence[sessionId][userId].ghost.
 
     get().applySessionPresenceStateChange({
       sessionId: event.sessionId,
@@ -680,7 +631,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       roomId: roomId || undefined,
       state: existingPresence?.state || PresenceState.IDLE,
       changedAt,
-      ghost: payload.ghostMode || false,
+      ghost: nextGhostMode,
       previousGroupId: payload.previousGroupId || existingPresence?.previousGroupId,
     })
   },
