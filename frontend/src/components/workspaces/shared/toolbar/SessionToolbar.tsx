@@ -25,6 +25,7 @@ interface SessionToolbarProps {
   sessionId: UUID
   sessionState: SessionState
   cooldownDurationMs?: number
+  isTransitioningSession?: boolean
   canStartSession: boolean
   canPauseSession: boolean
   canStopSession: boolean
@@ -53,6 +54,7 @@ export function SessionToolbar({
   sessionId,
   sessionState,
   cooldownDurationMs,
+  isTransitioningSession = false,
   canStartSession,
   canPauseSession,
   canStopSession,
@@ -136,6 +138,7 @@ export function SessionToolbar({
           type="button"
           onClick={onStartSession}
           className="session-toolbar__action session-toolbar__action--start"
+          disabled={isTransitioningSession}
         >
           <Icon name="play" />
           <span>Start</span>
@@ -204,6 +207,7 @@ export function SessionToolbar({
                   onClick={onStopSession}
                   className="session-toolbar__split-btn session-toolbar__split-btn--stop"
                   aria-label="End session"
+                  disabled={isTransitioningSession}
                 >
                   <Icon name="stop" />
                 </button>
@@ -224,6 +228,7 @@ export function SessionToolbar({
                   onClick={onPauseSession}
                   className="session-toolbar__split-btn session-toolbar__split-btn--pause"
                   aria-label={pauseLabel}
+                  disabled={isTransitioningSession}
                 >
                   <Icon name={pauseIcon} />
                 </button>

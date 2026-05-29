@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { SessionState, isGreenroomSessionState, type UUID } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
@@ -70,10 +70,18 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
     setExitUpgradeLoading,
     setError,
   } = params
+  const pendingTransitionBySessionIdRef = useRef<Map<UUID, SessionState>>(new Map())
+  const [activeTransitionSessionId, setActiveTransitionSessionId] = useState<UUID | null>(null)
 
   const handleTransitionSession = useCallback(
     async (sessionId: UUID, state: SessionState) => {
+      if (pendingTransitionBySessionIdRef.current.has(sessionId)) {
+        return
+      }
+
       setError(null)
+      pendingTransitionBySessionIdRef.current.set(sessionId, state)
+      setActiveTransitionSessionId(sessionId)
 
       try {
         const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${sessionId}/state`, {
@@ -123,6 +131,9 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
+      } finally {
+        pendingTransitionBySessionIdRef.current.delete(sessionId)
+        setActiveTransitionSessionId((current) => (current === sessionId ? null : current))
       }
     },
     [
@@ -455,6 +466,7 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
   )
 
   return {
+    activeTransitionSessionId,
     handleToggleBroadcastMode,
     handleStartSession,
     handlePauseSession,

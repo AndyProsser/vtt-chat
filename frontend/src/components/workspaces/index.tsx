@@ -662,6 +662,7 @@ export function WorkspaceInitialization({
   })
 
   const {
+    activeTransitionSessionId,
     handleToggleBroadcastMode,
     handleStartSession,
     handlePauseSession,
@@ -957,6 +958,7 @@ export function WorkspaceInitialization({
     currentSession,
     currentPauseStats,
     configuredCooldownDurationMs,
+    isTransitioningSession: activeTransitionSessionId === currentSession?.id,
     canStartFromGreenroom,
     canPauseFromActive,
     canStopFromActive,

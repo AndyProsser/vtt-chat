@@ -23,6 +23,7 @@ export type SessionWorkspaceProps = {
     pauseCount: number
   }
   configuredCooldownDurationMs: number
+  isTransitioningSession: boolean
   canStartFromGreenroom: boolean
   canPauseFromActive: boolean
   canStopFromActive: boolean

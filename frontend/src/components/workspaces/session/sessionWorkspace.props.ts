@@ -7,6 +7,7 @@ type BuildSessionWorkspacePropsParams = {
   currentSession: ComponentProps<typeof SessionWorkspace>['currentSession']
   currentPauseStats: ComponentProps<typeof SessionWorkspace>['currentPauseStats']
   configuredCooldownDurationMs: number
+  isTransitioningSession: boolean
   canStartFromGreenroom: boolean
   canPauseFromActive: boolean
   canStopFromActive: boolean
@@ -84,6 +85,7 @@ export function buildSessionWorkspaceProps(
     currentSession: params.currentSession,
     currentPauseStats: params.currentPauseStats,
     configuredCooldownDurationMs: params.configuredCooldownDurationMs,
+    isTransitioningSession: params.isTransitioningSession,
     canStartFromGreenroom: params.canStartFromGreenroom,
     canPauseFromActive: params.canPauseFromActive,
     canStopFromActive: params.canStopFromActive,

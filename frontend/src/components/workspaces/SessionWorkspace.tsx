@@ -51,6 +51,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             sessionId={currentSession.id}
             sessionState={currentSession.state}
             cooldownDurationMs={props.configuredCooldownDurationMs}
+            isTransitioningSession={props.isTransitioningSession}
             canStartSession={props.canStartFromGreenroom}
             canPauseSession={props.canPauseFromActive}
             canStopSession={props.canStopFromActive}
