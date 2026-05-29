@@ -770,5 +770,75 @@ describe('roomSlice', () => {
         groupRoomId
       )
     })
+
+    it('preserves existing member profile fields when session transitions move users between rooms', () => {
+      const mainRoomId = 'f0000000-0000-4000-8000-000000000001' as UUID
+      const greenRoomId = 'f0000000-0000-4000-8000-000000000002' as UUID
+
+      useStore.setState((state) => ({
+        rooms: {
+          ...state.rooms,
+          [SESSION_A]: {
+            [mainRoomId]: {
+              id: mainRoomId,
+              sessionId: SESSION_A,
+              name: 'Main Hall',
+              type: 'MAIN' as RoomType,
+              createdAt: NOW,
+              createdBy: USER_ID_1,
+            },
+            [greenRoomId]: {
+              id: greenRoomId,
+              sessionId: SESSION_A,
+              name: 'Green Room',
+              type: 'GROUP' as RoomType,
+              createdAt: NOW,
+              createdBy: USER_ID_1,
+            },
+          },
+        },
+        roomMembers: {
+          [mainRoomId]: [
+            {
+              userId: USER_ID_1,
+              username: 'dev_mock_nyx',
+              playerName: 'Magnus Gearwright',
+              characterName: 'Magnus Gearwright',
+              characterClass: 'Artificer',
+              characterRace: 'Rock Gnome',
+              level: 10,
+              presenceState: 'ONLINE',
+              joinedAt: NOW,
+            },
+          ] as any,
+        },
+      }))
+
+      const event = makeEvent('SESSION:ROOM_TRANSITION_APPLIED', SESSION_A, {
+        previousState: 'ACTIVE',
+        nextState: 'IDLE',
+        movedUsers: 1,
+        targetRoomId: greenRoomId,
+        targetRoomName: 'Green Room',
+        targetState: 'ONLINE',
+        mainRoom: { id: mainRoomId, name: 'Main Hall', roomType: 'MAIN' },
+        greenRoom: { id: greenRoomId, name: 'Green Room', roomType: 'GROUP' },
+        users: [{ userId: USER_ID_1, username: 'dev_mock_nyx', roomId: greenRoomId }],
+      })
+
+      useStore.getState().handleSessionRoomTransitionApplied(event)
+
+      expect(useStore.getState().roomMembers[greenRoomId]).toEqual([
+        expect.objectContaining({
+          userId: USER_ID_1,
+          username: 'dev_mock_nyx',
+          playerName: 'Magnus Gearwright',
+          characterName: 'Magnus Gearwright',
+          characterClass: 'Artificer',
+          characterRace: 'Rock Gnome',
+          level: 10,
+        }),
+      ])
+    })
   })
 })

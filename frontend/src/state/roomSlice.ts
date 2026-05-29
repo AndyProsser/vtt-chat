@@ -787,6 +787,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
 
     set((state) => {
       const existingRooms = state.rooms[event.sessionId] || {}
+      const previousMembersByUserId = new Map<UUID, RoomUser>()
       const upsertedRooms: Record<UUID, Room> = {
         ...existingRooms,
         [payload.mainRoom.id]: {
@@ -817,6 +818,12 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
           continue
         }
 
+        for (const member of members) {
+          if (movedUserIds.has(member.userId) && !previousMembersByUserId.has(member.userId)) {
+            previousMembersByUserId.set(member.userId, member)
+          }
+        }
+
         const filteredMembers = members.filter((member) => !movedUserIds.has(member.userId))
         if (filteredMembers.length !== members.length) {
           nextMembers[roomId] = filteredMembers
@@ -826,6 +833,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       for (const user of payload.users) {
         const memberRoomId = user.roomId || payload.targetRoomId
         const existingPresence = presenceBySession[user.userId]
+        const previousMember = previousMembersByUserId.get(user.userId)
         const existingTargetMembers = nextMembers[memberRoomId] || []
 
         if (existingTargetMembers.some((member) => member.userId === user.userId)) {
@@ -837,15 +845,16 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
           {
             userId: user.userId,
             username: user.username,
-            role: existingPresence?.role,
-            playerName: existingPresence?.playerName,
-            avatarUrl: existingPresence?.avatarUrl,
-            characterName: existingPresence?.characterName,
-            characterClass: existingPresence?.characterClass,
-            characterSubclass: existingPresence?.characterSubclass,
-            characterRace: existingPresence?.characterRace,
-            level: existingPresence?.level,
-            characterStats: existingPresence?.characterStats,
+            role: previousMember?.role ?? existingPresence?.role,
+            playerName: previousMember?.playerName ?? existingPresence?.playerName,
+            avatarUrl: previousMember?.avatarUrl ?? existingPresence?.avatarUrl,
+            characterName: previousMember?.characterName ?? existingPresence?.characterName,
+            characterClass: previousMember?.characterClass ?? existingPresence?.characterClass,
+            characterSubclass:
+              previousMember?.characterSubclass ?? existingPresence?.characterSubclass,
+            characterRace: previousMember?.characterRace ?? existingPresence?.characterRace,
+            level: previousMember?.level ?? existingPresence?.level,
+            characterStats: previousMember?.characterStats ?? existingPresence?.characterStats,
             presenceState: payload.targetState,
             ghost: payload.nextState === 'ACTIVE' ? false : existingPresence?.ghost,
             previousGroupId:

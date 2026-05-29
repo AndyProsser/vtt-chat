@@ -1,4 +1,5 @@
 import { useState, useEffect, type CSSProperties } from 'react'
+import { SessionState } from '@shared'
 import { Slider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import {
@@ -53,6 +54,12 @@ export interface CampaignSessionSettingsPanelProps {
   standalone?: boolean
   campaignPolicy?: CampaignSessionPolicyBindings
 }
+
+const SESSION_TIMER_VISIBLE_STATES = new Set<SessionState>([
+  SessionState.ACTIVE,
+  SessionState.PAUSED,
+  SessionState.COOLDOWN,
+])
 
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
 function formatSessionDuration(mins: number): string {
@@ -116,11 +123,21 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
   const durationMax = 720
 
   useEffect(() => {
+    if (
+      !props.sessionStartedAt ||
+      !SESSION_TIMER_VISIBLE_STATES.has(props.sessionStateLabel as SessionState)
+    ) {
+      return
+    }
+
     const interval = setInterval(() => setCurrentTimeMs(Date.now()), 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [props.sessionStartedAt, props.sessionStateLabel])
 
   const sessionStartedAtMs = props.sessionStartedAt ? props.sessionStartedAt : 0
+  const showSessionTimer =
+    sessionStartedAtMs > 0 &&
+    SESSION_TIMER_VISIBLE_STATES.has(props.sessionStateLabel as SessionState)
   const elapsed =
     sessionStartedAtMs > 0 ? Math.floor((currentTimeMs - sessionStartedAtMs) / 1000) : 0
   const durationSecs = props.plannedDurationMinutes * 60
@@ -174,7 +191,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
 
   const content = (
     <div className="session-campaign-settings-panel session-campaign-settings-workspace-root csp-single-col">
-      {sessionStartedAtMs > 0 && (
+      {showSessionTimer && (
         <div className={`csp-card csp-card--timer csp-card--timer-${timerColor}`}>
           <h5 className="crbs-heading csp-card-heading">Session Timer</h5>
           <div className="csp-timer-display">
