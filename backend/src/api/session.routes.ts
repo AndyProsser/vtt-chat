@@ -1243,6 +1243,9 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           users: transition.users.map((member) => ({
             userId: member.id,
             username: member.username,
+            roomId: member.roomId,
+            roomName: member.roomName,
+            previousGroupId: member.previousGroupId || null,
           })),
         },
       })
@@ -1597,6 +1600,9 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
           users: transition.users.map((member) => ({
             userId: member.id,
             username: member.username,
+            roomId: member.roomId,
+            roomName: member.roomName,
+            previousGroupId: member.previousGroupId || null,
           })),
         },
       })

@@ -756,14 +756,18 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
 
       for (const user of users) {
         const existingPresence = nextPresenceBySession[user.userId]
+        const nextRoomId = user.roomId || targetRoomId
         nextPresenceBySession[user.userId] = {
           ...existingPresence,
           userId: user.userId,
           username: user.username,
           state: targetState,
-          primaryRoomId: targetRoomId,
+          primaryRoomId: nextRoomId,
           ghost: false,
-          previousGroupId: existingPresence?.previousGroupId,
+          previousGroupId:
+            user.previousGroupId !== undefined
+              ? user.previousGroupId || undefined
+              : existingPresence?.previousGroupId,
           lastSeenAt: changedAt,
         }
       }

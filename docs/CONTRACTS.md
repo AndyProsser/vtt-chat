@@ -70,8 +70,11 @@ Examples:
 Session state controls where users are assigned, not who is campaign-authorized to converse.
 
 - Session transitions may remap `primaryRoomId` according to lifecycle rules (for example, move to `MAIN`, greenroom, or private whisper handling).
+- `PAUSED` is a temporary staging state: when a pause moves users to `MAIN`, backend must preserve each participant's last valid non-greenroom room (`previousGroupId`), including the room remembered before Whisper.
+- Resume from `PAUSED` must restore each participant to that preserved room when it still exists; if the stored room is missing or invalid, fail back to `MAIN`.
 - Room reassignment must preserve participant identity continuity for transport/presence reconciliation.
 - Room reassignment events (`ROOM:SESSION_TRANSITION_APPLIED`, `ROOM:USER_JOINED`, `ROOM:USER_LEFT`) are topology/routing contracts and must not encode campaign authorization decisions.
+- `ROOM:SESSION_TRANSITION_APPLIED` may carry per-user `roomId` targets when a bulk transition restores different users to different rooms; clients must apply those per-user targets instead of assuming one shared destination.
 - Campaign authorization decisions remain upstream and explicit in API validation and permission checks.
 
 ### Audio Runtime Persistence and Session Policy Contract

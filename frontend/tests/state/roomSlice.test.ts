@@ -697,5 +697,78 @@ describe('roomSlice', () => {
       expect(notice!.movedUsers).toBe(2)
       expect(notice!.nextState).toBe('ACTIVE')
     })
+
+    it('respects per-user room targets when resuming from pause', () => {
+      const mainRoomId = 'f0000000-0000-4000-8000-000000000001' as UUID
+      const greenRoomId = 'f0000000-0000-4000-8000-000000000002' as UUID
+      const groupRoomId = 'f0000000-0000-4000-8000-000000000003' as UUID
+
+      useStore.setState((state) => ({
+        rooms: {
+          ...state.rooms,
+          [SESSION_A]: {
+            [groupRoomId]: {
+              id: groupRoomId,
+              sessionId: SESSION_A,
+              name: 'Scouts',
+              type: 'GROUP' as RoomType,
+              createdAt: NOW,
+              createdBy: USER_ID_1,
+            },
+          },
+        },
+        roomMembers: {
+          [mainRoomId]: [
+            {
+              userId: USER_ID_1,
+              username: 'alice',
+              presenceState: 'ONLINE',
+              joinedAt: NOW,
+            },
+            {
+              userId: USER_ID_2,
+              username: 'bob',
+              presenceState: 'ONLINE',
+              joinedAt: NOW,
+            },
+          ] as any,
+        },
+      }))
+
+      const event = makeEvent('SESSION:ROOM_TRANSITION_APPLIED', SESSION_A, {
+        previousState: 'PAUSED',
+        nextState: 'ACTIVE',
+        movedUsers: 2,
+        targetRoomId: mainRoomId,
+        targetRoomName: 'Main',
+        targetState: 'ONLINE',
+        mainRoom: { id: mainRoomId, name: 'Main Hall', roomType: 'MAIN' },
+        greenRoom: { id: greenRoomId, name: 'Green Room', roomType: 'GROUP' },
+        users: [
+          {
+            userId: USER_ID_1,
+            username: 'alice',
+            roomId: groupRoomId,
+            previousGroupId: groupRoomId,
+          },
+          { userId: USER_ID_2, username: 'bob', roomId: mainRoomId },
+        ],
+      })
+
+      useStore.getState().handleSessionRoomTransitionApplied(event)
+
+      expect(useStore.getState().roomMembers[groupRoomId]?.map((member) => member.userId)).toEqual([
+        USER_ID_1,
+      ])
+      expect(useStore.getState().roomMembers[mainRoomId]?.map((member) => member.userId)).toEqual([
+        USER_ID_2,
+      ])
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.primaryRoomId).toBe(
+        groupRoomId
+      )
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.previousGroupId).toBe(
+        groupRoomId
+      )
+    })
   })
 })

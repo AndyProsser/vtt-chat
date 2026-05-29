@@ -119,10 +119,13 @@ export class SessionDisconnectCascadeService {
       key,
       setTimeout(() => {
         void this.enterGhostMode(context)
-      }, GHOST_ENTRY_DELAY_MS)
-    )
-
-    if (!context.isSessionConnected(context.sessionId)) {
+        users: transition.users.map((member) => ({
+          userId: member.id,
+          username: member.username,
+          roomId: member.roomId,
+          roomName: member.roomName,
+          previousGroupId: member.previousGroupId || null,
+        })),
       await this.scheduleNoConnectionsLifecycleAction(context)
     }
 

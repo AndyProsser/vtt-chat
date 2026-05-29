@@ -108,6 +108,9 @@ export interface RoomSessionTransitionApplied {
   users: Array<{
     userId: UUID
     username: string
+    roomId?: UUID
+    roomName?: string
+    previousGroupId?: UUID | null
   }>
 }
 

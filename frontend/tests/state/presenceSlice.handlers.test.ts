@@ -470,6 +470,35 @@ describe('presenceSlice', () => {
       const presence = useStore.getState().sessionPresence[SESSION_ID]?.[USER_ID_1]
       expect(presence!.previousGroupId).toBe(ROOM_ID)
     })
+
+    it('applies per-user room targets from the transition payload', () => {
+      useStore.getState().upsertSessionPresenceOnJoin({
+        sessionId: SESSION_ID,
+        userId: USER_ID_1,
+        username: 'alice',
+        roomId: ROOM_ID,
+        joinedAt: NOW,
+      })
+
+      useStore.getState().applySessionRoomTransitionPresence({
+        sessionId: SESSION_ID,
+        users: [
+          {
+            userId: USER_ID_1,
+            username: 'alice',
+            roomId: ROOM_ID_2,
+            previousGroupId: ROOM_ID_2,
+          },
+        ],
+        targetRoomId: ROOM_ID,
+        targetState: PresenceState.ONLINE,
+        changedAt: NOW + 2000,
+      })
+
+      const presence = useStore.getState().sessionPresence[SESSION_ID]?.[USER_ID_1]
+      expect(presence!.primaryRoomId).toBe(ROOM_ID_2)
+      expect(presence!.previousGroupId).toBe(ROOM_ID_2)
+    })
   })
 
   // ── applySessionPresenceDeviceSessions ───────────────────────────────────

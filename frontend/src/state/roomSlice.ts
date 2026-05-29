@@ -774,7 +774,13 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       targetState: PresenceState
       mainRoom: { id: UUID; name: string; roomType: RoomType }
       greenRoom: { id: UUID; name: string; roomType: RoomType }
-      users: Array<{ userId: UUID; username: string }>
+      users: Array<{
+        userId: UUID
+        username: string
+        roomId?: UUID
+        roomName?: string
+        previousGroupId?: UUID | null
+      }>
     }
 
     const presenceBySession = get().sessionPresence[event.sessionId] || {}
@@ -817,14 +823,18 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         }
       }
 
-      const existingTargetMembers = nextMembers[payload.targetRoomId] || []
-      const targetMemberIds = new Set(existingTargetMembers.map((member) => member.userId))
-      const appendedMembers = payload.users
-        .filter((user) => !targetMemberIds.has(user.userId))
-        .map((user) => {
-          const existingPresence = presenceBySession[user.userId]
+      for (const user of payload.users) {
+        const memberRoomId = user.roomId || payload.targetRoomId
+        const existingPresence = presenceBySession[user.userId]
+        const existingTargetMembers = nextMembers[memberRoomId] || []
 
-          return {
+        if (existingTargetMembers.some((member) => member.userId === user.userId)) {
+          continue
+        }
+
+        nextMembers[memberRoomId] = [
+          ...existingTargetMembers,
+          {
             userId: user.userId,
             username: user.username,
             role: existingPresence?.role,
@@ -838,12 +848,14 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
             characterStats: existingPresence?.characterStats,
             presenceState: payload.targetState,
             ghost: payload.nextState === 'ACTIVE' ? false : existingPresence?.ghost,
-            previousGroupId: existingPresence?.previousGroupId,
+            previousGroupId:
+              user.previousGroupId !== undefined
+                ? user.previousGroupId || undefined
+                : existingPresence?.previousGroupId,
             joinedAt: event.timestamp,
-          }
-        })
-
-      nextMembers[payload.targetRoomId] = [...existingTargetMembers, ...appendedMembers]
+          },
+        ]
+      }
 
       return {
         rooms: {

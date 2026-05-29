@@ -22,6 +22,38 @@ import {
   toStoredRoom,
 } from './shared'
 
+function isRestorablePauseRoom(room: { name: string; type: RoomType } | null | undefined): boolean {
+  if (!room) {
+    return false
+  }
+
+  return room.type !== RoomType.PRIVATE && !isGreenRoomStored({ name: room.name })
+}
+
+function resolvePausePreviousGroupId(params: {
+  currentPresence?: { primaryRoomId?: UUID; previousGroupId?: UUID }
+  currentRoom?: { id: UUID; name: string; type: RoomType }
+  roomById: Map<UUID, { id: UUID; name: string; type: RoomType }>
+}): UUID | undefined {
+  const { currentPresence, currentRoom, roomById } = params
+  if (!currentPresence) {
+    return undefined
+  }
+
+  if (currentRoom?.type === RoomType.PRIVATE) {
+    const previousRoom = currentPresence.previousGroupId
+      ? roomById.get(currentPresence.previousGroupId)
+      : undefined
+    return isRestorablePauseRoom(previousRoom) ? currentPresence.previousGroupId : undefined
+  }
+
+  if (currentPresence.primaryRoomId && currentRoom && isRestorablePauseRoom(currentRoom)) {
+    return currentPresence.primaryRoomId
+  }
+
+  return undefined
+}
+
 async function restoreCampaignRoomsForSession(params: {
   sessionId: UUID
   dmId: UUID
@@ -185,6 +217,7 @@ export async function deletePrivateRoomsForEndedSession(sessionId: UUID) {
 export async function applySessionStateRoomTransition(params: {
   sessionId: UUID
   dmId: UUID
+  previousState?: SessionState | null
   nextState: SessionState
   users: Array<{ id: UUID; username: string }>
 }) {
@@ -197,6 +230,11 @@ export async function applySessionStateRoomTransition(params: {
     await ensureSessionWhisperRoomForSession(params.sessionId, params.dmId)
   }
 
+  const rooms = await getRooms(params.sessionId)
+  const roomById = new Map(rooms.map((room) => [room.id, room]))
+  const presence = await getSessionPresence(params.sessionId)
+  const presenceByUserId = new Map(presence.map((entry) => [entry.userId, entry]))
+
   // ACTIVE and PAUSED: users move to MAIN room (live session).
   // COOLDOWN: users stay in MAIN room (post-game wind-down; OOC chat enabled).
   // All other states (ENDED, CLEANUP, IDLE): users move to greenroom.
@@ -208,8 +246,6 @@ export async function applySessionStateRoomTransition(params: {
   // Keep session members online through ENDED/CLEANUP/IDLE staging so presence
   // and speaking indicators remain live until explicit disconnect/leave flows.
   const targetState = PresenceState.ONLINE
-
-  const presence = await getSessionPresence(params.sessionId)
   const transitionUsers = new Map<UUID, { id: UUID; username: string }>()
 
   for (const user of params.users) {
@@ -225,11 +261,44 @@ export async function applySessionStateRoomTransition(params: {
     }
   }
 
+  const isResumeFromPause =
+    params.previousState === SessionState.PAUSED && params.nextState === SessionState.ACTIVE
+
   let movedUsers = 0
+  const transitionedUsers: Array<{
+    id: UUID
+    username: string
+    roomId: UUID
+    roomName: string
+    previousGroupId?: UUID
+  }> = []
+
   for (const user of transitionUsers.values()) {
+    const currentPresence = presenceByUserId.get(user.id)
+    const currentRoom = currentPresence?.primaryRoomId
+      ? roomById.get(currentPresence.primaryRoomId)
+      : undefined
+
+    const nextPreviousGroupId: UUID | null | undefined =
+      params.nextState === SessionState.PAUSED
+        ? resolvePausePreviousGroupId({
+            currentPresence,
+            currentRoom,
+            roomById,
+          })
+        : isResumeFromPause
+          ? currentPresence?.previousGroupId
+          : params.nextState === SessionState.ACTIVE
+            ? undefined
+            : null
+
+    const restoredRoom =
+      isResumeFromPause && nextPreviousGroupId ? roomById.get(nextPreviousGroupId) : undefined
+    const nextRoom = isRestorablePauseRoom(restoredRoom) ? restoredRoom : targetRoom
+
     const result = await joinRoom({
       sessionId: params.sessionId,
-      roomId: targetRoom.id,
+      roomId: nextRoom.id,
       userId: user.id,
       username: user.username,
       state: targetState,
@@ -241,23 +310,37 @@ export async function applySessionStateRoomTransition(params: {
         userId: user.id,
         username: user.username,
         state: targetState,
-        primaryRoomId: targetRoom.id,
+        primaryRoomId: nextRoom.id,
+        previousGroupId: nextPreviousGroupId,
         privateRoomId: null,
         campaignId: result.campaignId,
+      })
+      transitionedUsers.push({
+        id: user.id,
+        username: user.username,
+        roomId: nextRoom.id,
+        roomName: nextRoom.name,
+        previousGroupId: nextPreviousGroupId || undefined,
       })
       movedUsers += 1
     }
   }
+
+  const distinctTargetRoomIds = new Set(transitionedUsers.map((user) => user.roomId))
+  const primaryTargetRoom =
+    distinctTargetRoomIds.size === 1
+      ? roomById.get(transitionedUsers[0]?.roomId ?? targetRoom.id) || targetRoom
+      : targetRoom
 
   return {
     mainRoomId: mainRoom.id,
     mainRoomName: mainRoom.name,
     greenRoomId: greenRoom.id,
     greenRoomName: greenRoom.name,
-    targetRoomId: targetRoom.id,
-    targetRoomName: targetRoom.name,
+    targetRoomId: primaryTargetRoom.id,
+    targetRoomName: primaryTargetRoom.name,
     movedUsers,
-    users: [...transitionUsers.values()],
+    users: transitionedUsers,
     targetState,
   }
 }
