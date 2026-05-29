@@ -57,6 +57,35 @@ export async function resolveEffectiveSessionRole(params: {
     }
   }
 
+  // Campaign-backed sessions are campaign-authoritative for conversation access.
+  // Session membership remains required for room assignment/routing.
+  const sessionCampaign = await prisma.session.findUnique({
+    where: { id: params.sessionId },
+    select: { campaignId: true },
+  })
+
+  if (sessionCampaign?.campaignId) {
+    const campaignMembership = await prisma.campaignMembership.findUnique({
+      where: {
+        campaignId_userId: {
+          campaignId: sessionCampaign.campaignId,
+          userId: params.userId,
+        },
+      },
+      select: { role: true },
+    })
+
+    const campaignRole = campaignMembership?.role ? toEffectiveRole(campaignMembership.role) : null
+
+    if (!campaignRole) {
+      return {
+        ok: false,
+        code: 'FORBIDDEN',
+        message: 'You are not a member of this campaign',
+      }
+    }
+  }
+
   const isSessionDm = session.dmId === params.userId
   if (isSessionDm && !params.requireMembershipForDm) {
     return {

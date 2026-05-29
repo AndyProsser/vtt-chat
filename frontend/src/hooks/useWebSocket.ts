@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { EventEnvelope } from '@shared'
 import type { UUID } from '@shared'
-import { isGreenroomSessionState, SessionState } from '@shared'
+import { SessionState } from '@shared'
 import { isGreenRoomName } from '../constants/roomPresence.constants'
 import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
@@ -166,8 +166,6 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('SESSION:ENDED', (event) => {
       const store = useStore.getState()
       store.handleSessionEnded(event)
-      store.resetSessionAudioState()
-      store.clearActiveEffects()
       store.markMockSimulationExited(event.sessionId)
       store.clearMessages(event.sessionId)
     })
@@ -305,12 +303,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('ROOM:SESSION_TRANSITION_APPLIED', (event) => {
       const store = useStore.getState()
       store.handleSessionRoomTransitionApplied(event)
-      // Clear per-session audio presets when transitioning to greenroom or session end
       const payload = event.payload as { nextState?: import('@shared').SessionState | null }
-      if (isGreenroomSessionState(payload.nextState)) {
-        store.resetSessionAudioState()
-        store.clearActiveEffects()
-      }
 
       if (
         payload.nextState === SessionState.IDLE ||

@@ -45,8 +45,6 @@ type UseWorkspacesHydrationLifecycleParams = {
   replaceSessionStatsSnapshot: (sessionId: UUID, stats: ApiSessionStats) => void
   setMockTakeoverUserId: (sessionId: UUID, userId: UUID | null) => void
   restoreSessionBookendsFromHistory: (sessionId: UUID, nextRooms: RoomRecord[]) => Promise<void>
-  resetSessionAudioState: () => void
-  clearActiveEffects: () => void
   setEnvironment: (environment: {
     id: UUID
     name: string
@@ -86,8 +84,6 @@ export function useWorkspacesHydrationLifecycle(
     replaceSessionStatsSnapshot,
     setMockTakeoverUserId,
     restoreSessionBookendsFromHistory,
-    resetSessionAudioState,
-    clearActiveEffects,
     setEnvironment,
     replaceRoomEnvironmentNames,
     replaceDMOverrides,
@@ -211,9 +207,6 @@ export function useWorkspacesHydrationLifecycle(
 
         await restoreSessionBookendsFromHistory(currentSession.id, nextRooms)
 
-        resetSessionAudioState()
-        clearActiveEffects()
-
         const recoveredEnv = audioStatePayload.environment
         if (recoveredEnv) {
           setEnvironment({
@@ -270,7 +263,6 @@ export function useWorkspacesHydrationLifecycle(
     void loadPresenceAndRooms()
   }, [
     apiUrl,
-    clearActiveEffects,
     currentSession,
     fetchWithAuthGuard,
     lastHydratedSessionFingerprintRef,
@@ -279,7 +271,6 @@ export function useWorkspacesHydrationLifecycle(
     replaceRoomEnvironmentNames,
     replaceSessionStatsSnapshot,
     replaceSessionTopology,
-    resetSessionAudioState,
     restoreSessionBookendsFromHistory,
     setBroadcastState,
     setEnvironment,

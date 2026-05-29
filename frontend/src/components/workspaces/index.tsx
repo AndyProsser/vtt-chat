@@ -269,8 +269,6 @@ export function WorkspaceInitialization({
   const currentEnvironment = useStore((state) => state.currentEnvironment)
   const setEnvironment = useStore((state) => state.setEnvironment)
   const clearEnvironment = useStore((state) => state.clearEnvironment)
-  const resetSessionAudioState = useStore((state) => state.resetSessionAudioState)
-  const clearActiveEffects = useStore((state) => state.clearActiveEffects)
   const setPrivateRoomCleanMode = useStore((state) => state.setPrivateRoomCleanMode)
   const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
   const replaceRoomEnvironmentNames = useStore((state) => state.replaceRoomEnvironmentNames)
@@ -599,8 +597,6 @@ export function WorkspaceInitialization({
     replaceSessionStatsSnapshot,
     setMockTakeoverUserId,
     restoreSessionBookendsFromHistory,
-    resetSessionAudioState,
-    clearActiveEffects,
     setEnvironment,
     replaceRoomEnvironmentNames,
     replaceDMOverrides,
