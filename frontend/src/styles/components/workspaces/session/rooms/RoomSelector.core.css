@@ -67,8 +67,8 @@
 }
 
 .room-selector-header__create-wrap {
-  position: relative;
-  isolation: isolate;
+  position: static;
+  isolation: auto;
 }
 
 .room-selector-header__end-whisper {

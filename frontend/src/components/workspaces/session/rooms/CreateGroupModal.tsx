@@ -18,8 +18,9 @@ export function CreateGroupModal({ onClose, onCreateGroup }: CreateGroupModalPro
     position: 'absolute',
     top: 'calc(100% + 0.45rem)',
     bottom: 'auto',
-    right: 0,
-    left: 'auto',
+    left: '50%',
+    right: 'auto',
+    transform: 'translateX(-50%)',
     width: 'min(16rem, calc(100vw - 2rem))',
     zIndex: 1300,
   }
