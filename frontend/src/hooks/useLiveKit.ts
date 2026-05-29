@@ -101,6 +101,7 @@ export function useLiveKit(
   roomId: string,
   options: UseLiveKitOptions = {}
 ): UseLiveKitReturn {
+  const roomListenerDiagEnabled = import.meta.env.DEV
   const { onTrackSubscribed, onTrackUnsubscribed, tokenChannel = 'room' } = options
   const connectionKey = buildLiveKitConnectionKey(sessionId, roomId, tokenChannel)
   const [connectionState, setConnectionState] = useState<ConnectionState>(
@@ -134,6 +135,7 @@ export function useLiveKit(
   const hasLocalPublicationRef = useRef(false)
   const trackSubscriptionsRef = useRef<TrackSubscription[]>([])
   const teardownRoomListenersRef = useRef<(() => void) | null>(null)
+  const roomListenerCountsRef = useRef<Record<string, number>>({})
   const remoteAudioElementsRef = useRef(new Map<string, HTMLMediaElement>())
   const onTrackSubscribedRef = useRef(onTrackSubscribed)
   const onTrackUnsubscribedRef = useRef(onTrackUnsubscribed)
@@ -272,6 +274,57 @@ export function useLiveKit(
     remoteAudioElementsRef.current.forEach((element) => element.remove())
     remoteAudioElementsRef.current.clear()
   }, [])
+
+  const incrementRoomListenerCount = useCallback(
+    (event: RoomEvent) => {
+      if (!roomListenerDiagEnabled) {
+        return
+      }
+
+      const key = String(event)
+      const next = roomListenerCountsRef.current[key] || 0
+      roomListenerCountsRef.current[key] = next + 1
+    },
+    [roomListenerDiagEnabled]
+  )
+
+  const decrementRoomListenerCount = useCallback(
+    (event: RoomEvent) => {
+      if (!roomListenerDiagEnabled) {
+        return
+      }
+
+      const key = String(event)
+      const current = roomListenerCountsRef.current[key] || 0
+      const next = Math.max(0, current - 1)
+      if (next === 0) {
+        delete roomListenerCountsRef.current[key]
+      } else {
+        roomListenerCountsRef.current[key] = next
+      }
+    },
+    [roomListenerDiagEnabled]
+  )
+
+  const logRoomListenerSnapshot = useCallback(
+    (phase: 'register' | 'teardown') => {
+      if (!roomListenerDiagEnabled) {
+        return
+      }
+
+      const counts = roomListenerCountsRef.current
+      const total = Object.values(counts).reduce((sum, count) => sum + count, 0)
+      logger.debug('useLiveKit', 'Room listener counters', {
+        phase,
+        sessionId,
+        roomId,
+        tokenChannel,
+        total,
+        counts,
+      })
+    },
+    [roomId, roomListenerDiagEnabled, sessionId, tokenChannel]
+  )
 
   const teardownRoomListeners = useCallback(() => {
     if (teardownRoomListenersRef.current) {
@@ -677,31 +730,57 @@ export function useLiveKit(
 
       const roomWithListeners = nextRoom
       roomWithListeners.on(RoomEvent.Connected, handleConnected)
+      incrementRoomListenerCount(RoomEvent.Connected)
       roomWithListeners.on(RoomEvent.ConnectionStateChanged, handleConnectionFlags)
+      incrementRoomListenerCount(RoomEvent.ConnectionStateChanged)
       roomWithListeners.on(RoomEvent.Reconnecting, handleConnectionFlags)
+      incrementRoomListenerCount(RoomEvent.Reconnecting)
       roomWithListeners.on(RoomEvent.SignalReconnecting, handleConnectionFlags)
+      incrementRoomListenerCount(RoomEvent.SignalReconnecting)
       roomWithListeners.on(RoomEvent.Reconnected, handleConnectionFlags)
+      incrementRoomListenerCount(RoomEvent.Reconnected)
       roomWithListeners.on(RoomEvent.Disconnected, handleDisconnected)
+      incrementRoomListenerCount(RoomEvent.Disconnected)
       roomWithListeners.on(RoomEvent.LocalTrackPublished, handleLocalTrackPublished)
+      incrementRoomListenerCount(RoomEvent.LocalTrackPublished)
       roomWithListeners.on(RoomEvent.LocalTrackUnpublished, handleLocalTrackUnpublished)
+      incrementRoomListenerCount(RoomEvent.LocalTrackUnpublished)
       roomWithListeners.on(RoomEvent.ParticipantConnected, handleParticipantConnected)
+      incrementRoomListenerCount(RoomEvent.ParticipantConnected)
       roomWithListeners.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
+      incrementRoomListenerCount(RoomEvent.ParticipantDisconnected)
       roomWithListeners.on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
+      incrementRoomListenerCount(RoomEvent.TrackSubscribed)
       roomWithListeners.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
+      incrementRoomListenerCount(RoomEvent.TrackUnsubscribed)
+      logRoomListenerSnapshot('register')
 
       teardownRoomListenersRef.current = () => {
         roomWithListeners.off(RoomEvent.Connected, handleConnected)
+        decrementRoomListenerCount(RoomEvent.Connected)
         roomWithListeners.off(RoomEvent.ConnectionStateChanged, handleConnectionFlags)
+        decrementRoomListenerCount(RoomEvent.ConnectionStateChanged)
         roomWithListeners.off(RoomEvent.Reconnecting, handleConnectionFlags)
+        decrementRoomListenerCount(RoomEvent.Reconnecting)
         roomWithListeners.off(RoomEvent.SignalReconnecting, handleConnectionFlags)
+        decrementRoomListenerCount(RoomEvent.SignalReconnecting)
         roomWithListeners.off(RoomEvent.Reconnected, handleConnectionFlags)
+        decrementRoomListenerCount(RoomEvent.Reconnected)
         roomWithListeners.off(RoomEvent.Disconnected, handleDisconnected)
+        decrementRoomListenerCount(RoomEvent.Disconnected)
         roomWithListeners.off(RoomEvent.LocalTrackPublished, handleLocalTrackPublished)
+        decrementRoomListenerCount(RoomEvent.LocalTrackPublished)
         roomWithListeners.off(RoomEvent.LocalTrackUnpublished, handleLocalTrackUnpublished)
+        decrementRoomListenerCount(RoomEvent.LocalTrackUnpublished)
         roomWithListeners.off(RoomEvent.ParticipantConnected, handleParticipantConnected)
+        decrementRoomListenerCount(RoomEvent.ParticipantConnected)
         roomWithListeners.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
+        decrementRoomListenerCount(RoomEvent.ParticipantDisconnected)
         roomWithListeners.off(RoomEvent.TrackSubscribed, handleTrackSubscribed)
+        decrementRoomListenerCount(RoomEvent.TrackSubscribed)
         roomWithListeners.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
+        decrementRoomListenerCount(RoomEvent.TrackUnsubscribed)
+        logRoomListenerSnapshot('teardown')
       }
 
       // Connect to room
@@ -793,9 +872,12 @@ export function useLiveKit(
       })
     }
   }, [
+    decrementRoomListenerCount,
     fetchToken,
     getHasLocalPublication,
+    incrementRoomListenerCount,
     isExpectedDisconnectError,
+    logRoomListenerSnapshot,
     publishConnectionSnapshot,
     roomId,
     sessionId,

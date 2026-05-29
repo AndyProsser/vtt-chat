@@ -10,7 +10,6 @@ import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
 } from '@/types/groupPanel'
-import type { SessionPresence } from '@/types/room'
 
 export interface GroupMemberListProps {
   room: GroupPanelGroupWithParticipants
@@ -31,7 +30,6 @@ export interface GroupMemberListProps {
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
-  getDeviceSessions: (userId: UUID) => NonNullable<SessionPresence['deviceSessions']>
   distanceTargets: string[]
   conditionTargets: string[]
   activeTakeoverUserId?: UUID | null
@@ -60,7 +58,6 @@ interface GroupMemberItemProps {
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
-  getDeviceSessions: (userId: UUID) => NonNullable<SessionPresence['deviceSessions']>
   distanceTargets: string[]
   conditionTargets: string[]
   activeTakeoverUserId?: UUID | null
@@ -104,7 +101,6 @@ function areGroupMemberItemPropsEqual(
     previous.getParticipantMetaLine === next.getParticipantMetaLine &&
     previous.getStatEntries === next.getStatEntries &&
     previous.getResolvedGroupEnvironmentName === next.getResolvedGroupEnvironmentName &&
-    previous.getDeviceSessions === next.getDeviceSessions &&
     previous.onApplyDistanceOverride === next.onApplyDistanceOverride &&
     previous.onApplyConditionOverride === next.onApplyConditionOverride &&
     previous.onApplyMuteOverride === next.onApplyMuteOverride &&
@@ -141,7 +137,6 @@ const GroupMemberItem = memo(function GroupMemberItem({
   getParticipantMetaLine,
   getStatEntries,
   getResolvedGroupEnvironmentName,
-  getDeviceSessions,
   distanceTargets,
   conditionTargets,
   activeTakeoverUserId,
@@ -279,7 +274,6 @@ const GroupMemberItem = memo(function GroupMemberItem({
           statEntries={getStatEntries(member)}
           environmentName={getResolvedGroupEnvironmentName(room)}
           activeTakeover={isTakeoverActive}
-          deviceSessions={getDeviceSessions(member.userId)}
         />
       </TooltipContent>
     </Tooltip>
@@ -324,7 +318,6 @@ export function GroupMemberList({
   getParticipantMetaLine,
   getStatEntries,
   getResolvedGroupEnvironmentName,
-  getDeviceSessions,
   distanceTargets,
   conditionTargets,
   activeTakeoverUserId,
@@ -371,7 +364,6 @@ export function GroupMemberList({
           getParticipantMetaLine={getParticipantMetaLine}
           getStatEntries={getStatEntries}
           getResolvedGroupEnvironmentName={getResolvedGroupEnvironmentName}
-          getDeviceSessions={getDeviceSessions}
           distanceTargets={distanceTargets}
           conditionTargets={conditionTargets}
           activeTakeoverUserId={activeTakeoverUserId}

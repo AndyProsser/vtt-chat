@@ -1,10 +1,9 @@
 import type { UUID } from '@shared'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '@/constants/voiceGroupStatus.constants'
-import type { SessionPresence } from '@/types/room'
-import { ParticipantDeviceList } from './ParticipantDeviceList'
 import { PresenceIndicator } from './PresenceIndicator'
 import { MicMutedIndicator } from './MicMutedIndicator'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
+import { ProfileDeviceSessionsLeaf } from './ProfileDeviceSessionsLeaf'
 
 export interface GroupMemberProfileCardParticipant {
   userId: UUID
@@ -31,7 +30,6 @@ interface GroupMemberProfileCardProps {
   environmentName: string
   presenceIconName?: string
   activeTakeover?: boolean
-  deviceSessions?: NonNullable<SessionPresence['deviceSessions']>
 }
 
 function getDisplayName(member: GroupMemberProfileCardParticipant): string {
@@ -46,7 +44,6 @@ export function GroupMemberProfileCard({
   statEntries,
   environmentName,
   activeTakeover = false,
-  deviceSessions,
 }: GroupMemberProfileCardProps) {
   const displayName = getDisplayName(member)
 
@@ -73,18 +70,12 @@ export function GroupMemberProfileCard({
 
   return (
     <div className="room-selector-profile">
-      {deviceSessions ? (
-        <div className="room-selector-profile__avatar-col">
-          <div className="room-selector-profile__avatar" aria-hidden="true">
-            {avatarVisual}
-          </div>
-          <ParticipantDeviceList deviceSessions={deviceSessions} />
-        </div>
-      ) : (
+      <div className="room-selector-profile__avatar-col">
         <div className="room-selector-profile__avatar" aria-hidden="true">
           {avatarVisual}
         </div>
-      )}
+        <ProfileDeviceSessionsLeaf sessionId={sessionId} userId={member.userId} />
+      </div>
 
       <div className="room-selector-profile__meta">
         <div className="room-selector-profile__title-row">

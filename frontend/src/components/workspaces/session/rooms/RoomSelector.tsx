@@ -171,15 +171,6 @@ export function RoomSelector({
     [allRooms]
   )
 
-  // Imperative read: avoids subscribing to the entire sessionPresence[sessionId] map.
-  // Ghost flips for any user recreate that map reference, which would invalidate this
-  // callback and cascade re-renders across every GroupMemberItem row.
-  const getDeviceSessions = useCallback(
-    (userId: UUID) =>
-      useStore.getState().sessionPresence[sessionId]?.[userId]?.deviceSessions ?? [],
-    [sessionId]
-  )
-
   const dmParticipant = useMemo(
     () => baseParticipants.find((participant) => participant.userId === dmUserId),
     [baseParticipants, dmUserId]
@@ -1295,7 +1286,6 @@ export function RoomSelector({
       getResolvedEnvironmentName={getResolvedGroupEnvironmentName}
       getParticipantMetaLine={getParticipantMetaLineForRoom}
       getStatEntries={getGroupStatEntries}
-      getDeviceSessions={getDeviceSessions}
     />
   )
 
@@ -1394,7 +1384,6 @@ export function RoomSelector({
                         metaLine={dmFlavorLine}
                         statEntries={getGroupStatEntries(dmDetachedParticipant)}
                         environmentName={dmDetachedEnvironmentName}
-                        deviceSessions={getDeviceSessions(dmDetachedParticipant.userId)}
                       />
                     </TooltipContent>
                   </Tooltip>

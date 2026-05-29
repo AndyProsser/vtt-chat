@@ -12,7 +12,6 @@ import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
 } from '@/types/groupPanel'
-import type { SessionPresence } from '@/types/room'
 
 export interface GroupCardProps {
   room: GroupPanelGroupWithParticipants
@@ -64,7 +63,6 @@ export interface GroupCardProps {
   getResolvedEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
-  getDeviceSessions: (userId: UUID) => NonNullable<SessionPresence['deviceSessions']>
 }
 
 export type RoomGroupCardProps = GroupCardProps
@@ -148,7 +146,6 @@ function areGroupCardPropsEqual(previous: GroupCardProps, next: GroupCardProps):
     previous.getResolvedEnvironmentName === next.getResolvedEnvironmentName &&
     previous.getParticipantMetaLine === next.getParticipantMetaLine &&
     previous.getStatEntries === next.getStatEntries &&
-    previous.getDeviceSessions === next.getDeviceSessions &&
     previous.room.id === next.room.id &&
     previous.room.name === next.room.name &&
     previous.room.type === next.room.type &&
@@ -200,7 +197,6 @@ function RoomGroupCardComponent({
   getResolvedEnvironmentName,
   getParticipantMetaLine,
   getStatEntries,
-  getDeviceSessions,
 }: GroupCardProps) {
   const isGreenroomCard = isGreenRoomName(room.name)
   const isWhisperRoomGroup = isWhisperGroup(room)
@@ -452,7 +448,6 @@ function RoomGroupCardComponent({
           setTouchFeedbackUserId={setTouchFeedbackUserId}
           getParticipantMetaLine={getParticipantMetaLine}
           getStatEntries={getStatEntries}
-          getDeviceSessions={getDeviceSessions}
           getResolvedGroupEnvironmentName={getResolvedEnvironmentName}
           distanceTargets={distanceTargets}
           conditionTargets={conditionTargets}
