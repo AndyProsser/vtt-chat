@@ -119,15 +119,10 @@ export class SessionDisconnectCascadeService {
       key,
       setTimeout(() => {
         void this.enterGhostMode(context)
-        users: transition.users.map((member) => ({
-          userId: member.id,
-          username: member.username,
-          roomId: member.roomId,
-          roomName: member.roomName,
-          previousGroupId: member.previousGroupId || null,
-        })),
-      await this.scheduleNoConnectionsLifecycleAction(context)
-    }
+      }, GHOST_ENTRY_DELAY_MS)
+    )
+
+    await this.scheduleNoConnectionsLifecycleAction(context)
 
     await broadcastSessionStatsSnapshot({
       wsManager: context.wsManager as any,
@@ -205,11 +200,6 @@ export class SessionDisconnectCascadeService {
       this.clearUserTimers(context.sessionId, context.userId)
       return
     }
-
-    await removePresenceProjection({
-      sessionId: context.sessionId,
-      userId: context.userId,
-    })
 
     if (current.primaryRoomId) {
       context.wsManager.broadcastEventToSession(context.sessionId, {
@@ -344,7 +334,13 @@ export class SessionDisconnectCascadeService {
         },
         targetRoomId: transition.targetRoomId,
         targetRoomName: transition.targetRoomName,
-        users: users.map((member) => ({ userId: member.id, username: member.username })),
+        users: transition.users.map((member) => ({
+          userId: member.id,
+          username: member.username,
+          roomId: member.roomId,
+          roomName: member.roomName,
+          previousGroupId: member.previousGroupId || null,
+        })),
       },
     })
 

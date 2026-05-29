@@ -294,7 +294,8 @@ export async function applySessionStateRoomTransition(params: {
 
     const restoredRoom =
       isResumeFromPause && nextPreviousGroupId ? roomById.get(nextPreviousGroupId) : undefined
-    const nextRoom = isRestorablePauseRoom(restoredRoom) ? restoredRoom : targetRoom
+    const nextRoom: typeof targetRoom =
+      restoredRoom && isRestorablePauseRoom(restoredRoom) ? restoredRoom : targetRoom
 
     const result = await joinRoom({
       sessionId: params.sessionId,

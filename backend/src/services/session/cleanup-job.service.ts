@@ -29,13 +29,7 @@ import crypto from 'node:crypto'
 
 interface WsAdapter {
   broadcastEventToSession: (sessionId: UUID, event: EventEnvelope) => void
-        users: transition.users.map((member) => ({
-          userId: member.id,
-          username: member.username,
-          roomId: member.roomId,
-          roomName: member.roomName,
-          previousGroupId: member.previousGroupId || null,
-        })),
+}
 
 const LIFECYCLE_FALLBACK_POLL_INTERVAL_MS = 60_000
 const SYSTEM_ACTOR_ID = '00000000-0000-4000-8000-000000000000' as UUID
@@ -213,9 +207,12 @@ async function transitionToCleanup(
         },
         targetRoomId: transition.targetRoomId,
         targetRoomName: transition.targetRoomName,
-        users: (await getSessionUsers(sessionId)).map((u) => ({
-          userId: u.id,
-          username: u.username,
+        users: transition.users.map((member) => ({
+          userId: member.id,
+          username: member.username,
+          roomId: member.roomId,
+          roomName: member.roomName,
+          previousGroupId: member.previousGroupId || null,
         })),
       },
     })
