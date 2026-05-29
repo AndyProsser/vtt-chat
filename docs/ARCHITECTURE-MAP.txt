@@ -168,6 +168,10 @@ Current shipped note:
    handout-publish destination dialogs used by the right rail.
    Toolbar types live in `frontend/src/types`, toolbar constants live in
    `frontend/src/constants`, and toolbar hooks live in `frontend/src/hooks`.
+   Workspace runtime guard hooks now also include
+   `frontend/src/hooks/session/useWorkspacesMemoryPressureGuard.ts`, which polls
+   browser memory APIs, surfaces a recovery toast, and triggers a guarded reload
+   so server/Zustand rehydration can recover before the tab crashes.
    Room movement / whisper hooks now live in `frontend/src/hooks/session`, campaign
    panel props live in `frontend/src/types`, and party mock-data generators live in
    `frontend/src/utils` instead of component folders.

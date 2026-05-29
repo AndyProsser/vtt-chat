@@ -47,6 +47,7 @@ import { useWorkspacesAudioProjection } from '@/hooks/session/useWorkspacesAudio
 import { useWorkspacesSettingsStateBridge } from '@/hooks/session/useWorkspacesSettingsStateBridge'
 import { useWorkspacesInitializationLifecycle } from '@/hooks/session/useWorkspacesInitializationLifecycle'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
+import { useWorkspacesMemoryPressureGuard } from '@/hooks/session/useWorkspacesMemoryPressureGuard'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
 import { useWorkspacesCampaignSettingsActions } from '@/hooks/session/useWorkspacesCampaignSettingsActions'
@@ -584,6 +585,11 @@ export function WorkspaceInitialization({
     wsState,
     currentSessionId: currentSession?.id,
     wsTelemetryPrevRef,
+  })
+
+  useWorkspacesMemoryPressureGuard({
+    enabled: true,
+    showToast,
   })
 
   useWorkspacesHydrationLifecycle({
