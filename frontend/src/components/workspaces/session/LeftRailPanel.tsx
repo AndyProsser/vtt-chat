@@ -143,35 +143,56 @@ export function LeftRailPanel({
   // cause of the long-session memory leak.
 
   const isGreenroom = isGreenroomSessionState(sessionState)
-  const [cooldownNowMs, setCooldownNowMs] = useState(() => Date.now())
-
-  useEffect(() => {
-    if (sessionState !== 'COOLDOWN') {
-      return
-    }
-
-    const intervalId = window.setInterval(() => {
-      setCooldownNowMs(Date.now())
-    }, 1000)
-
-    return () => {
-      window.clearInterval(intervalId)
-    }
-  }, [sessionState])
-
-  const cooldownWindowMs = Number.isFinite(cooldownDurationMs) ? Number(cooldownDurationMs) : 0
-  const isEndedCooldownActive = useMemo(() => {
+  const [isCooldownWindowActive, setIsCooldownWindowActive] = useState(() => {
     if (sessionState !== 'COOLDOWN') {
       return false
     }
 
     const endedAtMs = Number.isFinite(sessionEndedAt) ? Number(sessionEndedAt) : NaN
+    const cooldownWindowMs = Number.isFinite(cooldownDurationMs) ? Number(cooldownDurationMs) : 0
+
     if (!Number.isFinite(endedAtMs) || cooldownWindowMs <= 0) {
       return true
     }
 
-    return cooldownNowMs < endedAtMs + cooldownWindowMs
-  }, [cooldownNowMs, cooldownWindowMs, sessionEndedAt, sessionState])
+    return Date.now() < endedAtMs + cooldownWindowMs
+  })
+
+  useEffect(() => {
+    if (sessionState !== 'COOLDOWN') {
+      setIsCooldownWindowActive(false)
+      return
+    }
+
+    const endedAtMs = Number.isFinite(sessionEndedAt) ? Number(sessionEndedAt) : NaN
+    const cooldownWindowMs = Number.isFinite(cooldownDurationMs) ? Number(cooldownDurationMs) : 0
+
+    if (!Number.isFinite(endedAtMs) || cooldownWindowMs <= 0) {
+      setIsCooldownWindowActive(true)
+      return
+    }
+
+    const expiresAtMs = endedAtMs + cooldownWindowMs
+    const remainingMs = expiresAtMs - Date.now()
+
+    if (remainingMs <= 0) {
+      setIsCooldownWindowActive(false)
+      return
+    }
+
+    setIsCooldownWindowActive(true)
+    const timeoutId = window.setTimeout(() => {
+      setIsCooldownWindowActive(false)
+    }, remainingMs)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [cooldownDurationMs, sessionEndedAt, sessionState])
+
+  const isEndedCooldownActive = useMemo(() => {
+    return sessionState === 'COOLDOWN' && isCooldownWindowActive
+  }, [isCooldownWindowActive, sessionState])
 
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
 
