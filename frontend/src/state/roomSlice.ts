@@ -820,7 +820,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
             level: existingPresence?.level,
             characterStats: existingPresence?.characterStats,
             presenceState: payload.targetState,
-            ghost: existingPresence?.ghost,
+            ghost: payload.nextState === 'ACTIVE' ? false : existingPresence?.ghost,
             previousGroupId: existingPresence?.previousGroupId,
             joinedAt: event.timestamp,
           }
@@ -857,6 +857,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       targetRoomId: payload.targetRoomId,
       targetState: payload.targetState,
       changedAt: event.timestamp,
+      clearGhostForSession: payload.nextState === 'ACTIVE',
     })
   },
 })

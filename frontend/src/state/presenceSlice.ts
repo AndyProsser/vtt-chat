@@ -132,6 +132,7 @@ export interface PresenceSlice {
     targetRoomId: UUID
     targetState: PresenceState
     changedAt: number
+    clearGhostForSession?: boolean
   }) => void
   setPresenceSpeakingActivity: (sessionId: UUID, userId: UUID, isSpeaking: boolean) => void
   /** Batch-replace the LiveKit speaker set for a session. Separate from
@@ -728,11 +729,27 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
     targetRoomId,
     targetState,
     changedAt,
+    clearGhostForSession,
   }) =>
     set((state) => {
       const nextPresenceBySession = {
         ...(state.sessionPresence[sessionId] || {}),
       } as Record<UUID, SessionPresence>
+
+      if (clearGhostForSession) {
+        for (const [userId, presence] of Object.entries(nextPresenceBySession) as Array<
+          [UUID, SessionPresence]
+        >) {
+          if (!presence?.ghost) {
+            continue
+          }
+
+          nextPresenceBySession[userId] = {
+            ...presence,
+            ghost: false,
+          }
+        }
+      }
 
       for (const user of users) {
         const existingPresence = nextPresenceBySession[user.userId]
@@ -742,6 +759,7 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
           username: user.username,
           state: targetState,
           primaryRoomId: targetRoomId,
+          ghost: false,
           previousGroupId: existingPresence?.previousGroupId,
           lastSeenAt: changedAt,
         }
