@@ -306,6 +306,98 @@ describe('ChatWindow timeline behavior', () => {
     expect(screen.getByText('Earlier greenroom planning')).toBeTruthy()
   })
 
+  it('keeps historical greenroom chat but hides historical session bookends from other sessions', async () => {
+    const previousSessionId = '99999999-9999-4999-8999-999999999999' as UUID
+    const now = Date.now()
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        messages: [
+          {
+            id: '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            sessionId: previousSessionId,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Started] Session Previous',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: now - 500,
+          },
+          {
+            id: '22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            sessionId: previousSessionId,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'Morgan',
+            content: 'Old greenroom planning survives',
+            type: MessageType.OOC,
+            isDmOnly: false,
+            createdAt: now - 400,
+          },
+          {
+            id: '33333333-cccc-4ccc-8ccc-cccccccccccc',
+            sessionId: previousSessionId,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Cooldown] Session Previous',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: now - 300,
+          },
+          {
+            id: '44444444-dddd-4ddd-8ddd-dddddddddddd',
+            sessionId: SESSION_ID,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Started] Session Current',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: now - 200,
+          },
+          {
+            id: '55555555-eeee-4eee-8eee-eeeeeeeeeeee',
+            sessionId: SESSION_ID,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'Morgan',
+            content: 'Current greenroom thread',
+            type: MessageType.OOC,
+            isDmOnly: false,
+            createdAt: now - 100,
+          },
+        ],
+      }),
+    }))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderWithTooltip(
+      <ChatWindow
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_ID}
+        roomId={GREEN_ROOM_ID}
+        roomName="Green Room"
+        campaignId={'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID}
+        user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
+        forceMessageType={MessageType.OOC}
+      />
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    expect(screen.getByText('Old greenroom planning survives')).toBeTruthy()
+    expect(screen.getByText('Current greenroom thread')).toBeTruthy()
+    expect(screen.queryByText('[Session Started] Session Previous')).toBeNull()
+    expect(screen.queryByText('[Session Cooldown] Session Previous')).toBeNull()
+    expect(screen.getByText('STARTED')).toBeTruthy()
+  })
+
   it('shows session-start marker but hides ended/intermission markers and greenroom messages in active main-room mode', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,

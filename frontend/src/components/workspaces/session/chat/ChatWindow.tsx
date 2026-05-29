@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { UIEvent, WheelEvent } from 'react'
 import type { EventEnvelope, UUID } from '@shared'
-import { isGreenroomSessionState, MessageType, Role, RoomType } from '@shared'
+import { isGreenroomSessionState, MessageType, Role, RoomType, SessionState } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { isGreenRoomName, ROOM_NAMES } from '@/constants/roomPresence.constants'
 import { CHAT_HISTORY_PAGE_SIZE } from '@/constants/chatPresence.constants'
@@ -58,6 +58,7 @@ const EMPTY_SESSION_PRESENCE: Record<
 > = {}
 const EMPTY_SESSION_ROOMS: Record<UUID, { id: UUID; name: string }> = {}
 const EMPTY_OUTGOING_QUEUE: OutgoingChatMessage[] = []
+const SESSION_SUMMARY_PREFIX = '[Session Summary]'
 
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -189,7 +190,7 @@ export function ChatWindow({
       EMPTY_SESSION_ROOMS
   )
   const sessionRecord = useStore((state) => (state.sessions as any)[sessionId]) as
-    | { dmId?: UUID; state?: string }
+    | { dmId?: UUID; state?: SessionState }
     | undefined
   const addMessage = useStore((state) => state.addMessage)
   const addMessages = useStore((state) => state.addMessages)
@@ -365,6 +366,7 @@ export function ChatWindow({
         const data = await res.json()
         const msgs: Message[] = (data.messages ?? []).map((m: any) => ({
           id: m.id as UUID,
+          sessionId: m.sessionId as UUID | undefined,
           roomId: (m.roomId as UUID | undefined) || roomId,
           authorId: m.authorId as UUID,
           authorUsername: m.authorUsername as string,
@@ -373,6 +375,7 @@ export function ChatWindow({
           isDmOnly: m.isDmOnly as boolean,
           visibleTo: Array.isArray(m.visibleTo) ? (m.visibleTo as UUID[]) : undefined,
           targetIds: Array.isArray(m.targetIds) ? (m.targetIds as UUID[]) : undefined,
+          metadata: m.metadata,
           createdAt: toTimestamp(m.createdAt),
           editedAt: m.editedAt !== undefined ? toTimestamp(m.editedAt) : undefined,
         }))
@@ -647,8 +650,20 @@ export function ChatWindow({
       const isGreenroomContextMessage =
         message.roomId === roomId ||
         (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
+      const isSessionSummaryMessage =
+        message.type === MessageType.SYSTEM &&
+        typeof message.content === 'string' &&
+        message.content.startsWith(SESSION_SUMMARY_PREFIX)
+      const isHistoricalSessionArtifact =
+        (Boolean(bookendState) || isSessionSummaryMessage) &&
+        Boolean(message.sessionId) &&
+        message.sessionId !== sessionId
 
       if (!isGreenroomContextMessage) {
+        continue
+      }
+
+      if (isHistoricalSessionArtifact) {
         continue
       }
 
@@ -681,6 +696,7 @@ export function ChatWindow({
     resolvedRoomName,
     roomDirectory,
     roomId,
+    sessionId,
     user.id,
   ])
 
