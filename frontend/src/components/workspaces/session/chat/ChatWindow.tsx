@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { UIEvent, WheelEvent } from 'react'
 import type { EventEnvelope, UUID } from '@shared'
-import { MessageType, Role, RoomType } from '@shared'
+import { isGreenroomSessionState, MessageType, Role, RoomType } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { isGreenRoomName, ROOM_NAMES } from '@/constants/roomPresence.constants'
 import { CHAT_HISTORY_PAGE_SIZE } from '@/constants/chatPresence.constants'
@@ -159,6 +159,7 @@ export function ChatWindow({
   const autoFollowResetTimeoutRef = useRef<number | null>(null)
   const initialScrollContextRef = useRef<string | null>(null)
   const greenroomTodayStartRef = useRef(getStartOfTodayTimestamp())
+  const lastHydratedGreenroomStateRef = useRef<string | null | undefined>(undefined)
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
     null
   )
@@ -188,7 +189,7 @@ export function ChatWindow({
       EMPTY_SESSION_ROOMS
   )
   const sessionRecord = useStore((state) => (state.sessions as any)[sessionId]) as
-    | { dmId?: UUID }
+    | { dmId?: UUID; state?: string }
     | undefined
   const addMessage = useStore((state) => state.addMessage)
   const addMessages = useStore((state) => state.addMessages)
@@ -408,6 +409,34 @@ export function ChatWindow({
       window.clearTimeout(bootstrapTimer)
     }
   }, [loadHistoryPage])
+
+  useEffect(() => {
+    if (!isGreenroomMode) {
+      lastHydratedGreenroomStateRef.current = sessionRecord?.state
+      return
+    }
+
+    if (lastHydratedGreenroomStateRef.current === undefined) {
+      lastHydratedGreenroomStateRef.current = sessionRecord?.state
+      return
+    }
+
+    if (lastHydratedGreenroomStateRef.current === sessionRecord?.state) {
+      return
+    }
+
+    lastHydratedGreenroomStateRef.current = sessionRecord?.state
+
+    if (!isGreenroomSessionState(sessionRecord?.state)) {
+      return
+    }
+
+    messageCountFetchedRef.current = false
+    prevVisibleCountRef.current = 0
+    prevMessageCountRef.current = 0
+    lastSeenLatestMessageKeyRef.current = undefined
+    void loadHistoryPage({ older: false })
+  }, [isGreenroomMode, loadHistoryPage, sessionRecord?.state])
 
   // Fetch approximate total message count once after initial hydration.
   // Greenroom uses visible message count directly — no separate query needed.

@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MessageType, Role, RoomType } from '@shared'
+import { MessageType, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { TooltipProvider } from '../../src/components/ui'
 import { ChatWindow } from '../../src/components/workspaces/session/chat/ChatWindow'
@@ -28,6 +28,17 @@ describe('ChatWindow timeline behavior', () => {
     store.clearMessages()
     store.clearRooms()
     store.reset()
+    store.replaceSessions([
+      {
+        id: SESSION_ID,
+        name: 'Session Alpha',
+        dmId: USER_ID,
+        state: SessionState.IDLE,
+        cumulativePauseMs: 0,
+        pauseCount: 0,
+        createdAt: Date.now(),
+      },
+    ])
     store.replaceSessionTopology(
       SESSION_ID,
       [
@@ -58,6 +69,81 @@ describe('ChatWindow timeline behavior', () => {
         },
       ]
     )
+  })
+
+  it('rehydrates greenroom history when the session ends after chat cache clear', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: 'deadbeef-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              authorId: USER_ID,
+              authorUsername: 'Morgan',
+              content: 'Greenroom message that should come back',
+              type: MessageType.OOC,
+              isDmOnly: false,
+              createdAt: Date.now() - 1_000,
+            },
+          ],
+          hasMore: false,
+          hasEarlier: false,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: 'deadbeef-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              authorId: USER_ID,
+              authorUsername: 'Morgan',
+              content: 'Greenroom message that should come back',
+              type: MessageType.OOC,
+              isDmOnly: false,
+              createdAt: Date.now() - 1_000,
+            },
+          ],
+          hasMore: false,
+          hasEarlier: false,
+        }),
+      })
+
+    vi.stubGlobal('fetch', fetchMock)
+    act(() => {
+      useStore.getState().updateSession(SESSION_ID, { state: SessionState.ACTIVE })
+    })
+
+    renderWithTooltip(
+      <ChatWindow
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_ID}
+        roomId={GREEN_ROOM_ID}
+        roomName="Green Room"
+        campaignId={'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID}
+        user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
+        forceMessageType={MessageType.OOC}
+      />
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+    expect(screen.getByText('Greenroom message that should come back')).toBeTruthy()
+
+    act(() => {
+      useStore.getState().updateSession(SESSION_ID, { state: SessionState.ENDED })
+      useStore.getState().clearMessages(SESSION_ID)
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(screen.getByText('Greenroom message that should come back')).toBeTruthy()
   })
 
   it('shows only greenroom messages while in greenroom mode', async () => {
