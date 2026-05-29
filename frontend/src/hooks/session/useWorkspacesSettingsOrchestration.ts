@@ -21,11 +21,9 @@ type UseWorkspacesSettingsOrchestrationParams = {
   campaignSettingsActions: UseCampaignSettingsActions
   currentSession: SessionRecord | null
   sessionSettingsName: string
-  sessionSettingsDescription: string
   sessionSettingsPlannedDurationMinutes: number
   setIsSessionSettingsSaving: Dispatch<SetStateAction<boolean>>
   updateSession: (sessionId: UUID, session: SessionRecord) => void
-  settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsCampaignId: UUID | ''
   settingsName: string
   settingsDescription: string
@@ -41,6 +39,7 @@ type UseWorkspacesSettingsOrchestrationParams = {
   settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
   settingsLateJoinGraceMinutes: number
   settingsDefaultSessionDurationMins: number
+  settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
   settingsData: CampaignSettingsPayload | null
   setCampaigns: Dispatch<SetStateAction<CampaignSummary[]>>
@@ -61,7 +60,6 @@ export function useWorkspacesSettingsOrchestration(
     campaignSettingsActions,
     currentSession,
     sessionSettingsName,
-    sessionSettingsDescription,
     sessionSettingsPlannedDurationMinutes,
     setIsSessionSettingsSaving,
     updateSession,
@@ -163,7 +161,6 @@ export function useWorkspacesSettingsOrchestration(
         },
         body: JSON.stringify({
           name: sessionSettingsName,
-          description: sessionSettingsDescription,
           plannedDurationMinutes: sessionSettingsPlannedDurationMinutes,
         }),
       })
@@ -188,7 +185,7 @@ export function useWorkspacesSettingsOrchestration(
     apiUrl,
     currentSession,
     fetchWithAuthGuard,
-    sessionSettingsDescription,
+
     sessionSettingsName,
     sessionSettingsPlannedDurationMinutes,
     setError,

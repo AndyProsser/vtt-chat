@@ -168,7 +168,6 @@ export function WorkspaceInitialization({
   } = sessionLifecycleRefs
 
   const [sessionSettingsName, setSessionSettingsName] = useState('')
-  const [sessionSettingsDescription, setSessionSettingsDescription] = useState('')
   const [sessionSettingsPlannedDurationMinutes, setSessionSettingsPlannedDurationMinutes] =
     useState(DEFAULT_PLANNED_DURATION_MINUTES)
   const [isSessionSettingsSaving, setIsSessionSettingsSaving] = useState(false)
@@ -368,7 +367,6 @@ export function WorkspaceInitialization({
     currentSession,
     defaultPlannedDurationMinutes: DEFAULT_PLANNED_DURATION_MINUTES,
     setSessionSettingsName,
-    setSessionSettingsDescription,
     setSessionSettingsPlannedDurationMinutes,
     selectedCharacter,
     setSelectedCharacterId: characterSettingsActions.setSelectedCharacterId,
@@ -503,7 +501,6 @@ export function WorkspaceInitialization({
     campaignSettingsActions,
     currentSession,
     sessionSettingsName,
-    sessionSettingsDescription,
     sessionSettingsPlannedDurationMinutes,
     setIsSessionSettingsSaving,
     updateSession,
@@ -1010,23 +1007,16 @@ export function WorkspaceInitialization({
     onSaveCampaignInfo: handleSaveCampaignInfoPanel,
     campaignIdForSettings: selectedCampaignId,
     sessionSettingsName,
-    sessionSettingsDescription,
     sessionSettingsPlannedDurationMinutes,
+    defaultSessionDurationMinutes: settingsDefaultSessionDurationMins,
+    sessionStartedAt: currentSession?.startedAt,
     canEditSessionSettings,
     onSessionNameChange: setSessionSettingsName,
-    onSessionDescriptionChange: setSessionSettingsDescription,
     onPlannedDurationMinutesChange: handlePlannedDurationMinutesChange,
     onSaveSessionSettings: () => {
       void saveSessionSettings()
     },
     isSessionSettingsSaving,
-    onDmAutoTargetChange: (value) =>
-      campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value),
-    onSaveDmAutoTarget: () => {
-      if (selectedCampaignId) void saveDmVoiceTargetingSetting(selectedCampaignId)
-    },
-    isDmVoiceTargetingSettingSaving,
-    isDmVoiceTargetingSettingLoading,
     characterDraft: characterSettingsPanel,
     onCharacterFieldChange: handleCharacterFieldChange,
     onSaveCharacterSettings: () => {

@@ -9,7 +9,6 @@ type UseWorkspacesSettingsStateBridgeParams = {
   currentSession: SessionRecord | null
   defaultPlannedDurationMinutes: number
   setSessionSettingsName: Dispatch<SetStateAction<string>>
-  setSessionSettingsDescription: Dispatch<SetStateAction<string>>
   setSessionSettingsPlannedDurationMinutes: Dispatch<SetStateAction<number>>
   selectedCharacter: UserCharacterRecord | null
   setSelectedCharacterId: (characterId: UserCharacterRecord['id']) => void
@@ -23,7 +22,6 @@ export function useWorkspacesSettingsStateBridge({
   currentSession,
   defaultPlannedDurationMinutes,
   setSessionSettingsName,
-  setSessionSettingsDescription,
   setSessionSettingsPlannedDurationMinutes,
   selectedCharacter,
   setSelectedCharacterId,
@@ -31,17 +29,14 @@ export function useWorkspacesSettingsStateBridge({
 }: UseWorkspacesSettingsStateBridgeParams) {
   useEffect(() => {
     setSessionSettingsName(currentSession?.name || '')
-    setSessionSettingsDescription(currentSession?.description || '')
     setSessionSettingsPlannedDurationMinutes(
       currentSession?.plannedDurationMinutes || defaultPlannedDurationMinutes
     )
   }, [
-    currentSession?.description,
     currentSession?.id,
     currentSession?.name,
     currentSession?.plannedDurationMinutes,
     defaultPlannedDurationMinutes,
-    setSessionSettingsDescription,
     setSessionSettingsName,
     setSessionSettingsPlannedDurationMinutes,
   ])

@@ -41,19 +41,14 @@ type SessionWorkspaceRightRailTabProps = {
   effectiveSessionRole: Role
   userId: UUID
   sessionSettingsName: string
-  sessionSettingsDescription: string
   sessionSettingsPlannedDurationMinutes: number
+  defaultSessionDurationMinutes: number
+  sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
   onSessionNameChange: (value: string) => void
-  onSessionDescriptionChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void
   isSessionSettingsSaving: boolean
-  dmAutoTargetOnFirstPlayerJoin: boolean
-  onDmAutoTargetChange: (value: boolean) => void
-  onSaveDmAutoTarget: () => void
-  isDmVoiceTargetingSettingSaving: boolean
-  isDmVoiceTargetingSettingLoading: boolean
   campaignIdForSettings: UUID | ''
   characterDraft: PlayerSettingsPanel
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
@@ -195,20 +190,17 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
           sessionSettings={{
             campaignId: props.campaignIdForSettings || null,
             sessionName: props.sessionSettingsName,
-            sessionDescription: props.sessionSettingsDescription,
             plannedDurationMinutes: props.sessionSettingsPlannedDurationMinutes,
+            defaultSessionDurationMinutes: props.defaultSessionDurationMinutes,
             sessionStateLabel: props.currentSessionState,
+            sessionStartedAt: props.sessionStartedAt,
             canEditSessionSettings: props.canEditSessionSettings,
             onSessionNameChange: props.onSessionNameChange,
-            onSessionDescriptionChange: props.onSessionDescriptionChange,
             onPlannedDurationMinutesChange: props.onPlannedDurationMinutesChange,
             onSaveSessionSettings: props.onSaveSessionSettings,
             isSessionSaving: props.isSessionSettingsSaving,
-            dmAutoTarget: props.dmAutoTargetOnFirstPlayerJoin,
-            onDmAutoTargetChange: props.onDmAutoTargetChange,
-            onSaveDmAutoTarget: props.onSaveDmAutoTarget,
-            isSaving: props.isDmVoiceTargetingSettingSaving,
-            isLoading: props.isDmVoiceTargetingSettingLoading,
+            isSaving: false,
+            isLoading: false,
           }}
           playerSettings={{
             campaignId: props.campaignIdForSettings || null,

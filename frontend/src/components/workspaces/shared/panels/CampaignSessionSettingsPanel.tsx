@@ -9,6 +9,7 @@ export interface CampaignSessionSettingsPanelProps {
   plannedDurationMinutes: number
   defaultSessionDurationMinutes: number
   sessionStateLabel: string
+  sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
   onSessionNameChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
@@ -17,7 +18,6 @@ export interface CampaignSessionSettingsPanelProps {
   isSaving: boolean
   isLoading: boolean
   standalone?: boolean
-  sessionElapsedSeconds?: number
 }
 
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
@@ -41,7 +41,18 @@ function formatElapsedTime(seconds: number): string {
 
 export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanelProps) {
   const [isSaving, setIsSaving] = useState(false)
-  const elapsed = props.sessionElapsedSeconds || 0
+  const [currentTimeMs, setCurrentTimeMs] = useState(Date.now())
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTimeMs(Date.now())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const sessionStartedAtMs = props.sessionStartedAt ? props.sessionStartedAt : 0
+  const elapsed =
+    sessionStartedAtMs > 0 ? Math.floor((currentTimeMs - sessionStartedAtMs) / 1000) : 0
   const durationSecs = props.plannedDurationMinutes * 60
   const remainingSecs = Math.max(0, durationSecs - elapsed)
   const remainingMins = Math.ceil(remainingSecs / 60)
@@ -141,9 +152,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
               </span>
             </div>
 
-            {timerColor === 'warning' && (
-              <p className="csp-timer-warning">15 minutes remaining</p>
-            )}
+            {timerColor === 'warning' && <p className="csp-timer-warning">15 minutes remaining</p>}
             {timerColor === 'critical' && (
               <p className="csp-timer-critical">Session duration exceeded</p>
             )}

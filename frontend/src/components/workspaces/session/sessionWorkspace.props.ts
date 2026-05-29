@@ -57,20 +57,16 @@ type BuildSessionWorkspacePropsParams = {
   onSaveCampaignInfo: ComponentProps<typeof SessionWorkspace>['onSaveCampaignInfo']
   campaignIdForSettings: UUID | ''
   sessionSettingsName: string
-  sessionSettingsDescription: string
   sessionSettingsPlannedDurationMinutes: number
+  defaultSessionDurationMinutes: number
+  sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
   onSessionNameChange: ComponentProps<typeof SessionWorkspace>['onSessionNameChange']
-  onSessionDescriptionChange: ComponentProps<typeof SessionWorkspace>['onSessionDescriptionChange']
   onPlannedDurationMinutesChange: ComponentProps<
     typeof SessionWorkspace
   >['onPlannedDurationMinutesChange']
   onSaveSessionSettings: ComponentProps<typeof SessionWorkspace>['onSaveSessionSettings']
   isSessionSettingsSaving: boolean
-  onDmAutoTargetChange: ComponentProps<typeof SessionWorkspace>['onDmAutoTargetChange']
-  onSaveDmAutoTarget: ComponentProps<typeof SessionWorkspace>['onSaveDmAutoTarget']
-  isDmVoiceTargetingSettingSaving: boolean
-  isDmVoiceTargetingSettingLoading: boolean
   characterDraft: ComponentProps<typeof SessionWorkspace>['characterDraft']
   onCharacterFieldChange: ComponentProps<typeof SessionWorkspace>['onCharacterFieldChange']
   onSaveCharacterSettings: ComponentProps<typeof SessionWorkspace>['onSaveCharacterSettings']
@@ -137,18 +133,14 @@ export function buildSessionWorkspaceProps(
     onSaveCampaignInfo: params.onSaveCampaignInfo,
     campaignIdForSettings: params.campaignIdForSettings,
     sessionSettingsName: params.sessionSettingsName,
-    sessionSettingsDescription: params.sessionSettingsDescription,
     sessionSettingsPlannedDurationMinutes: params.sessionSettingsPlannedDurationMinutes,
+    defaultSessionDurationMinutes: params.defaultSessionDurationMinutes,
+    sessionStartedAt: params.sessionStartedAt,
     canEditSessionSettings: params.canEditSessionSettings,
     onSessionNameChange: params.onSessionNameChange,
-    onSessionDescriptionChange: params.onSessionDescriptionChange,
     onPlannedDurationMinutesChange: params.onPlannedDurationMinutesChange,
     onSaveSessionSettings: params.onSaveSessionSettings,
     isSessionSettingsSaving: params.isSessionSettingsSaving,
-    onDmAutoTargetChange: params.onDmAutoTargetChange,
-    onSaveDmAutoTarget: params.onSaveDmAutoTarget,
-    isDmVoiceTargetingSettingSaving: params.isDmVoiceTargetingSettingSaving,
-    isDmVoiceTargetingSettingLoading: params.isDmVoiceTargetingSettingLoading,
     characterDraft: params.characterDraft,
     onCharacterFieldChange: params.onCharacterFieldChange,
     onSaveCharacterSettings: params.onSaveCharacterSettings,

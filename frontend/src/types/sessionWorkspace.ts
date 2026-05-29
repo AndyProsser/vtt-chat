@@ -82,18 +82,14 @@ export type SessionWorkspaceProps = {
   onSaveCampaignInfo: ComponentProps<typeof CampaignInformationPanel>['onSaveCampaignInfo']
   campaignIdForSettings: UUID | ''
   sessionSettingsName: string
-  sessionSettingsDescription: string
   sessionSettingsPlannedDurationMinutes: number
+  defaultSessionDurationMinutes: number
+  sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
   onSessionNameChange: (value: string) => void
-  onSessionDescriptionChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void
   isSessionSettingsSaving: boolean
-  onDmAutoTargetChange: (value: boolean) => void
-  onSaveDmAutoTarget: () => void
-  isDmVoiceTargetingSettingSaving: boolean
-  isDmVoiceTargetingSettingLoading: boolean
   characterDraft: PlayerSettingsPanel
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
   onSaveCharacterSettings: () => void
