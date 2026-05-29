@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import type { UUID } from '@shared'
 import type { AudioDeviceState } from '@/types/audio'
+import { useIsUserMuted } from '@/hooks/useIsUserMuted'
 import {
   AUDIO_CONNECTION_STATUS_TITLES,
   AUDIO_CONTROL_COPY,
@@ -30,6 +32,8 @@ interface AudioDevicePanelProps {
   transmittedMicLevel: number
   effectItems: AudioDetailItem[]
   settingsOpen: boolean
+  sessionId: UUID
+  userId: UUID
   onGoLive: () => void
   onMute: () => void
   onPTTChange: (active: boolean) => void
@@ -46,6 +50,8 @@ export function AudioDevicePanel({
   transmittedMicLevel,
   effectItems,
   settingsOpen,
+  sessionId,
+  userId,
   onGoLive,
   onMute,
   onPTTChange,
@@ -54,6 +60,9 @@ export function AudioDevicePanel({
   const [effectsHovered, setEffectsHovered] = useState(false)
   const txMeterFillRef = useRef<HTMLSpanElement | null>(null)
   const transmittedMicLevelPercent = Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)
+
+  // Get combined mute state: own mute + DM override + device state
+  const isCombinedMuted = useIsUserMuted(sessionId, userId, true)
 
   useEffect(() => {
     txMeterFillRef.current?.style.setProperty(
@@ -67,7 +76,8 @@ export function AudioDevicePanel({
     isVoiceConnected,
   })
 
-  const isMuted = device.pttEnabled ? !pttActive : !device.microphoneOn
+  // Use combined mute state (own mute + DM override + device state)
+  const isMuted = isCombinedMuted
   const mutedLabel = getAudioModeLabel(isMuted)
 
   const effectsOpen = effectsHovered
