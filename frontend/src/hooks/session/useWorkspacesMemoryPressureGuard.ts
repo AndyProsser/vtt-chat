@@ -1,13 +1,15 @@
 import { useEffect, useRef } from 'react'
 import {
-  WORKSPACES_MEMORY_PRESSURE_POLL_MS,
-  WORKSPACES_MEMORY_PRESSURE_RELOAD_COOLDOWN_MS,
-  WORKSPACES_MEMORY_PRESSURE_RELOAD_GRACE_MS,
   WORKSPACES_MEMORY_PRESSURE_RELOAD_STORAGE_KEY,
-  WORKSPACES_MEMORY_PRESSURE_THRESHOLD_BYTES,
   WORKSPACES_MEMORY_PRESSURE_TOAST_ID,
 } from '@/constants/workspaces.constants'
+import {
+  formatMemoryPressureReloadSeconds,
+  getRandomMemoryPressureHumorMessage,
+  getWorkspacesMemoryPressureGuardConfig,
+} from '@/constants/workspacesMemoryPressure.constants'
 import { dismissToast, type ShowToastInput } from '@/state/toastCenter'
+import { telemetryClient } from '@/utils/telemetry'
 import { logger } from '@/utils/logger'
 
 type UseWorkspacesMemoryPressureGuardParams = {
@@ -17,7 +19,8 @@ type UseWorkspacesMemoryPressureGuardParams = {
 
 type BrowserMemoryReading = {
   bytes: number
-  source: 'measureUserAgentSpecificMemory' | 'performance.memory'
+  source: 'measureUserAgentSpecificMemory' | 'performance.memory' | 'simulated'
+  simulated: boolean
 }
 
 type PerformanceWithMemory = Performance & {
@@ -38,6 +41,8 @@ export function useWorkspacesMemoryPressureGuard({
   const reloadTimerRef = useRef<number | null>(null)
   const isToastVisibleRef = useRef(false)
   const isReloadingRef = useRef(false)
+  const latestHighReadingRef = useRef<BrowserMemoryReading | null>(null)
+  const latestHumorIndexRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!enabled) {
@@ -45,6 +50,8 @@ export function useWorkspacesMemoryPressureGuard({
     }
 
     let cancelled = false
+    const config = getWorkspacesMemoryPressureGuardConfig()
+    const reloadGraceSeconds = formatMemoryPressureReloadSeconds(config.reloadGraceMs)
 
     const clearReloadTimer = () => {
       if (reloadTimerRef.current !== null) {
@@ -82,7 +89,7 @@ export function useWorkspacesMemoryPressureGuard({
         return true
       }
 
-      return Date.now() - lastReloadAt >= WORKSPACES_MEMORY_PRESSURE_RELOAD_COOLDOWN_MS
+      return Date.now() - lastReloadAt >= config.reloadCooldownMs
     }
 
     const markReloadNow = () => {
@@ -101,15 +108,29 @@ export function useWorkspacesMemoryPressureGuard({
         return
       }
 
+      const latestReading = latestHighReadingRef.current
       isReloadingRef.current = true
       clearReloadTimer()
       dismissMemoryToast()
       markReloadNow()
+      telemetryClient.track('UI_MEMORY_PRESSURE_REFRESH_TRIGGERED', {
+        reason,
+        bytes: latestReading?.bytes,
+        thresholdBytes: config.thresholdBytes,
+        source: latestReading?.source,
+        simulated: latestReading?.simulated ?? false,
+        reloadGraceMs: config.reloadGraceMs,
+        reloadCooldownMs: config.reloadCooldownMs,
+        humorIndex: latestHumorIndexRef.current,
+      })
       logger.warn(
         'workspaces.memory-pressure',
         'Refreshing page due to sustained memory pressure',
         {
           reason,
+          bytes: latestReading?.bytes,
+          source: latestReading?.source,
+          simulated: latestReading?.simulated ?? false,
         }
       )
       window.location.reload()
@@ -122,9 +143,12 @@ export function useWorkspacesMemoryPressureGuard({
 
       const usageGb = (reading.bytes / 1_000_000_000).toFixed(2)
       const autoReloadAllowed = canAutoReload()
+      const humor = getRandomMemoryPressureHumorMessage()
+      latestHighReadingRef.current = reading
+      latestHumorIndexRef.current = humor.index
       const message = autoReloadAllowed
-        ? `This tab is using about ${usageGb} GB of memory. VTT-Chat will refresh in 15 seconds to avoid a browser crash and then rehydrate the session.`
-        : `This tab is using about ${usageGb} GB of memory. Refresh now to avoid a browser crash. Automatic refresh is cooling down from a recent recovery.`
+        ? `${humor.text} This tab is using about ${usageGb} GB of memory. VTT-Chat will refresh in ${reloadGraceSeconds} seconds to avoid a browser crash and then rehydrate the session.`
+        : `${humor.text} This tab is using about ${usageGb} GB of memory. Refresh now to avoid a browser crash. Automatic refresh is cooling down from a recent recovery.`
 
       isToastVisibleRef.current = true
       showToast({
@@ -138,14 +162,35 @@ export function useWorkspacesMemoryPressureGuard({
         durationMs: null,
       })
 
+      telemetryClient.track('UI_MEMORY_PRESSURE_WARNING_SHOWN', {
+        bytes: reading.bytes,
+        thresholdBytes: config.thresholdBytes,
+        source: reading.source,
+        simulated: reading.simulated,
+        autoReloadAllowed,
+        reloadGraceMs: config.reloadGraceMs,
+        pollMs: config.pollMs,
+        humorIndex: humor.index,
+      })
+
       logger.warn('workspaces.memory-pressure', 'Detected high browser memory usage', {
         bytes: reading.bytes,
         source: reading.source,
+        simulated: reading.simulated,
         autoReloadAllowed,
+        reloadGraceMs: config.reloadGraceMs,
       })
     }
 
     const readBrowserMemory = async (): Promise<BrowserMemoryReading | null> => {
+      if (config.simulationMode !== 'off') {
+        return {
+          bytes: config.thresholdBytes + 64_000_000,
+          source: 'simulated',
+          simulated: true,
+        }
+      }
+
       const performanceApi = window.performance as PerformanceWithMemory
 
       if (typeof performanceApi.measureUserAgentSpecificMemory === 'function') {
@@ -155,6 +200,7 @@ export function useWorkspacesMemoryPressureGuard({
             return {
               bytes: result.bytes as number,
               source: 'measureUserAgentSpecificMemory',
+              simulated: false,
             }
           }
         } catch (error) {
@@ -171,6 +217,7 @@ export function useWorkspacesMemoryPressureGuard({
         return {
           bytes: heapBytes as number,
           source: 'performance.memory',
+          simulated: false,
         }
       }
 
@@ -178,7 +225,10 @@ export function useWorkspacesMemoryPressureGuard({
     }
 
     const scheduleReloadCheck = () => {
-      if (reloadTimerRef.current !== null || !canAutoReload()) {
+      if (
+        reloadTimerRef.current !== null ||
+        (!canAutoReload() && config.simulationMode !== 'reload')
+      ) {
         return
       }
 
@@ -191,14 +241,16 @@ export function useWorkspacesMemoryPressureGuard({
             return
           }
 
-          if (reading.bytes >= WORKSPACES_MEMORY_PRESSURE_THRESHOLD_BYTES) {
+          if (reading.bytes >= config.thresholdBytes) {
             refreshPage('auto')
             return
           }
 
+          latestHighReadingRef.current = null
+          latestHumorIndexRef.current = null
           dismissMemoryToast()
         })()
-      }, WORKSPACES_MEMORY_PRESSURE_RELOAD_GRACE_MS)
+      }, config.reloadGraceMs)
     }
 
     const checkMemoryPressure = async () => {
@@ -207,12 +259,15 @@ export function useWorkspacesMemoryPressureGuard({
         return
       }
 
-      if (reading.bytes >= WORKSPACES_MEMORY_PRESSURE_THRESHOLD_BYTES) {
+      if (reading.bytes >= config.thresholdBytes) {
+        latestHighReadingRef.current = reading
         showMemoryToast(reading)
         scheduleReloadCheck()
         return
       }
 
+      latestHighReadingRef.current = null
+      latestHumorIndexRef.current = null
       clearReloadTimer()
       dismissMemoryToast()
     }
@@ -220,7 +275,7 @@ export function useWorkspacesMemoryPressureGuard({
     void checkMemoryPressure()
     const intervalId = window.setInterval(() => {
       void checkMemoryPressure()
-    }, WORKSPACES_MEMORY_PRESSURE_POLL_MS)
+    }, config.pollMs)
 
     return () => {
       cancelled = true

@@ -180,6 +180,12 @@ Evidence snapshot (2026-05-28, v0.8.5):
 - `PartyPanel.PartyMemberCard` wrapped in `React.memo` so a single member's HERE/AWAY/NOT-HERE flip re-renders only that card.
 - Leaf-isolation pattern documented as a non-negotiable in `.github/copilot-instructions.md` and `docs/subsystems/STATE-STORES.md`; freeze triage flow in `docs/DEV-QUICK-REFERENCE.md` now includes a leaf-isolation check.
 
+Evidence snapshot (2026-05-29):
+
+- Frontend workspace runtime now includes a beta memory-pressure recovery guard (`frontend/src/hooks/session/useWorkspacesMemoryPressureGuard.ts`) that warns before a guarded reload so rehydration can recover the session instead of letting the browser tab crash.
+- The guard emits lightweight client telemetry for warning/display and refresh-trigger events, so runtime triage can quantify how often the fallback is intervening.
+- Memory threshold, poll interval, grace window, and reload cooldown are beta-tunable through `VITE_MEMORY_PRESSURE_*` env values, and development builds support a manual simulator toggle via `window.__VTT_DEBUG_MEMORY_PRESSURE__ = 'warn' | 'reload'`.
+
 ---
 
 ### W4-Conversation-Authority: Campaign-Scoped Conversation, Session-Scoped Routing
