@@ -180,7 +180,7 @@ describe('cooldown extend handoff', () => {
       targetRoomId: '55555555-5555-4555-8555-555555555555',
       targetRoomName: 'Green Room',
       movedUsers: 2,
-      targetState: 'OFFLINE',
+      targetState: 'ONLINE',
       users: [
         { id: DM_ID, username: 'dm-user' },
         { id: PLAYER_ID, username: 'player-user' },

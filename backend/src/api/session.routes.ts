@@ -293,8 +293,9 @@ async function ensureJoinedMemberPresence(params: {
     rooms.some((room) => room.id === currentPresence.primaryRoomId)
   )
 
-  const targetState =
-    params.session.state === 'ENDED' ? PresenceState.OFFLINE : PresenceState.ONLINE
+  // ENDED/CLEANUP/IDLE remain online-staged in-room; OFFLINE is reserved for
+  // explicit disconnect/leave paths.
+  const targetState = PresenceState.ONLINE
 
   if (hasValidExistingRoom && currentPresence?.primaryRoomId) {
     if (currentPresence.state === targetState) {

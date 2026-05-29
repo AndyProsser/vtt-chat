@@ -205,8 +205,9 @@ export async function applySessionStateRoomTransition(params: {
     params.nextState === SessionState.PAUSED ||
     params.nextState === SessionState.COOLDOWN
   const targetRoom = toMainRoom ? mainRoom : greenRoom
-  const targetState =
-    params.nextState === SessionState.ENDED ? PresenceState.OFFLINE : PresenceState.ONLINE
+  // Keep session members online through ENDED/CLEANUP/IDLE staging so presence
+  // and speaking indicators remain live until explicit disconnect/leave flows.
+  const targetState = PresenceState.ONLINE
 
   const presence = await getSessionPresence(params.sessionId)
   const transitionUsers = new Map<UUID, { id: UUID; username: string }>()
