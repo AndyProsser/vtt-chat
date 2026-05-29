@@ -592,9 +592,10 @@ describe('roomSlice', () => {
 
       expect(useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]).toBeUndefined()
       expect(useStore.getState().roomMembers[ROOM_ID_1]).toBe(roomMembersBeforeStop)
-      expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]).toBe(
+      expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]).not.toBe(
         sessionPresenceBeforeStop
       )
+      expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('ONLINE')
     })
   })
 

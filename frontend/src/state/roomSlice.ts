@@ -527,6 +527,20 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         payload.userId,
         nextPresence === PresenceState.SPEAKING
       )
+
+      // Keep per-user presence state in sync for leaf indicators (online/offline/speaking)
+      // without touching roomMembers topology. This preserves the low-churn fast path while
+      // ensuring indicators continue to update across IDLE/COOLDOWN/ENDED/CLEANUP transitions.
+      get().applySessionPresenceStateChange({
+        sessionId: event.sessionId,
+        userId: payload.userId,
+        username: payload.username,
+        roomId: roomId || undefined,
+        state: nextPresence,
+        changedAt,
+        previousGroupId: payload.previousGroupId || undefined,
+      })
+
       return
     }
 
