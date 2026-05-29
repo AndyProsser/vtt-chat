@@ -287,6 +287,9 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
               level: level ?? existingPresence?.level,
               characterStats: characterStats ?? existingPresence?.characterStats,
               state: PresenceState.ONLINE,
+              // Joining a room is an explicit active-presence signal; do not
+              // carry stale disconnect-ghost state across room moves.
+              ghost: false,
               primaryRoomId: roomId,
               lastSeenAt: joinedAt,
             },

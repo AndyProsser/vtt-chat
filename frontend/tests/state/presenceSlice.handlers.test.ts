@@ -119,6 +119,36 @@ describe('presenceSlice', () => {
       expect(presence!.level).toBe(5)
       expect(presence!.avatarUrl).toBe('https://example.com/avatar.png')
     })
+
+    it('clears stale ghost mode when user joins a room again', () => {
+      useStore.getState().upsertSessionPresenceOnJoin({
+        sessionId: SESSION_ID,
+        userId: USER_ID_1,
+        username: 'alice',
+        roomId: ROOM_ID,
+        joinedAt: NOW,
+      })
+
+      useStore.getState().applySessionPresenceStateChange({
+        sessionId: SESSION_ID,
+        userId: USER_ID_1,
+        state: PresenceState.ONLINE,
+        changedAt: NOW + 100,
+        ghost: true,
+      })
+
+      useStore.getState().upsertSessionPresenceOnJoin({
+        sessionId: SESSION_ID,
+        userId: USER_ID_1,
+        username: 'alice',
+        roomId: ROOM_ID_2,
+        joinedAt: NOW + 200,
+      })
+
+      const presence = useStore.getState().sessionPresence[SESSION_ID]?.[USER_ID_1]
+      expect(presence!.ghost).toBe(false)
+      expect(presence!.primaryRoomId).toBe(ROOM_ID_2)
+    })
   })
 
   // ── markSessionPresenceOnLeft ─────────────────────────────────────────────

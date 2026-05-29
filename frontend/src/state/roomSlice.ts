@@ -600,6 +600,9 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       roomId: roomId || undefined,
       state: nextPresence,
       changedAt,
+      // Room-change presence events represent active topology movement; clear
+      // transient ghost projection so whisper exit does not leave stale ghost UI.
+      ghost: previousRoomId && previousRoomId !== roomId ? false : undefined,
       previousGroupId: payload.previousGroupId || undefined,
     })
   },

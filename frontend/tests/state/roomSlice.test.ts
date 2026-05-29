@@ -514,6 +514,47 @@ describe('roomSlice', () => {
       )
     })
 
+    it('clears stale ghost when presence state change moves user to a new room', () => {
+      const roomOne: Room = { ...SAMPLE_ROOM, id: ROOM_ID_1, name: 'Room One' }
+      const roomTwo: Room = { ...SAMPLE_ROOM, id: ROOM_ID_2, name: 'Room Two' }
+
+      useStore.getState().createRoom(SESSION_A, roomOne)
+      useStore.getState().createRoom(SESSION_A, roomTwo)
+
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+        })
+      )
+
+      useStore.getState().handlePresenceGhostModeChanged(
+        makeEvent('PRESENCE:USER_GHOST_MODE_CHANGED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+          ghostMode: true,
+        })
+      )
+
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.ghost).toBe(true)
+
+      useStore.getState().handlePresenceStateChanged(
+        makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+          roomId: ROOM_ID_2,
+          userId: USER_ID_1,
+          username: 'alice',
+          newState: 'ONLINE',
+        })
+      )
+
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.ghost).toBe(false)
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.primaryRoomId).toBe(
+        ROOM_ID_2
+      )
+    })
+
     it('keeps SPEAKING -> ONLINE transitions on lightweight speaking tracker path', () => {
       useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
       useStore.getState().handleUserJoined(
