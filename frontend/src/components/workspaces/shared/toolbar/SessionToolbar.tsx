@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type {
   LiveKitConnectionState,
   CoreWsState,
@@ -11,6 +11,7 @@ import { toneFromAudioState, toneFromCoreState } from '@/constants/sessionToolba
 import { Icon } from '@/components/ui/Icon'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
 import { SessionTimerLeaf } from './SessionTimerLeaf'
+import { ConnectionStatusLeaf } from './ConnectionStatusLeaf'
 import type { ToolbarActionModel } from '@/types/toolbar'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '@/tokens'
 import '@/styles/components/workspaces/shared/toolbar/SessionToolbar.css'
@@ -39,6 +40,8 @@ interface SessionToolbarProps {
   onExtendCooldown?: () => void
   onOpenUserSettings: () => void
   onExitToSelector: () => void
+  // Legacy props kept for now (not used — connectionStatusLeaf in WorkspaceToolbar is now authoritative)
+  // These will be removed in a future refactor
 }
 
 export function SessionToolbar({
@@ -100,11 +103,30 @@ export function SessionToolbar({
   const hasExtraButtons =
     shouldShowStartAction || canStopSession || canPauseSession || shouldRenderCooldownControls
 
-  const coreToneClass = toneFromCoreState(coreWsState)
-  const audioToneClass = toneFromAudioState(livekitState)
+  const centerContent = useMemo(
+    () => <SessionTimerLeaf sessionId={sessionId} cooldownDurationMs={cooldownDurationMs} />,
+    [sessionId, cooldownDurationMs]
+  )
 
-  const centerContent = (
-    <SessionTimerLeaf sessionId={sessionId} cooldownDurationMs={cooldownDurationMs} />
+  // Derive wsState from coreWsState for ConnectionStatusLeaf
+  // This is a workaround until wsState is tracked in Zustand
+  const derivedWsState = (): 'connected' | 'connecting' | 'disconnected' | 'reconnecting' => {
+    if (coreWsState === 'CONNECTED') return 'connected'
+    if (coreWsState === 'CONNECTING') return 'connecting'
+    return 'disconnected'
+  }
+
+  const connectionStatusLeaf = useMemo(
+    () => (
+      <ConnectionStatusLeaf
+        wsState={derivedWsState()}
+        coreWsState={coreWsState}
+        livekitState={livekitState}
+        sessionId={sessionId}
+        roomId={undefined}
+      />
+    ),
+    [coreWsState, livekitState, sessionId]
   )
 
   const sessionActionButtons = hasExtraButtons ? (
@@ -231,12 +253,7 @@ export function SessionToolbar({
         exitIcon="logout"
         exitAriaLabel="Exit Session"
         exitTooltipLabel="Exit Session"
-        connectionStatusColorKey={statusColorKey}
-        connectionStatusLabel={statusLabel}
-        connectionStatusRows={[
-          { label: 'Core', value: coreWsState, toneClassName: coreToneClass },
-          { label: 'Audio', value: livekitState, toneClassName: audioToneClass },
-        ]}
+        connectionStatusLeaf={connectionStatusLeaf}
       />
     </TooltipProvider>
   )
