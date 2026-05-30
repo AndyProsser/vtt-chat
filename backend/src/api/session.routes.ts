@@ -202,6 +202,41 @@ function computeCooldownExpiresAt(params: {
   return endedAtMs + params.cooldownDurationMs
 }
 
+async function hasConnectedTableMembers(sessionId: UUID): Promise<boolean> {
+  const [members, presence] = await Promise.all([
+    getSessionUsers(sessionId),
+    getSessionPresence(sessionId),
+  ])
+
+  const tableMemberIds = new Set(
+    members
+      .filter((member) => member.role === Role.DM || member.role === Role.PLAYER)
+      .map((member) => member.id)
+  )
+
+  if (tableMemberIds.size === 0) {
+    return false
+  }
+
+  return presence.some(
+    (entry) => tableMemberIds.has(entry.userId) && entry.state !== PresenceState.OFFLINE
+  )
+}
+
+async function maybeTriggerEndedCleanupOnExplicitExit(sessionId: UUID): Promise<void> {
+  const session = await getSession(sessionId)
+  if (!session || session.state !== SessionStateEnum.ENDED) {
+    return
+  }
+
+  const hasConnectedTable = await hasConnectedTableMembers(sessionId)
+  if (hasConnectedTable) {
+    return
+  }
+
+  sessionCleanupJobService.notifyExplicitSessionExit(sessionId)
+}
+
 async function broadcastCampaignListInvalidatedForSession(params: {
   sessionId: UUID
   actorUserId: UUID
@@ -839,6 +874,7 @@ async function leaveSessionHandler(req: Request, res: Response) {
         reason: 'EXPLICIT_EXIT',
       })
       await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+      await maybeTriggerEndedCleanupOnExplicitExit(id as UUID)
 
       const users = await getSessionUsers(id as UUID)
       return res.status(200).json({
@@ -944,6 +980,7 @@ async function leaveSessionHandler(req: Request, res: Response) {
       reason: 'EXPLICIT_EXIT',
     })
     await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+    await maybeTriggerEndedCleanupOnExplicitExit(id as UUID)
 
     return res.status(200).json({
       session,
@@ -1587,6 +1624,183 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
         cooldownExpiresAt,
       },
       extensionCount: nextCooldownExtensionCount,
+    })
+  } catch (err: any) {
+    if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
+      return res.status(409).json(err)
+    }
+    if (err.code === ErrorCode.FORBIDDEN) {
+      return res.status(403).json(err)
+    }
+    return internalErrorResponse(res)
+  }
+})
+
+/**
+ * POST /api/session/:id/reset
+ * Explicit DM reset preparation for ENDED sessions.
+ * Transitions ENDED -> CLEANUP so the DM can intentionally start a fresh IDLE session.
+ */
+router.post('/:id/reset', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const previousSession = await getSession(id as UUID)
+    if (!previousSession) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    if (previousSession.dmId !== (user.userId as UUID)) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only DM can reset session',
+      })
+    }
+
+    if (
+      previousSession.state !== SessionStateEnum.ENDED &&
+      previousSession.state !== SessionStateEnum.CLEANUP
+    ) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_STATE_TRANSITION,
+        message: 'Reset is only available for ENDED or CLEANUP sessions',
+      })
+    }
+
+    let session = previousSession
+    let transition: Awaited<ReturnType<typeof applySessionStateRoomTransition>> | null = null
+
+    if (previousSession.state === SessionStateEnum.ENDED) {
+      const updated = await updateSessionState(
+        id as UUID,
+        SessionStateEnum.CLEANUP,
+        user.userId as UUID
+      )
+
+      if (!updated) {
+        return res.status(404).json({
+          code: ErrorCode.SESSION_NOT_FOUND,
+          message: 'Session not found',
+        })
+      }
+
+      session = updated
+      await disableMockSimulationForSessionExit(session.id)
+
+      const users = await getSessionUsers(id as UUID)
+      transition = await applySessionStateRoomTransition({
+        sessionId: session.id,
+        dmId: session.dmId,
+        previousState: previousSession.state,
+        nextState: SessionStateEnum.CLEANUP,
+        users: users.map((member) => ({
+          id: member.id,
+          username: member.username,
+        })),
+      })
+
+      await appendSessionAuditEvent({
+        sessionId: session.id,
+        actorUserId: user.userId as UUID,
+        actorRole: user.role,
+        actionType: 'SESSION_STATE_CHANGED',
+        targetType: 'SESSION',
+        targetId: session.id,
+        roomId: transition.targetRoomId,
+        visibilityClass: 'SYSTEM',
+        metadata: {
+          previousState: previousSession.state,
+          nextState: session.state,
+          reason: 'SESSION_RESET',
+        },
+      })
+
+      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+      if (wsManager) {
+        wsManager.broadcastEventToSession(session.id, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:SESSION_TRANSITION_APPLIED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: session.id,
+          roomId: transition.targetRoomId,
+          timestamp: Date.now(),
+          payload: {
+            previousState: previousSession.state,
+            nextState: session.state,
+            movedUsers: transition.movedUsers,
+            targetState: transition.targetState,
+            mainRoom: {
+              id: transition.mainRoomId,
+              name: transition.mainRoomName,
+              roomType: RoomType.MAIN,
+            },
+            greenRoom: {
+              id: transition.greenRoomId,
+              name: transition.greenRoomName,
+              roomType: RoomType.GROUP,
+            },
+            targetRoomId: transition.targetRoomId,
+            targetRoomName: transition.targetRoomName,
+            users: transition.users.map((member) => ({
+              userId: member.id,
+              username: member.username,
+              roomId: member.roomId,
+              roomName: member.roomName,
+              previousGroupId: member.previousGroupId || null,
+            })),
+          },
+        })
+
+        wsManager.broadcastEventToSession(session.id, {
+          id: crypto.randomUUID() as UUID,
+          type: 'SESSION:STATE_CHANGED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: session.id,
+          roomId: null,
+          timestamp: Date.now(),
+          payload: {
+            state: session.state,
+          },
+        })
+
+        await broadcastSessionStatsSnapshot({
+          wsManager,
+          sessionId: session.id,
+          actorUserId: user.userId as UUID,
+          actorUserRole: user.role,
+        })
+      }
+
+      clearSessionRecoveryState(session.id)
+    }
+
+    await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+    await broadcastCampaignListInvalidatedForSession({
+      sessionId: session.id,
+      actorUserId: user.userId as UUID,
+      actorUserRole: user.role as Role,
+      reason: 'SESSION_STATE_CHANGED',
+    })
+
+    return res.status(200).json({
+      session,
+      transitionApplied: Boolean(transition),
     })
   } catch (err: any) {
     if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {

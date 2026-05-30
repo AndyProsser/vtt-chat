@@ -44,6 +44,7 @@ export interface CampaignSessionSettingsPanelProps {
   sessionStateLabel: string
   sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
+  canEditEndedSessionName?: boolean
   onSessionNameChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
   /** Save handler — when campaignPolicy is provided, this should also persist campaign settings. */
@@ -164,8 +165,13 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
   }
 
   const policy = props.campaignPolicy
+  const canEditNameOnly = Boolean(props.canEditEndedSessionName)
   const disabledBase = !props.canEditSessionSettings || props.isSessionSaving
-  const spectatorChildDisabled = disabledBase || (policy ? !policy.settingsSpectatorsEnabled : true)
+  const sessionNameDisabled =
+    (!props.canEditSessionSettings && !canEditNameOnly) || props.isSessionSaving
+  const disabledSessionControls = !props.canEditSessionSettings || props.isSessionSaving
+  const spectatorChildDisabled =
+    disabledSessionControls || (policy ? !policy.settingsSpectatorsEnabled : true)
 
   const heading = (
     <div className="session-campaign-settings-header">
@@ -179,7 +185,9 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
         type="button"
         className="session-icon-action"
         aria-label={isSaving ? 'Saving settings' : 'Save session settings'}
-        disabled={isSaving || !props.campaignId || !props.canEditSessionSettings}
+        disabled={
+          isSaving || !props.campaignId || (!props.canEditSessionSettings && !canEditNameOnly)
+        }
         onClick={handleSave}
       >
         <span className="material-symbols-outlined" aria-hidden="true">
@@ -227,7 +235,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
           className="session-input"
           value={props.sessionName}
           onChange={(event) => props.onSessionNameChange(event.target.value)}
-          disabled={disabledBase}
+          disabled={sessionNameDisabled}
           placeholder="Session name"
           maxLength={255}
         />
@@ -249,7 +257,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
           step={15}
           value={props.plannedDurationMinutes}
           onValueChange={(nextValue) => props.onPlannedDurationMinutesChange(nextValue)}
-          disabled={disabledBase}
+          disabled={disabledSessionControls}
         />
 
         {policy && (
@@ -261,7 +269,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
               id="dm-auto-target"
               value={policy.settingsDmAutoTargetOnFirstPlayerJoin}
               onChange={policy.onSettingsDmAutoTargetOnFirstPlayerJoinChange}
-              disabled={disabledBase}
+              disabled={disabledSessionControls}
             />
 
             <label className="session-label" id="label-late-join-policy">
@@ -279,7 +287,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
                   className={`session-toggle-button ${policy.settingsLateJoinPolicy === p ? 'is-active' : ''}`}
                   aria-pressed={policy.settingsLateJoinPolicy === p}
                   onClick={() => policy.onSettingsLateJoinPolicyChange(p)}
-                  disabled={disabledBase}
+                  disabled={disabledSessionControls}
                 >
                   {getLateJoinPolicyLabel(p)}
                 </button>
@@ -298,7 +306,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
               step={10}
               value={policy.settingsLateJoinGraceMinutes}
               onValueChange={(v) => policy.onSettingsLateJoinGraceMinutesChange(v)}
-              disabled={disabledBase || policy.settingsLateJoinPolicy === 'OPEN'}
+              disabled={disabledSessionControls || policy.settingsLateJoinPolicy === 'OPEN'}
             />
           </>
         )}
@@ -337,7 +345,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
                 id="spectators"
                 value={policy.settingsSpectatorsEnabled}
                 onChange={policy.onSettingsSpectatorsEnabledChange}
-                disabled={disabledBase}
+                disabled={disabledSessionControls}
               />
 
               <label className="session-label" id="label-spectator-max">

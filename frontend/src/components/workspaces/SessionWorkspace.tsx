@@ -146,6 +146,7 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
             defaultSessionDurationMinutes={props.defaultSessionDurationMinutes}
             sessionStartedAt={currentSession.startedAt}
             canEditSessionSettings={props.canEditSessionSettings}
+            canEditEndedSessionName={props.canEditEndedSessionName}
             onSessionNameChange={props.onSessionNameChange}
             onPlannedDurationMinutesChange={props.onPlannedDurationMinutesChange}
             onSaveSessionSettings={props.onSaveSessionSettings}

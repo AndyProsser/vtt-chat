@@ -782,6 +782,7 @@ export function WorkspaceInitialization({
     canStopFromActive,
     leaveSessionWarning,
     canEditSessionSettings,
+    canEditEndedSessionName,
   } = useWorkspacesDerivedState({
     wsState,
     currentSession,
@@ -1019,6 +1020,7 @@ export function WorkspaceInitialization({
     defaultSessionDurationMinutes: settingsDefaultSessionDurationMins,
     sessionStartedAt: currentSession?.startedAt,
     canEditSessionSettings,
+    canEditEndedSessionName,
     onSessionNameChange: setSessionSettingsName,
     onPlannedDurationMinutesChange: handlePlannedDurationMinutesChange,
     onSaveSessionSettings: () => {

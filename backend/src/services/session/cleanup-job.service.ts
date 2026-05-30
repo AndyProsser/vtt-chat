@@ -232,6 +232,7 @@ export class SessionCleanupJobService {
   private lifecycleWorkerRunning = false
   private archiveWorkerRunning = false
   private wsManager: WsAdapter | null = null
+  private bypassEndedDisconnectGraceSessionIds = new Set<UUID>()
 
   setWebSocketManager(wsManager: WsAdapter): void {
     this.wsManager = wsManager
@@ -269,8 +270,15 @@ export class SessionCleanupJobService {
     await this.runArchiveWorkerOnce()
   }
 
-  notifyLifecycleTrigger(reason: 'COOLDOWN_STARTED' | 'SESSION_ENDED'): void {
+  notifyLifecycleTrigger(
+    reason: 'COOLDOWN_STARTED' | 'SESSION_ENDED' | 'EXPLICIT_SESSION_EXIT'
+  ): void {
     void this.refreshLifecycleScheduler(reason)
+  }
+
+  notifyExplicitSessionExit(sessionId: UUID): void {
+    this.bypassEndedDisconnectGraceSessionIds.add(sessionId)
+    void this.refreshLifecycleScheduler('EXPLICIT_SESSION_EXIT')
   }
 
   private async refreshLifecycleScheduler(reason: string): Promise<void> {
@@ -506,8 +514,13 @@ export class SessionCleanupJobService {
         const fallbackSeenAt = session.endedAt?.getTime() ?? now
         const disconnectedSinceMs = now - (latestSeenAt ?? fallbackSeenAt)
 
-        if (disconnectedSinceMs < config.sessionCleanup.endedDisconnectGraceMs) {
+        const bypassGrace = this.bypassEndedDisconnectGraceSessionIds.has(sessionId)
+        if (disconnectedSinceMs < config.sessionCleanup.endedDisconnectGraceMs && !bypassGrace) {
           continue
+        }
+
+        if (bypassGrace) {
+          this.bypassEndedDisconnectGraceSessionIds.delete(sessionId)
         }
 
         // --- 2. Campaign vs standalone ---

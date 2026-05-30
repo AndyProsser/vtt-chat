@@ -99,8 +99,11 @@ export function SessionToolbar({
 
   const pauseLabel = sessionState === 'PAUSED' ? 'Resume after break' : 'Pause for break'
   const pauseIcon = sessionState === 'PAUSED' ? 'play' : 'pause'
+  const isEndedMode = sessionState === 'ENDED'
   const isCooldownMode = sessionState === 'COOLDOWN'
   const shouldShowStartAction = canStartSession && !isCooldownMode
+  const startActionLabel = isEndedMode ? 'Reset' : 'Start'
+  const startActionIcon = isEndedMode ? 'restart_alt' : 'play'
   const shouldRenderCooldownControls = isCooldownMode && showCooldownControls
   const hasExtraButtons =
     shouldShowStartAction || canStopSession || canPauseSession || shouldRenderCooldownControls
@@ -140,8 +143,8 @@ export function SessionToolbar({
           className="session-toolbar__action session-toolbar__action--start"
           disabled={isTransitioningSession}
         >
-          <Icon name="play" />
-          <span>Start</span>
+          <Icon name={startActionIcon} />
+          <span>{startActionLabel}</span>
         </button>
       ) : null}
 

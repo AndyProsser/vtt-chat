@@ -47,6 +47,7 @@ type SessionWorkspaceRightRailTabProps = {
   defaultSessionDurationMinutes: number
   sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
+  canEditEndedSessionName: boolean
   onSessionNameChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void
@@ -198,6 +199,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
             sessionStateLabel: props.currentSessionState,
             sessionStartedAt: props.sessionStartedAt,
             canEditSessionSettings: props.canEditSessionSettings,
+            canEditEndedSessionName: props.canEditEndedSessionName,
             onSessionNameChange: props.onSessionNameChange,
             onPlannedDurationMinutesChange: props.onPlannedDurationMinutesChange,
             onSaveSessionSettings: props.onSaveSessionSettings,

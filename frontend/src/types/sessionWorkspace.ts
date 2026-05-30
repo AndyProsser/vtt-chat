@@ -88,6 +88,7 @@ export type SessionWorkspaceProps = {
   defaultSessionDurationMinutes: number
   sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
+  canEditEndedSessionName: boolean
   onSessionNameChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void

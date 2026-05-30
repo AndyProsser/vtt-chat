@@ -75,13 +75,13 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
   const [activeTransitionSessionId, setActiveTransitionSessionId] = useState<UUID | null>(null)
 
   const handleTransitionSession = useCallback(
-    async function runTransition(sessionId: UUID, state: SessionState) {
+    async function runTransition(sessionId: UUID, state: SessionState): Promise<boolean> {
       const pendingState = pendingTransitionBySessionIdRef.current.get(sessionId)
       if (pendingState) {
         if (pendingState !== state) {
           queuedTransitionBySessionIdRef.current.set(sessionId, state)
         }
-        return
+        return false
       }
 
       setError(null)
@@ -139,9 +139,11 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
         }
 
         setIsGreenroom(isGreenroomSessionState(state))
+        return true
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
+        return false
       } finally {
         pendingTransitionBySessionIdRef.current.delete(sessionId)
         setActiveTransitionSessionId((current) => (current === sessionId ? null : current))
@@ -179,10 +181,29 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
           return
         }
 
-        const nextSessionId = await startCampaignSession(selectedCampaignId, sessionList)
-        if (nextSessionId) {
-          await handleTransitionSession(nextSessionId, SessionState.ACTIVE)
+        if (currentSession.state === SessionState.ENDED) {
+          const resetResponse = await fetchWithAuthGuard(
+            `${apiUrl}/api/session/${sessionId}/reset`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({}),
+            }
+          )
+
+          if (!resetResponse.ok) {
+            const payload = (await resetResponse.json().catch(() => ({}))) as {
+              message?: string
+            }
+            setError(payload.message || 'Failed to reset ended session')
+            return
+          }
         }
+
+        await startCampaignSession(selectedCampaignId, sessionList)
         return
       }
 
@@ -193,6 +214,9 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
       handleTransitionSession,
       selectedCampaignId,
       sessionList,
+      fetchWithAuthGuard,
+      apiUrl,
+      token,
       setError,
       startCampaignSession,
     ]

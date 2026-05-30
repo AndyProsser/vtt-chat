@@ -215,7 +215,9 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
         }
 
   const canStartFromGreenroom =
-    !activeTakeoverUserId && currentSession?.dmId === user.id && isGreenroom
+    !activeTakeoverUserId &&
+    currentSession?.dmId === user.id &&
+    (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.ENDED)
   const canPauseFromActive =
     !activeTakeoverUserId &&
     currentSession?.dmId === user.id &&
@@ -230,6 +232,10 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
     currentSession?.state === SessionState.IDLE ||
     currentSession?.state === SessionState.ACTIVE ||
     currentSession?.state === SessionState.PAUSED
+  const canEditEndedSessionName =
+    !activeTakeoverUserId &&
+    currentSession?.dmId === user.id &&
+    currentSession?.state === SessionState.ENDED
 
   return {
     hasSessionSelected,
@@ -254,5 +260,6 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
     canStopFromActive,
     leaveSessionWarning,
     canEditSessionSettings,
+    canEditEndedSessionName,
   }
 }
