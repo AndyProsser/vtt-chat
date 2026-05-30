@@ -215,7 +215,6 @@
     color-mix(in srgb, var(--color-success, #22c55e) 72%, var(--color-warn, #f59e0b) 28%) 65%,
     color-mix(in srgb, var(--color-error, #ef4444) 68%, var(--color-warn, #f59e0b) 32%) 100%
   );
-  transition: height 70ms linear;
 }
 
 .session-audio-device-panel__controls-spacer {
@@ -264,6 +263,16 @@
   background: var(--color-surface);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
   z-index: 260;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.session-audio-device-panel__control-group:hover .session-audio-device-panel__quick-panel,
+.session-audio-device-panel__control-group:focus-within .session-audio-device-panel__quick-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .session-audio-device-panel__quick-title {

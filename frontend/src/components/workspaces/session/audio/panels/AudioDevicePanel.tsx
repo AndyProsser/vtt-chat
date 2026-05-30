@@ -1,4 +1,4 @@
-import { useState, type RefObject } from 'react'
+import type { RefObject } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { UUID } from '@shared'
@@ -62,14 +62,11 @@ export function AudioDevicePanel({
   onPTTChange,
   onToggleSettings,
 }: AudioDevicePanelProps) {
-  const [effectsHovered, setEffectsHovered] = useState(false)
-
   const micTitle = getMicrophoneControlLabel({
     microphoneOn: device.microphoneOn,
     isVoiceConnected,
   })
 
-  const effectsOpen = effectsHovered
   const primaryControlClass = device.pttEnabled
     ? `session-audio-device-panel__control session-audio-device-panel__control--ptt ${pttActive ? 'is-active' : ''}`
     : `session-audio-device-panel__control ${device.microphoneOn ? 'is-danger' : isVoiceConnected ? 'is-success' : ''}`
@@ -197,15 +194,11 @@ export function AudioDevicePanel({
         <span className="session-audio-device-panel__controls-spacer" aria-hidden="true" />
 
         {/* Effects indicator */}
-        <div
-          className="session-audio-device-panel__control-group"
-          onMouseEnter={() => setEffectsHovered(true)}
-          onMouseLeave={() => setEffectsHovered(false)}
-        >
+        <div className="session-audio-device-panel__control-group">
           <button
             className={`session-audio-device-panel__control session-audio-device-panel__control--icon ${activeEffectsCount > 0 ? 'is-active' : ''}`}
             aria-label={getAudioQuickPanelAriaLabel(activeEffectsCount)}
-            aria-expanded={effectsOpen}
+            aria-haspopup="dialog"
             type="button"
           >
             <Icon name="effects" />
@@ -215,39 +208,37 @@ export function AudioDevicePanel({
               </span>
             ) : null}
           </button>
-          {effectsOpen && (
-            <div
-              className="session-audio-device-panel__quick-panel"
-              role="dialog"
-              aria-label={AUDIO_CONTROL_COPY.activeAudioEffects}
-            >
-              <p className="session-audio-device-panel__quick-title">
-                {AUDIO_CONTROL_COPY.audioEffects}
+          <div
+            className="session-audio-device-panel__quick-panel"
+            role="dialog"
+            aria-label={AUDIO_CONTROL_COPY.activeAudioEffects}
+          >
+            <p className="session-audio-device-panel__quick-title">
+              {AUDIO_CONTROL_COPY.audioEffects}
+            </p>
+            {effectItems.length === 0 ? (
+              <p className="session-audio-device-panel__quick-empty">
+                {AUDIO_CONTROL_COPY.noActiveProcessing}
               </p>
-              {effectItems.length === 0 ? (
-                <p className="session-audio-device-panel__quick-empty">
-                  {AUDIO_CONTROL_COPY.noActiveProcessing}
-                </p>
-              ) : (
-                <ul className="session-audio-device-panel__quick-list">
-                  {effectItems.map((item) => (
-                    <li
-                      key={`${item.kind}-${item.name}`}
-                      className="session-audio-device-panel__quick-item"
-                    >
-                      {renderItemIcon(item.kind)}
-                      <span className="session-audio-device-panel__quick-main">
-                        <span className="session-audio-device-panel__quick-name">{item.name}</span>
-                        <span className="session-audio-device-panel__quick-desc">
-                          {item.description}
-                        </span>
+            ) : (
+              <ul className="session-audio-device-panel__quick-list">
+                {effectItems.map((item) => (
+                  <li
+                    key={`${item.kind}-${item.name}`}
+                    className="session-audio-device-panel__quick-item"
+                  >
+                    {renderItemIcon(item.kind)}
+                    <span className="session-audio-device-panel__quick-main">
+                      <span className="session-audio-device-panel__quick-name">{item.name}</span>
+                      <span className="session-audio-device-panel__quick-desc">
+                        {item.description}
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         {/* Audio settings */}
