@@ -41,6 +41,9 @@ export function UserSettingsModal(props: UserSettingsModalProps) {
           <DialogPrimitive.Title className="session-inline-form-title">
             User Settings
           </DialogPrimitive.Title>
+          <DialogPrimitive.Description className="session-card-subtitle">
+            Configure your profile and chat preferences.
+          </DialogPrimitive.Description>
           <UserSettingsPanel
             ref={panelRef}
             apiUrl={props.apiUrl}

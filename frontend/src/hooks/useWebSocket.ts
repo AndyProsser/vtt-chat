@@ -305,19 +305,19 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('ROOM:SESSION_TRANSITION_APPLIED', (event) => {
       const store = useStore.getState()
       store.handleSessionRoomTransitionApplied(event)
-      const payload = event.payload as { nextState?: import('@shared').SessionState | null }
 
-      if (
-        payload.nextState === SessionState.IDLE ||
-        payload.nextState === SessionState.ENDED ||
-        payload.nextState === SessionState.CLEANUP
-      ) {
+      // Check if we should reset audio state based on next state
+      const nextState = (event.payload as any)?.nextState
+
+      // Always reset audio state
+      store.resetSessionAudioState()
+      store.clearActiveEffects()
+
+      if (nextState === 'IDLE' || nextState === 'ENDED' || nextState === 'CLEANUP') {
         store.markMockSimulationExited(event.sessionId)
-        store.resetSessionAudioState()
-        store.clearActiveEffects()
       }
 
-      if (payload.nextState === SessionState.ENDED) {
+      if (nextState === 'ENDED') {
         store.clearMessages(event.sessionId)
       }
     })
