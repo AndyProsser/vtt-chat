@@ -337,7 +337,6 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
                 <span
                   className={`session-message-list__message-type-icon ${typeIconClass} material-symbols-outlined`}
                   aria-label={TYPE_LABEL_BY_VARIANT[variant]}
-                  title={TYPE_LABEL_BY_VARIANT[variant]}
                 >
                   {typeIcon}
                 </span>

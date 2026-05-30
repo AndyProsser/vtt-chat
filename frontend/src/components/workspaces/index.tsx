@@ -22,6 +22,10 @@ import { LobbyModals } from '@/components/workspaces/lobby/modals/LobbyModals'
 import { buildLobbyModalsProps } from '@/components/workspaces/lobby/lobbyModals.props'
 import { SessionWorkspace } from './SessionWorkspace'
 import { buildSessionWorkspaceProps } from '@/components/workspaces/session/sessionWorkspace.props'
+import {
+  SessionWorkspaceChromeConnector,
+  SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS,
+} from '@/components/workspaces/session/SessionWorkspaceChromeConnector'
 import { SessionModals } from '@/components/workspaces/session/modals/SessionModals'
 import { buildSessionModalsProps } from '@/components/workspaces/session/modals/sessionModals.props'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
@@ -79,14 +83,49 @@ import '@/styles/components/workspaces/Workspaces.css'
 
 const EMPTY_ROOMS_BY_ID = Object.freeze({}) as Record<UUID, RoomRecord>
 const EMPTY_PRESENCE_BY_USER = Object.freeze({}) as Record<UUID, PresenceRecord>
-const EMPTY_NOTES_BY_ID = Object.freeze({}) as Record<
-  UUID,
-  { title: string; tags?: string[] | null }
->
 const EMPTY_PAUSE_STATS = {
   cumulativePauseMs: 0,
   pauseCount: 0,
   pauseStartedAt: undefined,
+}
+
+function normalizePresenceStateForWorkspace(state: PresenceRecord['state']) {
+  return state === PresenceState.OFFLINE ? PresenceState.OFFLINE : PresenceState.IDLE
+}
+
+function areSessionPresenceMapsEquivalentForWorkspace(
+  left: Record<UUID, PresenceRecord>,
+  right: Record<UUID, PresenceRecord>
+) {
+  if (left === right) {
+    return true
+  }
+
+  const leftEntries = Object.entries(left) as Array<[UUID, PresenceRecord]>
+  if (leftEntries.length !== Object.keys(right).length) {
+    return false
+  }
+
+  for (const [userId, leftPresence] of leftEntries) {
+    const rightPresence = right[userId]
+    if (!rightPresence) {
+      return false
+    }
+
+    if (
+      leftPresence.primaryRoomId !== rightPresence.primaryRoomId ||
+      leftPresence.username !== rightPresence.username ||
+      leftPresence.characterName !== rightPresence.characterName ||
+      leftPresence.avatarUrl !== rightPresence.avatarUrl ||
+      leftPresence.role !== rightPresence.role ||
+      normalizePresenceStateForWorkspace(leftPresence.state) !==
+        normalizePresenceStateForWorkspace(rightPresence.state)
+    ) {
+      return false
+    }
+  }
+
+  return true
 }
 
 export function WorkspaceInitialization({
@@ -234,7 +273,7 @@ export function WorkspaceInitialization({
 
     const presenceBySession = state.sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
     return presenceBySession[state.currentSessionId] ?? EMPTY_PRESENCE_BY_USER
-  })
+  }, areSessionPresenceMapsEquivalentForWorkspace)
   const currentSessionStats = useStore((state) => {
     if (!state.currentSessionId) {
       return undefined
@@ -244,17 +283,6 @@ export function WorkspaceInitialization({
     return statsBySession[state.currentSessionId]
   })
   const roomMembers = useStore((state) => state.roomMembers)
-  const currentSessionNotesById = useStore((state) => {
-    if (!state.currentSessionId) {
-      return EMPTY_NOTES_BY_ID
-    }
-
-    const notesBySession = state.notes as Record<
-      UUID,
-      Record<UUID, { title: string; tags?: string[] | null }>
-    >
-    return notesBySession[state.currentSessionId] ?? EMPTY_NOTES_BY_ID
-  })
   const addNote = useStore((state) => state.addNote)
   const addMessage = useStore((state) => state.addMessage)
   const currentTransitionNotice = useStore((state) => {
@@ -264,8 +292,6 @@ export function WorkspaceInitialization({
 
     return state.sessionTransitionNotice[state.currentSessionId]
   })
-  const dmOverrides = useStore((state) => state.dmOverrides)
-  const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
   const setBroadcastState = useStore((state) => state.setBroadcastState)
   const currentEnvironment = useStore((state) => state.currentEnvironment)
   const setEnvironment = useStore((state) => state.setEnvironment)
@@ -274,7 +300,6 @@ export function WorkspaceInitialization({
   const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
   const replaceRoomEnvironmentNames = useStore((state) => state.replaceRoomEnvironmentNames)
   const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
-  const currentConditionName = useStore((state) => state.currentCondition?.name)
   const clearSessions = useStore((state) => state.clearSessions)
   const replaceSessions = useStore((state) => state.replaceSessions)
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
@@ -292,13 +317,6 @@ export function WorkspaceInitialization({
   const resetToolbarActionsState = useStore((state) => state.resetToolbarActionsState)
   const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
   const updateSession = useStore((state) => state.updateSession)
-  const currentPauseStats = useStore((state) => {
-    if (!state.currentSessionId) {
-      return EMPTY_PAUSE_STATS
-    }
-
-    return state.pauseStats[state.currentSessionId] ?? EMPTY_PAUSE_STATS
-  })
   const cooldownExtensionCounts = useStore((state) => state.cooldownExtensionCounts)
   const setCooldownExtensionCount = useStore((state) => state.setCooldownExtensionCount)
   const shouldEnableWs = !!token && (!isCampaignRestorePending || !!currentSessionId)
@@ -388,10 +406,6 @@ export function WorkspaceInitialization({
       currentSession ? getVisibleRoomsForSessionState(currentRooms, currentSession.state) : [],
     [currentRooms, currentSession]
   )
-  const currentSessionHandoutCount = useMemo(
-    () => Object.values(currentSessionNotesById).filter((note) => !isJournalNote(note)).length,
-    [currentSessionNotesById]
-  )
   const takeoverPresence = useMemo(
     () =>
       activeTakeoverUserId
@@ -467,17 +481,6 @@ export function WorkspaceInitialization({
     currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
       ? currentTransitionNotice
       : undefined
-  // History is past-session only — it never reflects current session activity,
-  // so it must not carry a live badge (transition notices belong elsewhere).
-  const rightRailIndicators = useMemo<Partial<Record<RightRailTab, number>>>(
-    () => ({
-      notes: currentSessionHandoutCount,
-      journal: 0,
-      history: 0,
-    }),
-    [currentSessionHandoutCount]
-  )
-
   useWorkspacesGreenroomCarryLifecycle({
     currentSession,
     currentRooms,
@@ -961,7 +964,7 @@ export function WorkspaceInitialization({
   const sessionWorkspaceProps = buildSessionWorkspaceProps({
     hasSessionSelected,
     currentSession,
-    currentPauseStats,
+    currentPauseStats: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.currentPauseStats,
     configuredCooldownDurationMs,
     isTransitioningSession: activeTransitionSessionId === currentSession?.id,
     canStartFromGreenroom,
@@ -994,16 +997,16 @@ export function WorkspaceInitialization({
     roomMembersByRoomId: typedRoomMembers,
     selectedRoomId,
     onSelectRoom: handleRoomSelection,
-    broadcastModeEnabled,
+    broadcastModeEnabled: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.broadcastModeEnabled,
     onToggleBroadcastMode: handleToggleBroadcastMode,
     dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
-    dmOverrides,
-    currentConditionName,
+    dmOverrides: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.dmOverrides,
+    currentConditionName: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.currentConditionName,
     roomEnvironmentNames,
     wsState,
     wsRetrySecondsRemaining,
     connectionStatus,
-    rightRailIndicators,
+    rightRailIndicators: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.rightRailIndicators,
     partyPresenceRefreshVersion,
     fetchWithAuthGuard,
     selectedRoom: selectedRoom ?? null,
@@ -1180,7 +1183,7 @@ export function WorkspaceInitialization({
 
         <EditorWorkspace {...editorWorkspaceProps} />
 
-        <SessionWorkspace {...sessionWorkspaceProps} />
+        <SessionWorkspaceChromeConnector baseProps={sessionWorkspaceProps} />
       </div>
 
       <TooltipProvider delayDuration={140}>
