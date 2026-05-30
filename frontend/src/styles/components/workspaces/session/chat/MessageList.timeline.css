@@ -23,6 +23,24 @@
   block-size: 1px;
 }
 
+.session-message-list__virtual-row {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 0.75rem;
+  /* react-window sets `height` inline; allow content to render fully so the
+     measurement child reports its real natural height. Overflow stays visible
+     so a brief stale-estimate frame doesn't visually clip messages. */
+  overflow: visible;
+}
+
+.session-message-list__virtual-row-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-bottom: 0.52rem;
+}
+
 .session-message-list__session-marker {
   display: flex;
   align-items: center;
