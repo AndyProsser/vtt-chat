@@ -379,7 +379,13 @@ describe('http middleware', () => {
     expect(mocks.runWithRequestMetrics).toHaveBeenCalledTimes(1)
 
     res.__finish()
-    expect(mocks.loggerDebug).toHaveBeenCalledWith('http', 'POST   /api/test [200] 0ms', {
+    // Extract the actual log call to check message with lenient timing
+    const calls = mocks.loggerDebug.mock.calls
+    expect(calls).toHaveLength(1)
+    const [category, message, context] = calls[0]
+    expect(category).toBe('http')
+    expect(message).toMatch(/^POST   \/api\/test \[200\] [0-2]ms$/)
+    expect(context).toEqual({
       requestId: 'incoming-id',
       queryCount: 0,
       dbDurationMs: 0,

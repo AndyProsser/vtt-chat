@@ -30,16 +30,10 @@ export function CampaignInformationPanel({
       return
     }
 
-    const timeoutId = window.setTimeout(() => {
-      setNameDraft(campaign.name)
-      setDescriptionDraft(campaign.description || '')
-      setPosterUrlDraft(campaign.posterUrl || null)
-      setIsEditing(Boolean(workspaceMode && canEdit))
-    }, 0)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
+    setNameDraft(campaign.name)
+    setDescriptionDraft(campaign.description || '')
+    setPosterUrlDraft(campaign.posterUrl || null)
+    setIsEditing(Boolean(workspaceMode && canEdit))
   }, [campaign, workspaceMode, canEdit])
 
   if (!campaign) {
