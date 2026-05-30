@@ -354,8 +354,34 @@
   gap: var(--space-2);
 }
 
+/*
+ * History uses a virtualized list (react-window). It requires a definite
+ * height on its scroll shell, so the panel becomes a flex column from the
+ * heading down and the content region claims the remaining space.
+ */
+[data-testid='history-panel'] {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
 .knowledge-panel-history__content {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   padding-bottom: 0.55rem;
+  overflow: hidden;
+}
+
+.knowledge-panel-history__virtual-list {
+  outline: none;
+}
+
+.knowledge-panel-history__virtual-inner {
+  position: relative;
 }
 
 .knowledge-panel-session-item__editor {
