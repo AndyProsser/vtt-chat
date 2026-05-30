@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { UUID } from '@shared'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '@/constants/voiceGroupStatus.constants'
 import { PresenceIndicator } from './PresenceIndicator'
@@ -36,6 +37,33 @@ function getDisplayName(member: GroupMemberProfileCardParticipant): string {
   return member.characterName || member.username || member.playerName || 'Player'
 }
 
+interface ProfileMutedStatusPillProps {
+  sessionId: UUID
+  userId: UUID
+  isSelf: boolean
+}
+
+const ProfileMutedStatusPill = memo(function ProfileMutedStatusPill({
+  sessionId,
+  userId,
+  isSelf,
+}: ProfileMutedStatusPillProps) {
+  const isMuted = useIsUserMuted(sessionId, userId, isSelf)
+
+  if (!isMuted) {
+    return null
+  }
+
+  return (
+    <span className="room-selector-status-pill muted">
+      <span className="material-symbols-outlined" aria-hidden="true">
+        {STATUS_PILL_ICONS.muted}
+      </span>
+      {STATUS_PILL_LABELS.muted}
+    </span>
+  )
+})
+
 export function GroupMemberProfileCard({
   sessionId,
   isSelf = false,
@@ -46,11 +74,6 @@ export function GroupMemberProfileCard({
   activeTakeover = false,
 }: GroupMemberProfileCardProps) {
   const displayName = getDisplayName(member)
-
-  // Subscribe to mute bit locally for its status pill.
-  // PresenceIndicator handles presence + ghost as a separate leaf in the
-  // title row so ghost flips do not invalidate this profile card subtree.
-  const isMuted = useIsUserMuted(sessionId, member.userId, isSelf)
 
   const avatarVisual = (
     <>
@@ -133,14 +156,7 @@ export function GroupMemberProfileCard({
               Condition: {member.condition || STATUS_PILL_LABELS.conditionNone}
             </span>
           ) : null}
-          {isMuted ? (
-            <span className="room-selector-status-pill muted">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                {STATUS_PILL_ICONS.muted}
-              </span>
-              {STATUS_PILL_LABELS.muted}
-            </span>
-          ) : null}
+          <ProfileMutedStatusPill sessionId={sessionId} userId={member.userId} isSelf={isSelf} />
         </div>
       </div>
     </div>

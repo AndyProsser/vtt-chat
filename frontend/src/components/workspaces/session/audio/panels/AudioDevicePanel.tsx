@@ -3,7 +3,6 @@ import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { UUID } from '@shared'
 import type { AudioDeviceState } from '@/types/audio'
-import { useIsUserMuted } from '@/hooks/useIsUserMuted'
 import { ConnectionStatusIndicator } from '../indicators/ConnectionStatusIndicator'
 import { ModeStatusPill } from '../indicators/ModeStatusPill'
 import {
@@ -59,9 +58,6 @@ export function AudioDevicePanel({
   const [effectsHovered, setEffectsHovered] = useState(false)
   const txMeterFillRef = useRef<HTMLSpanElement | null>(null)
   const transmittedMicLevelPercent = Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)
-
-  // Get combined mute state: own mute + DM override + device state
-  const isCombinedMuted = useIsUserMuted(sessionId, userId, true)
 
   useEffect(() => {
     txMeterFillRef.current?.style.setProperty(

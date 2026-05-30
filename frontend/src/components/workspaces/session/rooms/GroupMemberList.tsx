@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { LONG_PRESS_MOVE_CANCEL_PX } from '@/constants/voiceGroup.constants'
-import { useIsUserMuted } from '@/hooks/useIsUserMuted'
 import { AvatarOverlay } from './AvatarOverlay'
 import { GroupMemberProfileCard } from './GroupMemberProfileCard'
 import { PlayerContextMenu } from './context-menu/PlayerContextMenu'
@@ -218,11 +217,6 @@ const GroupMemberItem = memo(function GroupMemberItem({
 
   const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
   const isSelf = member.userId === currentUserId
-  // Live subscription to combined mute state for THIS user only.
-  // Re-renders this single GroupMemberItem when the user's mute bit flips —
-  // never the surrounding list or panel. The ghost class is driven by CSS
-  // `:has(.avatar-ghost-badge)` so we no longer subscribe to ghost here at all.
-  const isMuted = useIsUserMuted(sessionId, member.userId, isSelf)
   const isPlayerTarget = member.roleLabel !== 'DM'
   const isTakeoverEligible = member.roleLabel === 'PLAYER'
   const isTakeoverActive = activeTakeoverUserId === member.userId
@@ -285,7 +279,9 @@ const GroupMemberItem = memo(function GroupMemberItem({
         enabled
         canManageRooms={canManageRooms}
         isGreenroom={isGreenroom}
-        memberIsMuted={isMuted}
+        sessionId={sessionId}
+        userId={member.userId}
+        isSelf={isSelf}
         distanceTargets={distanceTargets}
         conditionTargets={conditionTargets}
         onDistanceSelect={(distanceName) => onApplyDistanceOverride(member.userId, distanceName)}

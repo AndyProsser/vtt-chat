@@ -1,4 +1,5 @@
 import * as ContextMenu from '@radix-ui/react-context-menu'
+import type { UUID } from '@shared'
 import type { ReactNode } from 'react'
 import { PlayerContextMenuContent } from './PlayerContextMenuContent'
 
@@ -6,7 +7,9 @@ interface PlayerContextMenuProps {
   enabled: boolean
   canManageRooms: boolean
   isGreenroom?: boolean
-  memberIsMuted: boolean
+  sessionId: UUID
+  userId: UUID
+  isSelf: boolean
   distanceTargets: string[]
   conditionTargets: string[]
   onDistanceSelect?: (distanceName: string) => void
@@ -25,7 +28,9 @@ export function PlayerContextMenu({
   enabled,
   canManageRooms,
   isGreenroom = false,
-  memberIsMuted,
+  sessionId,
+  userId,
+  isSelf,
   distanceTargets,
   conditionTargets,
   onDistanceSelect,
@@ -49,7 +54,9 @@ export function PlayerContextMenu({
       <PlayerContextMenuContent
         canManageRooms={canManageRooms}
         isGreenroom={isGreenroom}
-        memberIsMuted={memberIsMuted}
+        sessionId={sessionId}
+        userId={userId}
+        isSelf={isSelf}
         distanceTargets={distanceTargets}
         conditionTargets={conditionTargets}
         onDistanceSelect={onDistanceSelect}

@@ -1,9 +1,14 @@
+import { memo } from 'react'
 import * as ContextMenu from '@radix-ui/react-context-menu'
+import type { UUID } from '@shared'
+import { useIsUserMuted } from '@/hooks/useIsUserMuted'
 
 interface PlayerContextMenuContentProps {
   canManageRooms: boolean
   isGreenroom?: boolean
-  memberIsMuted: boolean
+  sessionId: UUID
+  userId: UUID
+  isSelf: boolean
   distanceTargets: string[]
   conditionTargets: string[]
   onDistanceSelect?: (distanceName: string) => void
@@ -17,10 +22,38 @@ interface PlayerContextMenuContentProps {
   onBan?: () => void
 }
 
+interface MuteContextMenuItemProps {
+  sessionId: UUID
+  userId: UUID
+  isSelf: boolean
+  onToggleMute?: (nextMuted: boolean) => void
+}
+
+const MuteContextMenuItem = memo(function MuteContextMenuItem({
+  sessionId,
+  userId,
+  isSelf,
+  onToggleMute,
+}: MuteContextMenuItemProps) {
+  const memberIsMuted = useIsUserMuted(sessionId, userId, isSelf)
+
+  return (
+    <ContextMenu.Item
+      className="room-context-menu__item"
+      disabled={!onToggleMute}
+      onSelect={() => onToggleMute?.(!memberIsMuted)}
+    >
+      {memberIsMuted ? 'Unmute' : 'Mute'}
+    </ContextMenu.Item>
+  )
+})
+
 export function PlayerContextMenuContent({
   canManageRooms,
   isGreenroom = false,
-  memberIsMuted,
+  sessionId,
+  userId,
+  isSelf,
   distanceTargets,
   conditionTargets,
   onDistanceSelect,
@@ -53,13 +86,12 @@ export function PlayerContextMenuContent({
 
         {canManageRooms ? (
           <>
-            <ContextMenu.Item
-              className="room-context-menu__item"
-              disabled={!onToggleMute}
-              onSelect={() => onToggleMute?.(!memberIsMuted)}
-            >
-              {memberIsMuted ? 'Unmute' : 'Mute'}
-            </ContextMenu.Item>
+            <MuteContextMenuItem
+              sessionId={sessionId}
+              userId={userId}
+              isSelf={isSelf}
+              onToggleMute={onToggleMute}
+            />
 
             {!isGreenroom ? (
               <>

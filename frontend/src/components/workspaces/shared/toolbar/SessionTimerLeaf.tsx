@@ -135,12 +135,14 @@ function SessionTimerLeafInner({
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now())
   const [showPopper, setShowPopper] = useState(false)
 
-  // Clock driver: interval for live states, one-shot for COOLDOWN, nothing otherwise.
+  // Clock driver: interval for ticking states, one-shot for COOLDOWN, nothing otherwise.
   useEffect(() => {
     if (
       anchor.state === SessionState.ACTIVE ||
       anchor.state === SessionState.PAUSED ||
-      anchor.state === SessionState.IDLE
+      anchor.state === SessionState.IDLE ||
+      anchor.state === SessionState.ENDED ||
+      anchor.state === SessionState.CLEANUP
     ) {
       const id = window.setInterval(() => setCurrentTimeMs(Date.now()), 1000)
       return () => window.clearInterval(id)
