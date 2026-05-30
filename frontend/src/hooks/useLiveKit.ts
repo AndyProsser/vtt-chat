@@ -103,6 +103,18 @@ export function useLiveKit(
 ): UseLiveKitReturn {
   const roomListenerDiagEnabled = import.meta.env.DEV
   const { onTrackSubscribed, onTrackUnsubscribed, tokenChannel = 'room' } = options
+  const dualRoomHandoffEnabled =
+    tokenChannel === 'room' && import.meta.env.VITE_LIVEKIT_DUAL_ROOM_HANDOFF === '1'
+  const dualRoomHandoffMaxOverlapMs = Math.max(
+    500,
+    Number.parseInt(import.meta.env.VITE_LIVEKIT_DUAL_ROOM_HANDOFF_MAX_MS ?? '2500', 10) || 2500
+  )
+  const dualRoomMirrorPublishEnabled =
+    dualRoomHandoffEnabled && import.meta.env.VITE_LIVEKIT_DUAL_ROOM_MIRROR_PUBLISH === '1'
+  const dualRoomMirrorPublishMaxMs = Math.max(
+    250,
+    Number.parseInt(import.meta.env.VITE_LIVEKIT_DUAL_ROOM_MIRROR_MAX_MS ?? '900', 10) || 900
+  )
   const connectionKey = buildLiveKitConnectionKey(sessionId, roomId, tokenChannel)
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     ConnectionState.Disconnected
@@ -151,6 +163,7 @@ export function useLiveKit(
     (state) => state.livekitLocalInputTracks?.[connectionKey] ?? null
   )
   const device = useStore((state) => state.device)
+  const pttActive = useStore((state) => state.pttActive)
   const selectedMicDeviceId = device?.selectedMicDeviceId ?? 'default'
   const noiseFilterLevel = device?.noiseFilterLevel ?? 'medium'
   const autoGainEnabled = device?.autoGainEnabled ?? true
@@ -974,6 +987,202 @@ export function useLiveKit(
     tokenChannel,
   ])
 
+  const attemptDualRoomHandoff = useCallback(
+    async (targetConnectionKey: string): Promise<boolean> => {
+      const previousRoom = roomRef.current
+      const previousTeardown = teardownRoomListenersRef.current
+      const previousConnectionKey = connectionKeyRef.current
+
+      const mirrorLocalPublicationIfNeeded = async (
+        targetRoom: Room
+      ): Promise<LocalAudioTrack | null> => {
+        if (!dualRoomMirrorPublishEnabled) {
+          return null
+        }
+
+        const shouldMirrorForContinuity =
+          device.microphoneOn &&
+          (!device.pttEnabled || pttActive) &&
+          getHasLocalPublication(previousRoom)
+
+        if (!shouldMirrorForContinuity) {
+          return null
+        }
+
+        const sourceInputTrack = localInputTrack ?? localAudioRef.current?.mediaStreamTrack
+        if (!sourceInputTrack) {
+          throw new Error('dual-room mirror requested but no local input track is available')
+        }
+
+        const clonedInputTrack = sourceInputTrack.clone()
+        const mirroredTrack = new LocalAudioTrack(clonedInputTrack)
+
+        try {
+          await Promise.race([
+            targetRoom.localParticipant.publishTrack(mirroredTrack, {
+              audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
+            }),
+            new Promise<never>((_, reject) => {
+              window.setTimeout(() => {
+                reject(new Error('dual-room mirror publish timeout'))
+              }, dualRoomMirrorPublishMaxMs)
+            }),
+          ])
+        } catch (err) {
+          await targetRoom.localParticipant.unpublishTrack(mirroredTrack).catch(() => undefined)
+          mirroredTrack.stop()
+          throw err
+        }
+
+        setLocalAudioTrackState(mirroredTrack)
+        if (typeof setLiveKitLocalInputTrack === 'function') {
+          setLiveKitLocalInputTrack(connectionKey, clonedInputTrack)
+        }
+
+        logger.info('useLiveKit', 'Dual-room mirror publish succeeded', {
+          targetConnectionKey,
+          maxMirrorMs: dualRoomMirrorPublishMaxMs,
+        })
+
+        return mirroredTrack
+      }
+
+      if (!previousRoom || !previousConnectionKey) {
+        return false
+      }
+
+      logConnectionStartDiag('dual_handoff_start', {
+        targetConnectionKey,
+        previousConnectionKey,
+        maxOverlapMs: dualRoomHandoffMaxOverlapMs,
+      })
+
+      isConnectingRef.current = true
+      connectingTargetRef.current = targetConnectionKey
+      if (isMountedRef.current) {
+        setConnectionState(ConnectionState.Reconnecting)
+        setIsConnected(true)
+        setIsConnecting(true)
+        setError(null)
+      }
+
+      publishConnectionSnapshot({
+        connectionState: ConnectionState.Reconnecting,
+        isConnected: true,
+        isConnecting: true,
+        hasLocalPublication: getHasLocalPublication(previousRoom),
+        error: null,
+      })
+
+      // Keep previous room alive during overlap attempt, but detach its teardown
+      // from the active ref so connect() can attach the candidate room listeners.
+      teardownRoomListenersRef.current = null
+      roomRef.current = null
+      connectionKeyRef.current = null
+
+      let timeoutTriggered = false
+
+      try {
+        await Promise.race([
+          connect(),
+          new Promise<never>((_, reject) => {
+            window.setTimeout(() => {
+              timeoutTriggered = true
+              reject(new Error('dual-room handoff overlap timeout'))
+            }, dualRoomHandoffMaxOverlapMs)
+          }),
+        ])
+
+        const currentRoom = roomRef.current
+        if (
+          !currentRoom ||
+          currentRoom === previousRoom ||
+          connectionKeyRef.current !== targetConnectionKey
+        ) {
+          throw new Error('dual-room handoff did not activate the target room')
+        }
+
+        await mirrorLocalPublicationIfNeeded(currentRoom)
+
+        // Remove listeners from previous room and terminate it after swap.
+        previousTeardown?.()
+        await previousRoom.disconnect().catch(() => undefined)
+
+        logger.info('useLiveKit', 'Dual-room handoff succeeded', {
+          targetConnectionKey,
+          previousConnectionKey,
+        })
+        return true
+      } catch (err) {
+        if (timeoutTriggered) {
+          // Supersede any in-flight connect attempt that exceeded overlap guard.
+          connectionAttemptRef.current += 1
+        }
+
+        const candidateRoom = roomRef.current as Room | null
+        if (candidateRoom && candidateRoom !== previousRoom) {
+          teardownRoomListeners()
+          await (candidateRoom as Room).disconnect().catch(() => undefined)
+          teardownRoomListeners()
+        }
+
+        // Roll back to previously connected room.
+        roomRef.current = previousRoom
+        if (isMountedRef.current) {
+          setRoom(previousRoom)
+        }
+        teardownRoomListenersRef.current = previousTeardown ?? null
+        connectionKeyRef.current = previousConnectionKey
+        isConnectingRef.current = false
+        connectingTargetRef.current = null
+
+        const previousState = previousRoom.state
+        if (isMountedRef.current) {
+          setConnectionState(previousState)
+          setIsConnected(previousState === ConnectionState.Connected)
+          setIsConnecting(false)
+          setError(null)
+        }
+
+        publishConnectionSnapshot({
+          connectionState: previousState,
+          isConnected: previousState === ConnectionState.Connected,
+          isConnecting: false,
+          hasLocalPublication: getHasLocalPublication(previousRoom),
+          error: null,
+        })
+
+        logger.warn(
+          'useLiveKit',
+          `Dual-room handoff failed, rolled back: ${err instanceof Error ? err.message : String(err)}`,
+          {
+            targetConnectionKey,
+            previousConnectionKey,
+            timeoutTriggered,
+          }
+        )
+        return false
+      }
+    },
+    [
+      connect,
+      connectionKey,
+      device.microphoneOn,
+      device.pttEnabled,
+      dualRoomHandoffMaxOverlapMs,
+      dualRoomMirrorPublishEnabled,
+      dualRoomMirrorPublishMaxMs,
+      getHasLocalPublication,
+      localInputTrack,
+      logConnectionStartDiag,
+      pttActive,
+      publishConnectionSnapshot,
+      setLiveKitLocalInputTrack,
+      setLocalAudioTrackState,
+      teardownRoomListeners,
+    ]
+  )
+
   const waitForRoomConnected = useCallback(async (targetRoom: Room, timeoutMs = 6000) => {
     if (targetRoom.state === ConnectionState.Connected) {
       return
@@ -1389,6 +1598,15 @@ export function useLiveKit(
         isConnectingRef.current && connectingTargetRef.current !== targetConnectionKey
 
       if (hasStaleConnectedRoom) {
+        if (dualRoomHandoffEnabled) {
+          logConnectionStartDiag('effect_dual_handoff_attempt', { targetConnectionKey })
+          const handoffSucceeded = await attemptDualRoomHandoff(targetConnectionKey)
+          if (handoffSucceeded) {
+            return
+          }
+          logConnectionStartDiag('effect_dual_handoff_fallback_legacy', { targetConnectionKey })
+        }
+
         logConnectionStartDiag('effect_disconnect_stale_connected_room', { targetConnectionKey })
         invalidatePendingPublish()
         await disconnect()
@@ -1432,6 +1650,8 @@ export function useLiveKit(
     tokenChannel,
     connect,
     disconnect,
+    dualRoomHandoffEnabled,
+    attemptDualRoomHandoff,
     invalidatePendingPublish,
     logConnectionStartDiag,
     teardownRoomListeners,
