@@ -22,6 +22,7 @@ import { AUDIO_EFFECT_COPY, getPushToTalkEffectDescription } from '@/constants/a
 import {
   AUDIO_BROADCAST_TRACK_PREFIX,
   AUDIO_ROOM_TRACK_PREFIX,
+  AUDIO_TRANSITION_CONTROL_STICKY_MS,
   LOCAL_SPEAKING_EVALUATION_INTERVAL_MS,
   LOCAL_SPEAKING_HOLD_MS,
   LOCAL_SPEAKING_RELEASE_LEVEL,
@@ -48,6 +49,8 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const trackParticipantByTrackIdRef = useRef(new Map<string, UUID>())
   const localSpeakingRef = useRef(false)
   const localSpeakingHoldUntilRef = useRef(0)
+  const controlConnectionStickyUntilRef = useRef(0)
+  const [controlIsVoiceConnected, setControlIsVoiceConnected] = useState(false)
 
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream, meta: { participantIdentity: string }) => {
@@ -129,6 +132,9 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const handleGoLive = async () => {
     initializeAudio(true)
+    // Intent-first UX: reflect unmute immediately and let the connection-sync
+    // effect publish once transport is connected.
+    setDevice({ microphoneOn: true })
 
     // Ensure backend mute gate is cleared before attempting publish.
     // LiveKit token issuance uses backend mute enforcement to set canPublish.
@@ -151,7 +157,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       console.error('Failed to pre-sync unmute state to backend:', error)
     }
 
-    await livekit.publishAudio()
+    void livekit.publishAudio().catch(() => undefined)
     if (broadcastModeEnabled && effectiveRole === Role.DM) {
       try {
         await publishBroadcastAudio()
@@ -159,13 +165,13 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         // Broadcast channel publish can trail behind room publish while secondary channel connects.
       }
     }
-    setDevice({ microphoneOn: true })
   }
 
   const handleMute = async () => {
-    await livekit.unpublishAudio()
-    await unpublishBroadcastAudio().catch(() => undefined)
+    // Intent-first UX: reflect mute immediately and let sync close publication.
     setDevice({ microphoneOn: false })
+    await livekit.unpublishAudio().catch(() => undefined)
+    await unpublishBroadcastAudio().catch(() => undefined)
 
     // Notify backend that user muted themselves
     try {
@@ -406,6 +412,39 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const hasLocalPublication = sharedLiveKitState?.hasLocalPublication ?? false
   const liveKitError = sharedLiveKitState?.error ?? livekit.error
 
+  useEffect(() => {
+    if (canonicalIsConnected) {
+      controlConnectionStickyUntilRef.current = 0
+      setControlIsVoiceConnected(true)
+      return
+    }
+
+    if (canonicalIsConnecting && controlIsVoiceConnected) {
+      if (controlConnectionStickyUntilRef.current === 0) {
+        controlConnectionStickyUntilRef.current = Date.now() + AUDIO_TRANSITION_CONTROL_STICKY_MS
+      }
+
+      const remainingMs = controlConnectionStickyUntilRef.current - Date.now()
+      if (remainingMs > 0) {
+        const timeoutId = window.setTimeout(() => {
+          setControlIsVoiceConnected(false)
+          controlConnectionStickyUntilRef.current = 0
+        }, remainingMs)
+
+        return () => {
+          window.clearTimeout(timeoutId)
+        }
+      }
+
+      setControlIsVoiceConnected(false)
+      controlConnectionStickyUntilRef.current = 0
+      return
+    }
+
+    setControlIsVoiceConnected(false)
+    controlConnectionStickyUntilRef.current = 0
+  }, [canonicalIsConnected, canonicalIsConnecting, controlIsVoiceConnected])
+
   /**
    * Sync device state with actual audio connection after room changes.
    * When switching rooms, LiveKit briefly disconnects/reconnects. This ensures
@@ -419,13 +458,15 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     const hasPublishedAudio = hasLocalPublication
     const shouldBePublishing = device.microphoneOn && (!device.pttEnabled || pttActive)
 
-    // If we should be publishing but aren't, or vice versa after connection is ready,
-    // the state is out of sync. Force a refresh.
+    // If intent and publication diverge once connected, reconcile it.
     if (shouldBePublishing !== hasPublishedAudio) {
-      // Connection is ready but publication state doesn't match intent.
-      // Re-publish or unpublish to sync state.
       if (shouldBePublishing && !hasPublishedAudio && device.microphoneOn) {
         void livekit.publishAudio().catch(() => undefined)
+        return
+      }
+
+      if (!shouldBePublishing && hasPublishedAudio) {
+        void livekit.unpublishAudio().catch(() => undefined)
       }
     }
   }, [
@@ -708,7 +749,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         <AudioDevicePanel
           device={device}
           statusState={statusState}
-          isVoiceConnected={isVoiceConnected}
+          isVoiceConnected={controlIsVoiceConnected}
           hasLocalPublication={hasLocalPublication}
           pttActive={pttActive}
           activeEffectsCount={activeEffectsCount}
