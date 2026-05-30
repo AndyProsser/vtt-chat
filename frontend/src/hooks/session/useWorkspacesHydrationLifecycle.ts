@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { ConnectionState } from '@/ws/client'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, SessionPresence as PresenceRecord } from '@/types/room'
@@ -60,8 +60,8 @@ type UseWorkspacesHydrationLifecycleParams = {
     dmId?: UUID
     changedAt?: number
   }) => void
-  lastHydratedSessionFingerprintRef: MutableRefObject<string | null>
-  prevWsStateRef: MutableRefObject<ConnectionState>
+  lastHydratedSessionFingerprintRef: RefObject<string | null>
+  prevWsStateRef: RefObject<ConnectionState>
 }
 
 const RECENT_SESSION_CHANGE_RECONNECT_SUPPRESS_MS = 500

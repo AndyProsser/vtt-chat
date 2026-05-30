@@ -1,4 +1,4 @@
-import { useEffect, useState, type MutableRefObject } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Slider } from '@/components/ui'
 import type { AudioDeviceState } from '@/types/audio'
@@ -21,7 +21,7 @@ interface AudioSettingsPanelProps {
    * imperatively at frame rate, so this panel does not re-render on level
    * changes.
    */
-  localMicLevelRef: MutableRefObject<number>
+  localMicLevelRef: RefObject<number>
   isDm: boolean
   isWhisperMode: boolean
   onDeviceChange: (updates: Partial<AudioDeviceState>) => void

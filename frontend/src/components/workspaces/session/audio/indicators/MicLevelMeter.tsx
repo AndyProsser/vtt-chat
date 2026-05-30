@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, type MutableRefObject } from 'react'
+import { memo, useEffect, useRef, type RefObject } from 'react'
 
 /**
  * MicLevelMeter
@@ -6,7 +6,7 @@ import { memo, useEffect, useRef, type MutableRefObject } from 'react'
  * Leaf component for visualising the local microphone transmit level.
  *
  * Purpose: keep the high-frequency (~60Hz) mic-level animation out of React's
- * render path. The level is read from a shared `MutableRefObject<number>`
+ * render path. The level is read from a shared `RefObject<number>`
  * (updated imperatively by the AudioPanel meter loop) and written directly to
  * a CSS variable on a single span via `requestAnimationFrame`. No React state
  * is ever set, so this leaf — and crucially its parents (AudioPanel,
@@ -17,7 +17,7 @@ import { memo, useEffect, useRef, type MutableRefObject } from 'react'
  */
 interface MicLevelMeterProps {
   /** Stable ref holding the latest 0..1 mic level. Updated imperatively. */
-  levelRef: MutableRefObject<number>
+  levelRef: RefObject<number>
   /** className applied to the outer wrapper span. */
   wrapperClassName: string
   /** className applied to the inner fill span (the bar that animates). */

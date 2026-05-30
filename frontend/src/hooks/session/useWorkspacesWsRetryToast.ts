@@ -12,9 +12,9 @@ type UseWorkspacesWsRetryToastParams = {
     UseSessionLifecycleActions,
     'setWsRetryWindowExpired' | 'setWsRetrySecondsRemaining'
   >
-  wsRetryWindowStartRef: React.MutableRefObject<number | null>
-  wsRetryToastTimerRef: React.MutableRefObject<number | null>
-  wsErrorMessageRef: React.MutableRefObject<string | null>
+  wsRetryWindowStartRef: React.RefObject<number | null>
+  wsRetryToastTimerRef: React.RefObject<number | null>
+  wsErrorMessageRef: React.RefObject<string | null>
   retryConnection: () => Promise<void> | void
   showToast: (input: ShowToastInput) => void
 }

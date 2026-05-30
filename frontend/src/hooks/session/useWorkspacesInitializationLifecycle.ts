@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { UUID } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
 
@@ -8,7 +8,7 @@ type UseWorkspacesInitializationLifecycleParams = {
   currentSession: SessionRecord | null
   isLoadingCampaigns: boolean
   isCampaignRestorePending: boolean
-  hasSignaledReadyRef: MutableRefObject<boolean>
+  hasSignaledReadyRef: RefObject<boolean>
   onReady?: () => void
   loadUserCharacters: () => Promise<void>
   selectedCampaignId: UUID | '' | null

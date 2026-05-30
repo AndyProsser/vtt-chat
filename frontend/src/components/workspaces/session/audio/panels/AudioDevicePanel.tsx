@@ -1,4 +1,4 @@
-import { useState, type MutableRefObject } from 'react'
+import { useState, type RefObject } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { UUID } from '@shared'
@@ -34,7 +34,7 @@ interface AudioDevicePanelProps {
    * rate (the previous number prop drove 900+ renders per soak window and
    * caused the unmute-induced CPU/memory spike).
    */
-  transmittedMicLevelRef: MutableRefObject<number>
+  transmittedMicLevelRef: RefObject<number>
   effectItems: AudioDetailItem[]
   settingsOpen: boolean
   sessionId: UUID
