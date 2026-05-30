@@ -38,24 +38,7 @@ interface ChatWindowProps {
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const AUTO_FOLLOW_BOTTOM_THRESHOLD_PX = 48
 const AUTO_FOLLOW_SMOOTH_SETTLE_MS = 480
-const EMPTY_PARTICIPANT_DIRECTORY: Record<
-  UUID,
-  {
-    displayName: string
-    avatarUrl?: string | null
-  }
-> = {}
 const EMPTY_ROOM_DIRECTORY: Record<string, { name: string }> = {}
-const EMPTY_SESSION_PRESENCE: Record<
-  UUID,
-  {
-    username: string
-    avatarUrl?: string | null
-    characterName?: string | null
-    role?: Role | string
-    primaryRoomId?: UUID
-  }
-> = {}
 const EMPTY_SESSION_ROOMS: Record<UUID, { id: UUID; name: string }> = {}
 const EMPTY_OUTGOING_QUEUE: OutgoingChatMessage[] = []
 const SESSION_SUMMARY_PREFIX = '[Session Summary]'
@@ -169,7 +152,6 @@ export function ChatWindow({
   const bottomSnapRafRef = useRef<number | null>(null)
   const bottomSnapTimerRef = useRef<number | null>(null)
   const initialScrollContextRef = useRef<string | null>(null)
-  const participantDirectoryRef = useRef(EMPTY_PARTICIPANT_DIRECTORY)
   const greenroomTodayStartRef = useRef(getStartOfTodayTimestamp())
   const lastHydratedGreenroomStateRef = useRef<string | null | undefined>(undefined)
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
@@ -190,11 +172,6 @@ export function ChatWindow({
   // Typing indicators are intentionally NOT read here. They flip at keystroke
   // frequency and would re-render the whole chat window. See <TypingIndicator />
   // below for the leaf subscription.
-  const sessionPresence = useStore(
-    (state) =>
-      ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
-      EMPTY_SESSION_PRESENCE
-  )
   const sessionRooms = useStore(
     (state) =>
       ((state.rooms as any)[sessionId] as Record<UUID, { id: UUID; name: string }>) ??
@@ -212,47 +189,6 @@ export function ChatWindow({
     (state) =>
       ((state.outgoingQueue as any)[sessionId] as OutgoingChatMessage[]) ?? EMPTY_OUTGOING_QUEUE
   )
-
-  const participantDirectory = useMemo(() => {
-    const entries = Object.entries(sessionPresence) as Array<
-      [UUID, { username: string; avatarUrl?: string | null; characterName?: string | null }]
-    >
-
-    if (entries.length === 0) {
-      participantDirectoryRef.current = EMPTY_PARTICIPANT_DIRECTORY
-      return EMPTY_PARTICIPANT_DIRECTORY
-    }
-
-    const previousDirectory = participantDirectoryRef.current
-    const nextDirectory = {} as Record<UUID, { displayName: string; avatarUrl?: string | null }>
-    let hasChanged = countOwnKeys(previousDirectory) !== entries.length
-
-    for (const [participantUserId, participant] of entries) {
-      const nextDisplayName = participant.characterName || participant.username
-      const nextAvatarUrl = participant.avatarUrl
-      const previousEntry = previousDirectory[participantUserId]
-
-      if (
-        !previousEntry ||
-        previousEntry.displayName !== nextDisplayName ||
-        previousEntry.avatarUrl !== nextAvatarUrl
-      ) {
-        hasChanged = true
-      }
-
-      nextDirectory[participantUserId] = {
-        displayName: nextDisplayName,
-        avatarUrl: nextAvatarUrl,
-      }
-    }
-
-    if (!hasChanged) {
-      return previousDirectory
-    }
-
-    participantDirectoryRef.current = nextDirectory
-    return nextDirectory
-  }, [sessionPresence])
 
   const roomDirectory = useMemo(() => {
     const entries = Object.values(sessionRooms) as Array<{ id: UUID; name: string }>
@@ -808,50 +744,6 @@ export function ChatWindow({
     prevVisibleCountRef.current = currentVisibleCount
   }, [currentVisibleCount, totalMessageCount])
 
-  const whisperRecipients = useMemo(() => {
-    const participants = Object.entries(sessionPresence ?? {}) as Array<
-      [
-        UUID,
-        {
-          username: string
-          characterName?: string | null
-          avatarUrl?: string | null
-          role?: Role | string
-          primaryRoomId?: UUID
-        },
-      ]
-    >
-
-    const dmId = sessionRecord?.dmId
-    const isDmUser = user.role === Role.DM || String(user.role) === 'DM'
-
-    return participants
-      .filter(([participantUserId, participant]) => {
-        if (participantUserId === user.id) {
-          return false
-        }
-
-        if (isDmUser) {
-          return true
-        }
-
-        if (participantUserId === dmId) {
-          return false
-        }
-
-        return participant.primaryRoomId === roomId
-      })
-      .map(([participantUserId, participant]) => ({
-        id: participantUserId,
-        label:
-          participant.characterName && participant.characterName.trim().length > 0
-            ? participant.characterName
-            : participant.username,
-        avatarUrl: participant.avatarUrl,
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label))
-  }, [roomId, sessionPresence, sessionRecord?.dmId, user.id, user.role])
-
   const emitTypingEvent = useCallback(
     (type: 'CHAT:TYPING_STARTED' | 'CHAT:TYPING_STOPPED') => {
       if (!sendWsEvent) {
@@ -1226,6 +1118,7 @@ export function ChatWindow({
       ) : (
         <MessageList
           messages={visibleMessages}
+          sessionId={sessionId}
           currentUserId={user.id}
           currentUserRole={String(user.role)}
           sessionDmId={sessionRecord?.dmId}
@@ -1234,7 +1127,6 @@ export function ChatWindow({
           topSentinelRef={topSentinelRef}
           onListScroll={handleListScroll}
           onListWheel={handleListWheel}
-          participantDirectory={participantDirectory}
           roomDirectory={roomDirectory}
           activeRoomId={roomId}
           hideIntermissionMarkers={isGreenroomMode}
@@ -1280,9 +1172,11 @@ export function ChatWindow({
         onTypingStarted={() => emitTypingEvent('CHAT:TYPING_STARTED')}
         onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
         role={user.role}
+        sessionId={sessionId}
+        currentUserId={user.id}
+        currentRoomId={roomId}
         disabled={isLoading}
         forceMessageType={forceMessageType}
-        whisperRecipients={whisperRecipients}
         roomType={roomType}
       />
     </section>

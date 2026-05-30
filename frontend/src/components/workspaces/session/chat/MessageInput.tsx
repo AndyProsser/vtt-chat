@@ -6,10 +6,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageType, RoomType } from '@shared'
-import type { Role } from '@shared'
+import type { Role, UUID } from '@shared'
 import { TYPING_IDLE_TIMEOUT_MS } from '@/constants/chatPresence.constants'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
+import { useStore } from '@/hooks/useStore'
 import type { WhisperRecipientOption } from '@/types/chat'
 
 interface MessageInputProps {
@@ -18,10 +19,24 @@ interface MessageInputProps {
   onTypingStopped?: () => void
   disabled?: boolean
   role: Role | string
+  sessionId?: UUID
+  currentUserId?: UUID
+  currentRoomId?: UUID
   forceMessageType?: MessageType
   whisperRecipients?: WhisperRecipientOption[]
   roomType?: RoomType
 }
+
+const EMPTY_SESSION_PRESENCE: Record<
+  UUID,
+  {
+    username: string
+    avatarUrl?: string | null
+    characterName?: string | null
+    role?: Role | string
+    primaryRoomId?: UUID
+  }
+> = {}
 
 const MESSAGE_TYPE_ORDER: MessageType[] = [
   MessageType.IC,
@@ -50,10 +65,30 @@ export function MessageInput({
   onTypingStopped,
   disabled,
   role,
+  sessionId,
+  currentUserId,
+  currentRoomId,
   forceMessageType,
   whisperRecipients = [],
   roomType,
 }: MessageInputProps) {
+  const sessionPresence = useStore((state) => {
+    if (!sessionId) {
+      return EMPTY_SESSION_PRESENCE
+    }
+
+    return (
+      ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
+      EMPTY_SESSION_PRESENCE
+    )
+  })
+  const sessionDmId = useStore((state) => {
+    if (!sessionId) {
+      return undefined
+    }
+
+    return ((state.sessions as any)[sessionId] as { dmId?: UUID } | undefined)?.dmId
+  })
   const isDmRole = String(role) === 'DM'
   const isWhisperGroupMode = roomType === RoomType.PRIVATE
   const roleAllowedTypes = useMemo(
@@ -74,6 +109,61 @@ export function MessageInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isTypingRef = useRef(false)
+  const derivedWhisperRecipients = useMemo(() => {
+    if (!sessionId || !currentUserId) {
+      return whisperRecipients
+    }
+
+    const participants = Object.entries(sessionPresence) as Array<
+      [
+        UUID,
+        {
+          username: string
+          characterName?: string | null
+          avatarUrl?: string | null
+          role?: Role | string
+          primaryRoomId?: UUID
+        },
+      ]
+    >
+
+    return participants
+      .filter(([participantUserId, participant]) => {
+        if (participantUserId === currentUserId) {
+          return false
+        }
+
+        if (isDmRole) {
+          return true
+        }
+
+        if (participantUserId === sessionDmId) {
+          return false
+        }
+
+        return participant.primaryRoomId === currentRoomId
+      })
+      .map(([participantUserId, participant]) => ({
+        id: participantUserId,
+        label:
+          participant.characterName && participant.characterName.trim().length > 0
+            ? participant.characterName
+            : participant.username,
+        avatarUrl: participant.avatarUrl,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label))
+  }, [
+    currentRoomId,
+    currentUserId,
+    isDmRole,
+    sessionDmId,
+    sessionId,
+    sessionPresence,
+    whisperRecipients,
+  ])
+
+  const effectiveWhisperRecipients =
+    sessionId && currentUserId ? derivedWhisperRecipients : whisperRecipients
   const type = forceMessageType
     ? forceMessageType
     : isWhisperGroupMode
@@ -84,13 +174,13 @@ export function MessageInput({
 
   const validRecipientId = useMemo(() => {
     if (type !== MessageType.WHISPER || !recipientId.trim()) return recipientId
-    if (whisperRecipients.some((o) => o.id === recipientId)) return recipientId
+    if (effectiveWhisperRecipients.some((o) => o.id === recipientId)) return recipientId
     return ''
-  }, [recipientId, type, whisperRecipients])
+  }, [effectiveWhisperRecipients, recipientId, type])
 
   const selectedRecipient = useMemo(
-    () => whisperRecipients.find((option) => option.id === validRecipientId) ?? null,
-    [validRecipientId, whisperRecipients]
+    () => effectiveWhisperRecipients.find((option) => option.id === validRecipientId) ?? null,
+    [effectiveWhisperRecipients, validRecipientId]
   )
 
   const visibleTypes = useMemo(
@@ -296,8 +386,8 @@ export function MessageInput({
                 role="listbox"
                 aria-label="Whisper recipients"
               >
-                {whisperRecipients.length > 0 ? (
-                  whisperRecipients.map((option) => {
+                {effectiveWhisperRecipients.length > 0 ? (
+                  effectiveWhisperRecipients.map((option) => {
                     const isSelected = option.id === validRecipientId
                     return (
                       <button

@@ -4,14 +4,17 @@
  * Messages arrive pre-filtered by the server (visibility-safe).
  */
 
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useRef } from 'react'
 import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
+import type { UUID } from '@shared'
 import type { Message, SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
 import { MessageType } from '@shared'
 import { parseNoteSharedMessage } from '@/utils/noteSharedMessage'
+import { useStore } from '@/hooks/useStore'
 import { MessageListVirtualized } from './MessageList.virtualized'
 export interface MessageListProps {
+  sessionId: UUID
   messages: Message[]
   currentUserId: string
   currentUserRole?: string
@@ -21,7 +24,6 @@ export interface MessageListProps {
   topSentinelRef?: RefObject<HTMLDivElement | null>
   onListScroll?: UIEventHandler<HTMLDivElement>
   onListWheel?: WheelEventHandler<HTMLDivElement>
-  participantDirectory?: Record<string, { displayName?: string; avatarUrl?: string | null }>
   roomDirectory?: Record<string, { name: string }>
   activeRoomId?: string
   hideIntermissionMarkers?: boolean
@@ -59,6 +61,29 @@ export interface PreparedMessage {
 }
 
 const DEFAULT_GROUPING_WINDOW_MS = 5 * 60 * 1000
+const EMPTY_PARTICIPANT_DIRECTORY: Record<
+  UUID,
+  {
+    displayName: string
+    avatarUrl?: string | null
+  }
+> = {}
+const EMPTY_SESSION_PRESENCE: Record<
+  UUID,
+  {
+    username: string
+    avatarUrl?: string | null
+    characterName?: string | null
+  }
+> = {}
+
+function countOwnKeys(record: Record<string, unknown>): number {
+  let total = 0
+  for (const _key in record) {
+    total += 1
+  }
+  return total
+}
 
 const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'> = {
   [MessageType.IC]: 'ic',
@@ -238,6 +263,7 @@ function formatDayLabel(ts: number): string {
 
 function areMessageListPropsEqual(previous: MessageListProps, next: MessageListProps): boolean {
   return (
+    previous.sessionId === next.sessionId &&
     previous.messages === next.messages &&
     previous.currentUserId === next.currentUserId &&
     previous.currentUserRole === next.currentUserRole &&
@@ -247,7 +273,6 @@ function areMessageListPropsEqual(previous: MessageListProps, next: MessageListP
     previous.topSentinelRef === next.topSentinelRef &&
     previous.onListScroll === next.onListScroll &&
     previous.onListWheel === next.onListWheel &&
-    previous.participantDirectory === next.participantDirectory &&
     previous.roomDirectory === next.roomDirectory &&
     previous.activeRoomId === next.activeRoomId &&
     previous.hideIntermissionMarkers === next.hideIntermissionMarkers &&
@@ -256,6 +281,7 @@ function areMessageListPropsEqual(previous: MessageListProps, next: MessageListP
 }
 
 function MessageListComponent({
+  sessionId,
   messages,
   currentUserId,
   currentUserRole,
@@ -265,12 +291,58 @@ function MessageListComponent({
   topSentinelRef,
   onListScroll,
   onListWheel,
-  participantDirectory,
   roomDirectory,
   activeRoomId,
   hideIntermissionMarkers = false,
   emptyDayLabel,
 }: MessageListProps) {
+  const participantDirectoryRef = useRef(EMPTY_PARTICIPANT_DIRECTORY)
+  const sessionPresence = useStore(
+    (state) =>
+      ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
+      EMPTY_SESSION_PRESENCE
+  )
+  const participantDirectory = useMemo(() => {
+    const entries = Object.entries(sessionPresence) as Array<
+      [UUID, { username: string; avatarUrl?: string | null; characterName?: string | null }]
+    >
+
+    if (entries.length === 0) {
+      participantDirectoryRef.current = EMPTY_PARTICIPANT_DIRECTORY
+      return EMPTY_PARTICIPANT_DIRECTORY
+    }
+
+    const previousDirectory = participantDirectoryRef.current
+    const nextDirectory = {} as Record<UUID, { displayName: string; avatarUrl?: string | null }>
+    let hasChanged = countOwnKeys(previousDirectory) !== entries.length
+
+    for (const [participantUserId, participant] of entries) {
+      const nextDisplayName = participant.characterName || participant.username
+      const nextAvatarUrl = participant.avatarUrl
+      const previousEntry = previousDirectory[participantUserId]
+
+      if (
+        !previousEntry ||
+        previousEntry.displayName !== nextDisplayName ||
+        previousEntry.avatarUrl !== nextAvatarUrl
+      ) {
+        hasChanged = true
+      }
+
+      nextDirectory[participantUserId] = {
+        displayName: nextDisplayName,
+        avatarUrl: nextAvatarUrl,
+      }
+    }
+
+    if (!hasChanged) {
+      return previousDirectory
+    }
+
+    participantDirectoryRef.current = nextDirectory
+    return nextDirectory
+  }, [sessionPresence])
+
   const preparedMessages = useMemo<PreparedMessage[]>(
     () =>
       messages.map((msg, index) => {

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import { SessionWorkspaceFrame } from '@/components/workspaces/session/WorkspaceFrame'
 import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
@@ -7,7 +7,7 @@ import { SessionWorkspaceCenterPane } from '@/components/workspaces/session/Cent
 import { SessionWorkspaceRightRailTab } from '@/components/workspaces/session/RightRailTab'
 import type { SessionWorkspaceProps } from '@/types/sessionWorkspace'
 
-export function SessionWorkspace(props: SessionWorkspaceProps) {
+function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
   const [forcedRightRailTab, setForcedRightRailTab] = useState<'settings' | null>(null)
   const [playerSettingsFocusRequestKey, setPlayerSettingsFocusRequestKey] = useState(0)
   const [chatUnreadCount, setChatUnreadCount] = useState(0)
@@ -166,3 +166,5 @@ export function SessionWorkspace(props: SessionWorkspaceProps) {
     </div>
   )
 }
+
+export const SessionWorkspace = memo(SessionWorkspaceComponent)

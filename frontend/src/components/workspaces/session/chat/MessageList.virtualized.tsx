@@ -18,7 +18,6 @@ import {
   type VariableSizeList as VariableSizeListType,
 } from 'react-window'
 import { MessageType } from '@shared'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
 import type { MessageListProps, PreparedMessage } from './MessageList'
 
@@ -38,7 +37,6 @@ interface VirtualizedListData {
   currentUserRole?: string
   sessionDmId?: string
   groupingWindowMs: number
-  participantDirectory?: Record<string, { displayName?: string; avatarUrl?: string | null }>
   roomDirectory?: Record<string, { name: string }>
   activeRoomId?: string
   hideIntermissionMarkers: boolean
@@ -336,17 +334,13 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
               className={`session-message-list__message-bubble session-message-list__message-bubble--${variant} ${bubbleWhisperClass} ${isSelf ? 'session-message-list__message-bubble--self' : ''}`}
             >
               {msg.type !== MessageType.WHISPER ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className={`session-message-list__message-type-icon ${typeIconClass} material-symbols-outlined`}
-                      aria-hidden="true"
-                    >
-                      {typeIcon}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{TYPE_LABEL_BY_VARIANT[variant]}</TooltipContent>
-                </Tooltip>
+                <span
+                  className={`session-message-list__message-type-icon ${typeIconClass} material-symbols-outlined`}
+                  aria-label={TYPE_LABEL_BY_VARIANT[variant]}
+                  title={TYPE_LABEL_BY_VARIANT[variant]}
+                >
+                  {typeIcon}
+                </span>
               ) : null}
               <span className="session-message-list__message-bubble-text">{msg.content}</span>
             </div>
@@ -541,7 +535,6 @@ export function MessageListVirtualized({
   topSentinelRef,
   onListScroll,
   onListWheel,
-  participantDirectory,
   roomDirectory,
   activeRoomId,
   hideIntermissionMarkers = false,
@@ -676,7 +669,6 @@ export function MessageListVirtualized({
     currentUserRole,
     sessionDmId,
     groupingWindowMs,
-    participantDirectory,
     roomDirectory,
     activeRoomId,
     hideIntermissionMarkers,
@@ -685,38 +677,33 @@ export function MessageListVirtualized({
   }
 
   return (
-    <TooltipProvider delayDuration={120}>
-      <div
-        ref={shellRef}
-        style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}
-      >
-        <VirtualizedListContext value={{ topSentinelRef, onListScroll, onListWheel }}>
-          <List
-            ref={listInstanceRef}
-            outerRef={listRef}
-            outerElementType={OuterElement}
-            innerElementType={InnerElement}
-            className="session-message-list"
-            height={viewportHeight}
-            width="100%"
-            itemCount={visibleMessages.length}
-            itemData={itemData}
-            itemKey={(index: number, items: VirtualizedListData) =>
-              `${listViewportWidth}:${items.messages[index]?.msg.id ?? index}`
+    <div ref={shellRef} style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}>
+      <VirtualizedListContext value={{ topSentinelRef, onListScroll, onListWheel }}>
+        <List
+          ref={listInstanceRef}
+          outerRef={listRef}
+          outerElementType={OuterElement}
+          innerElementType={InnerElement}
+          className="session-message-list"
+          height={viewportHeight}
+          width="100%"
+          itemCount={visibleMessages.length}
+          itemData={itemData}
+          itemKey={(index: number, items: VirtualizedListData) =>
+            `${listViewportWidth}:${items.messages[index]?.msg.id ?? index}`
+          }
+          itemSize={(index: number) => {
+            const message = visibleMessages[index]
+            if (!message) {
+              return 1
             }
-            itemSize={(index: number) => {
-              const message = visibleMessages[index]
-              if (!message) {
-                return 1
-              }
-              return sizeCacheRef.current[message.msg.id] ?? getEstimatedSize(message)
-            }}
-            overscanCount={6}
-          >
-            {MemoizedMessageRow}
-          </List>
-        </VirtualizedListContext>
-      </div>
-    </TooltipProvider>
+            return sizeCacheRef.current[message.msg.id] ?? getEstimatedSize(message)
+          }}
+          overscanCount={6}
+        >
+          {MemoizedMessageRow}
+        </List>
+      </VirtualizedListContext>
+    </div>
   )
 }
