@@ -166,6 +166,8 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('SESSION:ENDED', (event) => {
       const store = useStore.getState()
       store.handleSessionEnded(event)
+      store.resetSessionAudioState()
+      store.clearActiveEffects()
       store.markMockSimulationExited(event.sessionId)
       store.clearMessages(event.sessionId)
     })
@@ -311,6 +313,8 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         payload.nextState === SessionState.CLEANUP
       ) {
         store.markMockSimulationExited(event.sessionId)
+        store.resetSessionAudioState()
+        store.clearActiveEffects()
       }
 
       if (payload.nextState === SessionState.ENDED) {

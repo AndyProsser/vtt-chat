@@ -223,6 +223,11 @@ export class SessionDisconnectCascadeService {
 
     this.clearUserTimers(context.sessionId, context.userId)
 
+    await removePresenceProjection({
+      sessionId: context.sessionId,
+      userId: context.userId,
+    })
+
     await broadcastSessionStatsSnapshot({
       wsManager: context.wsManager as any,
       sessionId: context.sessionId,

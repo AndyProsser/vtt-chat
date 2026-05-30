@@ -127,8 +127,17 @@ describe('session disconnect cascade service', () => {
       greenRoomName: 'Green Room',
       targetRoomId: ROOM_ID,
       targetRoomName: 'Green Room',
-      movedUsers: 0,
-      targetState: 'OFFLINE',
+      movedUsers: 1,
+      targetState: 'ONLINE',
+      users: [
+        {
+          id: USER_ID,
+          username: 'alice',
+          roomId: ROOM_ID,
+          roomName: 'Green Room',
+          previousGroupId: undefined,
+        },
+      ],
     })
 
     mocks.getSessionAudioState.mockResolvedValue({

@@ -123,10 +123,14 @@ describe('useLiveKit', () => {
     const currentUser = { id: 'user-1', username: 'andy', role: 'DM' }
     const upsertLiveKitConnection = vi.fn()
     const clearLiveKitConnection = vi.fn()
+    const device = {
+      microphoneOn: true,
+      pttEnabled: false,
+    }
 
     roomInstances.length = 0
     mockUseStore.mockImplementation((selector) =>
-      selector({ currentUser, upsertLiveKitConnection, clearLiveKitConnection })
+      selector({ currentUser, upsertLiveKitConnection, clearLiveKitConnection, device })
     )
     loggerMock.info.mockReset()
     loggerMock.debug.mockReset()
