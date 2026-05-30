@@ -41,91 +41,44 @@ import { useWorkspacesSettingsOrchestration } from '@/hooks/session/useWorkspace
 import { useWorkspacesSettingsReferenceNotes } from '@/hooks/session/useWorkspacesSettingsReferenceNotes'
 import { useWorkspacesWsRetryToast } from '@/hooks/session/useWorkspacesWsRetryToast'
 import { useWorkspacesTelemetry } from '@/hooks/session/useWorkspacesTelemetry'
-import { useWorkspacesGreenroomCleanup } from '@/hooks/session/useWorkspacesGreenroomCleanup'
 import { useWorkspacesActiveSessionContext } from '@/hooks/session/useWorkspacesActiveSessionContext'
 import { useWorkspacesUiEffects } from '@/hooks/session/useWorkspacesUiEffects'
 import { useWorkspacesApiBootstrap } from '@/hooks/session/useWorkspacesApiBootstrap'
 import { useWorkspacesSessionAnchors } from '@/hooks/session/useWorkspacesSessionAnchors'
 import { useWorkspacesGreenroomCarryLifecycle } from '@/hooks/session/useWorkspacesGreenroomCarryLifecycle'
-import { useWorkspacesAudioProjection } from '@/hooks/session/useWorkspacesAudioProjection'
 import { useWorkspacesSettingsStateBridge } from '@/hooks/session/useWorkspacesSettingsStateBridge'
 import { useWorkspacesInitializationLifecycle } from '@/hooks/session/useWorkspacesInitializationLifecycle'
 import { useWorkspacesLobbyData } from '@/hooks/session/useWorkspacesLobbyData'
 import { useWorkspacesMemoryPressureGuard } from '@/hooks/session/useWorkspacesMemoryPressureGuard'
 import { useWorkspacesSessionOrchestration } from '@/hooks/session/useWorkspacesSessionOrchestration'
-import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
 import { useWorkspacesCampaignSettingsActions } from '@/hooks/session/useWorkspacesCampaignSettingsActions'
 import { useWorkspacesUiCallbacks } from '@/hooks/session/useWorkspacesUiCallbacks'
 import { useCampaignSessionsDataFetcher } from '@/hooks/session/useCampaignSessionsDataFetcher'
+import { useConnectionStatus } from '@/hooks/useConnectionStatus'
+import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useToast } from '@/hooks/useToast'
 import { isJournalNote } from '@/utils/notesPanel'
 import { DEFAULT_PLANNED_DURATION_MINUTES } from '@/constants/workspaces.constants'
 import type { Session as SessionRecord } from '@/types/session'
-import type {
-  Room as RoomRecord,
-  RoomUser as RoomMember,
-  SessionPresence as PresenceRecord,
-} from '@/types/room'
+import { resolveMembershipRole } from '@/types/session/campaign'
 import type {
   ApiBroadcastState,
-  ApiSessionStats,
   WorkspacesProps as WorkspaceInitializationProps,
 } from '@/types/session/workspaces'
-import { getVisibleRoomsForSessionState, isGreenRoom } from '@/utils/session/workspaces'
 import {
   getInitialCampaignRestorePending,
   getInitialMessageGroupingWindowMs,
   toNullableUuid,
 } from '@/utils/session/workspaceInitialization'
+import { toValidPostSessionDurationMinutes } from '@/utils/session/workspaces'
 import type { EditorWorkspaceView } from '@/types/workspaces'
 import '@/styles/components/workspaces/Workspaces.css'
 
-const EMPTY_ROOMS_BY_ID = Object.freeze({}) as Record<UUID, RoomRecord>
-const EMPTY_PRESENCE_BY_USER = Object.freeze({}) as Record<UUID, PresenceRecord>
 const EMPTY_PAUSE_STATS = {
   cumulativePauseMs: 0,
   pauseCount: 0,
   pauseStartedAt: undefined,
-}
-
-function normalizePresenceStateForWorkspace(state: PresenceRecord['state']) {
-  return state === PresenceState.OFFLINE ? PresenceState.OFFLINE : PresenceState.IDLE
-}
-
-function areSessionPresenceMapsEquivalentForWorkspace(
-  left: Record<UUID, PresenceRecord>,
-  right: Record<UUID, PresenceRecord>
-) {
-  if (left === right) {
-    return true
-  }
-
-  const leftEntries = Object.entries(left) as Array<[UUID, PresenceRecord]>
-  if (leftEntries.length !== Object.keys(right).length) {
-    return false
-  }
-
-  for (const [userId, leftPresence] of leftEntries) {
-    const rightPresence = right[userId]
-    if (!rightPresence) {
-      return false
-    }
-
-    if (
-      leftPresence.primaryRoomId !== rightPresence.primaryRoomId ||
-      leftPresence.username !== rightPresence.username ||
-      leftPresence.characterName !== rightPresence.characterName ||
-      leftPresence.avatarUrl !== rightPresence.avatarUrl ||
-      leftPresence.role !== rightPresence.role ||
-      normalizePresenceStateForWorkspace(leftPresence.state) !==
-        normalizePresenceStateForWorkspace(rightPresence.state)
-    ) {
-      return false
-    }
-  }
-
-  return true
 }
 
 export function WorkspaceInitialization({
@@ -257,32 +210,6 @@ export function WorkspaceInitialization({
   const sessionList = useStore(
     useShallow((state) => Object.values(state.sessions as Record<UUID, SessionRecord>))
   )
-  const isGreenroom = useStore((state) => state.isGreenroom)
-  const currentSessionRoomsById = useStore((state) => {
-    if (!state.currentSessionId) {
-      return EMPTY_ROOMS_BY_ID
-    }
-
-    const roomsBySession = state.rooms as Record<UUID, Record<UUID, RoomRecord>>
-    return roomsBySession[state.currentSessionId] ?? EMPTY_ROOMS_BY_ID
-  })
-  const currentSessionPresenceByUser = useStore((state) => {
-    if (!state.currentSessionId) {
-      return EMPTY_PRESENCE_BY_USER
-    }
-
-    const presenceBySession = state.sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
-    return presenceBySession[state.currentSessionId] ?? EMPTY_PRESENCE_BY_USER
-  }, areSessionPresenceMapsEquivalentForWorkspace)
-  const currentSessionStats = useStore((state) => {
-    if (!state.currentSessionId) {
-      return undefined
-    }
-
-    const statsBySession = state.sessionStatsBySessionId as Record<UUID, ApiSessionStats>
-    return statsBySession[state.currentSessionId]
-  })
-  const roomMembers = useStore((state) => state.roomMembers)
   const addNote = useStore((state) => state.addNote)
   const addMessage = useStore((state) => state.addMessage)
   const currentTransitionNotice = useStore((state) => {
@@ -293,11 +220,7 @@ export function WorkspaceInitialization({
     return state.sessionTransitionNotice[state.currentSessionId]
   })
   const setBroadcastState = useStore((state) => state.setBroadcastState)
-  const currentEnvironment = useStore((state) => state.currentEnvironment)
   const setEnvironment = useStore((state) => state.setEnvironment)
-  const clearEnvironment = useStore((state) => state.clearEnvironment)
-  const setPrivateRoomCleanMode = useStore((state) => state.setPrivateRoomCleanMode)
-  const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
   const replaceRoomEnvironmentNames = useStore((state) => state.replaceRoomEnvironmentNames)
   const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
   const clearSessions = useStore((state) => state.clearSessions)
@@ -305,20 +228,13 @@ export function WorkspaceInitialization({
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
-  const activeTakeoverUserId = useStore((state) => {
-    if (!state.currentSessionId) {
-      return null
-    }
-
-    return state.mockTakeoverUserIdBySession[state.currentSessionId] ?? null
-  })
   const setCurrentSession = useStore((state) => state.setCurrentSession)
   const setIsGreenroom = useStore((state) => state.setIsGreenroom)
   const resetToolbarActionsState = useStore((state) => state.resetToolbarActionsState)
   const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
   const updateSession = useStore((state) => state.updateSession)
-  const cooldownExtensionCounts = useStore((state) => state.cooldownExtensionCounts)
   const setCooldownExtensionCount = useStore((state) => state.setCooldownExtensionCount)
+  const cooldownExtensionCounts = useStore((state) => state.cooldownExtensionCounts)
   const shouldEnableWs = !!token && (!isCampaignRestorePending || !!currentSessionId)
   const {
     campaigns,
@@ -380,121 +296,13 @@ export function WorkspaceInitialization({
     setSessionSettingsPlannedDurationMinutes(clamped)
   }, [])
 
-  useWorkspacesSettingsStateBridge({
-    currentSession,
-    defaultPlannedDurationMinutes: DEFAULT_PLANNED_DURATION_MINUTES,
-    setSessionSettingsName,
-    setSessionSettingsPlannedDurationMinutes,
-    selectedCharacter,
-    setSelectedCharacterId: characterSettingsActions.setSelectedCharacterId,
-    setCharacterSettingsDraft: characterSettingsActions.setCharacterSettingsDraft,
-  })
-
-  const typedRoomMembers = roomMembers as Record<UUID, RoomMember[]>
-  const isTakeoverActive = Boolean(activeTakeoverUserId)
-  const effectiveActorUserId = (activeTakeoverUserId || user.id) as UUID
-  const currentRooms = useMemo<RoomRecord[]>(
-    () => Object.values(currentSessionRoomsById),
-    [currentSessionRoomsById]
-  )
-  const currentPresence = useMemo<PresenceRecord[]>(
-    () => Object.values(currentSessionPresenceByUser),
-    [currentSessionPresenceByUser]
-  )
-  const visibleRooms = useMemo<RoomRecord[]>(
-    () =>
-      currentSession ? getVisibleRoomsForSessionState(currentRooms, currentSession.state) : [],
-    [currentRooms, currentSession]
-  )
-  const takeoverPresence = useMemo(
-    () =>
-      activeTakeoverUserId
-        ? currentPresence.find((presence) => presence.userId === activeTakeoverUserId) || null
-        : null,
-    [activeTakeoverUserId, currentPresence]
-  )
-  const selectedRoomId = useMemo<UUID | ''>(() => {
-    if (!visibleRooms.length) {
-      return ''
-    }
-
-    if (
-      !isTakeoverActive &&
-      selectedRoomIdOverride &&
-      visibleRooms.some((room) => room.id === selectedRoomIdOverride)
-    ) {
-      return selectedRoomIdOverride
-    }
-
-    const ownPresence = currentPresence.find((presence) => presence.userId === effectiveActorUserId)
-    if (
-      ownPresence?.primaryRoomId &&
-      visibleRooms.some((room) => room.id === ownPresence.primaryRoomId)
-    ) {
-      return ownPresence.primaryRoomId
-    }
-
-    const mainRoom = visibleRooms.find((room) => room.type === RoomType.MAIN)
-    return (mainRoom || visibleRooms[0]).id
-  }, [
-    currentPresence,
-    effectiveActorUserId,
-    isTakeoverActive,
-    selectedRoomIdOverride,
-    visibleRooms,
-  ])
-  const selectedRoom = useMemo(
-    () => visibleRooms.find((room) => room.id === selectedRoomId) || null,
-    [selectedRoomId, visibleRooms]
-  )
-  const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
-  const connectedRoomId = useMemo<UUID | ''>(() => {
-    const ownPresence = currentPresence.find((presence) => presence.userId === effectiveActorUserId)
-    return ownPresence?.primaryRoomId || ''
-  }, [currentPresence, effectiveActorUserId])
-
-  useWorkspacesAudioProjection({
-    currentSession,
-    currentPresence,
-    effectiveActorUserId,
-    currentRooms,
-    setPrivateRoomCleanMode,
-    connectedRoomId,
-    currentEnvironment,
-    clearEnvironment,
-    roomEnvironmentNames,
-    setEnvironment,
-  })
-
-  const { restoreSessionBookendsFromHistory } = useWorkspacesSessionAnchors({
-    apiUrl,
-    token,
-    currentSessionId,
-    currentSessionState: currentSession?.state ?? null,
-    wsState,
-    fetchWithAuthGuard,
-    updateSession,
-    addMessage,
-  })
-
-  const activeTransitionNotice =
-    currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
-      ? currentTransitionNotice
-      : undefined
-  useWorkspacesGreenroomCarryLifecycle({
-    currentSession,
-    currentRooms,
-    pendingGreenroomCarryBySessionIdRef,
-  })
-
   const {
     loadCampaignSettings,
-    loadDmVoiceTargetingSetting,
-    saveDmVoiceTargetingSetting,
     saveSessionSettings,
     openEditorCampaignWorkspace,
     saveCampaignSettings,
     handleSaveCampaignInfoPanel,
+    loadDmVoiceTargetingSetting,
   } = useWorkspacesSettingsOrchestration({
     apiUrl,
     token,
@@ -531,7 +339,7 @@ export function WorkspaceInitialization({
     setLobbyNotice,
   })
 
-  const { loadUserCharacters, saveCharacterSettings, handleCharacterFieldChange } =
+  const { handleCharacterFieldChange, saveCharacterSettings, loadUserCharacters } =
     useWorkspacesCharacterSettingsOrchestration({
       characterSettingsController,
       characterSettingsActions,
@@ -542,24 +350,31 @@ export function WorkspaceInitialization({
       setLobbyNotice,
     })
 
-  useWorkspacesInitializationLifecycle({
-    currentSessionId,
+  useWorkspacesSettingsStateBridge({
     currentSession,
-    isLoadingCampaigns,
-    isCampaignRestorePending,
-    hasSignaledReadyRef,
-    onReady,
-    loadUserCharacters,
-    selectedCampaignId,
-    loadDmVoiceTargetingSetting,
+    defaultPlannedDurationMinutes: DEFAULT_PLANNED_DURATION_MINUTES,
+    setSessionSettingsName,
+    setSessionSettingsPlannedDurationMinutes,
+    selectedCharacter,
+    setSelectedCharacterId: characterSettingsActions.setSelectedCharacterId,
+    setCharacterSettingsDraft: characterSettingsActions.setCharacterSettingsDraft,
   })
 
-  const ensureSessionMembership = useCallback(
-    async (sessionId: UUID) => {
-      await sessionMembershipController.ensureSessionMembership(sessionId)
-    },
-    [sessionMembershipController]
-  )
+  const { restoreSessionBookendsFromHistory } = useWorkspacesSessionAnchors({
+    apiUrl,
+    token,
+    currentSessionId,
+    currentSessionState: currentSession?.state ?? null,
+    wsState,
+    fetchWithAuthGuard,
+    updateSession,
+    addMessage,
+  })
+
+  const activeTransitionNotice =
+    currentTransitionNotice && currentTransitionNotice.eventId !== dismissedTransitionEventId
+      ? currentTransitionNotice
+      : undefined
 
   useWorkspacesUiEffects({
     messageGroupingWindowMs,
@@ -614,12 +429,42 @@ export function WorkspaceInitialization({
     prevWsStateRef,
   })
 
-  useWorkspacesGreenroomCleanup({
+  useWorkspacesInitializationLifecycle({
+    currentSessionId,
+    currentSession,
+    isLoadingCampaigns,
+    isCampaignRestorePending,
+    hasSignaledReadyRef,
+    onReady,
+    loadUserCharacters,
     selectedCampaignId,
-    hasCurrentSession: Boolean(currentSession),
-    isGreenroom,
-    currentSessionStats,
-    currentPresence,
+    loadDmVoiceTargetingSetting,
+  })
+
+  const ensureSessionMembership = useCallback(
+    async (sessionId: UUID) => {
+      await sessionMembershipController.ensureSessionMembership(sessionId)
+    },
+    [sessionMembershipController]
+  )
+
+  const handleRoomSelection = useCallback(
+    (roomId: UUID) => {
+      setSelectedRoomIdOverride(roomId)
+    },
+    [setSelectedRoomIdOverride]
+  )
+
+  useWorkspacesWsRetryToast({
+    wsState,
+    wsError,
+    wsRetryWindowExpired,
+    sessionLifecycleActions,
+    wsRetryWindowStartRef,
+    wsRetryToastTimerRef,
+    wsErrorMessageRef,
+    retryConnection,
+    showToast,
   })
 
   const {
@@ -762,60 +607,39 @@ export function WorkspaceInitialization({
     handleEnterCampaign,
   })
 
-  const {
-    hasSessionSelected,
-    connectionStatus,
-    selectedCampaign,
-    settingsReferenceSession,
-    settingsCampaignTotalDurationMs,
-    connectedSpectatorsCount,
-    connectedPlayers,
-    membershipRole,
-    effectiveSessionRole,
-    isDmDisconnected,
-    configuredCooldownDurationMs,
-    cooldownControlVisible,
-    canManageCooldown,
-    cooldownControlLockedReason,
-    canExtendCooldown,
-    extendCooldownLockedReason,
-    effectiveSessionUser,
-    canStartFromGreenroom,
-    canPauseFromActive,
-    canStopFromActive,
-    leaveSessionWarning,
-    canEditSessionSettings,
-    canEditEndedSessionName,
-  } = useWorkspacesDerivedState({
-    wsState,
-    currentSession,
-    selectedRoomId,
-    campaigns,
-    selectedCampaignId,
-    settingsCampaignSessions,
-    settingsReferenceSessionId,
-    currentSessionStats,
-    currentPresence,
-    isGreenroom,
-    currentRooms,
-    typedRoomMembers,
-    activeTakeoverUserId,
-    takeoverPresence,
-    user,
-    settingsPostSessionChatDurationMinutes,
-    cooldownExtensionCounts,
-  })
+  const hasSessionSelected = Boolean(currentSession)
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null
+  const settingsReferenceSession =
+    settingsCampaignSessions.find((session) => session.id === settingsReferenceSessionId) ?? null
+  const settingsCampaignTotalDurationMs = useMemo(
+    () =>
+      settingsCampaignSessions.reduce((total, session) => {
+        if (!session.startedAt || !session.endedAt) {
+          return total
+        }
 
-  const handleRoomSelection = useCallback(
-    (roomId: UUID) => {
-      if (isTakeoverActive) {
-        return
-      }
-
-      setSelectedRoomIdOverride(roomId)
-    },
-    [isTakeoverActive, setSelectedRoomIdOverride]
+        return total + Math.max(0, session.endedAt - session.startedAt)
+      }, 0),
+    [settingsCampaignSessions]
   )
+  const connectionStatus = useConnectionStatus({
+    wsState,
+    sessionId: currentSession?.id ?? null,
+    roomId: selectedRoomIdOverride || null,
+  })
+  const membershipRole = resolveMembershipRole(selectedCampaign?.memberRole)
+  const configuredCooldownDurationMs = Math.max(
+    60_000,
+    toValidPostSessionDurationMinutes(settingsPostSessionChatDurationMinutes) * 60_000
+  )
+  const effectiveSessionRole = currentSession?.dmId === user.id ? Role.DM : membershipRole
+  const leaveSessionWarning = useSessionLeaveWarning(effectiveSessionRole, currentSession?.state)
+  const canEditSessionSettings =
+    currentSession?.state === SessionState.IDLE ||
+    currentSession?.state === SessionState.ACTIVE ||
+    currentSession?.state === SessionState.PAUSED
+  const canEditEndedSessionName =
+    Boolean(currentSession?.dmId === user.id) && currentSession?.state === SessionState.ENDED
 
   useWorkspacesWsRetryToast({
     wsState,
@@ -967,14 +791,14 @@ export function WorkspaceInitialization({
     currentPauseStats: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.currentPauseStats,
     configuredCooldownDurationMs,
     isTransitioningSession: activeTransitionSessionId === currentSession?.id,
-    canStartFromGreenroom,
-    canPauseFromActive,
-    canStopFromActive,
-    cooldownControlVisible,
-    canManageCooldown: Boolean(canManageCooldown),
-    cooldownControlLockedReason,
-    canExtendCooldown,
-    extendCooldownLockedReason,
+    canStartFromGreenroom: false,
+    canPauseFromActive: false,
+    canStopFromActive: false,
+    cooldownControlVisible: false,
+    canManageCooldown: false,
+    cooldownControlLockedReason: undefined,
+    canExtendCooldown: false,
+    extendCooldownLockedReason: undefined,
     onStartSession: handleStartSession,
     onPauseSession: handlePauseSession,
     onStopSession: handleStopSession,
@@ -989,31 +813,31 @@ export function WorkspaceInitialization({
     selectedCampaign: selectedCampaign ?? null,
     sessions: sessionList,
     sessionCount: sessionList.length,
-    connectedPlayers,
-    connectedSpectatorsCount,
+    connectedPlayers: 0,
+    connectedSpectatorsCount: 0,
     effectiveSessionRole,
-    effectiveSessionUser,
-    visibleRooms,
-    roomMembersByRoomId: typedRoomMembers,
-    selectedRoomId,
+    effectiveSessionUser: user,
+    visibleRooms: [],
+    roomMembersByRoomId: {},
+    selectedRoomId: '',
     onSelectRoom: handleRoomSelection,
     broadcastModeEnabled: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.broadcastModeEnabled,
     onToggleBroadcastMode: handleToggleBroadcastMode,
     dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
     dmOverrides: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.dmOverrides,
     currentConditionName: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.currentConditionName,
-    roomEnvironmentNames,
+    roomEnvironmentNames: {},
     wsState,
     wsRetrySecondsRemaining,
     connectionStatus,
     rightRailIndicators: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.rightRailIndicators,
     partyPresenceRefreshVersion,
     fetchWithAuthGuard,
-    selectedRoom: selectedRoom ?? null,
+    selectedRoom: null,
     campaignId: selectedCampaign?.id as UUID | undefined,
     messageGroupingWindowMs,
     sendWsEvent: send,
-    isGreenroomChatMode,
+    isGreenroomChatMode: false,
     totalSessionDurationMs: settingsCampaignTotalDurationMs,
     canEditCampaignInfo: Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id),
     onSaveCampaignInfo: handleSaveCampaignInfoPanel,
@@ -1023,7 +847,6 @@ export function WorkspaceInitialization({
     defaultSessionDurationMinutes: settingsDefaultSessionDurationMins,
     sessionStartedAt: currentSession?.startedAt,
     canEditSessionSettings,
-    canEditEndedSessionName,
     onSessionNameChange: setSessionSettingsName,
     onPlannedDurationMinutesChange: handlePlannedDurationMinutesChange,
     onSaveSessionSettings: () => {
@@ -1183,7 +1006,17 @@ export function WorkspaceInitialization({
 
         <EditorWorkspace {...editorWorkspaceProps} />
 
-        <SessionWorkspaceChromeConnector baseProps={sessionWorkspaceProps} />
+        <SessionWorkspaceChromeConnector
+          baseProps={sessionWorkspaceProps}
+          campaigns={campaigns}
+          selectedCampaignId={selectedCampaignId}
+          settingsCampaignSessions={settingsCampaignSessions}
+          settingsReferenceSessionId={settingsReferenceSessionId}
+          settingsPostSessionChatDurationMinutes={settingsPostSessionChatDurationMinutes}
+          cooldownExtensionCounts={cooldownExtensionCounts}
+          selectedRoomIdOverride={selectedRoomIdOverride}
+          user={user}
+        />
       </div>
 
       <TooltipProvider delayDuration={140}>

@@ -1,15 +1,40 @@
 import { memo, useMemo } from 'react'
 import type { ComponentProps } from 'react'
-import type { UUID } from '@shared'
-import type { RightRailTab } from '@/types/ui'
+import { RoomType, type UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
+import { useWorkspacesAudioProjection } from '@/hooks/session/useWorkspacesAudioProjection'
+import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
+import { useWorkspacesGreenroomCleanup } from '@/hooks/session/useWorkspacesGreenroomCleanup'
+import type { RightRailTab } from '@/types/ui'
 import { isJournalNote } from '@/utils/notesPanel'
 import { SessionWorkspace } from '@/components/workspaces/SessionWorkspace'
+import type { Session as SessionRecord } from '@/types/session'
+import type {
+  Room as RoomRecord,
+  RoomUser as RoomMember,
+  SessionPresence as PresenceRecord,
+} from '@/types/room'
+import type { CampaignSummary } from '@/types/session/campaign'
+import type { ApiSessionStats } from '@/types/session/workspaces'
+import { getVisibleRoomsForSessionState, isGreenRoom } from '@/utils/session/workspaces'
 
 type SessionWorkspaceProps = ComponentProps<typeof SessionWorkspace>
 
 type SessionWorkspaceChromeConnectorProps = {
   baseProps: SessionWorkspaceProps
+  campaigns: CampaignSummary[]
+  selectedCampaignId: UUID | ''
+  settingsCampaignSessions: SessionRecord[]
+  settingsReferenceSessionId: UUID | ''
+  settingsPostSessionChatDurationMinutes: number
+  cooldownExtensionCounts: Record<UUID, number>
+  selectedRoomIdOverride: UUID | ''
+  user: {
+    id: UUID
+    username: string
+    role: SessionWorkspaceProps['effectiveSessionRole']
+    authType?: 'FULL' | 'GUEST'
+  }
 }
 
 const EMPTY_NOTES_BY_ID = Object.freeze({}) as Record<
@@ -31,12 +56,58 @@ const EMPTY_RIGHT_RAIL_INDICATORS = Object.freeze({
   history: 0,
 }) as Partial<Record<RightRailTab, number>>
 
+const EMPTY_ROOMS_BY_ID = Object.freeze({}) as Record<UUID, RoomRecord>
+const EMPTY_PRESENCE_BY_USER = Object.freeze({}) as Record<UUID, PresenceRecord>
+const EMPTY_ROOM_MEMBERS_BY_ID = Object.freeze({}) as Record<UUID, RoomMember[]>
+const EMPTY_SESSION_STATS: ApiSessionStats | undefined = undefined
+const EMPTY_VISIBLE_ROOMS: RoomRecord[] = []
+
 /**
  * Isolates high-churn session workspace slices so WorkspaceInitialization doesn't
  * subscribe to note/override/pause updates that only affect SessionWorkspace.
  */
 export const SessionWorkspaceChromeConnector = memo(
-  function SessionWorkspaceChromeConnector({ baseProps }: SessionWorkspaceChromeConnectorProps) {
+  function SessionWorkspaceChromeConnector({
+    baseProps,
+    campaigns,
+    selectedCampaignId,
+    settingsCampaignSessions,
+    settingsReferenceSessionId,
+    settingsPostSessionChatDurationMinutes,
+    cooldownExtensionCounts,
+    selectedRoomIdOverride,
+    user,
+  }: SessionWorkspaceChromeConnectorProps) {
+    const currentSessionRoomsById = useStore((state) => {
+      if (!state.currentSessionId) {
+        return EMPTY_ROOMS_BY_ID
+      }
+
+      const roomsBySession = state.rooms as Record<UUID, Record<UUID, RoomRecord>>
+      return roomsBySession[state.currentSessionId] ?? EMPTY_ROOMS_BY_ID
+    })
+    const currentSessionPresenceByUser = useStore((state) => {
+      if (!state.currentSessionId) {
+        return EMPTY_PRESENCE_BY_USER
+      }
+
+      const presenceBySession = state.sessionPresence as Record<UUID, Record<UUID, PresenceRecord>>
+      return presenceBySession[state.currentSessionId] ?? EMPTY_PRESENCE_BY_USER
+    })
+    const currentSessionStats = useStore((state) => {
+      if (!state.currentSessionId) {
+        return EMPTY_SESSION_STATS
+      }
+
+      const statsBySession = state.sessionStatsBySessionId as Record<UUID, ApiSessionStats>
+      return statsBySession[state.currentSessionId]
+    })
+    const roomMembersByRoomId = useStore((state) => state.roomMembers) as Record<UUID, RoomMember[]>
+    const currentEnvironment = useStore((state) => state.currentEnvironment)
+    const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
+    const dmOverrides = useStore((state) => state.dmOverrides)
+    const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
+    const currentConditionName = useStore((state) => state.currentCondition?.name)
     const currentPauseStats = useStore((state) => {
       if (!state.currentSessionId) {
         return EMPTY_PAUSE_STATS
@@ -44,10 +115,128 @@ export const SessionWorkspaceChromeConnector = memo(
 
       return state.pauseStats[state.currentSessionId] ?? EMPTY_PAUSE_STATS
     })
+    const setPrivateRoomCleanMode = useStore((state) => state.setPrivateRoomCleanMode)
+    const clearEnvironment = useStore((state) => state.clearEnvironment)
+    const setEnvironment = useStore((state) => state.setEnvironment)
+    const isGreenroom = useStore((state) => state.isGreenroom)
+    const activeTakeoverUserId = useStore((state) => {
+      if (!state.currentSessionId) {
+        return null
+      }
 
-    const dmOverrides = useStore((state) => state.dmOverrides)
-    const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
-    const currentConditionName = useStore((state) => state.currentCondition?.name)
+      return state.mockTakeoverUserIdBySession[state.currentSessionId] ?? null
+    })
+
+    const currentRooms = useMemo<RoomRecord[]>(
+      () => Object.values(currentSessionRoomsById),
+      [currentSessionRoomsById]
+    )
+    const currentPresence = useMemo<PresenceRecord[]>(
+      () => Object.values(currentSessionPresenceByUser),
+      [currentSessionPresenceByUser]
+    )
+    const typedRoomMembers = roomMembersByRoomId as Record<UUID, RoomMember[]>
+    const isTakeoverActive = Boolean(activeTakeoverUserId)
+    const effectiveActorUserId = (activeTakeoverUserId || user.id) as UUID
+    const visibleRooms = useMemo<RoomRecord[]>(
+      () =>
+        baseProps.currentSession
+          ? getVisibleRoomsForSessionState(currentRooms, baseProps.currentSession.state)
+          : EMPTY_VISIBLE_ROOMS,
+      [baseProps.currentSession, currentRooms]
+    )
+    const takeoverPresence = useMemo(
+      () =>
+        activeTakeoverUserId
+          ? currentPresence.find((presence) => presence.userId === activeTakeoverUserId) || null
+          : null,
+      [activeTakeoverUserId, currentPresence]
+    )
+    const selectedRoomId = useMemo<UUID | ''>(() => {
+      if (!visibleRooms.length) {
+        return ''
+      }
+
+      if (
+        !isTakeoverActive &&
+        selectedRoomIdOverride &&
+        visibleRooms.some((room) => room.id === selectedRoomIdOverride)
+      ) {
+        return selectedRoomIdOverride
+      }
+
+      const ownPresence = currentPresence.find(
+        (presence) => presence.userId === effectiveActorUserId
+      )
+      if (
+        ownPresence?.primaryRoomId &&
+        visibleRooms.some((room) => room.id === ownPresence.primaryRoomId)
+      ) {
+        return ownPresence.primaryRoomId
+      }
+
+      const mainRoom = visibleRooms.find((room) => room.type === RoomType.MAIN)
+      return (mainRoom || visibleRooms[0]).id
+    }, [
+      currentPresence,
+      effectiveActorUserId,
+      isTakeoverActive,
+      selectedRoomIdOverride,
+      visibleRooms,
+    ])
+    const selectedRoom = useMemo(
+      () => visibleRooms.find((room) => room.id === selectedRoomId) || null,
+      [selectedRoomId, visibleRooms]
+    )
+    const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
+    const connectedRoomId = useMemo<UUID | ''>(() => {
+      const ownPresence = currentPresence.find(
+        (presence) => presence.userId === effectiveActorUserId
+      )
+      return ownPresence?.primaryRoomId || ''
+    }, [currentPresence, effectiveActorUserId])
+
+    useWorkspacesAudioProjection({
+      currentSession: baseProps.currentSession,
+      currentPresence,
+      effectiveActorUserId,
+      currentRooms,
+      setPrivateRoomCleanMode,
+      connectedRoomId,
+      currentEnvironment,
+      clearEnvironment,
+      roomEnvironmentNames,
+      setEnvironment,
+    })
+
+    useWorkspacesGreenroomCleanup({
+      selectedCampaignId,
+      hasCurrentSession: Boolean(baseProps.currentSession),
+      isGreenroom,
+      currentSessionStats,
+      currentPresence,
+    })
+
+    const derivedState = useWorkspacesDerivedState({
+      wsState: baseProps.wsState,
+      currentSession: baseProps.currentSession,
+      selectedRoomId,
+      campaigns,
+      selectedCampaignId,
+      settingsCampaignSessions,
+      settingsReferenceSessionId,
+      currentSessionStats,
+      currentPresence,
+      isGreenroom,
+      currentRooms,
+      typedRoomMembers,
+      activeTakeoverUserId,
+      takeoverPresence,
+      user,
+      settingsPostSessionChatDurationMinutes,
+      cooldownExtensionCounts,
+    })
+
     const currentSessionNotesById = useStore((state) => {
       if (!state.currentSessionId) {
         return EMPTY_NOTES_BY_ID
@@ -79,6 +268,25 @@ export const SessionWorkspaceChromeConnector = memo(
         broadcastModeEnabled={broadcastModeEnabled}
         currentConditionName={currentConditionName}
         rightRailIndicators={rightRailIndicators}
+        visibleRooms={visibleRooms}
+        roomMembersByRoomId={typedRoomMembers}
+        selectedRoomId={selectedRoomId}
+        selectedRoom={selectedRoom}
+        connectedPlayers={derivedState.connectedPlayers}
+        connectedSpectatorsCount={derivedState.connectedSpectatorsCount}
+        effectiveSessionRole={derivedState.effectiveSessionRole}
+        effectiveSessionUser={derivedState.effectiveSessionUser}
+        canStartFromGreenroom={derivedState.canStartFromGreenroom}
+        canPauseFromActive={derivedState.canPauseFromActive}
+        canStopFromActive={derivedState.canStopFromActive}
+        cooldownControlVisible={derivedState.cooldownControlVisible}
+        canManageCooldown={Boolean(derivedState.canManageCooldown)}
+        cooldownControlLockedReason={derivedState.cooldownControlLockedReason}
+        canExtendCooldown={derivedState.canExtendCooldown}
+        extendCooldownLockedReason={derivedState.extendCooldownLockedReason}
+        canEditSessionSettings={derivedState.canEditSessionSettings}
+        canEditEndedSessionName={derivedState.canEditEndedSessionName}
+        isGreenroomChatMode={isGreenroomChatMode}
       />
     )
   },
