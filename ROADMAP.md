@@ -335,7 +335,7 @@ Evidence snapshot (2026-05-30):
 - [x] Full user + campaign with spectators enabled + active session with DM/players present → WATCH button (applies to both PUBLIC and PRIVATE campaigns; no invite link required)
 - [x] Players can join via invite link or code
 - [x] Spectators can only access active campaigns and cannot edit
-- [ ] Late-join policy (Open | Screened | Blocked) is configurable with grace period
+- [x] Late-join policy (Open | Screened | Blocked) is configurable with grace period
 - [x] DM can RETIRE a campaign from the offline workspace header (confirm dialog required); retired campaigns removed from main lobby list
 - [x] DM can RESUME a retired campaign from a dedicated "Retired" drawer in the lobby (no confirm dialog); DM cannot delete campaigns
 - [x] Guest accounts are not shown the campaign discovery list; on session exit they see the upgrade prompt only

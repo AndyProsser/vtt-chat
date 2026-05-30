@@ -126,8 +126,19 @@ async function getEffectiveCooldownDurationMs(sessionId: UUID): Promise<number> 
 }
 
 async function getCampaignLateJoinSettings(
-  sessionId: UUID
+  sessionId: UUID,
+  session?: {
+    campaign?: { lateJoinPolicy?: string | null; lateJoinGraceMinutes?: number | null } | null
+  }
 ): Promise<CampaignLateJoinSettings | null> {
+  if (session?.campaign) {
+    return {
+      lateJoinPolicy: (session.campaign.lateJoinPolicy ??
+        'OPEN') as CampaignLateJoinSettings['lateJoinPolicy'],
+      lateJoinGraceMinutes: session.campaign.lateJoinGraceMinutes ?? 30,
+    }
+  }
+
   try {
     const sessionModel = (
       prisma as typeof prisma & {
@@ -582,10 +593,11 @@ async function joinSessionHandler(req: Request, res: Response) {
     }
 
     if (joinRole.role === Role.PLAYER && isSessionActiveOrPaused(session.state)) {
-      const lateJoinSettings = await getCampaignLateJoinSettings(id as UUID)
+      const lateJoinSettings = await getCampaignLateJoinSettings(id as UUID, session as any)
       const sessionStartedAt = session.startedAt ?? session.createdAt
-      const sessionStartedAtMs =
-        sessionStartedAt instanceof Date ? sessionStartedAt.getTime() : Number(sessionStartedAt)
+      const sessionStartedAtMs = sessionStartedAt
+        ? new Date(sessionStartedAt).getTime()
+        : Number.NaN
 
       if (
         lateJoinSettings &&

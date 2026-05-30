@@ -307,6 +307,64 @@ describe('session routes audit appends', () => {
     )
   })
 
+  it('blocks brand-new late joins after the configured grace window', async () => {
+    mocks.mockVerifyToken.mockReturnValue({ userId: PLAYER_ID, username: 'alice', role: 'PLAYER' })
+    mocks.mockGetSession.mockResolvedValue({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'ACTIVE',
+      createdAt: Date.now() - 60 * 60 * 1000,
+      startedAt: Date.now() - 60 * 60 * 1000,
+      campaign: {
+        lateJoinPolicy: 'BLOCKED',
+        lateJoinGraceMinutes: 30,
+      },
+    })
+
+    const app = buildApp()
+
+    const res = await request(app)
+      .post(`/api/session/${SESSION_ID}/join`)
+      .set('Authorization', 'Bearer token')
+
+    expect(res.status).toBe(403)
+    expect(res.body.code).toBe('FORBIDDEN')
+    expect(res.body.message).toContain('Late joins are blocked')
+    expect(mocks.mockAddUserToSession).not.toHaveBeenCalled()
+    expect(mocks.mockAppendSessionAuditEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ actionType: 'SESSION_MEMBER_JOINED' })
+    )
+  })
+
+  it('allows a new join while the late-join grace window is still open', async () => {
+    mocks.mockVerifyToken.mockReturnValue({ userId: PLAYER_ID, username: 'alice', role: 'PLAYER' })
+    mocks.mockGetSession.mockResolvedValue({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'ACTIVE',
+      createdAt: Date.now() - 10 * 60 * 1000,
+      startedAt: Date.now() - 10 * 60 * 1000,
+      campaign: {
+        lateJoinPolicy: 'SCREENED',
+        lateJoinGraceMinutes: 30,
+      },
+    })
+
+    const app = buildApp()
+
+    const res = await request(app)
+      .post(`/api/session/${SESSION_ID}/join`)
+      .set('Authorization', 'Bearer token')
+
+    expect(res.status).toBe(200)
+    expect(mocks.mockAddUserToSession).toHaveBeenCalledWith(
+      SESSION_ID,
+      expect.objectContaining({ id: PLAYER_ID, role: 'PLAYER' })
+    )
+  })
+
   it('appends SESSION_MEMBER_LEFT audit event', async () => {
     mocks.mockVerifyToken.mockReturnValue({ userId: PLAYER_ID, username: 'alice', role: 'PLAYER' })
     mocks.mockGetSessionUsers.mockResolvedValue([

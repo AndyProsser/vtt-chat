@@ -453,6 +453,7 @@ Campaign-model compatibility addendum (2026-05-04 lock):
 - Campaign settings include `postSessionChatEnabled: boolean` (default true) and `postSessionChatDurationMs: integer` (default 300000 ms / 5 minutes, range 60000–3600000 ms).
 - Campaign settings PATCH compatibility: metadata-only saves are valid. Clients may send only changed metadata fields (for example `name`, `description`, `posterUrl`) without resending visibility/spectator policy booleans.
 - For omitted campaign settings fields on PATCH (for example `discoverable`, `spectatorsEnabled`, `lateJoinPolicy`), backend must retain current persisted values rather than rejecting the request.
+- `POST /api/session/:id/join` must enforce campaign `lateJoinPolicy` and `lateJoinGraceMinutes` for brand-new player joins after a session has started; DMs and already-joined reconnects continue to bypass that late-join gate.
 - GREENROOM (via RoomType) persists at campaign scope; shared across all sessions for that campaign.
 
 ---

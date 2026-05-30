@@ -912,10 +912,10 @@ Reducing `spectatorMax` below the current active count drops the most recently j
 
 When campaign late-join mode is `SCREENED`:
 
-- Player late-join requests create a pending request with an expiry window.
-- Expired requests require a new join attempt.
-- DM can respond directly from the pending queue with either a message or a private voice-chat screening invite.
-- Grace-period rules apply to reconnect continuity for previously joined players and do not auto-approve brand-new late arrivals.
+- Brand-new player joins are allowed only during the configured grace window after session start.
+- After the grace window expires, the join API rejects new player joins with a DM-screening message.
+- DMs and previously joined reconnecting players continue to bypass the late-join gate.
+- A dedicated pending late-join screening queue is not part of the current Phase 1 implementation.
 
 ### 9.5 Invite Link Lifecycle
 
