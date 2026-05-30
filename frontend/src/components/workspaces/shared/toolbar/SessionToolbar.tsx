@@ -121,17 +121,19 @@ export function SessionToolbar({
     return 'disconnected'
   }
 
+  const wsState = derivedWsState()
+
   const connectionStatusLeaf = useMemo(
     () => (
       <ConnectionStatusLeaf
-        wsState={derivedWsState()}
+        wsState={wsState}
         coreWsState={coreWsState}
         livekitState={livekitState}
         sessionId={sessionId}
         roomId={undefined}
       />
     ),
-    [coreWsState, livekitState, sessionId]
+    [wsState, coreWsState, livekitState, sessionId]
   )
 
   const sessionActionButtons = hasExtraButtons ? (

@@ -60,6 +60,14 @@ const EMPTY_SESSION_ROOMS: Record<UUID, { id: UUID; name: string }> = {}
 const EMPTY_OUTGOING_QUEUE: OutgoingChatMessage[] = []
 const SESSION_SUMMARY_PREFIX = '[Session Summary]'
 
+function countOwnKeys(record: Record<string, unknown>): number {
+  let total = 0
+  for (const _key in record) {
+    total += 1
+  }
+  return total
+}
+
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value
@@ -159,6 +167,7 @@ export function ChatWindow({
   const lastSeenLatestMessageKeyRef = useRef<string | undefined>(undefined)
   const autoFollowResetTimeoutRef = useRef<number | null>(null)
   const initialScrollContextRef = useRef<string | null>(null)
+  const participantDirectoryRef = useRef(EMPTY_PARTICIPANT_DIRECTORY)
   const greenroomTodayStartRef = useRef(getStartOfTodayTimestamp())
   const lastHydratedGreenroomStateRef = useRef<string | null | undefined>(undefined)
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
@@ -208,19 +217,39 @@ export function ChatWindow({
     >
 
     if (entries.length === 0) {
+      participantDirectoryRef.current = EMPTY_PARTICIPANT_DIRECTORY
       return EMPTY_PARTICIPANT_DIRECTORY
     }
 
-    return entries.reduce(
-      (acc, [participantUserId, participant]) => {
-        acc[participantUserId] = {
-          displayName: participant.characterName || participant.username,
-          avatarUrl: participant.avatarUrl,
-        }
-        return acc
-      },
-      {} as Record<UUID, { displayName: string; avatarUrl?: string | null }>
-    )
+    const previousDirectory = participantDirectoryRef.current
+    const nextDirectory = {} as Record<UUID, { displayName: string; avatarUrl?: string | null }>
+    let hasChanged = countOwnKeys(previousDirectory) !== entries.length
+
+    for (const [participantUserId, participant] of entries) {
+      const nextDisplayName = participant.characterName || participant.username
+      const nextAvatarUrl = participant.avatarUrl
+      const previousEntry = previousDirectory[participantUserId]
+
+      if (
+        !previousEntry ||
+        previousEntry.displayName !== nextDisplayName ||
+        previousEntry.avatarUrl !== nextAvatarUrl
+      ) {
+        hasChanged = true
+      }
+
+      nextDirectory[participantUserId] = {
+        displayName: nextDisplayName,
+        avatarUrl: nextAvatarUrl,
+      }
+    }
+
+    if (!hasChanged) {
+      return previousDirectory
+    }
+
+    participantDirectoryRef.current = nextDirectory
+    return nextDirectory
   }, [sessionPresence])
 
   const roomDirectory = useMemo(() => {

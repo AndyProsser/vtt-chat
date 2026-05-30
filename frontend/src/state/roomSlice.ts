@@ -528,18 +528,22 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         nextPresence === PresenceState.SPEAKING
       )
 
-      // Keep per-user presence state in sync for leaf indicators (online/offline/speaking)
-      // without touching roomMembers topology. This preserves the low-churn fast path while
-      // ensuring indicators continue to update across IDLE/COOLDOWN/ENDED/CLEANUP transitions.
-      get().applySessionPresenceStateChange({
-        sessionId: event.sessionId,
-        userId: payload.userId,
-        username: payload.username,
-        roomId: roomId || undefined,
-        state: nextPresence,
-        changedAt,
-        previousGroupId: payload.previousGroupId || undefined,
-      })
+      // Keep pure SPEAKING flips out of sessionPresence so transient voice
+      // activity stays in presenceSpeakingBySession and does not fan out
+      // re-renders to top-level workspace subscribers.
+      if (nextPresence !== PresenceState.SPEAKING) {
+        // Preserve ONLINE/IDLE transitions in sessionPresence so non-speaking
+        // presence affordances (online/offline dots, away state) remain correct.
+        get().applySessionPresenceStateChange({
+          sessionId: event.sessionId,
+          userId: payload.userId,
+          username: payload.username,
+          roomId: roomId || undefined,
+          state: nextPresence,
+          changedAt,
+          previousGroupId: payload.previousGroupId || undefined,
+        })
+      }
 
       return
     }
