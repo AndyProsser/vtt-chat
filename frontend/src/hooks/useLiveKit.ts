@@ -133,6 +133,7 @@ export function useLiveKit(
   const connectionAttemptRef = useRef(0)
   const connectionKeyRef = useRef<string | null>(null)
   const hasLocalPublicationRef = useRef(false)
+  const publishAudioInFlightRef = useRef<Promise<void> | null>(null)
   const trackSubscriptionsRef = useRef<TrackSubscription[]>([])
   const teardownRoomListenersRef = useRef<(() => void) | null>(null)
   const roomListenerCountsRef = useRef<Record<string, number>>({})
@@ -921,104 +922,200 @@ export function useLiveKit(
     tokenChannel,
   ])
 
+  const waitForRoomConnected = useCallback(async (targetRoom: Room, timeoutMs = 6000) => {
+    if (targetRoom.state === ConnectionState.Connected) {
+      return
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      let settled = false
+
+      const cleanup = () => {
+        targetRoom.off(RoomEvent.Connected, handleConnected)
+        targetRoom.off(RoomEvent.Reconnected, handleConnected)
+        targetRoom.off(RoomEvent.ConnectionStateChanged, handleStateChanged)
+        targetRoom.off(RoomEvent.Disconnected, handleDisconnected)
+      }
+
+      const settle = (fn: () => void) => {
+        if (settled) {
+          return
+        }
+        settled = true
+        clearTimeout(timeout)
+        cleanup()
+        fn()
+      }
+
+      const handleConnected = () => {
+        settle(resolve)
+      }
+
+      const handleStateChanged = () => {
+        if (targetRoom.state === ConnectionState.Connected) {
+          settle(resolve)
+        }
+      }
+
+      const handleDisconnected = () => {
+        settle(() => reject(new Error('Room disconnected before becoming connected')))
+      }
+
+      const timeout = window.setTimeout(() => {
+        settle(() =>
+          reject(new Error('publishing rejected as engine not connected within timeout'))
+        )
+      }, timeoutMs)
+
+      targetRoom.on(RoomEvent.Connected, handleConnected)
+      targetRoom.on(RoomEvent.Reconnected, handleConnected)
+      targetRoom.on(RoomEvent.ConnectionStateChanged, handleStateChanged)
+      targetRoom.on(RoomEvent.Disconnected, handleDisconnected)
+      handleStateChanged()
+    })
+  }, [])
+
   /**
    * Publish the local microphone to the active room.
    */
   const publishAudio = useCallback(async () => {
-    const activeRoom = roomRef.current
-    if (!activeRoom) {
-      throw new Error('Room not connected')
+    if (publishAudioInFlightRef.current) {
+      return publishAudioInFlightRef.current
     }
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: getLocalAudioConstraints(),
-      })
+    const publishPromise = (async () => {
+      let activeRoom = roomRef.current
 
-      const inputTrack = stream.getAudioTracks()[0]
-
-      const audioTrack = new LocalAudioTrack(inputTrack)
-      await activeRoom.localParticipant.publishTrack(audioTrack, {
-        audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
-      })
-
-      setLocalAudioTrackState(audioTrack)
-      if (typeof setLiveKitLocalInputTrack === 'function') {
-        setLiveKitLocalInputTrack(connectionKey, inputTrack)
-      }
-      publishConnectionSnapshot({
-        connectionState: activeRoom.state,
-        isConnected: activeRoom.state === ConnectionState.Connected,
-        isConnecting:
-          activeRoom.state === ConnectionState.Connecting ||
-          activeRoom.state === ConnectionState.Reconnecting ||
-          activeRoom.state === ConnectionState.SignalReconnecting,
-        hasLocalPublication: getHasLocalPublication(activeRoom),
-        error: null,
-      })
-
-      logger.info('useLiveKit', 'Audio track published')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      const isPermissionError = /insufficient permissions|not authorized|permission/i.test(message)
-
-      if (isPermissionError) {
-        logger.warn(
-          'useLiveKit',
-          `Audio publish permission denied, retrying after reconnect: ${message}`
-        )
-        // One-shot recovery: refresh token/permissions by reconnecting and retry once.
-        const recoveryRoom = roomRef.current
-        if (recoveryRoom) {
-          await recoveryRoom.disconnect().catch(() => undefined)
-        }
-        roomRef.current = null
-        connectionKeyRef.current = null
-        setRoomState(null)
-        setLocalAudioTrackState(null)
-        if (typeof setLiveKitLocalInputTrack === 'function') {
-          setLiveKitLocalInputTrack(connectionKey, null)
-        }
-
+      if (!activeRoom) {
         await connect()
+        activeRoom = roomRef.current
+      }
 
-        const recoveredRoom = roomRef.current as Room | null
-        if (!recoveredRoom) {
-          throw err
-        }
+      if (!activeRoom) {
+        throw new Error('Room not connected')
+      }
 
+      if (activeRoom.state !== ConnectionState.Connected) {
+        await waitForRoomConnected(activeRoom)
+      }
+
+      if (getHasLocalPublication(activeRoom)) {
+        publishConnectionSnapshot({
+          connectionState: activeRoom.state,
+          isConnected: activeRoom.state === ConnectionState.Connected,
+          isConnecting:
+            activeRoom.state === ConnectionState.Connecting ||
+            activeRoom.state === ConnectionState.Reconnecting ||
+            activeRoom.state === ConnectionState.SignalReconnecting,
+          hasLocalPublication: true,
+          error: null,
+        })
+        return
+      }
+
+      try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: getLocalAudioConstraints(),
         })
 
         const inputTrack = stream.getAudioTracks()[0]
-        const retryTrack = new LocalAudioTrack(inputTrack)
 
-        await recoveredRoom.localParticipant.publishTrack(retryTrack, {
+        const audioTrack = new LocalAudioTrack(inputTrack)
+        await activeRoom.localParticipant.publishTrack(audioTrack, {
           audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
         })
 
-        setLocalAudioTrackState(retryTrack)
+        setLocalAudioTrackState(audioTrack)
         if (typeof setLiveKitLocalInputTrack === 'function') {
           setLiveKitLocalInputTrack(connectionKey, inputTrack)
         }
         publishConnectionSnapshot({
-          connectionState: recoveredRoom.state,
-          isConnected: recoveredRoom.state === ConnectionState.Connected,
+          connectionState: activeRoom.state,
+          isConnected: activeRoom.state === ConnectionState.Connected,
           isConnecting:
-            recoveredRoom.state === ConnectionState.Connecting ||
-            recoveredRoom.state === ConnectionState.Reconnecting ||
-            recoveredRoom.state === ConnectionState.SignalReconnecting,
-          hasLocalPublication: getHasLocalPublication(recoveredRoom),
+            activeRoom.state === ConnectionState.Connecting ||
+            activeRoom.state === ConnectionState.Reconnecting ||
+            activeRoom.state === ConnectionState.SignalReconnecting,
+          hasLocalPublication: getHasLocalPublication(activeRoom),
           error: null,
         })
 
-        logger.info('useLiveKit', 'Audio track published after permission recovery reconnect')
-        return
-      }
+        logger.info('useLiveKit', 'Audio track published')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        const isPermissionError = /insufficient permissions|not authorized|permission/i.test(
+          message
+        )
 
-      logger.error('useLiveKit', `Audio publish failed: ${message}`)
-      throw err
+        if (isPermissionError) {
+          logger.warn(
+            'useLiveKit',
+            `Audio publish permission denied, retrying after reconnect: ${message}`
+          )
+          // One-shot recovery: refresh token/permissions by reconnecting and retry once.
+          const recoveryRoom = roomRef.current
+          if (recoveryRoom) {
+            await recoveryRoom.disconnect().catch(() => undefined)
+          }
+          roomRef.current = null
+          connectionKeyRef.current = null
+          setRoomState(null)
+          setLocalAudioTrackState(null)
+          if (typeof setLiveKitLocalInputTrack === 'function') {
+            setLiveKitLocalInputTrack(connectionKey, null)
+          }
+
+          await connect()
+
+          const recoveredRoom = roomRef.current as Room | null
+          if (!recoveredRoom) {
+            throw err
+          }
+
+          await waitForRoomConnected(recoveredRoom)
+
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: getLocalAudioConstraints(),
+          })
+
+          const inputTrack = stream.getAudioTracks()[0]
+          const retryTrack = new LocalAudioTrack(inputTrack)
+
+          await recoveredRoom.localParticipant.publishTrack(retryTrack, {
+            audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
+          })
+
+          setLocalAudioTrackState(retryTrack)
+          if (typeof setLiveKitLocalInputTrack === 'function') {
+            setLiveKitLocalInputTrack(connectionKey, inputTrack)
+          }
+          publishConnectionSnapshot({
+            connectionState: recoveredRoom.state,
+            isConnected: recoveredRoom.state === ConnectionState.Connected,
+            isConnecting:
+              recoveredRoom.state === ConnectionState.Connecting ||
+              recoveredRoom.state === ConnectionState.Reconnecting ||
+              recoveredRoom.state === ConnectionState.SignalReconnecting,
+            hasLocalPublication: getHasLocalPublication(recoveredRoom),
+            error: null,
+          })
+
+          logger.info('useLiveKit', 'Audio track published after permission recovery reconnect')
+          return
+        }
+
+        logger.error('useLiveKit', `Audio publish failed: ${message}`)
+        throw err
+      }
+    })()
+
+    publishAudioInFlightRef.current = publishPromise
+    try {
+      await publishPromise
+    } finally {
+      if (publishAudioInFlightRef.current === publishPromise) {
+        publishAudioInFlightRef.current = null
+      }
     }
   }, [
     connect,
@@ -1029,6 +1126,7 @@ export function useLiveKit(
     setLiveKitLocalInputTrack,
     setLocalAudioTrackState,
     setRoomState,
+    waitForRoomConnected,
   ])
 
   /**
