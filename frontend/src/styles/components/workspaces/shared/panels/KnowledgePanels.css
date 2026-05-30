@@ -356,22 +356,20 @@
 
 /*
  * History uses a virtualized list (react-window). It requires a definite
- * height on its scroll shell, so the panel becomes a flex column from the
- * heading down and the content region claims the remaining space.
+ * height on its scroll shell. We give the content region a definite height
+ * derived from the same token the workspace-panel-scroll-region uses, so
+ * the virtual list shell (height: 100%) resolves correctly regardless of
+ * how the parent rail lays its children out.
+ *
+ * The double-class selector wins over `.knowledge-panel__content { display: grid }`
+ * defined later in this file.
  */
-[data-testid='history-panel'] {
+.knowledge-panel__content.knowledge-panel-history__content {
   display: flex;
   flex-direction: column;
-  height: 100%;
   min-height: 0;
-}
-
-.knowledge-panel-history__content {
-  flex: 1 1 0;
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  height: var(--workspace-panel-scroll-max-height);
+  max-height: var(--workspace-panel-scroll-max-height);
   padding-bottom: 0.55rem;
   overflow: hidden;
 }

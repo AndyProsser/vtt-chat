@@ -3,8 +3,8 @@ import {
   createContext,
   forwardRef,
   memo,
+  use,
   useCallback,
-  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -437,7 +437,7 @@ function VirtualizedOuterElement(
   props: React.HTMLAttributes<HTMLDivElement>,
   ref: React.ForwardedRef<HTMLDivElement>
 ) {
-  const context = useContext(VirtualizedListContext)
+  const context = use(VirtualizedListContext)
 
   return (
     <div
@@ -459,7 +459,7 @@ function VirtualizedInnerElement(
   props: React.HTMLAttributes<HTMLDivElement>,
   ref: React.ForwardedRef<HTMLDivElement>
 ) {
-  const context = useContext(VirtualizedListContext)
+  const context = use(VirtualizedListContext)
 
   return (
     <div {...props} ref={ref}>
@@ -563,7 +563,9 @@ export function MessageListVirtualized({
       const nextHeight = Math.max(1, Math.floor(node.clientHeight))
       const nextWidth = Math.max(1, Math.floor(node.clientWidth))
 
-      setViewportHeight((currentHeight) => (currentHeight === nextHeight ? currentHeight : nextHeight))
+      setViewportHeight((currentHeight) =>
+        currentHeight === nextHeight ? currentHeight : nextHeight
+      )
       setViewportWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth))
     }
 
@@ -604,9 +606,12 @@ export function MessageListVirtualized({
   }, [visibleMessages])
 
   useEffect(() => {
+    // Re-measure when the chat shell itself changes size. This catches
+    // width-driven text reflow and any height-driven layout shifts while
+    // avoiding churn when global window resize does not affect this panel.
     sizeCacheRef.current = {}
     listInstanceRef.current?.resetAfterIndex(0, true)
-  }, [viewportWidth])
+  }, [viewportHeight, viewportWidth])
 
   const getEstimatedSize = useCallback(
     (message: PreparedMessage) => estimateMessageHeight(message),
@@ -667,7 +672,7 @@ export function MessageListVirtualized({
         ref={shellRef}
         style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}
       >
-        <VirtualizedListContext.Provider value={{ topSentinelRef, onListScroll, onListWheel }}>
+        <VirtualizedListContext value={{ topSentinelRef, onListScroll, onListWheel }}>
           <List
             ref={listInstanceRef}
             outerRef={listRef}
@@ -690,7 +695,7 @@ export function MessageListVirtualized({
           >
             {MemoizedMessageRow}
           </List>
-        </VirtualizedListContext.Provider>
+        </VirtualizedListContext>
       </div>
     </TooltipProvider>
   )
