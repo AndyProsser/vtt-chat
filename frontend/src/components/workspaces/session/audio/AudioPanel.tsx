@@ -412,7 +412,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
    * the UI mute state reflects reality (if audio is not publishing, mark as muted).
    */
   useEffect(() => {
-    if (!isVoiceConnected || !device.enabled) {
+    if (!isVoiceConnected || canonicalIsConnecting || !device.enabled) {
       return
     }
 
@@ -436,6 +436,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     device.pttEnabled,
     pttActive,
     device.enabled,
+    canonicalIsConnecting,
     livekit,
   ])
 
