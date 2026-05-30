@@ -550,7 +550,7 @@ export function MessageListVirtualized({
   const shellRef = useRef<HTMLDivElement | null>(null)
   const listInstanceRef = useRef<VariableSizeListType | null>(null)
   const [viewportHeight, setViewportHeight] = useState(1)
-  const [viewportWidth, setViewportWidth] = useState(1)
+  const [listViewportWidth, setListViewportWidth] = useState(1)
   const sizeCacheRef = useRef<Record<string, number>>({})
 
   useLayoutEffect(() => {
@@ -560,13 +560,21 @@ export function MessageListVirtualized({
     }
 
     const updateHeight = () => {
-      const nextHeight = Math.max(1, Math.floor(node.clientHeight))
-      const nextWidth = Math.max(1, Math.floor(node.clientWidth))
+      const nextHeight = Math.max(1, node.clientHeight)
+      const nextWidth = Math.max(
+        1,
+        Math.round(
+          (listRef?.current?.getBoundingClientRect().width ?? node.getBoundingClientRect().width) *
+            100
+        ) / 100
+      )
 
       setViewportHeight((currentHeight) =>
         currentHeight === nextHeight ? currentHeight : nextHeight
       )
-      setViewportWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth))
+      setListViewportWidth((currentWidth) =>
+        currentWidth === nextWidth ? currentWidth : nextWidth
+      )
     }
 
     updateHeight()
@@ -580,11 +588,15 @@ export function MessageListVirtualized({
 
     const observer = new ResizeObserver(updateHeight)
     observer.observe(node)
+    const listNode = listRef?.current
+    if (listNode && listNode !== node) {
+      observer.observe(listNode)
+    }
 
     return () => {
       observer.disconnect()
     }
-  }, [])
+  }, [listRef])
 
   const visibleMessages = useMemo(
     () =>
@@ -606,12 +618,18 @@ export function MessageListVirtualized({
   }, [visibleMessages])
 
   useEffect(() => {
-    // Re-measure when the chat shell itself changes size. This catches
-    // width-driven text reflow and any height-driven layout shifts while
-    // avoiding churn when global window resize does not affect this panel.
+    // Width changes can alter text wrapping, so previously measured row heights
+    // are no longer valid and must be recomputed.
     sizeCacheRef.current = {}
     listInstanceRef.current?.resetAfterIndex(0, true)
-  }, [viewportHeight, viewportWidth])
+  }, [listViewportWidth])
+
+  useEffect(() => {
+    // Height-only container changes do not affect bubble intrinsic height.
+    // Keep the existing size cache and just relayout offsets to avoid
+    // regressing into estimate-only rows.
+    listInstanceRef.current?.resetAfterIndex(0, false)
+  }, [viewportHeight])
 
   const getEstimatedSize = useCallback(
     (message: PreparedMessage) => estimateMessageHeight(message),
@@ -683,8 +701,10 @@ export function MessageListVirtualized({
             width="100%"
             itemCount={visibleMessages.length}
             itemData={itemData}
-            itemKey={(index, items) => items.messages[index]?.msg.id ?? index}
-            itemSize={(index) => {
+            itemKey={(index: number, items: VirtualizedListData) =>
+              `${listViewportWidth}:${items.messages[index]?.msg.id ?? index}`
+            }
+            itemSize={(index: number) => {
               const message = visibleMessages[index]
               if (!message) {
                 return 1

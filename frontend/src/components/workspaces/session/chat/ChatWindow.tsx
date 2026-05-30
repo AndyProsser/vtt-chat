@@ -166,6 +166,8 @@ export function ChatWindow({
   const prevMessageCountRef = useRef(0)
   const lastSeenLatestMessageKeyRef = useRef<string | undefined>(undefined)
   const autoFollowResetTimeoutRef = useRef<number | null>(null)
+  const bottomSnapRafRef = useRef<number | null>(null)
+  const bottomSnapTimerRef = useRef<number | null>(null)
   const initialScrollContextRef = useRef<string | null>(null)
   const participantDirectoryRef = useRef(EMPTY_PARTICIPANT_DIRECTORY)
   const greenroomTodayStartRef = useRef(getStartOfTodayTimestamp())
@@ -347,6 +349,14 @@ export function ChatWindow({
         window.clearTimeout(autoFollowResetTimeoutRef.current)
         autoFollowResetTimeoutRef.current = null
       }
+      if (bottomSnapRafRef.current) {
+        window.cancelAnimationFrame(bottomSnapRafRef.current)
+        bottomSnapRafRef.current = null
+      }
+      if (bottomSnapTimerRef.current) {
+        window.clearTimeout(bottomSnapTimerRef.current)
+        bottomSnapTimerRef.current = null
+      }
     },
     []
   )
@@ -523,6 +533,33 @@ export function ChatWindow({
 
     scrollContainer.scrollTo({ top, behavior })
   }, [])
+
+  const scheduleSettledBottomSnap = useCallback(() => {
+    if (bottomSnapRafRef.current) {
+      window.cancelAnimationFrame(bottomSnapRafRef.current)
+      bottomSnapRafRef.current = null
+    }
+    if (bottomSnapTimerRef.current) {
+      window.clearTimeout(bottomSnapTimerRef.current)
+      bottomSnapTimerRef.current = null
+    }
+
+    // Snap now and again after subsequent layout/measurement passes. This
+    // avoids "guessing early" against estimated virtual row heights.
+    scrollToLatest('auto')
+    bottomSnapRafRef.current = window.requestAnimationFrame(() => {
+      scrollToLatest('auto')
+      bottomSnapRafRef.current = window.requestAnimationFrame(() => {
+        scrollToLatest('auto')
+        bottomSnapRafRef.current = null
+      })
+    })
+
+    bottomSnapTimerRef.current = window.setTimeout(() => {
+      scrollToLatest('auto')
+      bottomSnapTimerRef.current = null
+    }, 90)
+  }, [scrollToLatest])
 
   const handleListScroll = useCallback(() => {
     const scrollContainer = messageListRef.current
@@ -865,10 +902,8 @@ export function ChatWindow({
       return
     }
 
-    requestAnimationFrame(() => {
-      scrollToLatest('auto')
-      setIsUserPinnedToBottom(true)
-    })
+    scheduleSettledBottomSnap()
+    setIsUserPinnedToBottom(true)
     initialScrollContextRef.current = contextKey
     clearPendingNewMessageCount()
     lastSeenLatestMessageKeyRef.current = latestVisibleMessageKey
@@ -877,10 +912,51 @@ export function ChatWindow({
     isLoading,
     latestVisibleMessageKey,
     roomId,
-    scrollToLatest,
+    scheduleSettledBottomSnap,
     sessionId,
     visibleMessages.length,
   ])
+
+  useEffect(() => {
+    const node = messageListRef.current
+    if (!node || typeof ResizeObserver === 'undefined') {
+      return
+    }
+
+    let prevWidth = node.clientWidth
+    let prevHeight = node.clientHeight
+
+    const observer = new ResizeObserver(() => {
+      if (!messageListRef.current) {
+        return
+      }
+
+      const nextWidth = messageListRef.current.clientWidth
+      const nextHeight = messageListRef.current.clientHeight
+      const sizeChanged = nextWidth !== prevWidth || nextHeight !== prevHeight
+
+      if (!sizeChanged) {
+        return
+      }
+
+      prevWidth = nextWidth
+      prevHeight = nextHeight
+
+      const shouldStickToBottom =
+        isAutoFollowInProgress ||
+        isUserPinnedToBottom ||
+        isNearBottom(messageListRef.current, AUTO_FOLLOW_BOTTOM_THRESHOLD_PX)
+
+      if (shouldStickToBottom) {
+        scheduleSettledBottomSnap()
+      }
+    })
+
+    observer.observe(node)
+    return () => {
+      observer.disconnect()
+    }
+  }, [isAutoFollowInProgress, isUserPinnedToBottom, scheduleSettledBottomSnap])
 
   // Follow new messages only when user is already pinned to bottom.
   // If user is reading history, keep their position and surface a subtle jump cue.
