@@ -128,7 +128,7 @@ export interface PresenceSlice {
   }) => void
   applySessionRoomTransitionPresence: (params: {
     sessionId: UUID
-    users: Array<{ userId: UUID; username: string }>
+    users: Array<{ userId: UUID; username: string; roomId?: UUID; previousGroupId?: UUID }>
     targetRoomId: UUID
     targetState: PresenceState
     changedAt: number
