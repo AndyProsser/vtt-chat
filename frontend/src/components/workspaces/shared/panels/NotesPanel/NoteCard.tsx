@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NoteVisibility, RoomType } from '@shared'
-import type { UUID } from '@shared'
+import type { NoteAttachmentEntity, UUID } from '@shared'
 import type { Note } from '@/types/notes'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
@@ -13,12 +13,15 @@ import {
   parseNoteHashtags,
   serializeNoteHashtags,
 } from '../../../../../utils/notesPanel'
+import { NoteAttachmentsField } from './NoteAttachmentsField'
+import { NoteAttachmentsGallery } from './NoteAttachmentsGallery'
 import { NoteDeleteDialog } from './NoteDeleteDialog'
 import { NotePublishDialog } from './NotePublishDialog'
 import { NoteSharePopover } from './NoteSharePopover'
 import { areStringArraysEqual, areUuidArraysEqual } from './noteCard.utils'
 
 interface NoteCardProps {
+  campaignId: UUID
   note: Note
   canEdit: boolean
   canManageShare: boolean
@@ -30,13 +33,16 @@ interface NoteCardProps {
   roomMemberIdsByRoomId?: Record<UUID, UUID[]>
   onSave: (
     noteId: string,
-    updates: Partial<Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers'>>
+    updates: Partial<
+      Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers' | 'attachments'>
+    >
   ) => Promise<void>
   onDelete: (noteId: string) => Promise<void>
   onPublish: (noteId: string, target: NotesPublishTarget) => Promise<void>
 }
 
 export function NoteCard({
+  campaignId,
   note,
   canEdit,
   canManageShare,
@@ -56,6 +62,7 @@ export function NoteCard({
   const [visibility, setVisibility] = useState<NoteVisibility>(note.visibility)
   const [tagsText, setTagsText] = useState(serializeNoteHashtags(note.tags))
   const [allowedUsers, setAllowedUsers] = useState<UUID[]>(note.allowedUsers || [])
+  const [attachments, setAttachments] = useState<NoteAttachmentEntity[]>(note.attachments || [])
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -71,6 +78,7 @@ export function NoteCard({
     setVisibility(note.visibility)
     setTagsText(serializeNoteHashtags(note.tags))
     setAllowedUsers(note.allowedUsers || [])
+    setAttachments(note.attachments || [])
   }
 
   useEffect(() => {
@@ -102,7 +110,8 @@ export function NoteCard({
     content !== note.content ||
     visibility !== note.visibility ||
     !areStringArraysEqual(saveDraftTags, note.tags) ||
-    !areUuidArraysEqual(normalizedAllowedUsers, note.allowedUsers || [])
+    !areUuidArraysEqual(normalizedAllowedUsers, note.allowedUsers || []) ||
+    JSON.stringify(attachments) !== JSON.stringify(note.attachments || [])
 
   const shareStatus = getNoteShareStatus(visibility, normalizedAllowedUsers)
   const persistDraft = async (exitEditAfterSave: boolean) => {
@@ -127,6 +136,7 @@ export function NoteCard({
         visibility,
         tags: saveDraftTags,
         allowedUsers: normalizedAllowedUsers,
+        attachments,
       })
 
       if (exitEditAfterSave) {
@@ -345,6 +355,13 @@ export function NoteCard({
               variant="full"
               insertActions={imageInsertActions}
             />
+            <NoteAttachmentsField
+              campaignId={campaignId}
+              attachments={attachments}
+              disabled={isSaving}
+              onChange={setAttachments}
+              showToast={showToast}
+            />
             <div className="notes-edit-meta-row">
               <div className="notes-edit-meta-col">
                 <label className="notes-edit-label" htmlFor={`note-hashtags-${note.id}`}>
@@ -368,6 +385,7 @@ export function NoteCard({
               readOnly
               variant="full"
             />
+            <NoteAttachmentsGallery attachments={note.attachments} />
           </div>
         )}
 

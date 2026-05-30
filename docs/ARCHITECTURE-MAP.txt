@@ -166,6 +166,9 @@ Current shipped note:
    Shared panel extensions now include reusable player-settings helpers under
    `components/workspaces/shared/panels`, including avatar upload/crop and manual
    handout-publish destination dialogs used by the right rail.
+   Notes panel attachment editing now lives beside the right-rail notes UI in
+   `components/workspaces/shared/panels/NotesPanel`, with image compression and
+   attachment helpers in `frontend/src/utils/{notesImageInsertActions,noteAttachments}.ts`.
    Toolbar types live in `frontend/src/types`, toolbar constants live in
    `frontend/src/constants`, and toolbar hooks live in `frontend/src/hooks`.
    Workspace runtime guard hooks now also include

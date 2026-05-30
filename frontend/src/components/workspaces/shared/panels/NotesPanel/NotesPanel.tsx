@@ -4,6 +4,7 @@ import {
   Role,
   RoomType,
   isGreenroomSessionState,
+  type NoteAttachmentEntity,
   type SessionState,
   type UUID,
 } from '@shared'
@@ -67,6 +68,7 @@ export function NotesPanel({
   const [content, setContent] = useState('')
   const [visibility, setVisibility] = useState<NoteVisibility>(NoteVisibility.DM_ONLY)
   const [tagsText, setTagsText] = useState('')
+  const [attachments, setAttachments] = useState<NoteAttachmentEntity[]>([])
   const { shareUsers, shareRooms, roomMemberIdsByRoomId } = useNotesShareContext({
     apiUrl,
     token,
@@ -140,6 +142,7 @@ export function NotesPanel({
     if (!showCreateForm) {
       setVisibility(NoteVisibility.DM_ONLY)
       setAllowedUsers([])
+      setAttachments([])
     }
 
     setShowCreateForm((current) => !current)
@@ -203,6 +206,7 @@ export function NotesPanel({
           visibility,
           tags,
           allowedUsers: visibility === NoteVisibility.CUSTOM ? allowedUsers : [],
+          attachments,
         }),
       })
 
@@ -223,6 +227,7 @@ export function NotesPanel({
         visibility: note.visibility,
         tags: note.tags || [],
         allowedUsers: note.allowedUsers || [],
+        attachments: note.attachments || [],
         publishedAt: note.publishedAt,
         createdAt: note.createdAt,
         updatedAt: note.updatedAt,
@@ -235,6 +240,7 @@ export function NotesPanel({
       setTagsText('')
       setVisibility(NoteVisibility.DM_ONLY)
       setAllowedUsers([])
+      setAttachments([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create note')
     } finally {
@@ -244,7 +250,9 @@ export function NotesPanel({
 
   const handleSave = async (
     noteId: string,
-    updates: Partial<Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers'>>
+    updates: Partial<
+      Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers' | 'attachments'>
+    >
   ) => {
     const requestUpdates = {
       ...updates,
@@ -260,7 +268,10 @@ export function NotesPanel({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(requestUpdates),
+      body: JSON.stringify({
+        campaignId,
+        ...requestUpdates,
+      }),
     })
 
     if (!res.ok) {
@@ -276,6 +287,7 @@ export function NotesPanel({
       visibility: note.visibility,
       tags: note.tags || [],
       allowedUsers: note.allowedUsers || [],
+      attachments: note.attachments || [],
       publishedAt: note.publishedAt,
       updatedAt: note.updatedAt,
     })
@@ -364,10 +376,12 @@ export function NotesPanel({
 
       {canMutateNotes && showCreateForm ? (
         <NotesCreateForm
+          campaignId={campaignId}
           title={title}
           content={content}
           visibility={visibility}
           allowedUsers={allowedUsers}
+          attachments={attachments}
           tagsText={tagsText}
           shareUsers={shareUsers}
           shareRooms={shareRooms}
@@ -378,6 +392,7 @@ export function NotesPanel({
           onContentChange={setContent}
           onVisibilityChange={setVisibility}
           onAllowedUsersChange={setAllowedUsers}
+          onAttachmentsChange={setAttachments}
           onTagsTextChange={setTagsText}
         />
       ) : null}
@@ -406,6 +421,7 @@ export function NotesPanel({
               {selectedNote ? (
                 <NoteCard
                   key={selectedNote.id}
+                  campaignId={campaignId}
                   note={selectedNote}
                   shareUsers={shareUsers}
                   shareRooms={shareRooms}

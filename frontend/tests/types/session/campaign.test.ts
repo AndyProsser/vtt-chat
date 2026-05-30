@@ -16,18 +16,13 @@ function buildCampaign(overrides: Partial<CampaignSummary> = {}): CampaignSummar
 
 describe('getCampaignEntryAction', () => {
   it('prefers WATCH for discoverable campaigns that are actively watchable', () => {
-    const action = getCampaignEntryAction(
-      buildCampaign({
-        spectatorInviteCode: 'WATCH01',
-        spectatorInviteActive: true,
-      })
-    )
+    const action = getCampaignEntryAction(buildCampaign())
 
     expect(action).toMatchObject({
       label: 'Watch',
       action: 'watch',
       disabled: false,
-      showLock: true,
+      showLock: false,
     })
   })
 
@@ -52,9 +47,8 @@ describe('getCampaignEntryAction', () => {
       buildCampaign({
         discoverable: false,
         spectatorsEnabled: true,
-        latestSessionState: 'ACTIVE',
-        activeConnectedCount: 2,
-        spectatorInviteCode: null,
+        latestSessionState: 'IDLE',
+        activeConnectedCount: 0,
       })
     )
 
@@ -62,6 +56,24 @@ describe('getCampaignEntryAction', () => {
       label: 'Invite Only',
       disabled: true,
       dimmed: true,
+      showLock: true,
+    })
+  })
+
+  it('shows WATCH for private campaigns when spectators are enabled and the table is live', () => {
+    const action = getCampaignEntryAction(
+      buildCampaign({
+        discoverable: false,
+        spectatorsEnabled: true,
+        latestSessionState: 'ACTIVE',
+        activeConnectedCount: 2,
+      })
+    )
+
+    expect(action).toMatchObject({
+      label: 'Watch',
+      action: 'watch',
+      disabled: false,
       showLock: true,
     })
   })

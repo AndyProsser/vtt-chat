@@ -300,15 +300,36 @@ describe('campaign repository', () => {
         members: [],
         sessions: [],
       },
+      {
+        id: 'c-private-1',
+        name: 'Locked Table',
+        description: null,
+        posterUrl: null,
+        discoverable: false,
+        spectatorPolicy: 'NONE',
+        spectatorInviteCode: null,
+        spectatorInviteActive: false,
+        currentDmId: 'u-dm',
+        createdAt: new Date('2026-05-02T00:00:00.000Z'),
+        currentDm: { username: 'dm', displayName: 'DM', avatarUrl: null },
+        members: [],
+        sessions: [],
+      },
     ])
 
     const rows = await listDiscoverableCampaigns('u-viewer')
 
-    expect(rows).toHaveLength(1)
+    expect(rows).toHaveLength(2)
     expect(rows[0]).toMatchObject({
       id: 'c-discover-1',
       discoverable: true,
       activeConnectedCount: 0,
+    })
+    expect(rows[1]).toMatchObject({
+      id: 'c-private-1',
+      discoverable: false,
+      activeConnectedCount: 0,
+      spectatorsEnabled: false,
     })
 
     expect(mocks.campaignFindMany).toHaveBeenCalledWith(

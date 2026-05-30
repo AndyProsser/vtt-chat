@@ -477,19 +477,60 @@ export function useWorkspacesCampaignEntryOrchestration(
   )
 
   const handleWatchCampaign = useCallback(
-    (campaign: CampaignSummary) => {
+    async (campaign: CampaignSummary) => {
       setError(null)
       setLobbyNotice(null)
 
-      const inviteCode = campaign.spectatorInviteCode?.trim()
-      if (!inviteCode || campaign.spectatorInviteActive === false) {
-        setError('Watch is unavailable for this campaign right now.')
+      if (userAuthType === 'GUEST') {
+        setError('Guest spectators must enter through a spectator invite link.')
         return
       }
 
-      window.location.assign(`/watch/${encodeURIComponent(inviteCode)}`)
+      try {
+        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaign.id}/watch`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Watch is unavailable for this campaign right now.')
+        }
+
+        const payload = (await response.json()) as { campaignId: UUID; sessionId: UUID }
+        const refreshedCampaigns = await refreshLobbyCampaignData({
+          showLoading: false,
+          surfaceError: false,
+        })
+        const watchedCampaign =
+          refreshedCampaigns?.find((entry) => entry.id === payload.campaignId) ||
+          campaigns.find((entry) => entry.id === payload.campaignId) ||
+          campaign
+
+        await handleEnterCampaign(payload.campaignId, payload.sessionId, {
+          ...watchedCampaign,
+          memberRole: 'SPECTATOR',
+          isMember: true,
+          latestSessionState: watchedCampaign.latestSessionState ?? SessionState.ACTIVE,
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An error occurred'
+        setError(message)
+      }
     },
-    [setError, setLobbyNotice]
+    [
+      apiUrl,
+      campaigns,
+      fetchWithAuthGuard,
+      handleEnterCampaign,
+      refreshLobbyCampaignData,
+      setError,
+      setLobbyNotice,
+      token,
+      userAuthType,
+    ]
   )
 
   const handleLoadPendingJoinRequests = useCallback(

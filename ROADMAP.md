@@ -236,7 +236,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] ROOMS panel is DM-only and hidden entirely for non-DM personas
 - [x] JOURNAL panel is a reverse-chronological list of sessions; each session has exactly one markdown journal entry with a hashtag list for search
 - [x] JOURNAL is readable by all personas; DM-only edit
-- [ ] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
+- [x] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
 - [x] NOTES is readable by all personas; DM can add/edit/delete/share notes to one or more players
 - [x] NOTES supports Post to Chat, which creates a chat card in the selected group and auto-shares that note with all players in that group
 - [x] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
@@ -288,8 +288,15 @@ Evidence snapshot (2026-05-27):
 - Topbar user settings now reuse the same shared avatar upload/crop flow as character settings, so player profile and character profile avatar edits follow the same client-side crop pipeline.
 - Notes mutation controls are now DM-only in the right rail (create/edit/delete/share/publish), while players and spectators retain read access.
 - Notes publish is now always manual: the handout publisher offers `Everyone` plus occupied MAIN/GROUP rooms only, excludes whisper/greenroom/empty rooms, and auto-shares room-targeted handouts to the players currently in that room.
-- Notes now support in-panel search across handout title, markdown content, and hashtags; structured attachment fields are still pending before the remaining W0 Notes acceptance criterion can be closed.
+- Notes now support in-panel search across handout title, markdown content, and hashtags, and the right-rail handout editor now stores multiple image attachments with thumbnail preview/removal in create and edit flows.
 - Journal creation now upserts `_journal` notes per session in the backend, so the journal browser remains reverse chronological while enforcing exactly one markdown journal entry per session.
+
+Evidence snapshot (2026-05-30):
+
+- Right-rail handouts now persist image attachments through the shared note contract, Prisma `Note.attachments`, notes API create/update routes, websocket note payloads, and the right-rail create/edit UI.
+- Handout cards render stored attachment thumbnails in read mode and allow DM add/remove attachment edits without leaving the panel.
+- Lobby discovery now returns both PUBLIC and PRIVATE non-member campaign cards; private cards stay dimmed and locked when no live spectator path exists.
+- Full-account WATCH entry now uses `POST /api/campaigns/:id/watch` for both PUBLIC and PRIVATE live campaigns and no longer depends on spectator invite codes in the lobby card action resolver.
 
 **Evidence snapshot (2026-05-20):**
 
@@ -321,11 +328,11 @@ Evidence snapshot (2026-05-27):
 - [x] Join dialog is top-offset and uses right-aligned actions (`CANCEL | JOIN`)
 - [x] Lobby body is full-height fixed layout with campaign-card list scroll only (topbar and page frame stay fixed)
 - [x] Compact lobby stats strip is shown between topbar and card list (active sessions, connected personas, total played, extra rollups)
-- [ ] Campaign visibility: PRIVATE campaigns show a dimmed locked card to non-members when spectators are disabled or no session is active; show a normal card with a lock icon + WATCH when spectators are enabled and an active session has DM/players present
-- [ ] Non-member + PUBLIC campaign → REQUEST TO JOIN button; requires optional message; DM approves/rejects via notification badge on their card
+- [x] Campaign visibility: PRIVATE campaigns show a dimmed locked card to non-members when spectators are disabled or no session is active; show a normal card with a lock icon + WATCH when spectators are enabled and an active session has DM/players present
+- [x] Non-member + PUBLIC campaign → REQUEST TO JOIN button; requires optional message; DM approves/rejects via notification badge on their card
 - [x] DM lobby card shows a badge with pending join-request count; clicking opens inline approval panel (username, avatar, timestamp, message)
-- [ ] Non-member + PRIVATE campaign without active watchable session → dimmed card, lock icon, no action (no invite link = no entry)
-- [ ] Full user + campaign with spectators enabled + active session with DM/players present → WATCH button (applies to both PUBLIC and PRIVATE campaigns; no invite link required)
+- [x] Non-member + PRIVATE campaign without active watchable session → dimmed card, lock icon, no action (no invite link = no entry)
+- [x] Full user + campaign with spectators enabled + active session with DM/players present → WATCH button (applies to both PUBLIC and PRIVATE campaigns; no invite link required)
 - [x] Players can join via invite link or code
 - [x] Spectators can only access active campaigns and cannot edit
 - [ ] Late-join policy (Open | Screened | Blocked) is configurable with grace period

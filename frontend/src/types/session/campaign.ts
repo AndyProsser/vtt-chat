@@ -104,7 +104,7 @@ export type CampaignEntryAction =
       disabled: boolean
       reason?: string
       action: 'watch'
-      showLock: true
+      showLock?: boolean
       dimmed?: boolean
     }
   | {
@@ -142,13 +142,10 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
 
   // Non-member paths
   if (campaign.isMember === false || campaign.memberRole === undefined) {
-    // PRIVATE campaign with spectators enabled + active session + people online
     const isWatchable =
       campaign.spectatorsEnabled &&
       campaign.latestSessionState === 'ACTIVE' &&
-      (campaign.activeConnectedCount ?? 0) > 0 &&
-      Boolean(campaign.spectatorInviteCode?.trim()) &&
-      campaign.spectatorInviteActive !== false
+      (campaign.activeConnectedCount ?? 0) > 0
 
     if (isWatchable) {
       return {
@@ -156,7 +153,7 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
         icon: 'visibility',
         disabled: false,
         action: 'watch',
-        showLock: true,
+        showLock: campaign.discoverable === false,
       }
     }
 

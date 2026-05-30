@@ -83,6 +83,11 @@ import { clearSessionRecoveryState } from '@/ws/state-recovery'
 const router = Router()
 const prisma = getPrismaClient()
 
+type CampaignLateJoinSettings = {
+  lateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  lateJoinGraceMinutes: number
+}
+
 async function getEffectiveCooldownDurationMs(sessionId: UUID): Promise<number> {
   let result: { campaign: { postSessionChatDurationMs: number } | null } | null = null
 
@@ -118,6 +123,55 @@ async function getEffectiveCooldownDurationMs(sessionId: UUID): Promise<number> 
   )
 
   return clamped
+}
+
+async function getCampaignLateJoinSettings(
+  sessionId: UUID
+): Promise<CampaignLateJoinSettings | null> {
+  try {
+    const sessionModel = (
+      prisma as typeof prisma & {
+        session?: {
+          findUnique?: (...args: any[]) => Promise<any>
+        }
+      }
+    ).session
+
+    if (!sessionModel?.findUnique) {
+      return null
+    }
+
+    const result = await sessionModel.findUnique({
+      where: { id: sessionId },
+      select: {
+        campaign: {
+          select: {
+            lateJoinPolicy: true,
+            lateJoinGraceMinutes: true,
+          },
+        },
+      },
+    })
+
+    if (!result?.campaign) {
+      return null
+    }
+
+    return {
+      lateJoinPolicy: result.campaign.lateJoinPolicy ?? 'OPEN',
+      lateJoinGraceMinutes: result.campaign.lateJoinGraceMinutes ?? 30,
+    }
+  } catch {
+    return null
+  }
+}
+
+function getLateJoinRestrictionMessage(settings: CampaignLateJoinSettings): string {
+  if (settings.lateJoinPolicy === 'SCREENED') {
+    return `Late joins now require DM screening. Ask the DM to review your join after the first ${settings.lateJoinGraceMinutes} minutes.`
+  }
+
+  return `Late joins are blocked after the first ${settings.lateJoinGraceMinutes} minutes of an active session.`
 }
 
 function computeCooldownExpiresAt(params: {
@@ -525,6 +579,29 @@ async function joinSessionHandler(req: Request, res: Response) {
         code: ErrorCode.FORBIDDEN,
         message: joinRole.message,
       })
+    }
+
+    if (joinRole.role === Role.PLAYER && isSessionActiveOrPaused(session.state)) {
+      const lateJoinSettings = await getCampaignLateJoinSettings(id as UUID)
+      const sessionStartedAt = session.startedAt ?? session.createdAt
+      const sessionStartedAtMs =
+        sessionStartedAt instanceof Date ? sessionStartedAt.getTime() : Number(sessionStartedAt)
+
+      if (
+        lateJoinSettings &&
+        lateJoinSettings.lateJoinPolicy !== 'OPEN' &&
+        Number.isFinite(sessionStartedAtMs)
+      ) {
+        const graceWindowMs = lateJoinSettings.lateJoinGraceMinutes * 60_000
+        const withinGraceWindow = Date.now() - sessionStartedAtMs <= graceWindowMs
+
+        if (!withinGraceWindow) {
+          return res.status(403).json({
+            code: ErrorCode.FORBIDDEN,
+            message: getLateJoinRestrictionMessage(lateJoinSettings),
+          })
+        }
+      }
     }
 
     const success = await addUserToSession(id as UUID, {
@@ -1790,7 +1867,7 @@ router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
 /**
  * POST /api/session/:id/join
  * Add a user to a session
- * Players can join at any time, including after session has started.
+ * New player joins are gated by the campaign late-join policy once the grace window expires.
  */
 router.post('/:id/join', requireAuth, joinSessionHandler)
 router.post('/:id/members/join', requireAuth, joinSessionHandler)

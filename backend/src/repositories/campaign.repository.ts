@@ -812,10 +812,9 @@ export async function getCampaignDmId(campaignId: string): Promise<string | null
 }
 
 /**
- * Returns discoverable campaigns that the requesting user is NOT a member of.
- * Includes:
- *   - PUBLIC (discoverable=true) non-retired campaigns
- *   - PRIVATE non-retired campaigns with spectators enabled + active session with DM or player online
+ * Returns lobby-visible campaigns that the requesting user is NOT a member of.
+ * Includes both PUBLIC and PRIVATE non-retired campaigns so private cards can render
+ * in a dimmed locked state when no watch path is currently available.
  */
 export async function listDiscoverableCampaigns(userId: string): Promise<
   Array<{
@@ -849,18 +848,6 @@ export async function listDiscoverableCampaigns(userId: string): Promise<
         retiredAt: null,
         deletedAt: null,
         ...(memberCampaignIds.length > 0 ? { id: { notIn: memberCampaignIds } } : {}),
-        OR: [
-          { discoverable: true },
-          {
-            discoverable: false,
-            spectatorPolicy: { not: 'NONE' },
-            sessions: {
-              some: {
-                state: 'ACTIVE',
-              },
-            },
-          },
-        ],
       },
       include: {
         currentDm: {
@@ -913,10 +900,6 @@ export async function listDiscoverableCampaigns(userId: string): Promise<
         (id) => roleByUserId.get(id) === 'PLAYER'
       ).length
       const activeConnectedCount = (dmOnline ? 1 : 0) + playersOnline
-
-      // PRIVATE campaigns are only included if active session + connected DM or player
-      if (!c.discoverable && activeConnectedCount === 0) return null
-
       const spectatorsEnabled = c.spectatorPolicy !== 'NONE'
 
       return {

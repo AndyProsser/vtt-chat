@@ -1,18 +1,21 @@
 import { useMemo, useState } from 'react'
-import { NoteVisibility, type UUID } from '@shared'
+import { NoteVisibility, type NoteAttachmentEntity, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import { useToast } from '@/hooks/useToast'
 import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
+import { NoteAttachmentsField } from './NoteAttachmentsField'
 import { NoteShareStatusIcon } from './NoteShareStatusIcon'
 import { NoteSharePopover } from './NoteSharePopover'
 
 interface NotesCreateFormProps {
+  campaignId: UUID
   title: string
   content: string
   visibility: NoteVisibility
   allowedUsers: UUID[]
+  attachments: NoteAttachmentEntity[]
   tagsText: string
   shareUsers: NotesShareUser[]
   shareRooms: NotesShareRoom[]
@@ -23,6 +26,7 @@ interface NotesCreateFormProps {
   onContentChange: (value: string) => void
   onVisibilityChange: (value: NoteVisibility) => void
   onAllowedUsersChange: (users: UUID[]) => void
+  onAttachmentsChange: (attachments: NoteAttachmentEntity[]) => void
   onTagsTextChange: (value: string) => void
 }
 
@@ -94,6 +98,13 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
         placeholder="Write note content"
         variant="full"
         insertActions={imageInsertActions}
+      />
+
+      <NoteAttachmentsField
+        campaignId={props.campaignId}
+        attachments={props.attachments}
+        onChange={props.onAttachmentsChange}
+        showToast={showToast}
       />
 
       <div className="notes-edit-meta-row">

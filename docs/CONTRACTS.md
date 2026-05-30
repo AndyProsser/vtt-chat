@@ -124,7 +124,7 @@ Visibility and editability contract:
 - `ROOMS`: DM-only; hidden (not disabled) for non-DM personas.
 - `NOTES`: readable by all personas; DM edit controls.
 - `NOTES`: current rightbar handouts contain name, markdown content, and hashtags, and the panel search must cover name + content + hashtags.
-- `NOTES`: structured image attachment fields are not yet implemented in the current runtime contract and remain pending roadmap work.
+- `NOTES`: rightbar handouts now support structured image attachments in create/edit/read flows. Attachments persist on the note record, travel through `NOTES:CREATED` and `NOTES:UPDATED`, and render as thumbnail cards alongside markdown content.
 - `NOTES`: DM may share a note to one or more players, and may post a note card to a selected group chat; posting auto-shares to all players in that group.
 - `JOURNAL`: readable by all personas, DM edit controls only, reverse-chronological by session, exactly one markdown entry per session with hashtag list.
 - `HISTORY`: readable by all personas, grouped by session boundaries, and excludes current-session messages.
@@ -560,6 +560,7 @@ Notes visibility/publish sequencing contract:
 - Publishing a note emits `NOTES:UPDATED` first and then `CHAT:MESSAGE_SENT`, both using the same visibility audience for that note and the selected room/global destination.
 - Published note chat messages must include `message.metadata.noteShared = { kind: 'NOTE_SHARED', noteId, title, markdown, sharedWith, hashtags }` so recipients render a handout card from structured data rather than reparsing the chat text body.
 - Publishing writes both an audit record (`NOTES.PUBLISHED`) and a session-log record for traceability.
+- Note attachments are currently image-only in runtime (`image/*`, max 6 attachments per note, stored as note-scoped attachment objects with `id`, `campaignId`, `mime`, `name`, `uri`, `createdAt`). PDF attachment support remains planned work.
 
 **Audio** (file: `events/audio.ts`)
 
@@ -950,6 +951,7 @@ Visibility applies to both PUBLIC and PRIVATE campaigns under these conditions. 
 - Guest users must still enter via a spectator invite link (`/watch/:code`); they cannot use the WATCH button flow.
 - `POST /api/campaigns/:id/watch` returns `403` with a descriptive reason if any condition is unmet (e.g. `"No active session"`, `"Spectators not enabled"`, `"No players currently connected"`).
 - The lobby query that populates campaign cards must include `activeSessionState`, `spectatorsEnabled`, and `activeConnectedCount` so the frontend can determine card treatment without an additional round-trip.
+- Non-member lobby discovery must include PRIVATE campaigns even when they are not currently watchable so the frontend can render the canonical dimmed locked card state instead of hiding them entirely.
 
 ---
 

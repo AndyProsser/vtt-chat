@@ -10,6 +10,7 @@ type ApiNote = {
   visibility: Note['visibility']
   tags?: string[]
   allowedUsers?: string[]
+  attachments?: Note['attachments']
   publishedAt?: number | null
   createdAt: number
   updatedAt: number
@@ -28,6 +29,7 @@ function toNote(note: ApiNote): Note {
     visibility: note.visibility,
     tags: note.tags || [],
     allowedUsers: (note.allowedUsers || []).map((userId) => userId as UUID),
+    attachments: note.attachments || [],
     publishedAt: note.publishedAt ?? undefined,
     createdAt: note.createdAt,
     updatedAt: note.updatedAt,

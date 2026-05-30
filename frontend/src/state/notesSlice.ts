@@ -101,6 +101,7 @@ export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
       visibility: NoteVisibility
       tags: string[]
       allowedUsers?: UUID[]
+      attachments?: Note['attachments']
       publishedAt?: number
     }
 
@@ -113,6 +114,7 @@ export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
       visibility: payload.visibility,
       tags: payload.tags,
       allowedUsers: payload.allowedUsers,
+      attachments: payload.attachments || [],
       publishedAt: payload.publishedAt,
       createdAt: event.timestamp,
       updatedAt: event.timestamp,
@@ -137,6 +139,7 @@ export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
       visibility?: NoteVisibility
       tags?: string[]
       allowedUsers?: UUID[]
+      attachments?: Note['attachments']
       publishedAt?: number
     }
 
@@ -158,6 +161,8 @@ export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
               tags: payload.tags !== undefined ? payload.tags : note.tags,
               allowedUsers:
                 payload.allowedUsers !== undefined ? payload.allowedUsers : note.allowedUsers,
+              attachments:
+                payload.attachments !== undefined ? payload.attachments : note.attachments,
               publishedAt:
                 payload.publishedAt !== undefined ? payload.publishedAt : note.publishedAt,
               updatedAt: event.timestamp,
