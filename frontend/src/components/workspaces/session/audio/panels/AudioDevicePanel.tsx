@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState, type MutableRefObject } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { UUID } from '@shared'
 import type { AudioDeviceState } from '@/types/audio'
 import { ConnectionStatusIndicator } from '../indicators/ConnectionStatusIndicator'
 import { ModeStatusPill } from '../indicators/ModeStatusPill'
+import { MicLevelMeter } from '../indicators/MicLevelMeter'
 import {
   AUDIO_CONTROL_COPY,
   AUDIO_SETTINGS_COPY,
@@ -27,7 +28,13 @@ interface AudioDevicePanelProps {
   hasLocalPublication: boolean
   pttActive: boolean
   activeEffectsCount: number
-  transmittedMicLevel: number
+  /**
+   * Ref holding the live 0..1 mic transmit level. Read imperatively at ~60Hz
+   * by the MicLevelMeter leaf so this panel does NOT re-render at audio frame
+   * rate (the previous number prop drove 900+ renders per soak window and
+   * caused the unmute-induced CPU/memory spike).
+   */
+  transmittedMicLevelRef: MutableRefObject<number>
   effectItems: AudioDetailItem[]
   settingsOpen: boolean
   sessionId: UUID
@@ -45,7 +52,7 @@ export function AudioDevicePanel({
   hasLocalPublication,
   pttActive,
   activeEffectsCount,
-  transmittedMicLevel,
+  transmittedMicLevelRef,
   effectItems,
   settingsOpen,
   sessionId,
@@ -56,15 +63,6 @@ export function AudioDevicePanel({
   onToggleSettings,
 }: AudioDevicePanelProps) {
   const [effectsHovered, setEffectsHovered] = useState(false)
-  const txMeterFillRef = useRef<HTMLSpanElement | null>(null)
-  const transmittedMicLevelPercent = Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)
-
-  useEffect(() => {
-    txMeterFillRef.current?.style.setProperty(
-      '--audio-tx-level-height',
-      `${transmittedMicLevelPercent}%`
-    )
-  }, [transmittedMicLevelPercent])
 
   const micTitle = getMicrophoneControlLabel({
     microphoneOn: device.microphoneOn,
@@ -182,12 +180,13 @@ export function AudioDevicePanel({
           </TooltipContent>
         </Tooltip>
 
-        <span
-          className="session-audio-device-panel__tx-meter"
-          aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
-        >
-          <span ref={txMeterFillRef} className="session-audio-device-panel__tx-meter-fill" />
-        </span>
+        <MicLevelMeter
+          levelRef={transmittedMicLevelRef}
+          wrapperClassName="session-audio-device-panel__tx-meter"
+          fillClassName="session-audio-device-panel__tx-meter-fill"
+          cssVariable="--audio-tx-level-height"
+          ariaLabel={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
+        />
 
         {/* Mode status pill — leaf component subscribed only to mute state */}
         <div className="session-audio-device-panel__mode-pill-wrapper">

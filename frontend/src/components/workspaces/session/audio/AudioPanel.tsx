@@ -40,11 +40,14 @@ interface AudioPanelProps {
 export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const audioEngine = useAudioEngine()
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [localTransmitLevel, setLocalTransmitLevel] = useState(0)
+  // Mic transmit level is updated at audio-frame rate (~60Hz). It is held in a
+  // ref (never React state) so neither AudioPanel nor its tooltip-heavy
+  // children re-render on every analyser frame. The meter UI subscribes to
+  // this ref via the MicLevelMeter leaf.
+  const localTransmitLevelRef = useRef(0)
   const trackParticipantByTrackIdRef = useRef(new Map<string, UUID>())
   const localSpeakingRef = useRef(false)
   const localSpeakingHoldUntilRef = useRef(0)
-  const localSpeakingLastEvaluationAtRef = useRef(0)
 
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream, meta: { participantIdentity: string }) => {
@@ -308,7 +311,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
           Math.min(1, (combined - adjustedFloor) / (1 - adjustedFloor))
         )
         smoothed = smoothed * 0.65 + calibrated * 0.35
-        setLocalTransmitLevel(smoothed)
+        localTransmitLevelRef.current = smoothed
 
         rafId = window.requestAnimationFrame(sampleLevel)
       }
@@ -317,7 +320,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
       return () => {
         window.cancelAnimationFrame(rafId)
-        setLocalTransmitLevel(0)
+        localTransmitLevelRef.current = 0
         source.disconnect()
         analyser.disconnect()
         void audioContext.close()
@@ -588,8 +591,17 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const activeEffectsCount = effectItems.length
   const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
-  const transmittedMicLevel = isTransmittingNow ? localTransmitLevel : 0
 
+  /**
+   * Local speaking detection.
+   *
+   * Runs as a low-frequency interval (LOCAL_SPEAKING_EVALUATION_INTERVAL_MS)
+   * polling the mic-level ref. This intentionally does NOT depend on the
+   * transmit level itself — keeping the level out of React state is what stops
+   * AudioPanel + its tooltip subtree from re-rendering at audio frame rate
+   * (the previous setup caused 900+ AudioDevicePanel renders per soak window
+   * and the unmute-induced CPU/memory spike).
+   */
   useEffect(() => {
     const setSpeakingIfChanged = (nextValue: boolean) => {
       if (localSpeakingRef.current === nextValue) {
@@ -602,47 +614,48 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
     if (!isTransmittingNow) {
       localSpeakingHoldUntilRef.current = 0
-      localSpeakingLastEvaluationAtRef.current = 0
       setSpeakingIfChanged(false)
       return
     }
 
-    const now = performance.now()
+    const evaluate = () => {
+      const now = performance.now()
+      const transmittedMicLevel = localTransmitLevelRef.current
 
-    // Cap speaking evaluation cadence to avoid re-running threshold logic at
-    // mic frame rate; speaking UX tolerates slight transition latency.
-    if (now - localSpeakingLastEvaluationAtRef.current < LOCAL_SPEAKING_EVALUATION_INTERVAL_MS) {
-      return
-    }
-    localSpeakingLastEvaluationAtRef.current = now
+      // Use transmitted level with a start threshold + release hold window to avoid
+      // false positives from clicks/typing and preserve natural speech gaps.
+      if (transmittedMicLevel >= LOCAL_SPEAKING_TRIGGER_LEVEL) {
+        localSpeakingHoldUntilRef.current = now + LOCAL_SPEAKING_HOLD_MS
+        setSpeakingIfChanged(true)
+        return
+      }
 
-    // Use transmitted level with a start threshold + release hold window to avoid
-    // false positives from clicks/typing and preserve natural speech gaps.
-    if (transmittedMicLevel >= LOCAL_SPEAKING_TRIGGER_LEVEL) {
-      localSpeakingHoldUntilRef.current = now + LOCAL_SPEAKING_HOLD_MS
-      setSpeakingIfChanged(true)
-      return
-    }
+      if (!localSpeakingRef.current) {
+        return
+      }
 
-    if (!localSpeakingRef.current) {
-      return
-    }
+      if (transmittedMicLevel >= LOCAL_SPEAKING_RELEASE_LEVEL) {
+        localSpeakingHoldUntilRef.current = now + LOCAL_SPEAKING_HOLD_MS
+        return
+      }
 
-    if (transmittedMicLevel >= LOCAL_SPEAKING_RELEASE_LEVEL) {
-      localSpeakingHoldUntilRef.current = now + LOCAL_SPEAKING_HOLD_MS
-      return
+      if (now > localSpeakingHoldUntilRef.current) {
+        setSpeakingIfChanged(false)
+      }
     }
 
-    if (now > localSpeakingHoldUntilRef.current) {
-      setSpeakingIfChanged(false)
+    evaluate()
+    const intervalId = window.setInterval(evaluate, LOCAL_SPEAKING_EVALUATION_INTERVAL_MS)
+
+    return () => {
+      window.clearInterval(intervalId)
     }
-  }, [isTransmittingNow, setDevice, transmittedMicLevel])
+  }, [isTransmittingNow, setDevice])
 
   useEffect(
     () => () => {
       localSpeakingRef.current = false
       localSpeakingHoldUntilRef.current = 0
-      localSpeakingLastEvaluationAtRef.current = 0
       setDevice({ isSpeaking: false })
     },
     [setDevice]
@@ -684,7 +697,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
         {settingsOpen && (
           <AudioSettingsPanel
             device={device}
-            localMicLevel={localTransmitLevel}
+            localMicLevelRef={localTransmitLevelRef}
             isDm={effectiveRole === Role.DM}
             isWhisperMode={isWhisperMode}
             onDeviceChange={setDevice}
@@ -698,7 +711,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
           hasLocalPublication={hasLocalPublication}
           pttActive={pttActive}
           activeEffectsCount={activeEffectsCount}
-          transmittedMicLevel={transmittedMicLevel}
+          transmittedMicLevelRef={localTransmitLevelRef}
           effectItems={effectItems}
           settingsOpen={settingsOpen}
           sessionId={sessionId}

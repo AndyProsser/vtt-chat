@@ -160,6 +160,7 @@
 
 .session-audio-settings-panel__mic-meter {
   position: relative;
+  display: block;
   width: 100%;
   height: 0.42rem;
   border: 1px solid var(--color-border-default, rgba(148, 163, 184, 0.38));
