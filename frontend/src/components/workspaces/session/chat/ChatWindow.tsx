@@ -544,21 +544,50 @@ export function ChatWindow({
       bottomSnapTimerRef.current = null
     }
 
-    // Snap now and again after subsequent layout/measurement passes. This
-    // avoids "guessing early" against estimated virtual row heights.
-    scrollToLatest('auto')
-    bottomSnapRafRef.current = window.requestAnimationFrame(() => {
-      scrollToLatest('auto')
-      bottomSnapRafRef.current = window.requestAnimationFrame(() => {
-        scrollToLatest('auto')
-        bottomSnapRafRef.current = null
-      })
-    })
+    const MAX_SETTLE_FRAMES = 24
+    const REQUIRED_STABLE_FRAMES = 3
+    let frameCount = 0
+    let stableFrameCount = 0
+    let previousHeight = -1
 
+    const tick = () => {
+      const scrollContainer = messageListRef.current
+      if (!scrollContainer) {
+        bottomSnapRafRef.current = null
+        return
+      }
+
+      // Keep pinning to the true bottom while virtual row heights converge.
+      scrollToLatest('auto')
+
+      const nextHeight = scrollContainer.scrollHeight
+      if (nextHeight === previousHeight) {
+        stableFrameCount += 1
+      } else {
+        stableFrameCount = 0
+        previousHeight = nextHeight
+      }
+
+      frameCount += 1
+      if (stableFrameCount >= REQUIRED_STABLE_FRAMES || frameCount >= MAX_SETTLE_FRAMES) {
+        bottomSnapRafRef.current = null
+        return
+      }
+
+      bottomSnapRafRef.current = window.requestAnimationFrame(tick)
+    }
+
+    // Hard cap for safety; ensures no lingering loop on edge-case layout churn.
     bottomSnapTimerRef.current = window.setTimeout(() => {
+      if (bottomSnapRafRef.current) {
+        window.cancelAnimationFrame(bottomSnapRafRef.current)
+        bottomSnapRafRef.current = null
+      }
       scrollToLatest('auto')
       bottomSnapTimerRef.current = null
-    }, 90)
+    }, 700)
+
+    bottomSnapRafRef.current = window.requestAnimationFrame(tick)
   }, [scrollToLatest])
 
   const handleListScroll = useCallback(() => {
@@ -988,7 +1017,9 @@ export function ChatWindow({
         autoFollowResetTimeoutRef.current = null
       }, AUTO_FOLLOW_SMOOTH_SETTLE_MS)
 
-      scrollToLatest('smooth')
+      // Smooth follow can land short while virtual rows are still being
+      // remeasured in bursts; settle with multi-pass snapping.
+      scheduleSettledBottomSnap()
       setIsUserPinnedToBottom(true)
       clearPendingNewMessageCount()
       lastSeenLatestMessageKeyRef.current = latestVisibleMessageKey
@@ -1003,7 +1034,7 @@ export function ChatWindow({
     isAutoFollowInProgress,
     isUserPinnedToBottom,
     latestVisibleMessageKey,
-    scrollToLatest,
+    scheduleSettledBottomSnap,
   ])
 
   const postMessage = useCallback(
