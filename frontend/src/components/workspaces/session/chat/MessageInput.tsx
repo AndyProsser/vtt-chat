@@ -191,9 +191,10 @@ export function MessageInput({
       ),
     [allowedTypes, role]
   )
+  const isTypeSelectionLocked =
+    Boolean(forceMessageType) || isWhisperGroupMode || visibleTypes.length <= 1
 
-  const canShowWhisperPicker =
-    type === MessageType.WHISPER && !isWhisperGroupMode && !forceMessageType
+  const canShowWhisperPicker = type === MessageType.WHISPER && !isTypeSelectionLocked
 
   const inputToneClass = useMemo(() => {
     if (type === MessageType.IC) return 'session-message-input__textarea--ic'
@@ -240,6 +241,24 @@ export function MessageInput({
     !disabled &&
     !isSending &&
     (type !== MessageType.WHISPER || isWhisperGroupMode || !!validRecipientId.trim())
+
+  useEffect(() => {
+    const forcedType = forceMessageType ?? (isWhisperGroupMode ? MessageType.WHISPER : null)
+
+    if (forcedType) {
+      if (selectedType !== forcedType) {
+        setSelectedType(forcedType)
+      }
+      if (isWhisperPickerOpen) {
+        setIsWhisperPickerOpen(false)
+      }
+      return
+    }
+
+    if (!allowedTypes.includes(selectedType)) {
+      setSelectedType(allowedTypes[0])
+    }
+  }, [allowedTypes, forceMessageType, isWhisperGroupMode, isWhisperPickerOpen, selectedType])
 
   const emitTypingStarted = useCallback(() => {
     if (isTypingRef.current) {
@@ -308,7 +327,7 @@ export function MessageInput({
 
   return (
     <div className="session-message-input">
-      {!forceMessageType ? (
+      {!isTypeSelectionLocked ? (
         <div
           className="session-message-input__type-stack"
           onMouseEnter={() => {
