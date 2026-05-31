@@ -62,6 +62,15 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
 
     const greenroom = visibleRoomsArray.find((room) => isGreenRoom(room))
 
+    // Greenroom states must always win over stale manual room selections.
+    // WS transition events can move the session back to greenroom before the
+    // UI override map is cleared, and a refresh works only because it drops
+    // that client-only override. Preserve the WS-driven transition locally by
+    // preferring greenroom whenever the session state says we're there.
+    if (isGreenroomSessionState(currentSessionState) && greenroom) {
+      return greenroom.id
+    }
+
     // Priority 1: Manual override (if valid)
     if (
       !isTakeoverActive &&
@@ -69,13 +78,6 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
       visibleRoomsArray.some((room) => room.id === selectedRoomIdOverride)
     ) {
       return selectedRoomIdOverride
-    }
-
-    // In greenroom states, the UI should snap back to the greenroom immediately
-    // even if presence still points at the last live room until the transition
-    // event finishes updating every layer.
-    if (isGreenroomSessionState(currentSessionState) && greenroom) {
-      return greenroom.id
     }
 
     // Priority 2: Connected room (if valid)
