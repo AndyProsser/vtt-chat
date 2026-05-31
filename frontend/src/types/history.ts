@@ -17,6 +17,7 @@ export interface SessionHistoryMessage {
 
 export interface SessionHistoryThread {
   sessionId: string
+  dmId?: string
   sessionName: string
   sessionState: string
   createdAt: number

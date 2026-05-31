@@ -68,6 +68,7 @@ export function HistoryPanel({
         const sessionData = (await sessionResponse.json()) as {
           sessions?: Array<{
             id: UUID
+            dmId?: UUID
             name: string
             state: string
             createdAt?: number | string
@@ -142,6 +143,7 @@ export function HistoryPanel({
 
             return {
               sessionId: session.id,
+              dmId: session.dmId,
               sessionName: session.name,
               sessionState: session.state,
               createdAt: toTimestamp(session.createdAt),
@@ -211,6 +213,7 @@ export function HistoryPanel({
     return sortedThreads.map((thread) => ({
       label: toSessionLabel(thread),
       sessionId: thread.sessionId as UUID,
+      sessionDmId: thread.dmId as UUID | undefined,
       sessionName: thread.sessionName,
       startedAtLabel: thread.startedAtLabel,
       items: thread.messages,

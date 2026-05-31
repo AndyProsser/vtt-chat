@@ -24,6 +24,7 @@ import {
 export interface HistoryGroup {
   label: string
   sessionId: UUID
+  sessionDmId?: UUID
   sessionName: string
   startedAtLabel: string
   items: SessionHistoryMessage[]
@@ -77,9 +78,12 @@ function resolveHistoryWhisperRouteEntries(
     .filter((label) => label.trim().length > 0)
 }
 
-function isHistoryDmWhisper(message: SessionHistoryMessage): boolean {
+function isHistoryDmWhisper(message: SessionHistoryMessage, sessionDmId?: UUID): boolean {
   return (
-    message.type === MessageType.DM || (message.type === MessageType.WHISPER && message.isDmOnly)
+    message.type === MessageType.DM ||
+    (message.type === MessageType.WHISPER &&
+      Boolean(sessionDmId) &&
+      message.authorId === sessionDmId)
   )
 }
 
@@ -178,7 +182,7 @@ export function flattenHistoryGroupsToRows(
         isSelf: Boolean(currentUserId) && message.authorId === currentUserId,
         whisperRouteEntries,
         hasWhisperRoute: whisperRouteEntries.length > 0,
-        isDmWhisper: isHistoryDmWhisper(message),
+        isDmWhisper: isHistoryDmWhisper(message, group.sessionDmId),
       })
 
       previousMessage = message
