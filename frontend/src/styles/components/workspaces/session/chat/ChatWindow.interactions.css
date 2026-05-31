@@ -79,6 +79,14 @@
   font-weight: 500;
 }
 
+.session-chat-window__typing-text--elsewhere {
+  color: color-mix(
+    in srgb,
+    var(--color-accent-warning, #f59e0b) 72%,
+    var(--color-text-secondary) 28%
+  );
+}
+
 .session-chat-window__typing-dots {
   display: inline-flex;
   align-items: center;
