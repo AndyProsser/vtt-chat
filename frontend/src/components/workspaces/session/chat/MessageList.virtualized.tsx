@@ -545,6 +545,21 @@ export function MessageListVirtualized({
   const [listViewportWidth, setListViewportWidth] = useState(1)
   const sizeCacheRef = useRef<Record<string, number>>({})
 
+  const visibleMessages = useMemo(
+    () =>
+      preparedMessages.filter((prepared) => {
+        if (
+          hideIntermissionMarkers &&
+          (prepared.sessionBookendState === 'paused' || prepared.sessionBookendState === 'resumed')
+        ) {
+          return false
+        }
+
+        return !(prepared.isSessionSummary && !prepared.summaryStats)
+      }),
+    [hideIntermissionMarkers, preparedMessages]
+  )
+
   useLayoutEffect(() => {
     const node = shellRef.current
     if (!node) {
@@ -588,22 +603,7 @@ export function MessageListVirtualized({
     return () => {
       observer.disconnect()
     }
-  }, [listRef])
-
-  const visibleMessages = useMemo(
-    () =>
-      preparedMessages.filter((prepared) => {
-        if (
-          hideIntermissionMarkers &&
-          (prepared.sessionBookendState === 'paused' || prepared.sessionBookendState === 'resumed')
-        ) {
-          return false
-        }
-
-        return !(prepared.isSessionSummary && !prepared.summaryStats)
-      }),
-    [hideIntermissionMarkers, preparedMessages]
-  )
+  }, [listRef, visibleMessages.length])
 
   useEffect(() => {
     listInstanceRef.current?.resetAfterIndex(0, true)
@@ -641,23 +641,29 @@ export function MessageListVirtualized({
   if (visibleMessages.length === 0) {
     return (
       <div
-        ref={listRef}
-        onScroll={onListScroll}
-        onWheel={onListWheel}
-        className="session-message-list"
+        ref={shellRef}
+        style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}
       >
-        <div ref={topSentinelRef} aria-hidden="true" className="session-message-list__sentinel" />
-        {emptyDayLabel ? (
-          <div
-            className="session-message-list__day-separator"
-            aria-label={`Messages from ${emptyDayLabel}`}
-          >
-            <span className="session-message-list__day-separator-line" aria-hidden="true" />
-            <span className="session-message-list__day-separator-pill">{emptyDayLabel}</span>
-            <span className="session-message-list__day-separator-line" aria-hidden="true" />
-          </div>
-        ) : null}
-        <div className="session-message-list__empty">No messages yet. Say something!</div>
+        <div
+          ref={listRef}
+          onScroll={onListScroll}
+          onWheel={onListWheel}
+          className="session-message-list"
+          style={{ height: '100%' }}
+        >
+          <div ref={topSentinelRef} aria-hidden="true" className="session-message-list__sentinel" />
+          {emptyDayLabel ? (
+            <div
+              className="session-message-list__day-separator"
+              aria-label={`Messages from ${emptyDayLabel}`}
+            >
+              <span className="session-message-list__day-separator-line" aria-hidden="true" />
+              <span className="session-message-list__day-separator-pill">{emptyDayLabel}</span>
+              <span className="session-message-list__day-separator-line" aria-hidden="true" />
+            </div>
+          ) : null}
+          <div className="session-message-list__empty">No messages yet. Say something!</div>
+        </div>
       </div>
     )
   }
