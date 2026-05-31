@@ -4,7 +4,7 @@
  * New messages arrive via WS events (CHAT:MESSAGE_SENT) dispatched to chatSlice.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { UIEvent, WheelEvent } from 'react'
 import type { EventEnvelope, UUID } from '@shared'
 import { isGreenroomSessionState, MessageType, Role, RoomType, SessionState } from '@shared'
@@ -34,6 +34,25 @@ interface ChatWindowProps {
   forceMessageType?: MessageType
   sendWsEvent?: (event: EventEnvelope) => void
   onPendingNewMessageCountChange?: (count: number) => void
+}
+
+function areChatWindowPropsEqual(previous: ChatWindowProps, next: ChatWindowProps): boolean {
+  return (
+    previous.apiUrl === next.apiUrl &&
+    previous.token === next.token &&
+    previous.sessionId === next.sessionId &&
+    previous.roomId === next.roomId &&
+    previous.campaignId === next.campaignId &&
+    previous.roomName === next.roomName &&
+    previous.roomType === next.roomType &&
+    previous.user.id === next.user.id &&
+    previous.user.username === next.user.username &&
+    previous.user.role === next.user.role &&
+    previous.messageGroupingWindowMs === next.messageGroupingWindowMs &&
+    previous.forceMessageType === next.forceMessageType &&
+    previous.sendWsEvent === next.sendWsEvent &&
+    previous.onPendingNewMessageCountChange === next.onPendingNewMessageCountChange
+  )
 }
 
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
@@ -75,7 +94,7 @@ function isNearBottom(
   return distanceFromBottom <= thresholdPx
 }
 
-export function ChatWindow({
+function ChatWindowComponent({
   apiUrl,
   token,
   sessionId,
@@ -837,32 +856,50 @@ export function ChatWindow({
     ]
   )
 
-  const handleSend = async (content: string, type: MessageType, recipientId?: string) => {
-    setError(null)
-    const queuedMessageId = generateClientId('queued-message') as UUID
+  const handleSend = useCallback(
+    async (content: string, type: MessageType, recipientId?: string) => {
+      setError(null)
+      const queuedMessageId = generateClientId('queued-message') as UUID
 
-    enqueueOutgoingMessage(sessionId, {
-      id: queuedMessageId,
-      roomId,
-      content,
-      type,
-      recipientId: recipientId as UUID | undefined,
-      createdAt: Date.now(),
-      status: 'sending',
-    })
-
-    try {
-      await postMessage(content, type, recipientId as UUID | undefined)
-      removeOutgoingMessage(sessionId, queuedMessageId)
-    } catch (err: any) {
-      const message = err.message ?? 'Failed to send message'
-      updateOutgoingMessage(sessionId, queuedMessageId, {
-        status: 'failed',
-        error: message,
+      enqueueOutgoingMessage(sessionId, {
+        id: queuedMessageId,
+        roomId,
+        content,
+        type,
+        recipientId: recipientId as UUID | undefined,
+        createdAt: Date.now(),
+        status: 'sending',
       })
-      setError(message)
-    }
-  }
+
+      try {
+        await postMessage(content, type, recipientId as UUID | undefined)
+        removeOutgoingMessage(sessionId, queuedMessageId)
+      } catch (err: any) {
+        const message = err.message ?? 'Failed to send message'
+        updateOutgoingMessage(sessionId, queuedMessageId, {
+          status: 'failed',
+          error: message,
+        })
+        setError(message)
+      }
+    },
+    [
+      enqueueOutgoingMessage,
+      postMessage,
+      removeOutgoingMessage,
+      roomId,
+      sessionId,
+      updateOutgoingMessage,
+    ]
+  )
+
+  const handleTypingStarted = useCallback(() => {
+    emitTypingEvent('CHAT:TYPING_STARTED')
+  }, [emitTypingEvent])
+
+  const handleTypingStopped = useCallback(() => {
+    emitTypingEvent('CHAT:TYPING_STOPPED')
+  }, [emitTypingEvent])
 
   const retryFailedMessage = useCallback(
     async (entry: OutgoingChatMessage) => {
@@ -1003,8 +1040,8 @@ export function ChatWindow({
       {/* Input */}
       <MessageInput
         onSend={handleSend}
-        onTypingStarted={() => emitTypingEvent('CHAT:TYPING_STARTED')}
-        onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
+        onTypingStarted={handleTypingStarted}
+        onTypingStopped={handleTypingStopped}
         role={user.role}
         sessionId={sessionId}
         currentUserId={user.id}
@@ -1016,3 +1053,5 @@ export function ChatWindow({
     </section>
   )
 }
+
+export const ChatWindow = memo(ChatWindowComponent, areChatWindowPropsEqual)

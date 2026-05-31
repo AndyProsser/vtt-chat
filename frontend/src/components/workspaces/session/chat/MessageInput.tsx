@@ -4,7 +4,7 @@
  * Spectators are restricted to OOC only.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageType, RoomType, SessionState } from '@shared'
 import type { Role, UUID } from '@shared'
 import { TYPING_IDLE_TIMEOUT_MS } from '@/constants/chatPresence.constants'
@@ -37,6 +37,7 @@ const EMPTY_SESSION_PRESENCE: Record<
     primaryRoomId?: UUID
   }
 > = {}
+const EMPTY_WHISPER_RECIPIENTS: WhisperRecipientOption[] = []
 
 const MESSAGE_TYPE_ORDER: MessageType[] = [
   MessageType.IC,
@@ -53,7 +54,7 @@ const ROLE_ALLOWED_TYPES: Record<string, MessageType[]> = {
 
 type ComposerMode = 'greenroom' | 'active' | 'active-whisper' | 'paused' | 'cooldown'
 
-export function MessageInput({
+function MessageInputComponent({
   onSend,
   onTypingStarted,
   onTypingStopped,
@@ -66,16 +67,7 @@ export function MessageInput({
   whisperRecipients = [],
   roomType,
 }: MessageInputProps) {
-  const sessionPresence = useStore((state) => {
-    if (!sessionId) {
-      return EMPTY_SESSION_PRESENCE
-    }
-
-    return (
-      ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
-      EMPTY_SESSION_PRESENCE
-    )
-  })
+  const whisperRecipientsCacheRef = useRef<WhisperRecipientOption[]>(EMPTY_WHISPER_RECIPIENTS)
   const sessionDmId = useStore((state) => {
     if (!sessionId) {
       return undefined
@@ -151,11 +143,15 @@ export function MessageInput({
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isTypingRef = useRef(false)
   const previousComposerModeRef = useRef<ComposerMode | null>(null)
-  const derivedWhisperRecipients = useMemo(() => {
+  const effectiveWhisperRecipients = useStore((state) => {
     if (!sessionId || !currentUserId) {
+      whisperRecipientsCacheRef.current = whisperRecipients
       return whisperRecipients
     }
 
+    const sessionPresence =
+      ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
+      EMPTY_SESSION_PRESENCE
     const participants = Object.entries(sessionPresence) as Array<
       [
         UUID,
@@ -169,7 +165,14 @@ export function MessageInput({
       ]
     >
 
-    return participants
+    if (participants.length === 0) {
+      if (whisperRecipientsCacheRef.current !== EMPTY_WHISPER_RECIPIENTS) {
+        whisperRecipientsCacheRef.current = EMPTY_WHISPER_RECIPIENTS
+      }
+      return EMPTY_WHISPER_RECIPIENTS
+    }
+
+    const nextRecipients = participants
       .filter(([participantUserId, participant]) => {
         if (participantUserId === currentUserId) {
           return false
@@ -194,18 +197,26 @@ export function MessageInput({
         avatarUrl: participant.avatarUrl,
       }))
       .sort((left, right) => left.label.localeCompare(right.label))
-  }, [
-    currentRoomId,
-    currentUserId,
-    isDmRole,
-    sessionDmId,
-    sessionId,
-    sessionPresence,
-    whisperRecipients,
-  ])
 
-  const effectiveWhisperRecipients =
-    sessionId && currentUserId ? derivedWhisperRecipients : whisperRecipients
+    const previousRecipients = whisperRecipientsCacheRef.current
+    const isUnchanged =
+      previousRecipients.length === nextRecipients.length &&
+      previousRecipients.every((recipient, index) => {
+        const nextRecipient = nextRecipients[index]
+        return (
+          recipient.id === nextRecipient.id &&
+          recipient.label === nextRecipient.label &&
+          recipient.avatarUrl === nextRecipient.avatarUrl
+        )
+      })
+
+    if (isUnchanged) {
+      return previousRecipients
+    }
+
+    whisperRecipientsCacheRef.current = nextRecipients
+    return nextRecipients
+  })
   const type =
     composerMode === 'active-whisper'
       ? MessageType.WHISPER
@@ -525,3 +536,5 @@ export function MessageInput({
     </div>
   )
 }
+
+export const MessageInput = memo(MessageInputComponent)
