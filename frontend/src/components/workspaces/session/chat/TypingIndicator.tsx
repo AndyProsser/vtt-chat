@@ -11,7 +11,7 @@
  * is currently typing.
  */
 import { useEffect, useMemo, useState } from 'react'
-import type { Role, UUID } from '@shared'
+import type { UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
 
 interface TypingIndicatorProps {
@@ -27,19 +27,9 @@ const EMPTY_TYPING_INDICATORS: Array<{
   until: number
 }> = []
 
-const EMPTY_SESSION_PRESENCE: Record<
-  UUID,
-  { username: string; characterName?: string | null; role?: Role | string }
-> = {}
-
 export function TypingIndicator({ sessionId, roomId, currentUserId }: TypingIndicatorProps) {
   const typingIndicators = useStore(
     (state) => state.presenceTypingBySession[sessionId] ?? EMPTY_TYPING_INDICATORS
-  )
-  const sessionPresence = useStore(
-    (state) =>
-      ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
-      EMPTY_SESSION_PRESENCE
   )
 
   // Local clock advances only when an indicator is about to expire — never on
@@ -76,9 +66,7 @@ export function TypingIndicator({ sessionId, roomId, currentUserId }: TypingIndi
       if (indicator.userId === currentUserId) continue
       if (indicator.roomId && indicator.roomId !== roomId) continue
 
-      const profile = sessionPresence[indicator.userId]
-      const name = profile?.characterName || profile?.username || indicator.username
-      names.push(name)
+      names.push(indicator.username)
       activeCount += 1
     }
 
@@ -90,7 +78,7 @@ export function TypingIndicator({ sessionId, roomId, currentUserId }: TypingIndi
           : `${names[0]} +${activeCount - 1} are typing`
 
     return { active: activeCount > 0, summary: summaryText }
-  }, [typingIndicators, sessionPresence, typingClock, currentUserId, roomId])
+  }, [typingIndicators, typingClock, currentUserId, roomId])
 
   return (
     <div className="session-chat-window__typing-slot" aria-live="polite">

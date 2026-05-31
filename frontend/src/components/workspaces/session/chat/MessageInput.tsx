@@ -9,7 +9,7 @@ import { MessageType, RoomType } from '@shared'
 import type { Role, UUID } from '@shared'
 import { TYPING_IDLE_TIMEOUT_MS } from '@/constants/chatPresence.constants'
 import { Icon } from '@/components/ui/Icon'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/hooks/useStore'
 import type { WhisperRecipientOption } from '@/types/chat'
 
@@ -320,55 +320,59 @@ export function MessageInput({
             setIsWhisperPickerOpen(false)
           }}
         >
-          <div
-            className="session-message-input__types"
-            data-count={visibleTypes.length}
-            role="radiogroup"
-            aria-label="Message type"
-          >
-            {visibleTypes.map((messageType) => {
-              const meta = TYPE_META[messageType]
-              const tone =
-                messageType === MessageType.WHISPER && isDmRole ? 'whisper-dm' : meta.tone
-              const isActive = type === messageType
-              const isDisabled = isWhisperGroupMode && messageType !== MessageType.WHISPER
-              const showMutedWhisperIcon =
-                messageType === MessageType.WHISPER && !isWhisperGroupMode && !selectedRecipient
+          <TooltipProvider delayDuration={140} disableHoverableContent>
+            <div
+              className="session-message-input__types"
+              data-count={visibleTypes.length}
+              role="radiogroup"
+              aria-label="Message type"
+            >
+              {visibleTypes.map((messageType) => {
+                const meta = TYPE_META[messageType]
+                const tone =
+                  messageType === MessageType.WHISPER && isDmRole ? 'whisper-dm' : meta.tone
+                const isActive = type === messageType
+                const isDisabled = isWhisperGroupMode && messageType !== MessageType.WHISPER
+                const showMutedWhisperIcon =
+                  messageType === MessageType.WHISPER && !isWhisperGroupMode && !selectedRecipient
 
-              return (
-                <Tooltip key={messageType}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={isActive}
-                      disabled={disabled || isSending || isDisabled}
-                      onClick={() => {
-                        if (isDisabled) return
-                        setSelectedType(messageType)
-                        if (messageType !== MessageType.WHISPER) {
-                          setIsWhisperPickerOpen(false)
-                        }
-                        if (messageType === MessageType.WHISPER && !isWhisperGroupMode) {
-                          setIsWhisperPickerOpen(true)
-                        }
-                      }}
-                      className={`session-message-input__type-toggle session-message-input__type-toggle--${tone} ${isActive ? 'session-message-input__type-toggle--active' : ''}`}
-                    >
-                      <span
-                        className={`session-message-input__type-toggle-icon material-symbols-outlined ${showMutedWhisperIcon ? 'session-message-input__type-toggle-icon--muted' : ''}`}
-                        aria-hidden="true"
+                return (
+                  <Tooltip key={messageType}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={isActive}
+                        disabled={disabled || isSending || isDisabled}
+                        onClick={() => {
+                          if (isDisabled) return
+                          setSelectedType(messageType)
+                          if (messageType !== MessageType.WHISPER) {
+                            setIsWhisperPickerOpen(false)
+                          }
+                          if (messageType === MessageType.WHISPER && !isWhisperGroupMode) {
+                            setIsWhisperPickerOpen(true)
+                          }
+                        }}
+                        className={`session-message-input__type-toggle session-message-input__type-toggle--${tone} ${isActive ? 'session-message-input__type-toggle--active' : ''}`}
                       >
-                        {meta.icon}
-                      </span>
-                      <span className="session-message-input__type-toggle-label">{meta.label}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{meta.label}</TooltipContent>
-                </Tooltip>
-              )
-            })}
-          </div>
+                        <span
+                          className={`session-message-input__type-toggle-icon material-symbols-outlined ${showMutedWhisperIcon ? 'session-message-input__type-toggle-icon--muted' : ''}`}
+                          aria-hidden="true"
+                        >
+                          {meta.icon}
+                        </span>
+                        <span className="session-message-input__type-toggle-label">
+                          {meta.label}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{meta.label}</TooltipContent>
+                  </Tooltip>
+                )
+              })}
+            </div>
+          </TooltipProvider>
 
           {canShowWhisperPicker && isWhisperPickerOpen ? (
             <div

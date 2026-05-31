@@ -54,6 +54,11 @@ type HoverAnchorRect = {
   height: number
 }
 
+type HoverContainerRect = {
+  left: number
+  right: number
+}
+
 interface GroupMemberItemProps {
   room: GroupPanelGroupWithParticipants
   member: GroupParticipantWithGroupId
@@ -333,6 +338,7 @@ export function GroupMemberList({
 }: GroupMemberListProps) {
   const [hoveredProfileUserId, setHoveredProfileUserId] = useState<UUID | null>(null)
   const [hoverAnchorRect, setHoverAnchorRect] = useState<HoverAnchorRect | null>(null)
+  const [hoverContainerRect, setHoverContainerRect] = useState<HoverContainerRect | null>(null)
   const hoverCloseTimerRef = useRef<number | null>(null)
   const hoveredProfileUserIdRef = useRef<UUID | null>(null)
 
@@ -348,6 +354,13 @@ export function GroupMemberList({
     }
   }, [])
 
+  const closeHoverCard = useCallback(() => {
+    clearHoverCloseTimer()
+    setHoveredProfileUserId(null)
+    setHoverAnchorRect(null)
+    setHoverContainerRect(null)
+  }, [clearHoverCloseTimer])
+
   useEffect(() => {
     hoveredProfileUserIdRef.current = hoveredProfileUserId
   }, [hoveredProfileUserId])
@@ -355,16 +368,18 @@ export function GroupMemberList({
   const scheduleHoverCardClose = useCallback(() => {
     clearHoverCloseTimer()
     hoverCloseTimerRef.current = window.setTimeout(() => {
-      setHoveredProfileUserId(null)
-      setHoverAnchorRect(null)
+      closeHoverCard()
       hoverCloseTimerRef.current = null
     }, 120)
-  }, [clearHoverCloseTimer])
+  }, [clearHoverCloseTimer, closeHoverCard])
 
   const handleProfilePillEnter = useCallback(
     (userId: UUID, element: HTMLElement) => {
       clearHoverCloseTimer()
       const rect = element.getBoundingClientRect()
+      const roomListElement =
+        element.closest('.room-selector-members-list') || element.closest('.room-selector-item')
+      const roomListRect = roomListElement?.getBoundingClientRect() ?? null
       setHoveredProfileUserId(userId)
       setHoverAnchorRect({
         top: rect.top,
@@ -374,6 +389,14 @@ export function GroupMemberList({
         width: rect.width,
         height: rect.height,
       })
+      setHoverContainerRect(
+        roomListRect
+          ? {
+              left: roomListRect.left,
+              right: roomListRect.right,
+            }
+          : null
+      )
     },
     [clearHoverCloseTimer]
   )
@@ -395,6 +418,23 @@ export function GroupMemberList({
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!hoveredProfileUserId) {
+      return
+    }
+
+    const handleWheel = (event: WheelEvent) => {
+      if (event.deltaY > 0) {
+        closeHoverCard()
+      }
+    }
+
+    window.addEventListener('wheel', handleWheel, { passive: true })
+    return () => {
+      window.removeEventListener('wheel', handleWheel)
+    }
+  }, [closeHoverCard, hoveredProfileUserId])
 
   if (participants.length === 0) {
     return null
@@ -439,11 +479,12 @@ export function GroupMemberList({
         member={hoveredProfileMember}
         activeTakeoverUserId={activeTakeoverUserId}
         anchorRect={hoverAnchorRect}
+        containerRect={hoverContainerRect}
         getParticipantMetaLine={getParticipantMetaLine}
         getStatEntries={getStatEntries}
         getResolvedGroupEnvironmentName={getResolvedGroupEnvironmentName}
-        onMouseEnter={clearHoverCloseTimer}
-        onMouseLeave={scheduleHoverCardClose}
+        onMouseEnter={closeHoverCard}
+        onMouseLeave={closeHoverCard}
       />
     </>
   )

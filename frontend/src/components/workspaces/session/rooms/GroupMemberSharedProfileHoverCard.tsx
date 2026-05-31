@@ -15,6 +15,11 @@ type HoverAnchorRect = {
   height: number
 }
 
+type HoverContainerRect = {
+  left: number
+  right: number
+}
+
 type GroupMemberSharedProfileHoverCardProps = {
   sessionId: UUID
   currentUserId: UUID
@@ -22,6 +27,7 @@ type GroupMemberSharedProfileHoverCardProps = {
   member: GroupParticipantWithGroupId | null
   activeTakeoverUserId?: UUID | null
   anchorRect: HoverAnchorRect | null
+  containerRect: HoverContainerRect | null
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
@@ -41,6 +47,7 @@ export function GroupMemberSharedProfileHoverCard({
   member,
   activeTakeoverUserId,
   anchorRect,
+  containerRect,
   getParticipantMetaLine,
   getStatEntries,
   getResolvedGroupEnvironmentName,
@@ -51,17 +58,28 @@ export function GroupMemberSharedProfileHoverCard({
     return null
   }
 
+  const cardWidth = 320
+  const edgePadding = 8
+  const leftNudge = 18
+
+  // Keep the card inside the room-list container when available.
+  const minLeft = containerRect ? containerRect.left + edgePadding : edgePadding
+  const maxLeft = containerRect
+    ? containerRect.right - cardWidth - edgePadding
+    : window.innerWidth - cardWidth - edgePadding
+
+  // Prefer left-of-pill placement to avoid covering the next role pill below.
+  const preferredLeft = anchorRect.left - cardWidth - edgePadding - leftNudge
+  const clampedLeft = Math.max(minLeft, Math.min(maxLeft, preferredLeft))
+
   return createPortal(
     <div
       className="room-selector-profile-tooltip"
       style={{
         position: 'fixed',
         zIndex: 1200,
-        width: 320,
-        left: Math.max(
-          8,
-          Math.min(window.innerWidth - 328, anchorRect.left + anchorRect.width / 2 - 160)
-        ),
+        width: cardWidth,
+        left: clampedLeft,
         top:
           anchorRect.bottom + 8 + 220 <= window.innerHeight - 8
             ? anchorRect.bottom + 8
