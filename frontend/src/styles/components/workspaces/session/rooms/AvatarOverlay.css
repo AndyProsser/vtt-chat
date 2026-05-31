@@ -156,6 +156,13 @@
   color: color-mix(in srgb, var(--color-brand) 85%, var(--color-text-primary));
   text-transform: uppercase;
   flex-shrink: 0;
+  cursor: help;
+}
+
+.avatar-role-chip--hovered {
+  border-color: color-mix(in srgb, var(--color-brand) 70%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 20%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-brand) 24%, transparent);
 }
 
 .avatar-meta-status {

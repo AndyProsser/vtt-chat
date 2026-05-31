@@ -1,6 +1,6 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { UUID } from '@shared'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { LONG_PRESS_MOVE_CANCEL_PX } from '@/constants/voiceGroup.constants'
 import { AvatarOverlay } from './AvatarOverlay'
 import { GroupMemberProfileCard } from './GroupMemberProfileCard'
@@ -45,6 +45,15 @@ export interface GroupMemberListProps {
   onMemberDragEnd: () => void
 }
 
+type HoverAnchorRect = {
+  top: number
+  left: number
+  right: number
+  bottom: number
+  width: number
+  height: number
+}
+
 interface GroupMemberItemProps {
   room: GroupPanelGroupWithParticipants
   member: GroupParticipantWithGroupId
@@ -52,8 +61,8 @@ interface GroupMemberItemProps {
   currentUserId: UUID
   canManageRooms: boolean
   isGreenroom: boolean
-  isNarrowViewport: boolean
   touchFeedbackUserId: UUID | null
+  isProfileHovered: boolean
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
@@ -66,6 +75,8 @@ interface GroupMemberItemProps {
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
   onClearMemberEffects: (userId: UUID) => void
   onTakeOverPlayer?: (userId: UUID) => void
+  onProfilePillEnter: (userId: UUID, element: HTMLElement) => void
+  onProfilePillLeave: (userId: UUID) => void
   onMemberDragStart: (
     event: React.DragEvent<HTMLButtonElement>,
     userId: UUID,
@@ -91,8 +102,8 @@ function areGroupMemberItemPropsEqual(
     previous.currentUserId === next.currentUserId &&
     previous.canManageRooms === next.canManageRooms &&
     previous.isGreenroom === next.isGreenroom &&
-    previous.isNarrowViewport === next.isNarrowViewport &&
     previous.touchFeedbackUserId === next.touchFeedbackUserId &&
+    previous.isProfileHovered === next.isProfileHovered &&
     previous.activeTakeoverUserId === next.activeTakeoverUserId &&
     previous.distanceTargets === next.distanceTargets &&
     previous.conditionTargets === next.conditionTargets &&
@@ -105,6 +116,8 @@ function areGroupMemberItemPropsEqual(
     previous.onApplyMuteOverride === next.onApplyMuteOverride &&
     previous.onClearMemberEffects === next.onClearMemberEffects &&
     previous.onTakeOverPlayer === next.onTakeOverPlayer &&
+    previous.onProfilePillEnter === next.onProfilePillEnter &&
+    previous.onProfilePillLeave === next.onProfilePillLeave &&
     previous.onMemberDragStart === next.onMemberDragStart &&
     previous.onMemberDragEnd === next.onMemberDragEnd &&
     left.userId === right.userId &&
@@ -131,8 +144,8 @@ const GroupMemberItem = memo(function GroupMemberItem({
   currentUserId,
   canManageRooms,
   isGreenroom,
-  isNarrowViewport,
   touchFeedbackUserId,
+  isProfileHovered,
   getParticipantMetaLine,
   getStatEntries,
   getResolvedGroupEnvironmentName,
@@ -145,6 +158,8 @@ const GroupMemberItem = memo(function GroupMemberItem({
   onApplyMuteOverride,
   onClearMemberEffects,
   onTakeOverPlayer,
+  onProfilePillEnter,
+  onProfilePillLeave,
   onMemberDragStart,
   onMemberDragEnd,
 }: GroupMemberItemProps) {
@@ -243,6 +258,13 @@ const GroupMemberItem = memo(function GroupMemberItem({
         avatarUrl={member.avatarUrl}
         roleLabel={member.roleLabel}
         metaLine={getParticipantMetaLine(member)}
+        highlightRoleChip={isProfileHovered}
+        onRoleChipPointerEnter={(event) => {
+          onProfilePillEnter(member.userId, event.currentTarget)
+        }}
+        onRoleChipPointerLeave={() => {
+          onProfilePillLeave(member.userId)
+        }}
         presence={{
           sessionId,
           userId: member.userId,
@@ -251,26 +273,6 @@ const GroupMemberItem = memo(function GroupMemberItem({
         }}
       />
     </button>
-  )
-
-  const memberTooltip = (
-    <Tooltip>
-      <TooltipTrigger asChild>{memberButton}</TooltipTrigger>
-      <TooltipContent
-        side={isNarrowViewport ? 'top' : 'bottom'}
-        className="room-selector-profile-tooltip"
-      >
-        <GroupMemberProfileCard
-          sessionId={sessionId}
-          isSelf={isSelf}
-          member={member}
-          metaLine={getParticipantMetaLine(member)}
-          statEntries={getStatEntries(member)}
-          environmentName={getResolvedGroupEnvironmentName(room)}
-          activeTakeover={isTakeoverActive}
-        />
-      </TooltipContent>
-    </Tooltip>
   )
 
   if (isPlayerTarget) {
@@ -294,12 +296,12 @@ const GroupMemberItem = memo(function GroupMemberItem({
         isTakeoverActive={isTakeoverActive}
         onTakeOver={() => onTakeOverPlayer?.(member.userId)}
       >
-        <span className="room-selector-member-context-anchor">{memberTooltip}</span>
+        <span className="room-selector-member-context-anchor">{memberButton}</span>
       </PlayerContextMenu>
     )
   }
 
-  return <span className="room-selector-member-context-anchor">{memberTooltip}</span>
+  return <span className="room-selector-member-context-anchor">{memberButton}</span>
 }, areGroupMemberItemPropsEqual)
 
 export function GroupMemberList({
@@ -325,24 +327,112 @@ export function GroupMemberList({
   onMemberDragStart,
   onMemberDragEnd,
 }: GroupMemberListProps) {
-  const [isNarrowViewport, setIsNarrowViewport] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 720 : false
+  const [hoveredProfileUserId, setHoveredProfileUserId] = useState<UUID | null>(null)
+  const [hoverAnchorRect, setHoverAnchorRect] = useState<HoverAnchorRect | null>(null)
+  const hoverCloseTimerRef = useRef<number | null>(null)
+  const hoveredProfileUserIdRef = useRef<UUID | null>(null)
+
+  const hoveredProfileMember = useMemo(
+    () => participants.find((member) => member.userId === hoveredProfileUserId) ?? null,
+    [hoveredProfileUserId, participants]
+  )
+
+  const clearHoverCloseTimer = useCallback(() => {
+    if (hoverCloseTimerRef.current !== null) {
+      window.clearTimeout(hoverCloseTimerRef.current)
+      hoverCloseTimerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    hoveredProfileUserIdRef.current = hoveredProfileUserId
+  }, [hoveredProfileUserId])
+
+  const scheduleHoverCardClose = useCallback(() => {
+    clearHoverCloseTimer()
+    hoverCloseTimerRef.current = window.setTimeout(() => {
+      setHoveredProfileUserId(null)
+      setHoverAnchorRect(null)
+      hoverCloseTimerRef.current = null
+    }, 120)
+  }, [clearHoverCloseTimer])
+
+  const handleProfilePillEnter = useCallback(
+    (userId: UUID, element: HTMLElement) => {
+      clearHoverCloseTimer()
+      const rect = element.getBoundingClientRect()
+      setHoveredProfileUserId(userId)
+      setHoverAnchorRect({
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      })
+    },
+    [clearHoverCloseTimer]
+  )
+
+  const handleProfilePillLeave = useCallback(
+    (userId: UUID) => {
+      if (hoveredProfileUserIdRef.current !== userId) {
+        return
+      }
+      scheduleHoverCardClose()
+    },
+    [scheduleHoverCardClose]
   )
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsNarrowViewport(window.innerWidth <= 720)
-    }
-
-    window.addEventListener('resize', handleResize)
     return () => {
-      window.removeEventListener('resize', handleResize)
+      if (hoverCloseTimerRef.current !== null) {
+        window.clearTimeout(hoverCloseTimerRef.current)
+      }
     }
   }, [])
 
   if (participants.length === 0) {
     return null
   }
+
+  const hoverCard =
+    hoveredProfileMember && hoverAnchorRect && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="room-selector-profile-tooltip"
+            style={{
+              position: 'fixed',
+              zIndex: 1200,
+              width: 320,
+              left: Math.max(
+                8,
+                Math.min(
+                  window.innerWidth - 328,
+                  hoverAnchorRect.left + hoverAnchorRect.width / 2 - 160
+                )
+              ),
+              top:
+                hoverAnchorRect.bottom + 8 + 220 <= window.innerHeight - 8
+                  ? hoverAnchorRect.bottom + 8
+                  : Math.max(8, hoverAnchorRect.top - 228),
+            }}
+            onMouseEnter={clearHoverCloseTimer}
+            onMouseLeave={scheduleHoverCardClose}
+          >
+            <GroupMemberProfileCard
+              sessionId={sessionId}
+              isSelf={hoveredProfileMember.userId === currentUserId}
+              member={hoveredProfileMember}
+              metaLine={getParticipantMetaLine(hoveredProfileMember)}
+              statEntries={getStatEntries(hoveredProfileMember)}
+              environmentName={getResolvedGroupEnvironmentName(room)}
+              activeTakeover={activeTakeoverUserId === hoveredProfileMember.userId}
+            />
+          </div>,
+          document.body
+        )
+      : null
 
   return (
     <>
@@ -355,8 +445,8 @@ export function GroupMemberList({
           currentUserId={currentUserId}
           canManageRooms={canManageRooms}
           isGreenroom={isGreenroom}
-          isNarrowViewport={isNarrowViewport}
           touchFeedbackUserId={touchFeedbackUserId}
+          isProfileHovered={hoveredProfileUserId === member.userId}
           getParticipantMetaLine={getParticipantMetaLine}
           getStatEntries={getStatEntries}
           getResolvedGroupEnvironmentName={getResolvedGroupEnvironmentName}
@@ -369,10 +459,13 @@ export function GroupMemberList({
           onApplyMuteOverride={onApplyMuteOverride}
           onClearMemberEffects={onClearMemberEffects}
           onTakeOverPlayer={onTakeOverPlayer}
+          onProfilePillEnter={handleProfilePillEnter}
+          onProfilePillLeave={handleProfilePillLeave}
           onMemberDragStart={onMemberDragStart}
           onMemberDragEnd={onMemberDragEnd}
         />
       ))}
+      {hoverCard}
     </>
   )
 }
