@@ -47,6 +47,49 @@ interface SessionWorkspaceFrameProps {
   onForcedRightRailTabApplied?: () => void
 }
 
+type ToolbarSlotProps = {
+  renderToolbar: SessionWorkspaceFrameProps['renderToolbar']
+  toolbarModel: ToolbarActionModel
+}
+
+const ToolbarSlot = memo(
+  function ToolbarSlot({ renderToolbar, toolbarModel }: ToolbarSlotProps) {
+    return <>{renderToolbar(toolbarModel)}</>
+  },
+  (previous, next) =>
+    previous.renderToolbar === next.renderToolbar && previous.toolbarModel === next.toolbarModel
+)
+
+type LeftRailSlotProps = {
+  renderLeftRail: SessionWorkspaceFrameProps['renderLeftRail']
+  leftRailActions: {
+    openRightRailTab: (tab: RightRailTab) => void
+    openInformationPanel: () => void
+  }
+}
+
+const LeftRailSlot = memo(
+  function LeftRailSlot({ renderLeftRail, leftRailActions }: LeftRailSlotProps) {
+    return <>{renderLeftRail(leftRailActions)}</>
+  },
+  (previous, next) =>
+    previous.renderLeftRail === next.renderLeftRail &&
+    previous.leftRailActions === next.leftRailActions
+)
+
+type CenterPaneSlotProps = {
+  renderCenterPane: SessionWorkspaceFrameProps['renderCenterPane']
+  view: CenterPaneView
+}
+
+const CenterPaneSlot = memo(
+  function CenterPaneSlot({ renderCenterPane, view }: CenterPaneSlotProps) {
+    return <>{renderCenterPane(view)}</>
+  },
+  (previous, next) =>
+    previous.renderCenterPane === next.renderCenterPane && previous.view === next.view
+)
+
 function normalizeIndicatorCount(rawCount: number | undefined): number {
   if (!Number.isFinite(rawCount)) return 0
   return Math.max(0, Math.floor(rawCount ?? 0))
@@ -306,7 +349,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
         className="session-workspace-frame__top-toolbar"
         data-ui-component="SessionWorkspaceToolbar"
       >
-        {renderToolbar(toolbarModel)}
+        <ToolbarSlot renderToolbar={renderToolbar} toolbarModel={toolbarModel} />
       </section>
 
       {systemToastsNode && (
@@ -333,7 +376,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
           className="session-workspace-frame__surface session-workspace-frame__left-rail-shell"
           data-ui-component="SessionWorkspaceLeftRail"
         >
-          {renderLeftRail(leftRailActions)}
+          <LeftRailSlot renderLeftRail={renderLeftRail} leftRailActions={leftRailActions} />
         </aside>
 
         <div
@@ -342,7 +385,9 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
           data-ui-component="SessionWorkspaceCenterPane"
           data-ui-state={toolbarCenterPaneView}
         >
-          {shouldRenderCenterPaneBase ? renderCenterPane(toolbarCenterPaneView) : null}
+          {shouldRenderCenterPaneBase ? (
+            <CenterPaneSlot renderCenterPane={renderCenterPane} view={toolbarCenterPaneView} />
+          ) : null}
 
           {isDockOverlayVisible && (
             <div
@@ -369,7 +414,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
                     data-testid="chat-dock-content"
                     className="session-workspace-frame__dock-chat-panel"
                   >
-                    {renderCenterPane('chat')}
+                    <CenterPaneSlot renderCenterPane={renderCenterPane} view="chat" />
                   </div>
                 ) : (
                   <Tabs value={activeRightRailTab}>
