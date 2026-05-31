@@ -81,6 +81,10 @@ const EMPTY_PAUSE_STATS = {
   pauseStartedAt: undefined,
 }
 
+const EMPTY_SESSION_VISIBLE_ROOMS: [] = []
+const EMPTY_SESSION_ROOM_MEMBERS: Record<UUID, never[]> = Object.freeze({})
+const EMPTY_SESSION_ROOM_ENVIRONMENTS: Record<UUID, string> = Object.freeze({})
+
 export function WorkspaceInitialization({
   apiUrl,
   wsUrl,
@@ -785,110 +789,185 @@ export function WorkspaceInitialization({
     isDeletingCampaign,
   })
 
-  const sessionWorkspaceProps = buildSessionWorkspaceProps({
-    hasSessionSelected,
-    currentSession,
-    currentPauseStats: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.currentPauseStats,
-    configuredCooldownDurationMs,
-    isTransitioningSession: activeTransitionSessionId === currentSession?.id,
-    canStartFromGreenroom: false,
-    canPauseFromActive: false,
-    canStopFromActive: false,
-    cooldownControlVisible: false,
-    canManageCooldown: false,
-    cooldownControlLockedReason: undefined,
-    canExtendCooldown: false,
-    extendCooldownLockedReason: undefined,
-    onStartSession: handleStartSession,
-    onPauseSession: handlePauseSession,
-    onStopSession: handleStopSession,
-    onCancelCooldown: handleCancelCooldown,
-    onExtendCooldown: (sessionId, durationMs) => {
+  const handleSessionWorkspaceExtendCooldown = useCallback(
+    (sessionId: UUID, durationMs: number) => {
       void handleExtendCooldown(sessionId, durationMs)
     },
-    onOpenUserSettings: handleOpenUserSettingsModal,
-    onExitToSelector: handleExitToCampaignSelector,
-    apiUrl,
-    token,
-    selectedCampaign: selectedCampaign ?? null,
-    sessions: sessionList,
-    sessionCount: sessionList.length,
-    connectedPlayers: 0,
-    connectedSpectatorsCount: 0,
-    effectiveSessionRole,
-    effectiveSessionUser: user,
-    visibleRooms: [],
-    roomMembersByRoomId: {},
-    selectedRoomId: '',
-    onSelectRoom: handleRoomSelection,
-    broadcastModeEnabled: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.broadcastModeEnabled,
-    onToggleBroadcastMode: handleToggleBroadcastMode,
-    dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
-    dmOverrides: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.dmOverrides,
-    currentConditionName: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.currentConditionName,
-    roomEnvironmentNames: {},
-    wsState,
-    wsRetrySecondsRemaining,
-    connectionStatus,
-    rightRailIndicators: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.rightRailIndicators,
-    partyPresenceRefreshVersion,
-    fetchWithAuthGuard,
-    selectedRoom: null,
-    campaignId: selectedCampaign?.id as UUID | undefined,
-    messageGroupingWindowMs,
-    sendWsEvent: send,
-    isGreenroomChatMode: false,
-    totalSessionDurationMs: settingsCampaignTotalDurationMs,
-    canEditCampaignInfo: Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id),
-    onSaveCampaignInfo: handleSaveCampaignInfoPanel,
-    campaignIdForSettings: selectedCampaignId,
-    sessionSettingsName,
-    sessionSettingsPlannedDurationMinutes,
-    defaultSessionDurationMinutes: settingsDefaultSessionDurationMins,
-    sessionStartedAt: currentSession?.startedAt,
-    canEditSessionSettings,
-    onSessionNameChange: setSessionSettingsName,
-    onPlannedDurationMinutesChange: handlePlannedDurationMinutesChange,
-    onSaveSessionSettings: () => {
-      void saveSessionSettings()
-      void saveCampaignSettings()
-    },
-    isSessionSettingsSaving,
-    sessionCampaignPolicy: {
+    [handleExtendCooldown]
+  )
+
+  const handleSessionWorkspaceSaveSettings = useCallback(() => {
+    void saveSessionSettings()
+    void saveCampaignSettings()
+  }, [saveCampaignSettings, saveSessionSettings])
+
+  const handleSessionWorkspaceSaveCharacterSettings = useCallback(() => {
+    void saveCharacterSettings()
+  }, [saveCharacterSettings])
+
+  const sessionWorkspaceCampaignPolicy = useMemo(
+    () => ({
       settingsDmAutoTargetOnFirstPlayerJoin,
-      onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value) =>
+      onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) =>
         campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value),
       settingsLateJoinPolicy,
-      onSettingsLateJoinPolicyChange: (value) =>
+      onSettingsLateJoinPolicyChange: (value: typeof settingsLateJoinPolicy) =>
         campaignSettingsActions.setSettingsLateJoinPolicy(value),
       settingsLateJoinGraceMinutes,
-      onSettingsLateJoinGraceMinutesChange: (value) =>
+      onSettingsLateJoinGraceMinutesChange: (value: number) =>
         campaignSettingsActions.setSettingsLateJoinGraceMinutes(value),
       settingsSpectatorsEnabled,
-      onSettingsSpectatorsEnabledChange: (value) =>
+      onSettingsSpectatorsEnabledChange: (value: boolean) =>
         campaignSettingsActions.setSettingsSpectatorsEnabled(value),
       settingsSpectatorMax,
-      onSettingsSpectatorMaxChange: (value) =>
+      onSettingsSpectatorMaxChange: (value: number) =>
         campaignSettingsActions.setSettingsSpectatorMax(value),
       settingsSpectatorWaitlistEnabled,
-      onSettingsSpectatorWaitlistEnabledChange: (value) =>
+      onSettingsSpectatorWaitlistEnabledChange: (value: boolean) =>
         campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(value),
       settingsSpectatorReconnectGraceSecs,
-      onSettingsSpectatorReconnectGraceSecsChange: (value) =>
+      onSettingsSpectatorReconnectGraceSecsChange: (value: number) =>
         campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(value),
       settingsPostSessionChatEnabled,
-      onSettingsPostSessionChatEnabledChange: (value) =>
+      onSettingsPostSessionChatEnabledChange: (value: boolean) =>
         campaignSettingsActions.setSettingsPostSessionChatEnabled(value),
-    },
-    characterDraft: characterSettingsPanel,
-    onCharacterFieldChange: handleCharacterFieldChange,
-    onSaveCharacterSettings: () => {
-      void saveCharacterSettings()
-    },
-    isCharacterSettingsLoading,
-    isCharacterSettingsSaving,
-    userId: user.id,
-  })
+    }),
+    [
+      campaignSettingsActions,
+      settingsDmAutoTargetOnFirstPlayerJoin,
+      settingsLateJoinGraceMinutes,
+      settingsLateJoinPolicy,
+      settingsPostSessionChatEnabled,
+      settingsSpectatorMax,
+      settingsSpectatorReconnectGraceSecs,
+      settingsSpectatorWaitlistEnabled,
+      settingsSpectatorsEnabled,
+    ]
+  )
+
+  const sessionWorkspaceProps = useMemo(
+    () =>
+      buildSessionWorkspaceProps({
+        hasSessionSelected,
+        currentSession,
+        currentPauseStats: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.currentPauseStats,
+        configuredCooldownDurationMs,
+        isTransitioningSession: activeTransitionSessionId === currentSession?.id,
+        canStartFromGreenroom: false,
+        canPauseFromActive: false,
+        canStopFromActive: false,
+        cooldownControlVisible: false,
+        canManageCooldown: false,
+        cooldownControlLockedReason: undefined,
+        canExtendCooldown: false,
+        extendCooldownLockedReason: undefined,
+        onStartSession: handleStartSession,
+        onPauseSession: handlePauseSession,
+        onStopSession: handleStopSession,
+        onCancelCooldown: handleCancelCooldown,
+        onExtendCooldown: handleSessionWorkspaceExtendCooldown,
+        onOpenUserSettings: handleOpenUserSettingsModal,
+        onExitToSelector: handleExitToCampaignSelector,
+        apiUrl,
+        token,
+        selectedCampaign: selectedCampaign ?? null,
+        sessions: sessionList,
+        sessionCount: sessionList.length,
+        connectedPlayers: 0,
+        connectedSpectatorsCount: 0,
+        effectiveSessionRole,
+        effectiveSessionUser: user,
+        visibleRooms: EMPTY_SESSION_VISIBLE_ROOMS,
+        roomMembersByRoomId: EMPTY_SESSION_ROOM_MEMBERS,
+        selectedRoomId: '',
+        onSelectRoom: handleRoomSelection,
+        broadcastModeEnabled: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.broadcastModeEnabled,
+        onToggleBroadcastMode: handleToggleBroadcastMode,
+        dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
+        dmOverrides: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.dmOverrides,
+        currentConditionName: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.currentConditionName,
+        roomEnvironmentNames: EMPTY_SESSION_ROOM_ENVIRONMENTS,
+        wsState,
+        wsRetrySecondsRemaining,
+        connectionStatus,
+        rightRailIndicators: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.rightRailIndicators,
+        partyPresenceRefreshVersion,
+        fetchWithAuthGuard,
+        selectedRoom: null,
+        campaignId: selectedCampaign?.id as UUID | undefined,
+        messageGroupingWindowMs,
+        sendWsEvent: send,
+        isGreenroomChatMode: false,
+        totalSessionDurationMs: settingsCampaignTotalDurationMs,
+        canEditCampaignInfo: Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id),
+        onSaveCampaignInfo: handleSaveCampaignInfoPanel,
+        campaignIdForSettings: selectedCampaignId,
+        sessionSettingsName,
+        sessionSettingsPlannedDurationMinutes,
+        defaultSessionDurationMinutes: settingsDefaultSessionDurationMins,
+        sessionStartedAt: currentSession?.startedAt,
+        canEditSessionSettings,
+        canEditEndedSessionName,
+        onSessionNameChange: setSessionSettingsName,
+        onPlannedDurationMinutesChange: handlePlannedDurationMinutesChange,
+        onSaveSessionSettings: handleSessionWorkspaceSaveSettings,
+        isSessionSettingsSaving,
+        sessionCampaignPolicy: sessionWorkspaceCampaignPolicy,
+        characterDraft: characterSettingsPanel,
+        onCharacterFieldChange: handleCharacterFieldChange,
+        onSaveCharacterSettings: handleSessionWorkspaceSaveCharacterSettings,
+        isCharacterSettingsLoading,
+        isCharacterSettingsSaving,
+        userId: user.id,
+      }),
+    [
+      activeTransitionSessionId,
+      apiUrl,
+      canEditSessionSettings,
+      canEditEndedSessionName,
+      characterSettingsPanel,
+      configuredCooldownDurationMs,
+      connectionStatus,
+      currentSession,
+      effectiveSessionRole,
+      fetchWithAuthGuard,
+      handleCancelCooldown,
+      handleCharacterFieldChange,
+      handleOpenUserSettingsModal,
+      handlePauseSession,
+      handlePlannedDurationMinutesChange,
+      handleRoomSelection,
+      handleSessionWorkspaceExtendCooldown,
+      handleSessionWorkspaceSaveCharacterSettings,
+      handleSessionWorkspaceSaveSettings,
+      handleExitToCampaignSelector,
+      handleSaveCampaignInfoPanel,
+      handleStartSession,
+      handleStopSession,
+      handleToggleBroadcastMode,
+      hasSessionSelected,
+      isCharacterSettingsLoading,
+      isCharacterSettingsSaving,
+      isSessionSettingsSaving,
+      messageGroupingWindowMs,
+      partyPresenceRefreshVersion,
+      selectedCampaign,
+      selectedCampaignId,
+      send,
+      sessionList,
+      sessionSettingsName,
+      sessionSettingsPlannedDurationMinutes,
+      sessionWorkspaceCampaignPolicy,
+      settingsCampaignTotalDurationMs,
+      settingsDefaultSessionDurationMins,
+      settingsDmAutoTargetOnFirstPlayerJoin,
+      setSessionSettingsName,
+      token,
+      user,
+      wsRetrySecondsRemaining,
+      wsState,
+    ]
+  )
 
   const lobbyModalsProps = buildLobbyModalsProps({
     showCreateCampaignModal,

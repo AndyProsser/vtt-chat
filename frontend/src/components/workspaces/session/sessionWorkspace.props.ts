@@ -62,6 +62,7 @@ type BuildSessionWorkspacePropsParams = {
   defaultSessionDurationMinutes: number
   sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
+  canEditEndedSessionName: boolean
   onSessionNameChange: ComponentProps<typeof SessionWorkspace>['onSessionNameChange']
   onPlannedDurationMinutesChange: ComponentProps<
     typeof SessionWorkspace
@@ -140,6 +141,7 @@ export function buildSessionWorkspaceProps(
     defaultSessionDurationMinutes: params.defaultSessionDurationMinutes,
     sessionStartedAt: params.sessionStartedAt,
     canEditSessionSettings: params.canEditSessionSettings,
+    canEditEndedSessionName: params.canEditEndedSessionName,
     onSessionNameChange: params.onSessionNameChange,
     onPlannedDurationMinutesChange: params.onPlannedDurationMinutesChange,
     onSaveSessionSettings: params.onSaveSessionSettings,
