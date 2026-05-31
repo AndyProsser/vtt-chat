@@ -13,6 +13,21 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
   const [forcedRightRailTab, setForcedRightRailTab] = useState<'settings' | null>(null)
   const [playerSettingsFocusRequestKey, setPlayerSettingsFocusRequestKey] = useState(0)
   const [chatUnreadCount, setChatUnreadCount] = useState(0)
+  const currentSession = props.currentSession
+  const currentSessionId = currentSession?.id
+  const currentSessionState = currentSession?.state
+  const currentSessionName = currentSession?.name
+  const currentSessionDmId = currentSession?.dmId
+  const currentSessionStartedAt = currentSession?.startedAt
+  const currentSessionEndedAt = currentSession?.endedAt
+  const selectedCampaignName = props.selectedCampaign?.name
+  const selectedCampaignDescription = props.selectedCampaign?.description ?? undefined
+  const configuredCooldownDurationMs = props.configuredCooldownDurationMs
+  const onStartSession = props.onStartSession
+  const onPauseSession = props.onPauseSession
+  const onCancelCooldown = props.onCancelCooldown
+  const onExtendCooldown = props.onExtendCooldown
+
   const handleOpenPlayerSettingsFromParty = useCallback(() => {
     setPlayerSettingsFocusRequestKey((current) => current + 1)
     setForcedRightRailTab('settings')
@@ -20,37 +35,38 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
   const handleForcedRightRailTabApplied = useCallback(() => {
     setForcedRightRailTab(null)
   }, [])
+
   const handleStartSession = useCallback(() => {
-    if (!props.currentSession) {
+    if (!currentSessionId) {
       return
     }
 
-    props.onStartSession(props.currentSession.id)
-  }, [props.currentSession, props.onStartSession])
+    onStartSession(currentSessionId)
+  }, [currentSessionId, onStartSession])
 
   const handlePauseSession = useCallback(() => {
-    if (!props.currentSession) {
+    if (!currentSessionId) {
       return
     }
 
-    props.onPauseSession(props.currentSession.id)
-  }, [props.currentSession, props.onPauseSession])
+    onPauseSession(currentSessionId)
+  }, [currentSessionId, onPauseSession])
 
   const handleCancelCooldown = useCallback(() => {
-    if (!props.currentSession) {
+    if (!currentSessionId) {
       return
     }
 
-    props.onCancelCooldown(props.currentSession.id)
-  }, [props.currentSession, props.onCancelCooldown])
+    onCancelCooldown(currentSessionId)
+  }, [currentSessionId, onCancelCooldown])
 
   const handleExtendCooldown = useCallback(() => {
-    if (!props.currentSession) {
+    if (!currentSessionId) {
       return
     }
 
-    props.onExtendCooldown(props.currentSession.id, props.configuredCooldownDurationMs)
-  }, [props.configuredCooldownDurationMs, props.currentSession, props.onExtendCooldown])
+    onExtendCooldown(currentSessionId, configuredCooldownDurationMs)
+  }, [configuredCooldownDurationMs, currentSessionId, onExtendCooldown])
 
   const renderSystemToasts = useCallback(
     () => (
@@ -64,7 +80,7 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
 
   const renderToolbar = useCallback(
     (actions: ToolbarActionModel) => {
-      if (!props.currentSession) {
+      if (!currentSessionId || !currentSessionState) {
         return null
       }
 
@@ -75,9 +91,9 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           statusLabel={props.connectionStatus.label}
           coreWsState={props.connectionStatus.coreWsState}
           livekitState={props.connectionStatus.livekitState}
-          sessionId={props.currentSession.id}
-          sessionState={props.currentSession.state}
-          cooldownDurationMs={props.configuredCooldownDurationMs}
+          sessionId={currentSessionId}
+          sessionState={currentSessionState}
+          cooldownDurationMs={configuredCooldownDurationMs}
           isTransitioningSession={props.isTransitioningSession}
           canStartSession={props.canStartFromGreenroom}
           canPauseSession={props.canPauseFromActive}
@@ -103,7 +119,7 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.canPauseFromActive,
       props.canStartFromGreenroom,
       props.canStopFromActive,
-      props.configuredCooldownDurationMs,
+      configuredCooldownDurationMs,
       props.connectionStatus.coreWsState,
       props.connectionStatus.label,
       props.connectionStatus.livekitState,
@@ -115,8 +131,9 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       handleExtendCooldown,
       handlePauseSession,
       handleStartSession,
+      currentSessionId,
+      currentSessionState,
       props.isTransitioningSession,
-      props.currentSession,
       props.onExitToSelector,
       props.onOpenUserSettings,
       props.onStopSession,
@@ -130,7 +147,7 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       openRightRailTab: (tab: RightRailTab) => void
       openInformationPanel: () => void
     }) => {
-      if (!props.currentSession) {
+      if (!currentSessionId || !currentSessionState || !currentSessionName || !currentSessionDmId) {
         return null
       }
 
@@ -139,16 +156,16 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           onOpenInfoPanel={openInformationPanel}
           apiUrl={props.apiUrl}
           token={props.token}
-          sessionId={props.currentSession.id}
-          selectedCampaignName={props.selectedCampaign?.name}
-          selectedCampaignDescription={props.selectedCampaign?.description ?? undefined}
+          sessionId={currentSessionId}
+          selectedCampaignName={selectedCampaignName}
+          selectedCampaignDescription={selectedCampaignDescription}
           effectiveSessionRole={props.effectiveSessionRole}
-          sessionState={props.currentSession.state}
-          sessionName={props.currentSession.name}
+          sessionState={currentSessionState}
+          sessionName={currentSessionName}
           sessionCount={props.sessionCount}
           connectedPlayers={props.connectedPlayers}
           connectedSpectatorsCount={props.connectedSpectatorsCount}
-          dmUserId={props.currentSession.dmId}
+          dmUserId={currentSessionDmId}
           effectiveSessionUserId={props.effectiveSessionUser.id}
           visibleRooms={props.visibleRooms}
           roomMembersByRoomId={props.roomMembersByRoomId}
@@ -160,7 +177,7 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           dmOverrides={props.dmOverrides}
           currentConditionName={props.currentConditionName}
           roomEnvironmentNames={props.roomEnvironmentNames ?? {}}
-          sessionEndedAt={props.currentSession.endedAt}
+          sessionEndedAt={currentSessionEndedAt}
           configuredCooldownDurationMs={props.configuredCooldownDurationMs}
         />
       )
@@ -172,7 +189,6 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.connectedPlayers,
       props.connectedSpectatorsCount,
       props.currentConditionName,
-      props.currentSession,
       props.dmAutoTargetOnFirstPlayerJoin,
       props.dmOverrides,
       props.effectiveSessionRole,
@@ -181,17 +197,23 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.onToggleBroadcastMode,
       props.roomEnvironmentNames,
       props.roomMembersByRoomId,
-      props.selectedCampaign,
       props.selectedRoomId,
       props.sessionCount,
       props.token,
       props.visibleRooms,
+      currentSessionDmId,
+      currentSessionEndedAt,
+      currentSessionId,
+      currentSessionName,
+      currentSessionState,
+      selectedCampaignDescription,
+      selectedCampaignName,
     ]
   )
 
   const renderCenterPane = useCallback(
     (view: CenterPaneView) => {
-      if (!props.currentSession) {
+      if (!currentSessionId || !currentSessionState) {
         return null
       }
 
@@ -199,13 +221,13 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
         <SessionWorkspaceCenterPane
           view={view}
           effectiveSessionRole={props.effectiveSessionRole}
-          currentSessionState={props.currentSession.state}
-          sessionEndedAt={props.currentSession.endedAt}
+          currentSessionState={currentSessionState}
+          sessionEndedAt={currentSessionEndedAt}
           configuredCooldownDurationMs={props.configuredCooldownDurationMs}
           selectedRoomId={props.selectedRoomId}
           apiUrl={props.apiUrl}
           token={props.token}
-          currentSessionId={props.currentSession.id}
+          currentSessionId={currentSessionId}
           selectedRoom={props.selectedRoom}
           campaignId={props.campaignId}
           effectiveSessionUser={props.effectiveSessionUser}
@@ -220,7 +242,6 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.apiUrl,
       props.campaignId,
       props.configuredCooldownDurationMs,
-      props.currentSession,
       props.effectiveSessionRole,
       props.effectiveSessionUser,
       props.isGreenroomChatMode,
@@ -229,12 +250,15 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.selectedRoomId,
       props.sendWsEvent,
       props.token,
+      currentSessionEndedAt,
+      currentSessionId,
+      currentSessionState,
     ]
   )
 
   const renderRightRailTab = useCallback(
     (tab: RightRailTab) => {
-      if (!props.currentSession) {
+      if (!currentSessionId || !currentSessionName || !currentSessionState) {
         return null
       }
 
@@ -250,9 +274,9 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           campaignId={props.campaignId}
           apiUrl={props.apiUrl}
           token={props.token}
-          currentSessionId={props.currentSession.id}
-          currentSessionName={props.currentSession.name}
-          currentSessionState={props.currentSession.state}
+          currentSessionId={currentSessionId}
+          currentSessionName={currentSessionName}
+          currentSessionState={currentSessionState}
           effectiveSessionUserId={props.effectiveSessionUser.id}
           partyPresenceRefreshVersion={props.partyPresenceRefreshVersion}
           fetchWithAuthGuard={props.fetchWithAuthGuard}
@@ -261,7 +285,7 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           sessionSettingsName={props.sessionSettingsName}
           sessionSettingsPlannedDurationMinutes={props.sessionSettingsPlannedDurationMinutes}
           defaultSessionDurationMinutes={props.defaultSessionDurationMinutes}
-          sessionStartedAt={props.currentSession.startedAt}
+          sessionStartedAt={currentSessionStartedAt}
           canEditSessionSettings={props.canEditSessionSettings}
           canEditEndedSessionName={props.canEditEndedSessionName}
           onSessionNameChange={props.onSessionNameChange}
@@ -290,7 +314,6 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.campaignId,
       props.campaignIdForSettings,
       props.characterDraft,
-      props.currentSession,
       props.defaultSessionDurationMinutes,
       props.effectiveSessionRole,
       props.effectiveSessionUser.id,
@@ -314,15 +337,17 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.token,
       props.totalSessionDurationMs,
       props.userId,
+      currentSessionId,
+      currentSessionName,
+      currentSessionStartedAt,
+      currentSessionState,
     ]
   )
 
   if (!props.hasSessionSelected || !props.currentSession) {
     return null
   }
-
-  const currentSession = props.currentSession
-  const workspaceDiagnosticState = `${props.effectiveSessionRole}|${currentSession.state}`
+  const workspaceDiagnosticState = `${props.effectiveSessionRole}|${props.currentSession.state}`
 
   return (
     <div

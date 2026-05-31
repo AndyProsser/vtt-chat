@@ -267,6 +267,7 @@ export const SessionWorkspaceChromeConnector = memo(
         dmOverrides={dmOverrides}
         broadcastModeEnabled={broadcastModeEnabled}
         currentConditionName={currentConditionName}
+        roomEnvironmentNames={roomEnvironmentNames}
         rightRailIndicators={rightRailIndicators}
         visibleRooms={visibleRooms}
         roomMembersByRoomId={typedRoomMembers}
