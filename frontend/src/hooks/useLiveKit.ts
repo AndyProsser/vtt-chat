@@ -1580,10 +1580,10 @@ export function useLiveKit(
     }
 
     let cancelled = false
+    let startTimer: ReturnType<typeof setTimeout> | null = null
     const targetConnectionKey = `${sessionId}:${roomId}:${tokenChannel}`
 
     const startConnection = async () => {
-      await Promise.resolve()
       if (cancelled) {
         logConnectionStartDiag('effect_early_return_cancelled_before_start')
         return
@@ -1639,10 +1639,17 @@ export function useLiveKit(
       }
     }
 
-    void startConnection()
+    // Delay connection work to the next task so StrictMode probe cleanups and
+    // same-tick room retargets can cancel before token fetch/socket setup begins.
+    startTimer = setTimeout(() => {
+      void startConnection()
+    }, 0)
 
     return () => {
       cancelled = true
+      if (startTimer) {
+        clearTimeout(startTimer)
+      }
     }
   }, [
     sessionId,
