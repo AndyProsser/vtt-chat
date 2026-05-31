@@ -301,6 +301,7 @@ function renderRow(row: HistoryRow) {
 function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowComponentProps<RowData>) {
   const row = data.rows[index]
   const contentRef = useRef<HTMLDivElement | null>(null)
+  const lastHeightRef = useRef<number | null>(null)
 
   useLayoutEffect(() => {
     const node = contentRef.current
@@ -308,28 +309,42 @@ function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowCompone
       return
     }
 
-    // Measure the inner content node so dynamic rows can resize after initial render.
+    // Debounced size reporting to reduce ResizeObserver overhead
+    let timeoutId: NodeJS.Timeout | null = null
+
     const reportSize = () => {
       const height = Math.ceil(node.getBoundingClientRect().height)
-      if (height > 0) {
+      if (height > 0 && lastHeightRef.current !== height) {
+        lastHeightRef.current = height
         data.rowHeightCache.setRowHeight(index, height)
       }
     }
 
+    // Initial measurement
     reportSize()
 
     if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', reportSize)
+      const handleResize = () => {
+        if (timeoutId) clearTimeout(timeoutId)
+        timeoutId = setTimeout(reportSize, 50)
+      }
+      window.addEventListener('resize', handleResize)
       return () => {
-        window.removeEventListener('resize', reportSize)
+        window.removeEventListener('resize', handleResize)
+        if (timeoutId) clearTimeout(timeoutId)
       }
     }
 
-    const observer = new ResizeObserver(reportSize)
+    // Use ResizeObserver with debounced callback
+    const observer = new ResizeObserver(() => {
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = setTimeout(reportSize, 16) // ~60fps debounce
+    })
     observer.observe(node)
 
     return () => {
       observer.disconnect()
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [data.rowHeightCache, index, row])
 
