@@ -1,21 +1,11 @@
-import {
-  Fragment,
-  createContext,
-  forwardRef,
-  memo,
-  use,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties, RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import {
-  VariableSizeList as List,
-  type ListChildComponentProps,
-  type VariableSizeList as VariableSizeListType,
+  List,
+  type DynamicRowHeight,
+  type RowComponentProps,
+  useDynamicRowHeight,
+  useListCallbackRef,
 } from 'react-window'
 import { MessageType } from '@shared'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
@@ -23,12 +13,6 @@ import type { MessageListProps, PreparedMessage } from './MessageList'
 
 interface MessageListVirtualizedProps extends Omit<MessageListProps, 'messages'> {
   preparedMessages: PreparedMessage[]
-}
-
-interface VirtualizedContextValue {
-  topSentinelRef?: RefObject<HTMLDivElement | null>
-  onListScroll?: UIEventHandler<HTMLDivElement>
-  onListWheel?: WheelEventHandler<HTMLDivElement>
 }
 
 interface VirtualizedListData {
@@ -40,11 +24,8 @@ interface VirtualizedListData {
   roomDirectory?: Record<string, { name: string }>
   activeRoomId?: string
   hideIntermissionMarkers: boolean
-  setMeasuredSize: (messageId: string, index: number, size: number) => void
-  getEstimatedSize: (message: PreparedMessage) => number
+  rowHeightCache: DynamicRowHeight
 }
-
-const VirtualizedListContext = createContext<VirtualizedContextValue | null>(null)
 
 const TYPE_LABEL_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system', string> = {
   ic: 'In Character',
@@ -426,73 +407,27 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
   )
 }
 
-function VirtualizedOuterElement(
-  props: React.HTMLAttributes<HTMLDivElement>,
-  ref: React.ForwardedRef<HTMLDivElement>
-) {
-  const context = use(VirtualizedListContext)
-
-  return (
-    <div
-      {...props}
-      ref={ref}
-      onScroll={(event) => {
-        props.onScroll?.(event)
-        context?.onListScroll?.(event)
-      }}
-      onWheel={(event) => {
-        props.onWheel?.(event)
-        context?.onListWheel?.(event)
-      }}
-    />
-  )
-}
-
-function VirtualizedInnerElement(
-  props: React.HTMLAttributes<HTMLDivElement>,
-  ref: React.ForwardedRef<HTMLDivElement>
-) {
-  const context = use(VirtualizedListContext)
-
-  return (
-    <div {...props} ref={ref}>
-      {context?.topSentinelRef ? (
-        <div
-          ref={context.topSentinelRef}
-          aria-hidden="true"
-          className="session-message-list__sentinel"
-        />
-      ) : null}
-      {props.children}
-    </div>
-  )
-}
-
-const OuterElement = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  VirtualizedOuterElement
-)
-const InnerElement = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  VirtualizedInnerElement
-)
-
-function MessageRow({ index, style, data }: ListChildComponentProps<VirtualizedListData>) {
+function MessageRow({
+  ariaAttributes,
+  index,
+  style,
+  ...data
+}: RowComponentProps<VirtualizedListData>) {
   const prepared = data.messages[index]
   const contentRef = useRef<HTMLDivElement | null>(null)
 
   useLayoutEffect(() => {
     const node = contentRef.current
-    if (!node) {
+    if (!node || !prepared) {
       return
     }
 
-    // Measure the inner content node — never the wrapper, because react-window
-    // pins the wrapper to its currently estimated `height`. Reading the wrapper
-    // would just echo that estimate back and tall messages would overflow into
-    // the next row.
+    // Measure the inner content node — never the wrapper, because the wrapper
+    // may be positioned using a stale estimate during the first render pass.
     const reportSize = () => {
       const height = Math.ceil(node.getBoundingClientRect().height)
       if (height > 0) {
-        data.setMeasuredSize(prepared.msg.id, index, height)
+        data.rowHeightCache.setRowHeight(index, height)
       }
     }
 
@@ -511,18 +446,24 @@ function MessageRow({ index, style, data }: ListChildComponentProps<VirtualizedL
     return () => {
       observer.disconnect()
     }
-  }, [data, index, prepared.msg.id])
+  }, [data.rowHeightCache, index, prepared])
+
+  if (!prepared) {
+    return null
+  }
 
   return (
-    <div style={style as CSSProperties} className="session-message-list__virtual-row">
+    <div
+      {...ariaAttributes}
+      style={style as CSSProperties}
+      className="session-message-list__virtual-row"
+    >
       <div ref={contentRef} className="session-message-list__virtual-row-content">
         {renderPreparedMessage(prepared, data)}
       </div>
     </div>
   )
 }
-
-const MemoizedMessageRow = memo(MessageRow)
 
 export function MessageListVirtualized({
   preparedMessages,
@@ -539,11 +480,7 @@ export function MessageListVirtualized({
   hideIntermissionMarkers = false,
   emptyDayLabel,
 }: MessageListVirtualizedProps) {
-  const shellRef = useRef<HTMLDivElement | null>(null)
-  const listInstanceRef = useRef<VariableSizeListType | null>(null)
-  const [viewportHeight, setViewportHeight] = useState(1)
-  const [listViewportWidth, setListViewportWidth] = useState(1)
-  const sizeCacheRef = useRef<Record<string, number>>({})
+  const [listApi, setListApi] = useListCallbackRef(null)
 
   const visibleMessages = useMemo(
     () =>
@@ -560,90 +497,38 @@ export function MessageListVirtualized({
     [hideIntermissionMarkers, preparedMessages]
   )
 
-  useLayoutEffect(() => {
-    const node = shellRef.current
-    if (!node) {
-      return
+  const defaultRowHeight = useMemo(() => {
+    if (visibleMessages.length === 0) {
+      return 96
     }
 
-    const updateHeight = () => {
-      const nextHeight = Math.max(1, node.clientHeight)
-      const nextWidth = Math.max(
-        1,
-        Math.round(
-          (listRef?.current?.getBoundingClientRect().width ?? node.getBoundingClientRect().width) *
-            100
-        ) / 100
-      )
+    const sampleSize = Math.min(16, visibleMessages.length)
+    let total = 0
 
-      setViewportHeight((currentHeight) =>
-        currentHeight === nextHeight ? currentHeight : nextHeight
-      )
-      setListViewportWidth((currentWidth) =>
-        currentWidth === nextWidth ? currentWidth : nextWidth
-      )
+    for (let index = 0; index < sampleSize; index += 1) {
+      total += estimateMessageHeight(visibleMessages[index])
     }
 
-    updateHeight()
-
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateHeight)
-      return () => {
-        window.removeEventListener('resize', updateHeight)
-      }
-    }
-
-    const observer = new ResizeObserver(updateHeight)
-    observer.observe(node)
-    const listNode = listRef?.current
-    if (listNode && listNode !== node) {
-      observer.observe(listNode)
-    }
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [listRef, visibleMessages.length])
-
-  useEffect(() => {
-    listInstanceRef.current?.resetAfterIndex(0, true)
+    return Math.max(68, Math.round(total / sampleSize))
   }, [visibleMessages])
 
-  useEffect(() => {
-    // Width changes can alter text wrapping, so previously measured row heights
-    // are no longer valid and must be recomputed.
-    sizeCacheRef.current = {}
-    listInstanceRef.current?.resetAfterIndex(0, true)
-  }, [listViewportWidth])
+  const rowHeightCache = useDynamicRowHeight({ defaultRowHeight })
 
   useEffect(() => {
-    // Height-only container changes do not affect bubble intrinsic height.
-    // Keep the existing size cache and just relayout offsets to avoid
-    // regressing into estimate-only rows.
-    listInstanceRef.current?.resetAfterIndex(0, false)
-  }, [viewportHeight])
-
-  const getEstimatedSize = useCallback(
-    (message: PreparedMessage) => estimateMessageHeight(message),
-    []
-  )
-
-  const setMeasuredSize = useCallback((messageId: string, index: number, size: number) => {
-    const previousSize = sizeCacheRef.current[messageId]
-    if (previousSize === size) {
+    if (!listRef || visibleMessages.length === 0) {
       return
     }
 
-    sizeCacheRef.current[messageId] = size
-    listInstanceRef.current?.resetAfterIndex(index, false)
-  }, [])
+    ;(listRef as { current: HTMLDivElement | null }).current = listApi?.element ?? null
+
+    return () => {
+      ;(listRef as { current: HTMLDivElement | null }).current = null
+    }
+  }, [listApi, listRef, visibleMessages.length])
 
   if (visibleMessages.length === 0) {
     return (
-      <div
-        ref={shellRef}
-        style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}
-      >
+      <div style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}>
         <div
           ref={listRef}
           onScroll={onListScroll}
@@ -668,7 +553,7 @@ export function MessageListVirtualized({
     )
   }
 
-  const itemData: VirtualizedListData = {
+  const rowProps: VirtualizedListData = {
     messages: visibleMessages,
     currentUserId,
     currentUserRole,
@@ -677,38 +562,33 @@ export function MessageListVirtualized({
     roomDirectory,
     activeRoomId,
     hideIntermissionMarkers,
-    setMeasuredSize,
-    getEstimatedSize,
+    rowHeightCache,
   }
 
   return (
-    <div ref={shellRef} style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}>
-      <VirtualizedListContext value={{ topSentinelRef, onListScroll, onListWheel }}>
-        <List
-          ref={listInstanceRef}
-          outerRef={listRef}
-          outerElementType={OuterElement}
-          innerElementType={InnerElement}
-          className="session-message-list"
-          height={viewportHeight}
-          width="100%"
-          itemCount={visibleMessages.length}
-          itemData={itemData}
-          itemKey={(index: number, items: VirtualizedListData) =>
-            `${listViewportWidth}:${items.messages[index]?.msg.id ?? index}`
-          }
-          itemSize={(index: number) => {
-            const message = visibleMessages[index]
-            if (!message) {
-              return 1
-            }
-            return sizeCacheRef.current[message.msg.id] ?? getEstimatedSize(message)
-          }}
-          overscanCount={6}
-        >
-          {MemoizedMessageRow}
-        </List>
-      </VirtualizedListContext>
+    <div style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}>
+      <List
+        listRef={setListApi}
+        className="session-message-list"
+        defaultHeight={420}
+        style={{ height: '100%' }}
+        onScroll={onListScroll}
+        onWheel={onListWheel}
+        rowCount={visibleMessages.length}
+        rowHeight={rowHeightCache}
+        rowProps={rowProps}
+        rowComponent={MessageRow}
+        overscanCount={6}
+      >
+        {topSentinelRef ? (
+          <div
+            ref={topSentinelRef}
+            aria-hidden="true"
+            className="session-message-list__sentinel"
+            style={{ position: 'absolute', top: 0, left: 0, right: 0 }}
+          />
+        ) : null}
+      </List>
     </div>
   )
 }

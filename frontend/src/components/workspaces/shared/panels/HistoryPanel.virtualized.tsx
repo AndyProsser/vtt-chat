@@ -1,27 +1,16 @@
-import {
-  forwardRef,
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { memo, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import {
-  VariableSizeList as List,
-  type ListChildComponentProps,
-  type VariableSizeList as VariableSizeListType,
+  List,
+  type DynamicRowHeight,
+  type RowComponentProps,
+  useDynamicRowHeight,
 } from 'react-window'
 import { MessageType, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
 import type { SessionHistoryMessage } from '@/types/history'
-import {
-  type ParsedNoteSharedMessage,
-  parseNoteSharedMessage,
-} from '@/utils/noteSharedMessage'
+import { type ParsedNoteSharedMessage, parseNoteSharedMessage } from '@/utils/noteSharedMessage'
 import {
   CAMPAIGN_BRIEF_PREFIX,
   HISTORY_GROUPING_WINDOW_MS,
@@ -106,8 +95,7 @@ export function flattenHistoryGroupsToRows(
 
       if (isSessionRecap) {
         const recapBody = message.content.slice(recapPrefix.length).trim()
-        const recapLabel =
-          recapPrefix === CAMPAIGN_BRIEF_PREFIX ? 'Campaign Brief' : 'Last Session'
+        const recapLabel = recapPrefix === CAMPAIGN_BRIEF_PREFIX ? 'Campaign Brief' : 'Last Session'
         rows.push({
           kind: 'recap',
           key: `recap:${group.sessionId}:${message.id}`,
@@ -139,8 +127,8 @@ export function flattenHistoryGroupsToRows(
 
       const isGroupedWithPrevious = Boolean(
         previousMessage &&
-          previousMessage.authorId === message.authorId &&
-          Math.abs(message.createdAt - previousMessage.createdAt) <= HISTORY_GROUPING_WINDOW_MS
+        previousMessage.authorId === message.authorId &&
+        Math.abs(message.createdAt - previousMessage.createdAt) <= HISTORY_GROUPING_WINDOW_MS
       )
 
       rows.push({
@@ -160,7 +148,7 @@ export function flattenHistoryGroupsToRows(
 
 interface RowData {
   rows: HistoryRow[]
-  setMeasuredSize: (key: string, index: number, size: number) => void
+  rowHeightCache: DynamicRowHeight
 }
 
 // Conservative starting estimates — actual height is measured & cached after
@@ -287,9 +275,7 @@ function HistoryMessageRow({
 
 function renderRow(row: HistoryRow) {
   if (row.kind === 'boundary') {
-    return (
-      <HistoryBoundaryRow sessionName={row.sessionName} startedAtLabel={row.startedAtLabel} />
-    )
+    return <HistoryBoundaryRow sessionName={row.sessionName} startedAtLabel={row.startedAtLabel} />
   }
   if (row.kind === 'recap') {
     return <HistoryRecapRow recapLabel={row.recapLabel} body={row.body} />
@@ -312,37 +298,21 @@ function renderRow(row: HistoryRow) {
   )
 }
 
-/**
- * Inner element forwarded to react-window. Wraps the absolutely-positioned
- * row layer so we can apply a knowledge-panel-history list class for styling.
- */
-const InnerElement = forwardRef<HTMLDivElement, { style?: CSSProperties; children?: unknown }>(
-  function InnerElement({ style, children, ...rest }, ref) {
-    return (
-      <div ref={ref} style={style} className="knowledge-panel-history__virtual-inner" {...rest}>
-        {children as React.ReactNode}
-      </div>
-    )
-  }
-)
-
-function HistoryVirtualRow({ index, style, data }: ListChildComponentProps<RowData>) {
+function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowComponentProps<RowData>) {
   const row = data.rows[index]
   const contentRef = useRef<HTMLDivElement | null>(null)
 
   useLayoutEffect(() => {
     const node = contentRef.current
-    if (!node) {
+    if (!node || !row) {
       return
     }
 
-    // Measure the inner content node — react-window pins the wrapper to its
-    // currently estimated height, so measuring the wrapper just echoes that
-    // back. We need the natural content size to correctly reflow neighbours.
+    // Measure the inner content node so dynamic rows can resize after initial render.
     const reportSize = () => {
       const height = Math.ceil(node.getBoundingClientRect().height)
       if (height > 0) {
-        data.setMeasuredSize(row.key, index, height)
+        data.rowHeightCache.setRowHeight(index, height)
       }
     }
 
@@ -361,10 +331,18 @@ function HistoryVirtualRow({ index, style, data }: ListChildComponentProps<RowDa
     return () => {
       observer.disconnect()
     }
-  }, [data, index, row.key])
+  }, [data.rowHeightCache, index, row])
+
+  if (!row) {
+    return null
+  }
 
   return (
-    <div style={style as CSSProperties} className="session-message-list__virtual-row">
+    <div
+      {...ariaAttributes}
+      style={style as CSSProperties}
+      className="session-message-list__virtual-row"
+    >
       <div ref={contentRef} className="session-message-list__virtual-row-content">
         {renderRow(row)}
       </div>
@@ -379,100 +357,43 @@ export interface HistoryPanelVirtualListProps {
 }
 
 /**
- * Windowed renderer for HistoryPanel. Mirrors the MessageList virtualization
- * pattern: VariableSizeList with ResizeObserver-measured content cells, a
- * width-keyed cache invalidation pass, and horizontal padding on the row
- * wrapper so absolutely-positioned rows don't clip avatars at the edges.
+ * Windowed renderer for HistoryPanel using react-window v2 list primitives.
  */
 export function HistoryPanelVirtualList({ rows }: HistoryPanelVirtualListProps) {
-  const shellRef = useRef<HTMLDivElement | null>(null)
-  const listInstanceRef = useRef<VariableSizeListType | null>(null)
-  const [viewportHeight, setViewportHeight] = useState(1)
-  const [viewportWidth, setViewportWidth] = useState(1)
-  const sizeCacheRef = useRef<Record<string, number>>({})
-
-  useLayoutEffect(() => {
-    const node = shellRef.current
-    if (!node) {
-      return
+  const defaultRowHeight = useMemo(() => {
+    if (rows.length === 0) {
+      return 96
     }
 
-    const updateSize = () => {
-      const nextHeight = Math.max(1, Math.floor(node.clientHeight))
-      const nextWidth = Math.max(1, Math.floor(node.clientWidth))
-      setViewportHeight((current) => (current === nextHeight ? current : nextHeight))
-      setViewportWidth((current) => (current === nextWidth ? current : nextWidth))
+    const sampleSize = Math.min(16, rows.length)
+    let total = 0
+
+    for (let index = 0; index < sampleSize; index += 1) {
+      total += estimateRowHeight(rows[index])
     }
 
-    updateSize()
-
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateSize)
-      return () => {
-        window.removeEventListener('resize', updateSize)
-      }
-    }
-
-    const observer = new ResizeObserver(updateSize)
-    observer.observe(node)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
-
-  // Reflow when the row set itself changes (new fetch, filter, sort).
-  useEffect(() => {
-    listInstanceRef.current?.resetAfterIndex(0, true)
+    return Math.max(56, Math.round(total / sampleSize))
   }, [rows])
 
-  // Width changes invalidate all measured heights — text wraps to a different
-  // number of lines so the cache is no longer accurate.
-  useEffect(() => {
-    sizeCacheRef.current = {}
-    listInstanceRef.current?.resetAfterIndex(0, true)
-  }, [viewportWidth])
-
-  const setMeasuredSize = useCallback((key: string, index: number, size: number) => {
-    const previous = sizeCacheRef.current[key]
-    if (previous === size) {
-      return
-    }
-    sizeCacheRef.current[key] = size
-    listInstanceRef.current?.resetAfterIndex(index, false)
-  }, [])
-
-  const itemData = useMemo<RowData>(() => ({ rows, setMeasuredSize }), [rows, setMeasuredSize])
+  const rowHeightCache = useDynamicRowHeight({ defaultRowHeight })
+  const rowProps = useMemo<RowData>(() => ({ rows, rowHeightCache }), [rows, rowHeightCache])
 
   if (rows.length === 0) {
     return null
   }
 
   return (
-    <div
-      ref={shellRef}
-      style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}
-    >
+    <div style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}>
       <List
-        ref={listInstanceRef}
-        innerElementType={InnerElement}
         className="knowledge-panel-history__virtual-list"
-        height={viewportHeight}
-        width="100%"
-        itemCount={rows.length}
-        itemData={itemData}
-        itemKey={(index, data) => data.rows[index]?.key ?? index}
-        itemSize={(index) => {
-          const row = rows[index]
-          if (!row) {
-            return 1
-          }
-          return sizeCacheRef.current[row.key] ?? estimateRowHeight(row)
-        }}
+        defaultHeight={360}
+        style={{ height: '100%' }}
+        rowCount={rows.length}
+        rowHeight={rowHeightCache}
+        rowProps={rowProps}
+        rowComponent={MemoizedHistoryVirtualRow}
         overscanCount={6}
-      >
-        {MemoizedHistoryVirtualRow}
-      </List>
+      />
     </div>
   )
 }
