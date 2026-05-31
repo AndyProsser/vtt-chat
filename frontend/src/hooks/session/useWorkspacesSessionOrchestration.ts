@@ -24,7 +24,7 @@ export type UseWorkspacesSessionOrchestrationParams = {
   setCooldownExtensionCount: (sessionId: UUID, count: number) => void
   setIsGreenroom: (isGreenroom: boolean) => void
   resetToolbarActionsState: () => void
-  setSelectedRoomIdOverride: Dispatch<SetStateAction<UUID | ''>>
+  setSelectedRoomIdOverride: (sessionId: UUID, roomId: UUID | '') => void
   setCurrentSession: (sessionId: UUID | null) => void
   clearPersistedActiveSessionContext: () => void
   forceLogoutToAuthScreen: () => void
@@ -134,7 +134,9 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
         completedState = updatedSession.state
 
         if (isGreenroomSessionState(state)) {
-          setSelectedRoomIdOverride('')
+          if (currentSession?.id) {
+            setSelectedRoomIdOverride(currentSession.id, '')
+          }
           resetToolbarActionsState()
         }
 
@@ -373,7 +375,9 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
     }
 
     setCurrentSession(null)
-    setSelectedRoomIdOverride('')
+    if (currentSession?.id) {
+      setSelectedRoomIdOverride(currentSession.id, '')
+    }
     clearPersistedActiveSessionContext()
   }, [
     apiUrl,

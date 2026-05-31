@@ -164,7 +164,6 @@ export function WorkspaceInitialization({
   const [sessionSettingsPlannedDurationMinutes, setSessionSettingsPlannedDurationMinutes] =
     useState(DEFAULT_PLANNED_DURATION_MINUTES)
   const [isSessionSettingsSaving, setIsSessionSettingsSaving] = useState(false)
-  const [selectedRoomIdOverride, setSelectedRoomIdOverride] = useState<UUID | ''>('')
   const [error, setError] = useState<string | null>(null)
   const [lobbyNotice, setLobbyNotice] = useState<string | null>(null)
   const [dismissedTransitionEventId, setDismissedTransitionEventId] = useState<string | null>(null)
@@ -232,6 +231,11 @@ export function WorkspaceInitialization({
   const setIsGreenroom = useStore((state) => state.setIsGreenroom)
   const resetToolbarActionsState = useStore((state) => state.resetToolbarActionsState)
   const setToolbarCenterPaneView = useStore((state) => state.setToolbarCenterPaneView)
+  const setSelectedRoomIdOverride = useStore((state) => state.setSelectedRoomIdOverride)
+  const selectedRoomIdOverrideBySessionId = useStore(
+    (state) => state.selectedRoomIdOverrideBySessionId
+  )
+  const selectedRoomIdOverride = selectedRoomIdOverrideBySessionId[currentSessionId || ''] ?? ''
   const updateSession = useStore((state) => state.updateSession)
   const setCooldownExtensionCount = useStore((state) => state.setCooldownExtensionCount)
   const cooldownExtensionCounts = useStore((state) => state.cooldownExtensionCounts)
@@ -450,9 +454,11 @@ export function WorkspaceInitialization({
 
   const handleRoomSelection = useCallback(
     (roomId: UUID) => {
-      setSelectedRoomIdOverride(roomId)
+      if (currentSessionId) {
+        setSelectedRoomIdOverride(currentSessionId, roomId)
+      }
     },
-    [setSelectedRoomIdOverride]
+    [currentSessionId, setSelectedRoomIdOverride]
   )
 
   useWorkspacesWsRetryToast({
@@ -1080,7 +1086,6 @@ export function WorkspaceInitialization({
           settingsReferenceSessionId={settingsReferenceSessionId}
           settingsPostSessionChatDurationMinutes={settingsPostSessionChatDurationMinutes}
           cooldownExtensionCounts={cooldownExtensionCounts}
-          selectedRoomIdOverride={selectedRoomIdOverride}
           user={user}
         />
       </div>

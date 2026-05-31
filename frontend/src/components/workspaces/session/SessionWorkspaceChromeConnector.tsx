@@ -24,7 +24,6 @@ type SessionWorkspaceChromeConnectorProps = {
   settingsReferenceSessionId: UUID | ''
   settingsPostSessionChatDurationMinutes: number
   cooldownExtensionCounts: Record<UUID, number>
-  selectedRoomIdOverride: UUID | ''
   user: {
     id: UUID
     username: string
@@ -68,7 +67,6 @@ export const SessionWorkspaceChromeConnector = memo(
     settingsReferenceSessionId,
     settingsPostSessionChatDurationMinutes,
     cooldownExtensionCounts,
-    selectedRoomIdOverride,
     user,
   }: SessionWorkspaceChromeConnectorProps) {
     const currentSessionRoomsById = useStore((state) => {
@@ -117,6 +115,13 @@ export const SessionWorkspaceChromeConnector = memo(
       }
 
       return state.mockTakeoverUserIdBySession[state.currentSessionId] ?? null
+    })
+    const selectedRoomIdOverride = useStore((state) => {
+      if (!state.currentSessionId) {
+        return ''
+      }
+
+      return state.selectedRoomIdOverrideBySessionId[state.currentSessionId] ?? ''
     })
 
     const currentRooms = useMemo<RoomRecord[]>(
