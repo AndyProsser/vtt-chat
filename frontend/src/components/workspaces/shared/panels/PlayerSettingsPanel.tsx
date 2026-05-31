@@ -124,12 +124,10 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
               disabled={props.isCharacterLoading || props.isCharacterSaving}
             />
           </label>
-          <CharacterAvatarUploadField
-            value={props.characterDraft.avatarUrl}
-            onChange={(value) => props.onCharacterFieldChange('avatarUrl', value)}
-            disabled={props.isCharacterLoading || props.isCharacterSaving}
-          />
-          <label className="crbs-field" htmlFor="crbs-character-level">
+        </div>
+
+        <div className="crbs-attributes-row">
+          <label className="crbs-field crbs-field--level" htmlFor="crbs-character-level">
             <span className="crbs-field-label">Level</span>
             <VerticalSliderInput
               id="crbs-character-level"
@@ -139,33 +137,41 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
               value={props.characterDraft.level}
               onChange={(v) => props.onCharacterFieldChange('level', v)}
               disabled={props.isCharacterLoading || props.isCharacterSaving}
+              triggerMode="click"
             />
           </label>
-        </div>
 
-        <div className="crbs-stats-grid">
-          {[
-            ['strength', 'STR'],
-            ['dexterity', 'DEX'],
-            ['constitution', 'CON'],
-            ['intelligence', 'INT'],
-            ['wisdom', 'WIS'],
-            ['charisma', 'CHA'],
-          ].map(([field, label]) => (
-            <label key={field} className="crbs-field crbs-field--stat">
-              <span className="crbs-field-label">{label}</span>
-              <VerticalSliderInput
-                label={`${label} (1–30)`}
-                min={1}
-                max={30}
-                value={props.characterDraft[field as keyof PlayerSettingsPanel] as number}
-                onChange={(v) =>
-                  props.onCharacterFieldChange(field as keyof PlayerSettingsPanel, v)
-                }
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
-              />
-            </label>
-          ))}
+          <div className="crbs-stats-strip" role="group" aria-label="Character stats">
+            {[
+              ['strength', 'STR'],
+              ['dexterity', 'DEX'],
+              ['constitution', 'CON'],
+              ['intelligence', 'INT'],
+              ['wisdom', 'WIS'],
+              ['charisma', 'CHA'],
+            ].map(([field, label]) => (
+              <label key={field} className="crbs-field crbs-field--stat">
+                <span className="crbs-field-label">{label}</span>
+                <VerticalSliderInput
+                  label={`${label} (1–30)`}
+                  min={1}
+                  max={30}
+                  value={props.characterDraft[field as keyof PlayerSettingsPanel] as number}
+                  onChange={(v) =>
+                    props.onCharacterFieldChange(field as keyof PlayerSettingsPanel, v)
+                  }
+                  disabled={props.isCharacterLoading || props.isCharacterSaving}
+                  triggerMode="click"
+                />
+              </label>
+            ))}
+          </div>
+
+          <CharacterAvatarUploadField
+            value={props.characterDraft.avatarUrl}
+            onChange={(value) => props.onCharacterFieldChange('avatarUrl', value)}
+            disabled={props.isCharacterLoading || props.isCharacterSaving}
+          />
         </div>
       </section>
     </div>
