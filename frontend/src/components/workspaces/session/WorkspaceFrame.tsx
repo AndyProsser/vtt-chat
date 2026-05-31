@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
@@ -35,7 +35,10 @@ interface SessionWorkspaceFrameProps {
   role: Role
   renderToolbar: (model: ToolbarActionModel) => ReactNode
   renderSystemToasts?: () => ReactNode
-  renderLeftRail: (actions: { openRightRailTab: (tab: RightRailTab) => void }) => ReactNode
+  renderLeftRail: (actions: {
+    openRightRailTab: (tab: RightRailTab) => void
+    openInformationPanel: () => void
+  }) => ReactNode
   renderCenterPane: (view: CenterPaneView) => ReactNode
   renderRightRailTab: (tab: RightRailTab) => ReactNode
   rightRailIndicators?: Partial<Record<RightRailTab, number>>
@@ -53,7 +56,7 @@ function formatIndicatorCount(count: number): string {
   return count > 99 ? '99+' : String(count)
 }
 
-export function SessionWorkspaceFrame({
+export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
   role,
   renderToolbar,
   renderSystemToasts,
@@ -104,9 +107,8 @@ export function SessionWorkspaceFrame({
     []
   )
 
-  const toolbarModel: ToolbarActionModel = {
-    centerPaneView: toolbarCenterPaneView,
-    setCenterPaneView: (view) => {
+  const handleSetCenterPaneView = useCallback(
+    (view: CenterPaneView) => {
       telemetryClient.track('UI_TAB_SWITCH', {
         surface: 'session-workspace-frame__center-pane',
         from: toolbarCenterPaneView,
@@ -115,21 +117,29 @@ export function SessionWorkspaceFrame({
       })
       setToolbarCenterPaneView(view)
     },
-    rightRailOpen: toolbarRightRailOpen,
-    activeRightRailTab,
-    availableRightRailTabs: tabs,
-    toggleRightRail: () => {
-      telemetryClient.track('UI_PANEL_TOGGLE', {
-        surface: 'command-center-right-rail',
-        nextOpen: !toolbarRightRailOpen,
-        role,
-      })
-      toggleToolbarRightRail()
-    },
-    openRightRailTab: (tab) => {
+    [role, setToolbarCenterPaneView, toolbarCenterPaneView]
+  )
+
+  const handleToggleRightRail = useCallback(() => {
+    telemetryClient.track('UI_PANEL_TOGGLE', {
+      surface: 'command-center-right-rail',
+      nextOpen: !toolbarRightRailOpen,
+      role,
+    })
+    toggleToolbarRightRail()
+  }, [role, toggleToolbarRightRail, toolbarRightRailOpen])
+
+  const handleOpenRightRailTab = useCallback(
+    (tab: RightRailTab) => {
       if (!tabs.includes(tab)) {
         return
       }
+
+      telemetryClient.track('UI_PANEL_TOGGLE', {
+        surface: 'command-center-right-rail',
+        nextOpen: true,
+        role,
+      })
 
       telemetryClient.track('UI_TAB_SWITCH', {
         surface: 'command-center-right-rail',
@@ -141,8 +151,39 @@ export function SessionWorkspaceFrame({
       setSelectedRightRailTab(tab)
       setToolbarRightRailOpen(true)
     },
-    placeholderActions,
-  }
+    [activeRightRailTab, role, setToolbarRightRailOpen, tabs]
+  )
+
+  const toolbarModel: ToolbarActionModel = useMemo(
+    () => ({
+      centerPaneView: toolbarCenterPaneView,
+      setCenterPaneView: handleSetCenterPaneView,
+      rightRailOpen: toolbarRightRailOpen,
+      activeRightRailTab,
+      availableRightRailTabs: tabs,
+      toggleRightRail: handleToggleRightRail,
+      openRightRailTab: handleOpenRightRailTab,
+      placeholderActions,
+    }),
+    [
+      activeRightRailTab,
+      handleOpenRightRailTab,
+      handleSetCenterPaneView,
+      handleToggleRightRail,
+      placeholderActions,
+      tabs,
+      toolbarCenterPaneView,
+      toolbarRightRailOpen,
+    ]
+  )
+
+  const leftRailActions = useMemo(
+    () => ({
+      openRightRailTab: handleOpenRightRailTab,
+      openInformationPanel: () => handleOpenRightRailTab('information'),
+    }),
+    [handleOpenRightRailTab]
+  )
 
   useEffect(() => {
     const handleResize = () => {
@@ -292,7 +333,7 @@ export function SessionWorkspaceFrame({
           className="session-workspace-frame__surface session-workspace-frame__left-rail-shell"
           data-ui-component="SessionWorkspaceLeftRail"
         >
-          {renderLeftRail({ openRightRailTab: toolbarModel.openRightRailTab })}
+          {renderLeftRail(leftRailActions)}
         </aside>
 
         <div
@@ -479,4 +520,4 @@ export function SessionWorkspaceFrame({
       </div>
     </section>
   )
-}
+})
