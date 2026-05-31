@@ -269,6 +269,46 @@ function mergeMembersPreservingReferences(
   return hasAnyChange ? merged : previous
 }
 
+// ─── Grouping helper ─────────────────────────────────────────────────────────────
+
+type GroupedMembers = Array<{
+  groupLabel: string
+  members: MockPartyMember[]
+}>
+
+function groupMembersByStatusAndRole(members: MockPartyMember[]): GroupedMembers {
+  const dmMembers = members.filter((m) => m.role === 'DM')
+  const playersByStatus: Record<MockPlayerStatus, MockPartyMember[]> = {
+    here: [],
+    away: [],
+    lobby: [],
+    'not-here': [],
+    offline: [],
+  }
+
+  members.forEach((member) => {
+    if (member.role !== 'DM') {
+      playersByStatus[member.status]?.push(member)
+    }
+  })
+
+  const groups: GroupedMembers = []
+
+  if (dmMembers.length > 0) {
+    groups.push({ groupLabel: 'DM', members: dmMembers })
+  }
+
+  const statusOrder: MockPlayerStatus[] = ['here', 'away', 'lobby', 'not-here', 'offline']
+  for (const status of statusOrder) {
+    const statusMembers = playersByStatus[status]
+    if (statusMembers.length > 0) {
+      groups.push({ groupLabel: STATUS_LABELS[status] || status, members: statusMembers })
+    }
+  }
+
+  return groups
+}
+
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 function PartyStatusBadge({ status }: { status: MockPlayerStatus }) {
@@ -754,8 +794,15 @@ export function PartyPanel({
           </div>
         ) : (
           <div className="party-sheet__cards workspace-panel-scroll-region">
-            {members.map((member) => (
-              <PartyMemberCard key={member.id} member={member} />
+            {groupMembersByStatusAndRole(members).map((group) => (
+              <div key={group.groupLabel} className="party-sheet__group">
+                <h5 className="party-sheet__group-header">{group.groupLabel}</h5>
+                <div className="party-sheet__group-members">
+                  {group.members.map((member) => (
+                    <PartyMemberCard key={member.id} member={member} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
