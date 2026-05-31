@@ -59,7 +59,6 @@ import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useToast } from '@/hooks/useToast'
 import { isJournalNote } from '@/utils/notesPanel'
-import { DEFAULT_PLANNED_DURATION_MINUTES } from '@/constants/workspaces.constants'
 import type { Session as SessionRecord } from '@/types/session'
 import { resolveMembershipRole } from '@/types/session/campaign'
 import type {
@@ -162,7 +161,7 @@ export function WorkspaceInitialization({
 
   const [sessionSettingsName, setSessionSettingsName] = useState('')
   const [sessionSettingsPlannedDurationMinutes, setSessionSettingsPlannedDurationMinutes] =
-    useState(DEFAULT_PLANNED_DURATION_MINUTES)
+    useState(settingsDefaultSessionDurationMins)
   const [isSessionSettingsSaving, setIsSessionSettingsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lobbyNotice, setLobbyNotice] = useState<string | null>(null)
@@ -235,7 +234,9 @@ export function WorkspaceInitialization({
   const selectedRoomIdOverrideBySessionId = useStore(
     (state) => state.selectedRoomIdOverrideBySessionId
   )
-  const selectedRoomIdOverride = selectedRoomIdOverrideBySessionId[currentSessionId || ''] ?? ''
+  const selectedRoomIdOverride = currentSessionId
+    ? (selectedRoomIdOverrideBySessionId[currentSessionId] ?? '')
+    : ''
   const updateSession = useStore((state) => state.updateSession)
   const setCooldownExtensionCount = useStore((state) => state.setCooldownExtensionCount)
   const cooldownExtensionCounts = useStore((state) => state.cooldownExtensionCounts)
@@ -356,7 +357,7 @@ export function WorkspaceInitialization({
 
   useWorkspacesSettingsStateBridge({
     currentSession,
-    defaultPlannedDurationMinutes: DEFAULT_PLANNED_DURATION_MINUTES,
+    defaultPlannedDurationMinutes: settingsDefaultSessionDurationMins,
     setSessionSettingsName,
     setSessionSettingsPlannedDurationMinutes,
     selectedCharacter,
@@ -879,7 +880,6 @@ export function WorkspaceInitialization({
         connectedSpectatorsCount: 0,
         effectiveSessionRole,
         effectiveSessionUser: user,
-        selectedRoomId: '',
         onSelectRoom: handleRoomSelection,
         onToggleBroadcastMode: handleToggleBroadcastMode,
         dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
@@ -920,7 +920,6 @@ export function WorkspaceInitialization({
       canEditEndedSessionName,
       characterSettingsPanel,
       configuredCooldownDurationMs,
-      connectionStatus,
       currentSession,
       effectiveSessionRole,
       fetchWithAuthGuard,

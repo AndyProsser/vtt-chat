@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { Dispatch, RefObject, SetStateAction } from 'react'
+import type { RefObject } from 'react'
 import type { ConnectionState } from '@/ws/client'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, SessionPresence as PresenceRecord } from '@/types/room'
@@ -40,7 +40,7 @@ type UseWorkspacesHydrationLifecycleParams = {
   wsState: ConnectionState
   currentSession: SessionRecord | null
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-  setSelectedRoomIdOverride: Dispatch<SetStateAction<UUID | ''>>
+  setSelectedRoomIdOverride: (sessionId: UUID, roomId: UUID | '') => void
   replaceSessionTopology: (sessionId: UUID, rooms: RoomRecord[], presence: PresenceRecord[]) => void
   replaceSessionStatsSnapshot: (sessionId: UUID, stats: ApiSessionStats) => void
   setMockTakeoverUserId: (sessionId: UUID, userId: UUID | null) => void
@@ -190,7 +190,7 @@ export function useWorkspacesHydrationLifecycle(
           lastSeenAt: entry.lastSeenAt,
         }))
 
-        setSelectedRoomIdOverride('')
+        setSelectedRoomIdOverride(currentSession.id, '')
 
         replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
         if (presencePayload.stats) {
