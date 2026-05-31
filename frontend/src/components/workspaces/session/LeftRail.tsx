@@ -4,6 +4,7 @@ import type { UUID } from '@shared'
 import { AudioPanel } from '@/components/workspaces/session/audio/AudioPanel'
 import { LeftRailPanel } from '@/components/workspaces/session/LeftRailPanel'
 import { useStore } from '@/hooks/useStore'
+import { useSessionSelectedRoomId } from '@/hooks/session/useSessionSelectedRoomId'
 import { getVisibleRoomsForSessionState } from '@/utils/session/workspaces'
 import type { Room as RoomRecord, RoomUser as RoomMember } from '@/types/room'
 
@@ -23,7 +24,6 @@ type SessionWorkspaceLeftRailProps = {
   connectedSpectatorsCount: number
   dmUserId: UUID
   effectiveSessionUserId: UUID
-  selectedRoomId: UUID | ''
   onSelectRoom: (roomId: UUID) => void
   onToggleBroadcastMode: ComponentProps<typeof LeftRailPanel>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean
@@ -33,6 +33,8 @@ type SessionWorkspaceLeftRailProps = {
 }
 
 function SessionWorkspaceLeftRailComponent(props: SessionWorkspaceLeftRailProps) {
+  const selectedRoomId = useSessionSelectedRoomId(props.sessionId)
+
   const currentSessionRoomsById = useStore((state) => {
     const roomsBySession = state.rooms as Record<UUID, Record<UUID, RoomRecord>>
     return roomsBySession[props.sessionId] ?? EMPTY_ROOMS_BY_ID
@@ -78,7 +80,7 @@ function SessionWorkspaceLeftRailComponent(props: SessionWorkspaceLeftRailProps)
         roomMembersByRoomId={roomMembersByRoomId}
         sessionEndedAt={props.sessionEndedAt}
         cooldownDurationMs={props.configuredCooldownDurationMs}
-        selectedRoomId={props.selectedRoomId}
+        selectedRoomId={selectedRoomId}
         onSelectRoom={props.onSelectRoom}
         broadcastModeEnabled={broadcastModeEnabled}
         onToggleBroadcastMode={props.onToggleBroadcastMode}
@@ -87,14 +89,14 @@ function SessionWorkspaceLeftRailComponent(props: SessionWorkspaceLeftRailProps)
         currentConditionName={currentConditionName}
         roomEnvironmentNames={roomEnvironmentNames}
       />
-      {props.selectedRoomId ? (
+      {selectedRoomId ? (
         <aside
           className="session-left-rail-card session-left-rail-card--audio"
           aria-label="Voice panel"
         >
           <AudioPanel
             sessionId={props.sessionId}
-            roomId={props.selectedRoomId}
+            roomId={selectedRoomId}
             role={props.effectiveSessionRole}
           />
         </aside>

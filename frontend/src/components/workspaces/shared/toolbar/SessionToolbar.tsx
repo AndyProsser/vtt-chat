@@ -7,13 +7,13 @@ import { SessionTimerLeaf } from './SessionTimerLeaf'
 import { ConnectionStatusLeaf } from './ConnectionStatusLeaf'
 import type { ToolbarActionModel } from '@/types/toolbar'
 import { FRONTEND_THEME_CLASSES, type FrontendThemeMode } from '@/tokens'
+import { useSessionSelectedRoomId } from '@/hooks/session/useSessionSelectedRoomId'
 import '@/styles/components/workspaces/shared/toolbar/SessionToolbar.css'
 
 interface SessionToolbarProps {
   actions: ToolbarActionModel
   wsState: 'connected' | 'connecting' | 'disconnected' | 'reconnecting'
   sessionId: UUID
-  selectedRoomId: UUID | ''
   sessionState: SessionState
   cooldownDurationMs?: number
   isTransitioningSession?: boolean
@@ -40,7 +40,6 @@ export const SessionToolbar = memo(function SessionToolbar({
   actions,
   wsState,
   sessionId,
-  selectedRoomId,
   sessionState,
   cooldownDurationMs,
   isTransitioningSession = false,
@@ -60,6 +59,7 @@ export const SessionToolbar = memo(function SessionToolbar({
   onOpenUserSettings,
   onExitToSelector,
 }: SessionToolbarProps) {
+  const selectedRoomId = useSessionSelectedRoomId(sessionId)
   const storageKey = 'vtt-theme-mode'
 
   const detectThemeMode = (): FrontendThemeMode => {

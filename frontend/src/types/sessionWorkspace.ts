@@ -52,7 +52,6 @@ export type SessionWorkspaceProps = {
     role: Role
     authType?: 'FULL' | 'GUEST'
   }
-  selectedRoomId: UUID | ''
   onSelectRoom: (roomId: UUID) => void
   onToggleBroadcastMode: ComponentProps<typeof LeftRailPanel>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean

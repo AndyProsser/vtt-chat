@@ -5,6 +5,7 @@ import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { SpectatorWaitScreen } from '@/components/workspaces/session/SpectatorWaitScreen'
 import type { ComponentProps } from 'react'
 import { useStore } from '@/hooks/useStore'
+import { useSessionSelectedRoomId } from '@/hooks/session/useSessionSelectedRoomId'
 import { isGreenRoom } from '@/utils/session/workspaces'
 
 type SessionWorkspaceCenterPaneProps = {
@@ -13,7 +14,6 @@ type SessionWorkspaceCenterPaneProps = {
   currentSessionState: SessionState
   sessionEndedAt?: number
   configuredCooldownDurationMs: number
-  selectedRoomId: UUID | ''
   apiUrl: string
   token: string
   currentSessionId: UUID
@@ -32,12 +32,14 @@ type SessionWorkspaceCenterPaneProps = {
 }
 
 function SessionWorkspaceCenterPaneComponent(props: SessionWorkspaceCenterPaneProps) {
+  const selectedRoomId = useSessionSelectedRoomId(props.currentSessionId)
+
   const selectedRoom = useStore((state) => {
-    if (!props.selectedRoomId) {
+    if (!selectedRoomId) {
       return null
     }
 
-    return state.rooms[props.currentSessionId]?.[props.selectedRoomId] ?? null
+    return state.rooms[props.currentSessionId]?.[selectedRoomId] ?? null
   })
   const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
 
@@ -61,12 +63,12 @@ function SessionWorkspaceCenterPaneComponent(props: SessionWorkspaceCenterPanePr
       ) : props.view === 'chat' ? (
         <div className="session-live-comms">
           <section className="session-live-comms__chat" aria-label="Chat panel">
-            {props.selectedRoomId ? (
+            {selectedRoomId ? (
               <ChatWindow
                 apiUrl={props.apiUrl}
                 token={props.token}
                 sessionId={props.currentSessionId}
-                roomId={props.selectedRoomId}
+                roomId={selectedRoomId}
                 campaignId={props.campaignId}
                 roomName={selectedRoom?.name}
                 roomType={selectedRoom?.type}

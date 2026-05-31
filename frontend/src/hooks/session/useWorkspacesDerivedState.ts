@@ -10,7 +10,6 @@ import { isGreenRoom, toValidPostSessionDurationMinutes } from '@/utils/session/
 type UseWorkspacesDerivedStateParams = {
   wsState: 'connected' | 'connecting' | 'disconnected' | 'reconnecting'
   currentSession: SessionRecord | null
-  selectedRoomId: UUID | ''
   campaigns: CampaignSummary[]
   selectedCampaignId: UUID | ''
   settingsCampaignSessions: SessionRecord[]

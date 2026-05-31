@@ -148,38 +148,6 @@ export const SessionWorkspaceChromeConnector = memo(
           : null,
       [activeTakeoverUserId, currentPresence]
     )
-    const selectedRoomId = useMemo<UUID | ''>(() => {
-      if (!visibleRooms.length) {
-        return ''
-      }
-
-      if (
-        !isTakeoverActive &&
-        selectedRoomIdOverride &&
-        visibleRooms.some((room) => room.id === selectedRoomIdOverride)
-      ) {
-        return selectedRoomIdOverride
-      }
-
-      const ownPresence = currentPresence.find(
-        (presence) => presence.userId === effectiveActorUserId
-      )
-      if (
-        ownPresence?.primaryRoomId &&
-        visibleRooms.some((room) => room.id === ownPresence.primaryRoomId)
-      ) {
-        return ownPresence.primaryRoomId
-      }
-
-      const mainRoom = visibleRooms.find((room) => room.type === RoomType.MAIN)
-      return (mainRoom || visibleRooms[0]).id
-    }, [
-      currentPresence,
-      effectiveActorUserId,
-      isTakeoverActive,
-      selectedRoomIdOverride,
-      visibleRooms,
-    ])
     const connectedRoomId = useMemo<UUID | ''>(() => {
       const ownPresence = currentPresence.find(
         (presence) => presence.userId === effectiveActorUserId
@@ -211,7 +179,6 @@ export const SessionWorkspaceChromeConnector = memo(
     const derivedState = useWorkspacesDerivedState({
       wsState: baseProps.wsState,
       currentSession: baseProps.currentSession,
-      selectedRoomId,
       campaigns,
       selectedCampaignId,
       settingsCampaignSessions,
@@ -255,7 +222,6 @@ export const SessionWorkspaceChromeConnector = memo(
         {...baseProps}
         currentPauseStats={currentPauseStats}
         rightRailIndicators={rightRailIndicators}
-        selectedRoomId={selectedRoomId}
         connectedPlayers={derivedState.connectedPlayers}
         connectedSpectatorsCount={derivedState.connectedSpectatorsCount}
         effectiveSessionRole={derivedState.effectiveSessionRole}

@@ -32,7 +32,6 @@ type BuildSessionWorkspacePropsParams = {
   connectedSpectatorsCount: number
   effectiveSessionRole: ComponentProps<typeof SessionWorkspace>['effectiveSessionRole']
   effectiveSessionUser: ComponentProps<typeof SessionWorkspace>['effectiveSessionUser']
-  selectedRoomId: UUID | ''
   onSelectRoom: ComponentProps<typeof SessionWorkspace>['onSelectRoom']
   onToggleBroadcastMode: ComponentProps<typeof SessionWorkspace>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean
@@ -102,7 +101,6 @@ export function buildSessionWorkspaceProps(
     connectedSpectatorsCount: params.connectedSpectatorsCount,
     effectiveSessionRole: params.effectiveSessionRole,
     effectiveSessionUser: params.effectiveSessionUser,
-    selectedRoomId: params.selectedRoomId,
     onSelectRoom: params.onSelectRoom,
     onToggleBroadcastMode: params.onToggleBroadcastMode,
     dmAutoTargetOnFirstPlayerJoin: params.dmAutoTargetOnFirstPlayerJoin,

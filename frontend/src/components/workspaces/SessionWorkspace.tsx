@@ -89,7 +89,6 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           actions={actions}
           wsState={props.wsState}
           sessionId={currentSessionId}
-          selectedRoomId={props.selectedRoomId}
           sessionState={currentSessionState}
           cooldownDurationMs={configuredCooldownDurationMs}
           isTransitioningSession={props.isTransitioningSession}
@@ -131,7 +130,6 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.onExitToSelector,
       props.onOpenUserSettings,
       props.onStopSession,
-      props.selectedRoomId,
       props.wsState,
     ]
   )
@@ -163,7 +161,6 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           connectedSpectatorsCount={props.connectedSpectatorsCount}
           dmUserId={currentSessionDmId}
           effectiveSessionUserId={props.effectiveSessionUser.id}
-          selectedRoomId={props.selectedRoomId}
           onSelectRoom={props.onSelectRoom}
           onToggleBroadcastMode={props.onToggleBroadcastMode}
           dmAutoTargetOnFirstPlayerJoin={props.dmAutoTargetOnFirstPlayerJoin}
@@ -182,7 +179,6 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.effectiveSessionUser.id,
       props.onSelectRoom,
       props.onToggleBroadcastMode,
-      props.selectedRoomId,
       props.sessionCount,
       props.token,
       currentSessionDmId,
@@ -208,7 +204,6 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           currentSessionState={currentSessionState}
           sessionEndedAt={currentSessionEndedAt}
           configuredCooldownDurationMs={props.configuredCooldownDurationMs}
-          selectedRoomId={props.selectedRoomId}
           apiUrl={props.apiUrl}
           token={props.token}
           currentSessionId={currentSessionId}
@@ -225,8 +220,7 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.campaignId,
       props.configuredCooldownDurationMs,
       props.effectiveSessionRole,
-      props.eflectedRoomId,
-      props.sefectiveSessionUser,
+      props.effectiveSessionUser,
       props.messageGroupingWindowMs,
       props.sendWsEvent,
       props.token,
