@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { UUID } from '@shared'
-import { RoomType } from '@shared'
+import { RoomType, isGreenroomSessionState } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import type { Room as RoomRecord, SessionPresence as PresenceRecord } from '@/types/room'
 
@@ -30,6 +30,13 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
     }
 
     return (state.sessionPresence[sessionId] ?? null) as Record<UUID, PresenceRecord> | null
+  })
+  const currentSessionState = useStore((state) => {
+    if (!sessionId) {
+      return null
+    }
+
+    return state.sessions[sessionId]?.state ?? null
   })
   const currentUserId = useStore((state) => state.currentUser?.id ?? ('' as UUID))
   const activeTakeoverUserId = useStore((state) => {
@@ -75,10 +82,18 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
     }
 
     // Priority 3: MAIN room fallback
+    if (isGreenroomSessionState(currentSessionState)) {
+      const greenroom = visibleRoomsArray.find((room) => room.type === RoomType.GREENROOM)
+      if (greenroom) {
+        return greenroom.id
+      }
+    }
+
     const mainRoom = visibleRoomsArray.find((room) => room.type === RoomType.MAIN)
     return (mainRoom || visibleRoomsArray[0])?.id || ''
   }, [
     currentPresence,
+    currentSessionState,
     effectiveActorUserId,
     isTakeoverActive,
     selectedRoomIdOverride,
