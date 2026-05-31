@@ -1,14 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import * as TabsPrimitive from '@radix-ui/react-tabs'
 import type { MessageMetadataEntity } from '@shared'
 import { type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
-import type { HistorySortOrder, SessionHistoryMessage, SessionHistoryThread } from '@/types/history'
-import {
-  DEFAULT_HISTORY_SORT_ORDER,
-  getHistoryControlStorageKey,
-  parsePersistedHistoryControls,
-} from '@/utils/history'
+import type { SessionHistoryMessage, SessionHistoryThread } from '@/types/history'
 import {
   HISTORY_MESSAGE_LIMIT,
   formatBoundaryDate,
@@ -40,43 +34,14 @@ export function HistoryPanel({
   token,
   campaignId,
   sessionId,
-  role,
+  role: _role,
   userId,
 }: HistoryPanelProps) {
   const [threads, setThreads] = useState<SessionHistoryThread[]>([])
   const searchInputRef = useRef<HTMLInputElement | null>(null)
-  const storageKey = useMemo(
-    () => getHistoryControlStorageKey(sessionId, role, userId),
-    [sessionId, role, userId]
-  )
-  const [sortOrder, setSortOrder] = useState<HistorySortOrder>(() => {
-    if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
-      return DEFAULT_HISTORY_SORT_ORDER
-    }
-    return parsePersistedHistoryControls(window.localStorage.getItem(storageKey)).sortOrder
-  })
   const [query, setQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
-      return
-    }
-
-    const persisted = parsePersistedHistoryControls(window.localStorage.getItem(storageKey))
-    queueMicrotask(() => {
-      setSortOrder(persisted.sortOrder)
-    })
-  }, [storageKey])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.localStorage?.setItem !== 'function') {
-      return
-    }
-
-    window.localStorage.setItem(storageKey, JSON.stringify({ sortOrder }))
-  }, [storageKey, sortOrder])
 
   useEffect(() => {
     let isDisposed = false
@@ -222,10 +187,8 @@ export function HistoryPanel({
 
     const filteredThreads = threads
       .map((thread) => {
-        const sortedMessages = [...thread.messages].sort((left, right) =>
-          sortOrder === 'newest'
-            ? right.createdAt - left.createdAt
-            : left.createdAt - right.createdAt
+        const sortedMessages = [...thread.messages].sort(
+          (left, right) => left.createdAt - right.createdAt
         )
         const filteredMessages = sortedMessages.filter((message) =>
           matchesQuery(message, normalizedQuery)
@@ -242,17 +205,17 @@ export function HistoryPanel({
     const sortedThreads = [...filteredThreads].sort((left, right) => {
       const leftAnchor = left.startedAt || left.createdAt
       const rightAnchor = right.startedAt || right.createdAt
-      return sortOrder === 'newest' ? rightAnchor - leftAnchor : leftAnchor - rightAnchor
+      return leftAnchor - rightAnchor
     })
 
     return sortedThreads.map((thread) => ({
       label: toSessionLabel(thread),
-      sessionId: thread.sessionId,
+      sessionId: thread.sessionId as UUID,
       sessionName: thread.sessionName,
       startedAtLabel: thread.startedAtLabel,
       items: thread.messages,
     }))
-  }, [query, sortOrder, threads])
+  }, [query, threads])
 
   const virtualRows = useMemo(
     () => flattenHistoryGroupsToRows(groupedHistory, userId),
@@ -338,37 +301,6 @@ export function HistoryPanel({
             ) : null}
           </div>
         </label>
-
-        <div className="knowledge-panel-filter-field">
-          <span>Sort</span>
-          <TabsPrimitive.Root
-            value={sortOrder}
-            onValueChange={(value) => setSortOrder(value as HistorySortOrder)}
-            className="knowledge-panel-tabs knowledge-panel-history__sort-tabs"
-          >
-            <TabsPrimitive.List
-              className="knowledge-panel-tabs__list knowledge-panel-history__sort-list"
-              aria-label="History sort order"
-            >
-              <TabsPrimitive.Trigger
-                value="newest"
-                className="knowledge-panel-tabs__trigger knowledge-panel-history__sort-trigger"
-                title="Newest first"
-                aria-label="Sort by newest first"
-              >
-                <Icon name="south" />
-              </TabsPrimitive.Trigger>
-              <TabsPrimitive.Trigger
-                value="oldest"
-                className="knowledge-panel-tabs__trigger knowledge-panel-history__sort-trigger"
-                title="Oldest first"
-                aria-label="Sort by oldest first"
-              >
-                <Icon name="north" />
-              </TabsPrimitive.Trigger>
-            </TabsPrimitive.List>
-          </TabsPrimitive.Root>
-        </div>
       </div>
 
       <div className="knowledge-panel__content knowledge-panel-history__content workspace-panel-scroll-region">
@@ -377,7 +309,7 @@ export function HistoryPanel({
             No results for that search.
           </div>
         ) : (
-          <HistoryPanelVirtualList rows={virtualRows} />
+          <HistoryPanelVirtualList rows={virtualRows} autoScrollToLastRow />
         )}
       </div>
     </section>

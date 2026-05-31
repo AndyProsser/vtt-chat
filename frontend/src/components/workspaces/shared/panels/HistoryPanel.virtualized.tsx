@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
   List,
@@ -57,6 +57,7 @@ type HistoryRow =
       isSelf: boolean
       whisperRouteEntries: string[]
       hasWhisperRoute: boolean
+      isDmWhisper: boolean
     }
 
 function resolveHistoryWhisperRouteEntries(
@@ -74,6 +75,12 @@ function resolveHistoryWhisperRouteEntries(
   return message.targetIds
     .map((targetId) => participantLabelsByUserId.get(targetId) || 'Unknown')
     .filter((label) => label.trim().length > 0)
+}
+
+function isHistoryDmWhisper(message: SessionHistoryMessage): boolean {
+  return (
+    message.type === MessageType.DM || (message.type === MessageType.WHISPER && message.isDmOnly)
+  )
 }
 
 /**
@@ -171,6 +178,7 @@ export function flattenHistoryGroupsToRows(
         isSelf: Boolean(currentUserId) && message.authorId === currentUserId,
         whisperRouteEntries,
         hasWhisperRoute: whisperRouteEntries.length > 0,
+        isDmWhisper: isHistoryDmWhisper(message),
       })
 
       previousMessage = message
@@ -252,12 +260,14 @@ function HistoryMessageRow({
   isGroupedWithPrevious,
   whisperRouteEntries,
   hasWhisperRoute,
+  isDmWhisper,
 }: {
   message: SessionHistoryMessage
   isSelf: boolean
   isGroupedWithPrevious: boolean
   whisperRouteEntries: string[]
   hasWhisperRoute: boolean
+  isDmWhisper: boolean
 }) {
   const variant = toMessageVariant(message.type)
   const authorLabel = message.authorCharacterName || message.authorUsername
@@ -312,7 +322,9 @@ function HistoryMessageRow({
                     <div className="session-message-list__message-timestamp session-message-list__message-timestamp--whisper">
                       {new Date(message.createdAt).toLocaleTimeString()}
                     </div>
-                    <div className="session-message-list__message-whisper-route session-message-list__message-whisper-route--incoming-list">
+                    <div
+                      className={`session-message-list__message-whisper-route session-message-list__message-whisper-route--incoming-list ${isDmWhisper ? 'session-message-list__message-whisper-route--dm' : ''}`}
+                    >
                       {whisperRouteEntries.map((line, index) => (
                         <div
                           key={`${message.id}-whisper-${index}`}
@@ -335,7 +347,9 @@ function HistoryMessageRow({
                   </div>
                 ) : (
                   <>
-                    <div className="session-message-list__message-whisper-route session-message-list__message-whisper-route--stacked session-message-list__message-whisper-route--outgoing">
+                    <div
+                      className={`session-message-list__message-whisper-route session-message-list__message-whisper-route--stacked session-message-list__message-whisper-route--outgoing ${isDmWhisper ? 'session-message-list__message-whisper-route--dm' : ''}`}
+                    >
                       {whisperRouteEntries.map((line, index) => (
                         <div
                           key={`${message.id}-whisper-${index}`}
@@ -397,6 +411,7 @@ function renderRow(row: HistoryRow) {
       isGroupedWithPrevious={row.isGroupedWithPrevious}
       whisperRouteEntries={row.whisperRouteEntries}
       hasWhisperRoute={row.hasWhisperRoute}
+      isDmWhisper={row.isDmWhisper}
     />
   )
 }
@@ -469,16 +484,18 @@ function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowCompone
   )
 }
 
-const MemoizedHistoryVirtualRow = memo(HistoryVirtualRow)
-
 export interface HistoryPanelVirtualListProps {
   rows: HistoryRow[]
+  autoScrollToLastRow?: boolean
 }
 
 /**
  * Windowed renderer for HistoryPanel using react-window v2 list primitives.
  */
-export function HistoryPanelVirtualList({ rows }: HistoryPanelVirtualListProps) {
+export function HistoryPanelVirtualList({
+  rows,
+  autoScrollToLastRow = false,
+}: HistoryPanelVirtualListProps) {
   const defaultRowHeight = useMemo(() => {
     if (rows.length === 0) {
       return 96
@@ -494,8 +511,26 @@ export function HistoryPanelVirtualList({ rows }: HistoryPanelVirtualListProps) 
     return Math.max(56, Math.round(total / sampleSize))
   }, [rows])
 
+  const [listApi, setListApi] = useState<{ element?: HTMLDivElement | null } | null>(null)
   const rowHeightCache = useDynamicRowHeight({ defaultRowHeight })
   const rowProps = useMemo<RowData>(() => ({ rows, rowHeightCache }), [rows, rowHeightCache])
+
+  useEffect(() => {
+    if (!autoScrollToLastRow || !listApi?.element || rows.length === 0) {
+      return
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const container = listApi.element
+      if (container) {
+        container.scrollTop = container.scrollHeight
+      }
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+    }
+  }, [autoScrollToLastRow, listApi, rows])
 
   if (rows.length === 0) {
     return null
@@ -504,13 +539,14 @@ export function HistoryPanelVirtualList({ rows }: HistoryPanelVirtualListProps) 
   return (
     <div style={{ flex: '1 1 0', minHeight: 0, height: '100%', overflow: 'hidden' }}>
       <List
+        listRef={setListApi}
         className="knowledge-panel-history__virtual-list"
         defaultHeight={360}
         style={{ height: '100%' }}
         rowCount={rows.length}
         rowHeight={rowHeightCache}
         rowProps={rowProps}
-        rowComponent={MemoizedHistoryVirtualRow}
+        rowComponent={HistoryVirtualRow}
         overscanCount={6}
       />
     </div>
