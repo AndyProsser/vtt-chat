@@ -117,12 +117,17 @@ export function TypingIndicator({ sessionId, roomId, currentUserId }: TypingIndi
     }
   }, [typingIndicators, typingClock, currentUserId, roomId, sessionDmId, sessionPresence])
 
+  const typingOverlayClassName = [
+    'session-chat-window__typing-overlay',
+    active ? 'session-chat-window__typing-overlay--active' : '',
+    !summary && elsewhereSummary ? 'session-chat-window__typing-overlay--elsewhere-only' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <div className="session-chat-window__typing-slot" aria-live="polite">
-      <div
-        className={`session-chat-window__typing-overlay ${active ? 'session-chat-window__typing-overlay--active' : ''}`}
-        aria-hidden={!active}
-      >
+      <div className={typingOverlayClassName} aria-hidden={!active}>
         <span className="session-chat-window__typing-text">
           {summary ? (
             <span className="session-chat-window__typing-text--local">{summary}</span>
