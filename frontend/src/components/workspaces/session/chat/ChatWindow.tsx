@@ -13,6 +13,7 @@ import { ROOM_NAMES } from '@/constants/roomPresence.constants'
 import { CHAT_HISTORY_PAGE_SIZE } from '@/constants/chatPresence.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useChatVisibleMessages } from '@/hooks/session/useChatVisibleMessages'
+import { ChatWindowHeader } from './ChatWindowHeader'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import { TypingIndicator } from './TypingIndicator'
@@ -116,8 +117,6 @@ function ChatWindowComponent({
   const [isAutoFollowInProgress, setIsAutoFollowInProgress] = useState(false)
   const [pendingNewMessageCount, setPendingNewMessageCount] = useState(0)
   const [hasHiddenOlderGreenroomHistory, setHasHiddenOlderGreenroomHistory] = useState(false)
-  // Total session message count shown in header. Queried once on hydration, then incremented.
-  const [totalMessageCount, setTotalMessageCount] = useState<number | null>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const isLoadingOlderRef = useRef(false)
@@ -128,9 +127,6 @@ function ChatWindowComponent({
   // IntersectionObserver so it can't re-fire within OBSERVER_LOAD_COOLDOWN_MS.
   const lastLoadCompletedAtRef = useRef(0)
   const OBSERVER_LOAD_COOLDOWN_MS = 600
-  // Tracks whether the initial message count has been fetched from the server.
-  const messageCountFetchedRef = useRef(false)
-  const prevVisibleCountRef = useRef(0)
   const prevMessageCountRef = useRef(0)
   const lastSeenLatestMessageKeyRef = useRef<string | undefined>(undefined)
   const autoFollowResetTimeoutRef = useRef<number | null>(null)
@@ -146,10 +142,8 @@ function ChatWindowComponent({
     setPendingNewMessageCount((count) => (count === 0 ? count : 0))
   }, [])
   const isGreenroomMode = forceMessageType === MessageType.OOC
-  const headerTitle = isGreenroomMode ? 'Greenroom (OOC)' : 'Main Room'
   const resolvedRoomName =
     roomName?.trim() || (isGreenroomMode ? ROOM_NAMES.greenRoom : ROOM_NAMES.mainRoom)
-  const headerSubtitle = `${headerTitle} • ${resolvedRoomName}`
   const { roomDirectory, visibleMessages } = useChatVisibleMessages({
     sessionId,
     roomId,
@@ -348,35 +342,10 @@ function ChatWindowComponent({
       return
     }
 
-    messageCountFetchedRef.current = false
-    prevVisibleCountRef.current = 0
     prevMessageCountRef.current = 0
     lastSeenLatestMessageKeyRef.current = undefined
     void loadHistoryPage({ older: false })
   }, [isGreenroomMode, loadHistoryPage, sessionRecord?.state])
-
-  // Fetch approximate total message count once after initial hydration.
-  // Greenroom uses visible message count directly — no separate query needed.
-  useEffect(() => {
-    if (isLoading || isGreenroomMode || messageCountFetchedRef.current) {
-      return
-    }
-    messageCountFetchedRef.current = true
-    prevVisibleCountRef.current = 0 // will be set on first increment effect run
-
-    fetch(`${apiUrl}/api/chat/messages/${sessionId}/count`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { count?: number } | null) => {
-        if (typeof data?.count === 'number') {
-          setTotalMessageCount(data.count)
-        }
-      })
-      .catch(() => {
-        // Silently ignore — count is display-only
-      })
-  }, [apiUrl, isGreenroomMode, isLoading, sessionId, token])
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scrollContainer = messageListRef.current
@@ -585,17 +554,6 @@ function ChatWindowComponent({
       observer.disconnect()
     }
   }, [hasMoreHistory, isLoading, loadHistoryPage])
-
-  // Track visible message count changes to increment the header counter.
-  // This keeps the count live after hydration without re-querying the backend.
-  const currentVisibleCount = visibleMessages.length
-  useEffect(() => {
-    const prev = prevVisibleCountRef.current
-    if (totalMessageCount !== null && currentVisibleCount > prev && prev > 0) {
-      setTotalMessageCount((c) => (c !== null ? c + (currentVisibleCount - prev) : c))
-    }
-    prevVisibleCountRef.current = currentVisibleCount
-  }, [currentVisibleCount, totalMessageCount])
 
   const emitTypingEvent = useCallback(
     (type: 'CHAT:TYPING_STARTED' | 'CHAT:TYPING_STOPPED') => {
@@ -926,21 +884,15 @@ function ChatWindowComponent({
 
   return (
     <section className="session-chat-window">
-      <header className="session-chat-window__header">
-        <div className="session-chat-window__header-copy">
-          <h3 className="session-chat-window__title">{headerTitle}</h3>
-          <p className="session-chat-window__subtitle">{headerSubtitle}</p>
-        </div>
-        <div className="session-chat-window__header-pills" aria-label="Timeline context">
-          <span className="session-chat-window__pill">
-            {isGreenroomMode
-              ? `${visibleMessages.length} ${visibleMessages.length === 1 ? 'entry' : 'entries'}`
-              : totalMessageCount !== null
-                ? `${totalMessageCount} messages`
-                : `${visibleMessages.length} ${visibleMessages.length === 1 ? 'entry' : 'entries'}`}
-          </span>
-        </div>
-      </header>
+      <ChatWindowHeader
+        apiUrl={apiUrl}
+        token={token}
+        sessionId={sessionId}
+        roomName={roomName}
+        isGreenroomMode={isGreenroomMode}
+        isLoading={isLoading}
+        visibleMessageCount={visibleMessages.length}
+      />
 
       {/* Error banner */}
       {error && <div className="session-chat-window__error">{error}</div>}
