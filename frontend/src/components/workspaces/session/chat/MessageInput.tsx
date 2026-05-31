@@ -111,9 +111,21 @@ export function MessageInput({
     () => ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC],
     [role]
   )
+  const canShowPlayerDmType = !isDmRole && composerMode === 'active'
   const selectableTypes = useMemo(
-    () => MESSAGE_TYPE_ORDER.filter((messageType) => roleAllowedTypes.includes(messageType)),
-    [roleAllowedTypes]
+    () =>
+      MESSAGE_TYPE_ORDER.filter((messageType) => {
+        if (!roleAllowedTypes.includes(messageType)) {
+          return false
+        }
+
+        if (messageType === MessageType.DM) {
+          return canShowPlayerDmType
+        }
+
+        return true
+      }),
+    [canShowPlayerDmType, roleAllowedTypes]
   )
   const allowedTypes = useMemo(() => {
     switch (composerMode) {
