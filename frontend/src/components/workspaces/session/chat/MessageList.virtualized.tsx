@@ -428,6 +428,7 @@ function MessageRow({
 
     const reportSize = () => {
       const height = Math.ceil(node.getBoundingClientRect().height)
+      // Only update cache if height actually changed—avoid redundant cache updates
       if (height > 0 && lastHeightRef.current !== height) {
         lastHeightRef.current = height
         data.rowHeightCache.setRowHeight(index, height)
