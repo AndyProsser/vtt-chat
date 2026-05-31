@@ -5,6 +5,7 @@ export interface SessionHistoryMessage {
   sessionId: string
   roomId?: string
   authorId: string
+  targetIds?: string[]
   authorUsername: string
   authorCharacterName?: string
   content: string

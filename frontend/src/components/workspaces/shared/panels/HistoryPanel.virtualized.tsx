@@ -55,7 +55,26 @@ type HistoryRow =
       message: SessionHistoryMessage
       isGroupedWithPrevious: boolean
       isSelf: boolean
+      whisperRouteEntries: string[]
+      hasWhisperRoute: boolean
     }
+
+function resolveHistoryWhisperRouteEntries(
+  message: SessionHistoryMessage,
+  participantLabelsByUserId: Map<string, string>
+): string[] {
+  if (message.type === MessageType.DM) {
+    return ['DM']
+  }
+
+  if (message.type !== MessageType.WHISPER || !Array.isArray(message.targetIds)) {
+    return []
+  }
+
+  return message.targetIds
+    .map((targetId) => participantLabelsByUserId.get(targetId) || 'Unknown')
+    .filter((label) => label.trim().length > 0)
+}
 
 /**
  * Flatten the grouped thread structure into a single, ordered list of rows.
@@ -71,6 +90,15 @@ export function flattenHistoryGroupsToRows(
   const rows: HistoryRow[] = []
 
   for (const group of groups) {
+    const participantLabelsByUserId = new Map<string, string>()
+
+    for (const message of group.items) {
+      const participantLabel = message.authorCharacterName || message.authorUsername
+      if (participantLabel.trim().length > 0) {
+        participantLabelsByUserId.set(message.authorId, participantLabel)
+      }
+    }
+
     rows.push({
       kind: 'boundary',
       key: `boundary:${group.sessionId}`,
@@ -130,6 +158,10 @@ export function flattenHistoryGroupsToRows(
         previousMessage.authorId === message.authorId &&
         Math.abs(message.createdAt - previousMessage.createdAt) <= HISTORY_GROUPING_WINDOW_MS
       )
+      const whisperRouteEntries = resolveHistoryWhisperRouteEntries(
+        message,
+        participantLabelsByUserId
+      )
 
       rows.push({
         kind: 'message',
@@ -137,6 +169,8 @@ export function flattenHistoryGroupsToRows(
         message,
         isGroupedWithPrevious,
         isSelf: Boolean(currentUserId) && message.authorId === currentUserId,
+        whisperRouteEntries,
+        hasWhisperRoute: whisperRouteEntries.length > 0,
       })
 
       previousMessage = message
@@ -216,10 +250,14 @@ function HistoryMessageRow({
   message,
   isSelf,
   isGroupedWithPrevious,
+  whisperRouteEntries,
+  hasWhisperRoute,
 }: {
   message: SessionHistoryMessage
   isSelf: boolean
   isGroupedWithPrevious: boolean
+  whisperRouteEntries: string[]
+  hasWhisperRoute: boolean
 }) {
   const variant = toMessageVariant(message.type)
   const authorLabel = message.authorCharacterName || message.authorUsername
@@ -262,10 +300,73 @@ function HistoryMessageRow({
             <span className="session-message-list__message-bubble-text">{message.content}</span>
           </div>
 
-          <div className="session-message-list__message-footer">
-            <span className="session-message-list__message-timestamp">
-              {new Date(message.createdAt).toLocaleTimeString()}
-            </span>
+          <div
+            className={`session-message-list__message-footer ${hasWhisperRoute ? `session-message-list__message-footer--whisper ${isSelf ? 'session-message-list__message-footer--whisper-outgoing' : 'session-message-list__message-footer--whisper-incoming'}` : ''}`}
+          >
+            {hasWhisperRoute ? (
+              <div
+                className={`session-message-list__message-whisper-meta ${isSelf ? 'session-message-list__message-whisper-meta--outgoing' : 'session-message-list__message-whisper-meta--incoming'}`}
+              >
+                {!isSelf ? (
+                  <div className="session-message-list__message-whisper-meta-row--incoming">
+                    <div className="session-message-list__message-timestamp session-message-list__message-timestamp--whisper">
+                      {new Date(message.createdAt).toLocaleTimeString()}
+                    </div>
+                    <div className="session-message-list__message-whisper-route session-message-list__message-whisper-route--incoming-list">
+                      {whisperRouteEntries.map((line, index) => (
+                        <div
+                          key={`${message.id}-whisper-${index}`}
+                          className="session-message-list__message-whisper-route-line"
+                        >
+                          <span
+                            className="session-message-list__message-whisper-connector"
+                            aria-hidden="true"
+                          >
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              subdirectory_arrow_right
+                            </span>
+                          </span>
+                          <span className="session-message-list__message-whisper-route-label">
+                            {line}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="session-message-list__message-whisper-route session-message-list__message-whisper-route--stacked session-message-list__message-whisper-route--outgoing">
+                      {whisperRouteEntries.map((line, index) => (
+                        <div
+                          key={`${message.id}-whisper-${index}`}
+                          className="session-message-list__message-whisper-route-line"
+                        >
+                          <span className="session-message-list__message-whisper-route-label">
+                            {line}
+                          </span>
+                          <span
+                            className="session-message-list__message-whisper-connector"
+                            aria-hidden="true"
+                          >
+                            <span className="material-symbols-outlined" aria-hidden="true">
+                              subdirectory_arrow_left
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="session-message-list__message-timestamp session-message-list__message-timestamp--whisper">
+                      {new Date(message.createdAt).toLocaleTimeString()}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : null}
+            {!hasWhisperRoute ? (
+              <span className="session-message-list__message-timestamp">
+                {new Date(message.createdAt).toLocaleTimeString()}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
@@ -294,6 +395,8 @@ function renderRow(row: HistoryRow) {
       message={row.message}
       isSelf={row.isSelf}
       isGroupedWithPrevious={row.isGroupedWithPrevious}
+      whisperRouteEntries={row.whisperRouteEntries}
+      hasWhisperRoute={row.hasWhisperRoute}
     />
   )
 }

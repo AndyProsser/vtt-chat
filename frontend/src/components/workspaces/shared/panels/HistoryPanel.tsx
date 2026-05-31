@@ -144,6 +144,7 @@ export function HistoryPanel({
                 sessionId: string
                 roomId?: string
                 authorId: string
+                targetIds?: string[]
                 authorUsername?: string
                 authorCharacterName?: string | null
                 content: string
@@ -164,6 +165,7 @@ export function HistoryPanel({
                 sessionId: message.sessionId,
                 roomId: message.roomId,
                 authorId: message.authorId,
+                targetIds: Array.isArray(message.targetIds) ? message.targetIds : undefined,
                 authorUsername: message.authorUsername || 'Unknown',
                 authorCharacterName: message.authorCharacterName ?? undefined,
                 content: message.content,
