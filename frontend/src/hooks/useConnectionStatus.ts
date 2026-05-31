@@ -192,7 +192,13 @@ export function useConnectionStatus({
   sessionId,
   roomId,
 }: UseConnectionStatusOptions): ConnectionStatus {
-  const livekitConnections = useStore((state) => state.livekitConnections)
+  const liveKitConnectionKey = useMemo(
+    () => (sessionId && roomId ? buildLiveKitConnectionKey(sessionId, roomId, 'room') : null),
+    [roomId, sessionId]
+  )
+  const livekitSnapshot = useStore((state) =>
+    liveKitConnectionKey ? (state.livekitConnections[liveKitConnectionKey] ?? null) : null
+  )
 
   return useMemo(() => {
     const coreWsState = deriveCoreWsState(wsState)
@@ -204,11 +210,11 @@ export function useConnectionStatus({
     let livekitState: LiveKitConnectionState = LiveKitConnectionState.NOT_APPLICABLE
 
     if (statusContext === StatusContext.INSIDE_CAMPAIGN && sessionId && roomId) {
-      const connectionKey = buildLiveKitConnectionKey(sessionId, roomId, 'room')
-      const snapshot = livekitConnections[connectionKey] ?? null
       // A selected room implies voice connection should be active; while the
       // first snapshot is pending, surface CONNECTING rather than NOT_APPLICABLE.
-      livekitState = snapshot ? deriveLiveKitState(snapshot) : LiveKitConnectionState.CONNECTING
+      livekitState = livekitSnapshot
+        ? deriveLiveKitState(livekitSnapshot)
+        : LiveKitConnectionState.CONNECTING
     }
 
     const { statusIconState, statusColorKey, label } = computeStatus(
@@ -218,5 +224,5 @@ export function useConnectionStatus({
     )
 
     return { coreWsState, livekitState, statusContext, statusIconState, statusColorKey, label }
-  }, [wsState, sessionId, roomId, livekitConnections])
+  }, [livekitSnapshot, roomId, sessionId, wsState])
 }

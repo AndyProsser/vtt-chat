@@ -9,14 +9,15 @@ import type { UIEvent, WheelEvent } from 'react'
 import type { EventEnvelope, UUID } from '@shared'
 import { isGreenroomSessionState, MessageType, Role, RoomType, SessionState } from '@shared'
 import { useStore } from '@/hooks/useStore'
-import { isGreenRoomName, ROOM_NAMES } from '@/constants/roomPresence.constants'
+import { ROOM_NAMES } from '@/constants/roomPresence.constants'
 import { CHAT_HISTORY_PAGE_SIZE } from '@/constants/chatPresence.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { useChatVisibleMessages } from '@/hooks/session/useChatVisibleMessages'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import { TypingIndicator } from './TypingIndicator'
 import type { OutgoingChatMessage } from '@/state/chatSlice'
-import type { BookendState, Message } from '@/types/chat'
+import type { Message } from '@/types/chat'
 import { generateClientId } from '@/utils/uuid'
 import '@/styles/components/workspaces/session/chat/ChatWindow.css'
 
@@ -38,18 +39,7 @@ interface ChatWindowProps {
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const AUTO_FOLLOW_BOTTOM_THRESHOLD_PX = 48
 const AUTO_FOLLOW_SMOOTH_SETTLE_MS = 480
-const EMPTY_ROOM_DIRECTORY: Record<string, { name: string }> = {}
-const EMPTY_SESSION_ROOMS: Record<UUID, { id: UUID; name: string }> = {}
 const EMPTY_OUTGOING_QUEUE: OutgoingChatMessage[] = []
-const SESSION_SUMMARY_PREFIX = '[Session Summary]'
-
-function countOwnKeys(record: Record<string, unknown>): number {
-  let total = 0
-  for (const _key in record) {
-    total += 1
-  }
-  return total
-}
 
 function toTimestamp(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -69,30 +59,6 @@ function toTimestamp(value: unknown): number {
   }
 
   return Date.now()
-}
-
-function getBookendState(content: string, type: MessageType): BookendState {
-  if (type !== MessageType.SYSTEM) {
-    return null
-  }
-
-  if (content.startsWith('[Session Started]') || content.startsWith('Session Start:')) {
-    return 'started'
-  }
-  if (content.startsWith('[Session Ended]') || content.startsWith('Session End:')) {
-    return 'ended'
-  }
-  if (content.startsWith('[Session Paused]')) {
-    return 'paused'
-  }
-  if (content.startsWith('[Session Resumed]')) {
-    return 'resumed'
-  }
-  if (content.startsWith('[Session Cooldown]')) {
-    return 'cooldown'
-  }
-
-  return null
 }
 
 function getStartOfTodayTimestamp(): number {
@@ -165,18 +131,17 @@ export function ChatWindow({
   const resolvedRoomName =
     roomName?.trim() || (isGreenroomMode ? ROOM_NAMES.greenRoom : ROOM_NAMES.mainRoom)
   const headerSubtitle = `${headerTitle} • ${resolvedRoomName}`
+  const { roomDirectory, visibleMessages } = useChatVisibleMessages({
+    sessionId,
+    roomId,
+    resolvedRoomName,
+    isGreenroomMode,
+    currentUserId: user.id,
+  })
 
-  const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
-    | Record<UUID, Message>
-    | undefined
   // Typing indicators are intentionally NOT read here. They flip at keystroke
   // frequency and would re-render the whole chat window. See <TypingIndicator />
   // below for the leaf subscription.
-  const sessionRooms = useStore(
-    (state) =>
-      ((state.rooms as any)[sessionId] as Record<UUID, { id: UUID; name: string }>) ??
-      EMPTY_SESSION_ROOMS
-  )
   const sessionRecord = useStore((state) => (state.sessions as any)[sessionId]) as
     | { dmId?: UUID; state?: SessionState }
     | undefined
@@ -190,51 +155,6 @@ export function ChatWindow({
       ((state.outgoingQueue as any)[sessionId] as OutgoingChatMessage[]) ?? EMPTY_OUTGOING_QUEUE
   )
 
-  const roomDirectory = useMemo(() => {
-    const entries = Object.values(sessionRooms) as Array<{ id: UUID; name: string }>
-
-    if (entries.length === 0) {
-      return EMPTY_ROOM_DIRECTORY
-    }
-
-    return entries.reduce(
-      (acc, room) => {
-        acc[room.id] = { name: room.name }
-        return acc
-      },
-      {} as Record<string, { name: string }>
-    )
-  }, [sessionRooms])
-
-  const greenroomRoomId = useMemo(() => {
-    const rooms = Object.values(sessionRooms) as Array<{ id: UUID; name: string }>
-    const greenroom = rooms.find((room) => isGreenRoomName(room.name))
-    return greenroom?.id
-  }, [sessionRooms])
-
-  // Derive ordered message list for this session
-  // messages shape: Record<UUID, Record<UUID, Message>> (session → id → Message)
-  const messageList = useMemo(() => {
-    const values = Object.values(sessionMessages ?? {}) as Message[]
-    if (values.length < 2) {
-      return values
-    }
-
-    let isChronological = true
-    for (let index = 1; index < values.length; index += 1) {
-      if (values[index - 1].createdAt > values[index].createdAt) {
-        isChronological = false
-        break
-      }
-    }
-
-    if (isChronological) {
-      return values
-    }
-
-    return [...values].sort((a, b) => a.createdAt - b.createdAt)
-  }, [sessionMessages])
-
   useEffect(() => {
     isLoadingOlderRef.current = isLoadingOlder
   }, [isLoadingOlder])
@@ -242,8 +162,8 @@ export function ChatWindow({
   // Keep the oldest-message timestamp ref in sync so the IntersectionObserver
   // always uses the correct cursor without needing messageList in its own deps.
   useEffect(() => {
-    oldestMessageTimestampRef.current = messageList[0]?.createdAt
-  }, [messageList])
+    oldestMessageTimestampRef.current = visibleMessages[0]?.createdAt
+  }, [visibleMessages])
 
   // Restore scroll position after prepended history messages are committed to the DOM.
   // Using useLayoutEffect (not RAF) guarantees we read scrollHeight AFTER React has
@@ -270,7 +190,7 @@ export function ChatWindow({
   // the user is auto-scrolling and new messages arrive past the MAX threshold — the
   // slice trims the oldest messages. Re-enable "load older" so the user can scroll
   // back up and rehydrate the pruned history from the server.
-  const messageCount = messageList.length
+  const messageCount = visibleMessages.length
   useEffect(() => {
     const prevCount = prevMessageCountRef.current
     if (messageCount < prevCount && prevCount > 0 && !isLoadingOlderRef.current) {
@@ -646,92 +566,6 @@ export function ChatWindow({
       observer.disconnect()
     }
   }, [hasMoreHistory, isLoading, loadHistoryPage])
-
-  const messageView = useMemo(() => {
-    const roomScopedMessages: Message[] = []
-    const startedIndices: number[] = []
-    const isResolvedRoomGreen = isGreenRoomName(resolvedRoomName)
-
-    for (const message of messageList) {
-      if (Array.isArray(message.visibleTo) && !message.visibleTo.includes(user.id)) {
-        continue
-      }
-
-      const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
-      const isGreenroomMessage =
-        message.roomId === greenroomRoomId ||
-        (message.roomId === roomId
-          ? isResolvedRoomGreen
-          : typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
-      const bookendState = getBookendState(message.content, message.type)
-
-      if (!isGreenroomMode) {
-        if (isGreenroomMessage) {
-          continue
-        }
-
-        if (bookendState === 'started') {
-          startedIndices.push(roomScopedMessages.length)
-        }
-
-        roomScopedMessages.push(message)
-        continue
-      }
-
-      const isGreenroomContextMessage =
-        message.roomId === roomId ||
-        (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
-      const isSessionSummaryMessage =
-        message.type === MessageType.SYSTEM &&
-        typeof message.content === 'string' &&
-        message.content.startsWith(SESSION_SUMMARY_PREFIX)
-      const isHistoricalSessionArtifact =
-        (Boolean(bookendState) || isSessionSummaryMessage) &&
-        Boolean(message.sessionId) &&
-        message.sessionId !== sessionId
-
-      if (!isGreenroomContextMessage) {
-        continue
-      }
-
-      if (isHistoricalSessionArtifact) {
-        continue
-      }
-
-      if (
-        bookendState &&
-        bookendState !== 'started' &&
-        bookendState !== 'ended' &&
-        bookendState !== 'cooldown'
-      ) {
-        continue
-      }
-
-      roomScopedMessages.push(message)
-    }
-
-    // In greenroom mode, all campaign messages should be visible (old greenroom messages appear
-    // before the STARTED bookend). Only trim to the latest STARTED bookend in session chat.
-    const visibleMessages =
-      isGreenroomMode || startedIndices.length === 0
-        ? roomScopedMessages
-        : roomScopedMessages.slice(startedIndices[startedIndices.length - 1])
-
-    return {
-      visibleMessages,
-    }
-  }, [
-    greenroomRoomId,
-    isGreenroomMode,
-    messageList,
-    resolvedRoomName,
-    roomDirectory,
-    roomId,
-    sessionId,
-    user.id,
-  ])
-
-  const { visibleMessages } = messageView
 
   // Track visible message count changes to increment the header counter.
   // This keeps the count live after hydration without re-querying the backend.

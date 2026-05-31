@@ -17,19 +17,15 @@ import type { UUID } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '@/hooks/useLiveKit'
 import { useAudioEngine } from '@/hooks/useAudioEngine'
 import { useStore } from '@/hooks/useStore'
-import { getUserDMOverrides } from '@/utils/audioOverrides'
-import { AUDIO_EFFECT_COPY, getPushToTalkEffectDescription } from '@/constants/audioUi.constants'
 import {
   AUDIO_BROADCAST_TRACK_PREFIX,
   AUDIO_ROOM_TRACK_PREFIX,
-  AUDIO_TRANSITION_CONTROL_STICKY_MS,
   LOCAL_SPEAKING_EVALUATION_INTERVAL_MS,
   LOCAL_SPEAKING_HOLD_MS,
   LOCAL_SPEAKING_RELEASE_LEVEL,
   LOCAL_SPEAKING_TRIGGER_LEVEL,
 } from '@/constants/audioPanel.constants'
-import { AudioDevicePanel } from './panels/AudioDevicePanel'
-import { AudioSettingsPanel } from './panels/AudioSettingsPanel'
+import { AudioPanelFooter } from './AudioPanelFooter'
 import '@/styles/components/workspaces/session/audio/AudioPanel.css'
 
 interface AudioPanelProps {
@@ -49,8 +45,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const trackParticipantByTrackIdRef = useRef(new Map<string, UUID>())
   const localSpeakingRef = useRef(false)
   const localSpeakingHoldUntilRef = useRef(0)
-  const controlConnectionStickyUntilRef = useRef(0)
-  const [controlIsVoiceConnected, setControlIsVoiceConnected] = useState(false)
 
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream, meta: { participantIdentity: string }) => {
@@ -91,30 +85,19 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   })
 
   const device = useStore((state) => state.device)
-  // Presence is read imperatively in the effect below to avoid subscribing to the
-  // entire sessionPresence[sessionId] map. Ghost flips recreate that map reference
-  // and would cause this panel to re-render on every mock ghost toggle.
-  const selectedRoom = useStore((state) => state.rooms[sessionId]?.[roomId])
+  const selectedRoomType = useStore((state) => state.rooms[sessionId]?.[roomId]?.type)
   const pttActive = useStore((state) => state.pttActive)
-  const activeEffects = useStore((state) => state.activeEffects)
-  const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
   const broadcastRoomIdFromState = useStore((state) => state.broadcastRoomId)
-  const currentEnvironment = useStore((state) => state.currentEnvironment)
-  const currentDistance = useStore((state) => state.currentDistance)
-  const currentCondition = useStore((state) => state.currentCondition)
-  const currentVoicePreset = useStore((state) => state.currentVoicePreset)
-  const currentICPreset = useStore((state) => state.currentICPreset)
   const setDevice = useStore((state) => state.setDevice)
   const initializeAudio = useStore((state) => state.initializeAudio)
-  const togglePTT = useStore((state) => state.togglePTT)
-  const currentUser = useStore((state) => state.currentUser)
+  const currentUserRole = useStore((state) => state.currentUser?.role)
   const setPresenceSpeakingUsers = useStore((state) => state.setPresenceSpeakingUsers)
   const sharedLiveKitState = useStore(
     (state) => state.livekitConnections[buildLiveKitConnectionKey(sessionId, roomId, 'room')]
   )
-  const effectiveRole = role ?? currentUser?.role ?? Role.PLAYER
-  const isWhisperMode = selectedRoom?.type === RoomType.PRIVATE
+  const effectiveRole = role ?? currentUserRole ?? Role.PLAYER
+  const isWhisperMode = selectedRoomType === RoomType.PRIVATE
 
   const broadcastRoomId = broadcastRoomIdFromState || `dm-broadcast:${sessionId}`
 
@@ -402,48 +385,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     canonicalConnectionState === ConnectionState.SignalReconnecting ||
     livekitRoomState === 'connecting' ||
     livekitRoomState === 'reconnecting'
-
-  const statusState = canonicalIsConnected
-    ? 'connected'
-    : canonicalIsConnecting
-      ? 'connecting'
-      : 'disconnected'
-  const isVoiceConnected = canonicalIsConnected
   const hasLocalPublication = sharedLiveKitState?.hasLocalPublication ?? false
-  const liveKitError = sharedLiveKitState?.error ?? livekit.error
-
-  useEffect(() => {
-    if (canonicalIsConnected) {
-      controlConnectionStickyUntilRef.current = 0
-      setControlIsVoiceConnected(true)
-      return
-    }
-
-    if (canonicalIsConnecting && controlIsVoiceConnected) {
-      if (controlConnectionStickyUntilRef.current === 0) {
-        controlConnectionStickyUntilRef.current = Date.now() + AUDIO_TRANSITION_CONTROL_STICKY_MS
-      }
-
-      const remainingMs = controlConnectionStickyUntilRef.current - Date.now()
-      if (remainingMs > 0) {
-        const timeoutId = window.setTimeout(() => {
-          setControlIsVoiceConnected(false)
-          controlConnectionStickyUntilRef.current = 0
-        }, remainingMs)
-
-        return () => {
-          window.clearTimeout(timeoutId)
-        }
-      }
-
-      setControlIsVoiceConnected(false)
-      controlConnectionStickyUntilRef.current = 0
-      return
-    }
-
-    setControlIsVoiceConnected(false)
-    controlConnectionStickyUntilRef.current = 0
-  }, [canonicalIsConnected, canonicalIsConnecting, controlIsVoiceConnected])
 
   /**
    * Sync device state with actual audio connection after room changes.
@@ -451,7 +393,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
    * the UI mute state reflects reality (if audio is not publishing, mark as muted).
    */
   useEffect(() => {
-    if (!isVoiceConnected || canonicalIsConnecting || !device.enabled) {
+    if (!canonicalIsConnected || canonicalIsConnecting || !device.enabled) {
       return
     }
 
@@ -471,7 +413,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     }
   }, [
     roomId,
-    isVoiceConnected,
+    canonicalIsConnected,
     hasLocalPublication,
     device.microphoneOn,
     device.pttEnabled,
@@ -518,120 +460,6 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     }
   }, [audioEngine, device.backgroundAudioLevel, effectiveRole, isWhisperMode, roomId, sessionId])
 
-  const effectItems = useMemo(() => {
-    const items: Array<{ kind: string; name: string; description: string }> = []
-    const currentUserId = currentUser?.id as UUID | undefined
-    const currentUserOverrides = currentUserId ? getUserDMOverrides(dmOverrides, currentUserId) : []
-
-    if (device.pttEnabled) {
-      items.push({
-        kind: 'ptt',
-        name: AUDIO_EFFECT_COPY.pushToTalkName,
-        description: getPushToTalkEffectDescription(pttActive),
-      })
-    }
-
-    if (currentEnvironment) {
-      items.push({
-        kind: 'environment',
-        name: currentEnvironment.name,
-        description: AUDIO_EFFECT_COPY.environmentDescription,
-      })
-    }
-
-    if (currentDistance) {
-      items.push({
-        kind: 'distance',
-        name: currentDistance.name,
-        description: AUDIO_EFFECT_COPY.distanceDescription,
-      })
-    }
-
-    if (currentCondition) {
-      items.push({
-        kind: 'condition',
-        name: currentCondition.name,
-        description: AUDIO_EFFECT_COPY.conditionDescription,
-      })
-    }
-
-    if (currentVoicePreset) {
-      items.push({
-        kind: 'voice',
-        name: currentVoicePreset.name,
-        description: AUDIO_EFFECT_COPY.voiceDescription,
-      })
-    }
-
-    if (currentICPreset) {
-      items.push({
-        kind: 'ic',
-        name: currentICPreset.name,
-        description: AUDIO_EFFECT_COPY.inCharacterDescription,
-      })
-    }
-
-    Object.entries(activeEffects)
-      .filter(([, enabled]) => Boolean(enabled))
-      .forEach(([effectId]) => {
-        items.push({
-          kind: 'custom',
-          name: effectId,
-          description: AUDIO_EFFECT_COPY.customDescription,
-        })
-      })
-
-    for (const override of currentUserOverrides) {
-      if (override.overrideType === 'MUTE' || override.overrideType === 'UNMUTE') {
-        continue
-      }
-
-      if (override.overrideType === 'VOICE_OF_GOD') {
-        continue
-      }
-
-      const presetName =
-        typeof override.parameters?.presetName === 'string' ? override.parameters.presetName : null
-
-      const kind = override.overrideType.toLowerCase()
-      const name =
-        presetName ||
-        (override.overrideType === 'CONDITION'
-          ? 'Condition'
-          : override.overrideType === 'DISTANCE'
-            ? 'Distance'
-            : override.overrideType === 'VOICE'
-              ? 'Voice Preset'
-              : override.overrideType === 'FILTER'
-                ? 'Audio Filter'
-                : override.overrideType === 'GAIN'
-                  ? 'Volume'
-                  : override.overrideType === 'GATE'
-                    ? 'Voice Gate'
-                    : override.overrideType)
-
-      items.push({
-        kind,
-        name,
-        description: 'Applied by the DM for this scene.',
-      })
-    }
-
-    return items
-  }, [
-    activeEffects,
-    currentCondition,
-    currentDistance,
-    currentEnvironment,
-    currentICPreset,
-    currentVoicePreset,
-    currentUser?.id,
-    dmOverrides,
-    device.pttEnabled,
-    pttActive,
-  ])
-
-  const activeEffectsCount = effectItems.length
   const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
 
   /**
@@ -733,37 +561,21 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   return (
     <section className="session-audio-panel">
-      {liveKitError && <p className="session-audio-panel__error">⚠ {liveKitError}</p>}
-
-      <div className="session-audio-panel__footer">
-        {settingsOpen && (
-          <AudioSettingsPanel
-            device={device}
-            localMicLevelRef={localTransmitLevelRef}
-            isDm={effectiveRole === Role.DM}
-            isWhisperMode={isWhisperMode}
-            onDeviceChange={setDevice}
-            onClose={() => setSettingsOpen(false)}
-          />
-        )}
-        <AudioDevicePanel
-          device={device}
-          statusState={statusState}
-          isVoiceConnected={controlIsVoiceConnected}
-          hasLocalPublication={hasLocalPublication}
-          pttActive={pttActive}
-          activeEffectsCount={activeEffectsCount}
-          transmittedMicLevelRef={localTransmitLevelRef}
-          effectItems={effectItems}
-          settingsOpen={settingsOpen}
-          sessionId={sessionId}
-          userId={(currentUser?.id as UUID) || ('unknown' as UUID)}
-          onGoLive={handleGoLive}
-          onMute={handleMute}
-          onPTTChange={togglePTT}
-          onToggleSettings={() => setSettingsOpen((o) => !o)}
-        />
-      </div>
+      <AudioPanelFooter
+        sessionId={sessionId}
+        roomId={roomId}
+        role={role}
+        settingsOpen={settingsOpen}
+        localTransmitLevelRef={localTransmitLevelRef}
+        livekitConnectionState={livekit.connectionState}
+        livekitRoomState={livekitRoomState}
+        livekitError={livekit.error}
+        hasLocalPublicationFallback={hasLocalPublication}
+        onGoLive={handleGoLive}
+        onMute={handleMute}
+        onCloseSettings={() => setSettingsOpen(false)}
+        onToggleSettings={() => setSettingsOpen((open) => !open)}
+      />
     </section>
   )
 }
