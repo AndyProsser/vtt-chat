@@ -179,6 +179,8 @@ export const SessionWorkspaceChromeConnector = memo(
       () => visibleRooms.find((room) => room.id === selectedRoomId) || null,
       [selectedRoomId, visibleRooms]
     )
+    const selectedRoomName = selectedRoom?.name
+    const selectedRoomType = selectedRoom?.type
     const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
     const connectedRoomId = useMemo<UUID | ''>(() => {
       const ownPresence = currentPresence.find(
@@ -256,7 +258,8 @@ export const SessionWorkspaceChromeConnector = memo(
         currentPauseStats={currentPauseStats}
         rightRailIndicators={rightRailIndicators}
         selectedRoomId={selectedRoomId}
-        selectedRoom={selectedRoom}
+        selectedRoomName={selectedRoomName}
+        selectedRoomType={selectedRoomType}
         connectedPlayers={derivedState.connectedPlayers}
         connectedSpectatorsCount={derivedState.connectedSpectatorsCount}
         effectiveSessionRole={derivedState.effectiveSessionRole}
@@ -269,6 +272,10 @@ export const SessionWorkspaceChromeConnector = memo(
         cooldownControlLockedReason={derivedState.cooldownControlLockedReason}
         canExtendCooldown={derivedState.canExtendCooldown}
         extendCooldownLockedReason={derivedState.extendCooldownLockedReason}
+        toolbarStatusColorKey={derivedState.connectionStatus.statusColorKey}
+        toolbarStatusLabel={derivedState.connectionStatus.label}
+        toolbarCoreWsState={derivedState.connectionStatus.coreWsState}
+        toolbarLivekitState={derivedState.connectionStatus.livekitState}
         canEditSessionSettings={derivedState.canEditSessionSettings}
         canEditEndedSessionName={derivedState.canEditEndedSessionName}
         isGreenroomChatMode={isGreenroomChatMode}

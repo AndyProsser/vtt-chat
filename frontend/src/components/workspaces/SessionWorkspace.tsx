@@ -87,10 +87,10 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       return (
         <SessionToolbar
           actions={actions}
-          statusColorKey={props.connectionStatus.statusColorKey}
-          statusLabel={props.connectionStatus.label}
-          coreWsState={props.connectionStatus.coreWsState}
-          livekitState={props.connectionStatus.livekitState}
+          statusColorKey={props.toolbarStatusColorKey}
+          statusLabel={props.toolbarStatusLabel}
+          coreWsState={props.toolbarCoreWsState}
+          livekitState={props.toolbarLivekitState}
           sessionId={currentSessionId}
           sessionState={currentSessionState}
           cooldownDurationMs={configuredCooldownDurationMs}
@@ -120,10 +120,6 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.canStartFromGreenroom,
       props.canStopFromActive,
       configuredCooldownDurationMs,
-      props.connectionStatus.coreWsState,
-      props.connectionStatus.label,
-      props.connectionStatus.livekitState,
-      props.connectionStatus.statusColorKey,
       props.cooldownControlLockedReason,
       props.cooldownControlVisible,
       props.extendCooldownLockedReason,
@@ -137,6 +133,10 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.onExitToSelector,
       props.onOpenUserSettings,
       props.onStopSession,
+      props.toolbarCoreWsState,
+      props.toolbarLivekitState,
+      props.toolbarStatusColorKey,
+      props.toolbarStatusLabel,
     ]
   )
 
@@ -216,7 +216,8 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           apiUrl={props.apiUrl}
           token={props.token}
           currentSessionId={currentSessionId}
-          selectedRoom={props.selectedRoom}
+          selectedRoomName={props.selectedRoomName}
+          selectedRoomType={props.selectedRoomType}
           campaignId={props.campaignId}
           effectiveSessionUser={props.effectiveSessionUser}
           messageGroupingWindowMs={props.messageGroupingWindowMs}
@@ -234,8 +235,9 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.effectiveSessionUser,
       props.isGreenroomChatMode,
       props.messageGroupingWindowMs,
-      props.selectedRoom,
       props.selectedRoomId,
+      props.selectedRoomName,
+      props.selectedRoomType,
       props.sendWsEvent,
       props.token,
       currentSessionEndedAt,

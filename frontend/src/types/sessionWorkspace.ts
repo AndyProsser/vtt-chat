@@ -5,7 +5,6 @@ import { AudioPanel } from '@/components/workspaces/session/audio/AudioPanel'
 import { ChatWindow } from '@/components/workspaces/session/chat/ChatWindow'
 import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import type { Session as SessionRecord } from '@/types/session'
-import type { Room as RoomRecord, RoomUser as RoomMember } from '@/types/room'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type { CampaignSessionPolicyBindings } from '@/components/workspaces/shared/panels/CampaignSessionSettingsPanel'
@@ -59,16 +58,15 @@ export type SessionWorkspaceProps = {
   dmAutoTargetOnFirstPlayerJoin: boolean
   wsState: ComponentProps<typeof ReconnectBanner>['wsState']
   wsRetrySecondsRemaining: number | null
-  connectionStatus: {
-    statusColorKey: ComponentProps<typeof SessionToolbar>['statusColorKey']
-    label: string
-    coreWsState: ComponentProps<typeof SessionToolbar>['coreWsState']
-    livekitState: ComponentProps<typeof SessionToolbar>['livekitState']
-  }
+  toolbarStatusColorKey: ComponentProps<typeof SessionToolbar>['statusColorKey']
+  toolbarStatusLabel: string
+  toolbarCoreWsState: ComponentProps<typeof SessionToolbar>['coreWsState']
+  toolbarLivekitState: ComponentProps<typeof SessionToolbar>['livekitState']
   rightRailIndicators: ComponentProps<typeof SessionWorkspaceFrame>['rightRailIndicators']
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-  selectedRoom: RoomRecord | null
+  selectedRoomName?: string
+  selectedRoomType?: ComponentProps<typeof ChatWindow>['roomType']
   campaignId: UUID | undefined
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof ChatWindow>['sendWsEvent']

@@ -3,7 +3,6 @@ import { MessageType, Role, SessionState, type UUID } from '@shared'
 import { ChatWindow } from '@/components/workspaces/session/chat/ChatWindow'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { SpectatorWaitScreen } from '@/components/workspaces/session/SpectatorWaitScreen'
-import type { Room as RoomRecord } from '@/types/room'
 import type { ComponentProps } from 'react'
 
 type SessionWorkspaceCenterPaneProps = {
@@ -16,7 +15,8 @@ type SessionWorkspaceCenterPaneProps = {
   apiUrl: string
   token: string
   currentSessionId: UUID
-  selectedRoom: RoomRecord | null
+  selectedRoomName?: string
+  selectedRoomType?: ComponentProps<typeof ChatWindow>['roomType']
   campaignId: UUID | undefined
   effectiveSessionUser: {
     id: UUID
@@ -60,8 +60,8 @@ function SessionWorkspaceCenterPaneComponent(props: SessionWorkspaceCenterPanePr
                 sessionId={props.currentSessionId}
                 roomId={props.selectedRoomId}
                 campaignId={props.campaignId}
-                roomName={props.selectedRoom?.name}
-                roomType={props.selectedRoom?.type}
+                roomName={props.selectedRoomName}
+                roomType={props.selectedRoomType}
                 user={props.effectiveSessionUser}
                 messageGroupingWindowMs={props.messageGroupingWindowMs}
                 sendWsEvent={props.sendWsEvent}
