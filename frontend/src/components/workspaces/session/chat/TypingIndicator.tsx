@@ -124,9 +124,16 @@ export function TypingIndicator({ sessionId, roomId, currentUserId }: TypingIndi
         aria-hidden={!active}
       >
         <span className="session-chat-window__typing-text">
-          {active ? summary || elsewhereSummary : ''}
-          {summary && elsewhereSummary ? ' • ' : ''}
+          {summary ? (
+            <span className="session-chat-window__typing-text--local">{summary}</span>
+          ) : null}
           {summary && elsewhereSummary ? (
+            <span className="session-chat-window__typing-separator" aria-hidden="true">
+              {' '}
+              •{' '}
+            </span>
+          ) : null}
+          {elsewhereSummary ? (
             <span className="session-chat-window__typing-text--elsewhere">{elsewhereSummary}</span>
           ) : null}
         </span>
