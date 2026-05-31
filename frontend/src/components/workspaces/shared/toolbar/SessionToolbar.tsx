@@ -1,13 +1,6 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import type {
-  LiveKitConnectionState,
-  CoreWsState,
-  SessionState,
-  StatusColorKey,
-  UUID,
-} from '@shared'
+import type { SessionState, UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
-import { toneFromAudioState, toneFromCoreState } from '@/constants/sessionToolbar.constants'
 import { Icon } from '@/components/ui/Icon'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
 import { SessionTimerLeaf } from './SessionTimerLeaf'
@@ -18,11 +11,9 @@ import '@/styles/components/workspaces/shared/toolbar/SessionToolbar.css'
 
 interface SessionToolbarProps {
   actions: ToolbarActionModel
-  statusColorKey: StatusColorKey
-  statusLabel: string
-  coreWsState: CoreWsState
-  livekitState: LiveKitConnectionState
+  wsState: 'connected' | 'connecting' | 'disconnected' | 'reconnecting'
   sessionId: UUID
+  selectedRoomId: UUID | ''
   sessionState: SessionState
   cooldownDurationMs?: number
   isTransitioningSession?: boolean
@@ -47,11 +38,9 @@ interface SessionToolbarProps {
 
 export const SessionToolbar = memo(function SessionToolbar({
   actions,
-  statusColorKey,
-  statusLabel,
-  coreWsState,
-  livekitState,
+  wsState,
   sessionId,
+  selectedRoomId,
   sessionState,
   cooldownDurationMs,
   isTransitioningSession = false,
@@ -113,27 +102,15 @@ export const SessionToolbar = memo(function SessionToolbar({
     [sessionId, cooldownDurationMs]
   )
 
-  // Derive wsState from coreWsState for ConnectionStatusLeaf
-  // This is a workaround until wsState is tracked in Zustand
-  const derivedWsState = (): 'connected' | 'connecting' | 'disconnected' | 'reconnecting' => {
-    if (coreWsState === 'CONNECTED') return 'connected'
-    if (coreWsState === 'CONNECTING') return 'connecting'
-    return 'disconnected'
-  }
-
-  const wsState = derivedWsState()
-
   const connectionStatusLeaf = useMemo(
     () => (
       <ConnectionStatusLeaf
         wsState={wsState}
-        coreWsState={coreWsState}
-        livekitState={livekitState}
         sessionId={sessionId}
-        roomId={undefined}
+        roomId={selectedRoomId || null}
       />
     ),
-    [wsState, coreWsState, livekitState, sessionId]
+    [selectedRoomId, sessionId, wsState]
   )
 
   const sessionActionButtons = useMemo(

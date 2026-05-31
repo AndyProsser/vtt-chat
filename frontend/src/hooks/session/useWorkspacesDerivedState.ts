@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { PresenceState, Role, SessionState, type UUID } from '@shared'
-import { useConnectionStatus } from '@/hooks/useConnectionStatus'
 import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
 import { resolveMembershipRole, type CampaignSummary } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
@@ -38,9 +37,7 @@ type UseWorkspacesDerivedStateParams = {
  */
 export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParams) {
   const {
-    wsState,
     currentSession,
-    selectedRoomId,
     campaigns,
     selectedCampaignId,
     settingsCampaignSessions,
@@ -57,11 +54,6 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
   } = params
 
   const hasSessionSelected = currentSession !== null
-  const connectionStatus = useConnectionStatus({
-    wsState,
-    sessionId: currentSession?.id ?? null,
-    roomId: selectedRoomId || null,
-  })
 
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
   const settingsReferenceSession = settingsCampaignSessions.find(
@@ -245,7 +237,6 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
 
   return {
     hasSessionSelected,
-    connectionStatus,
     selectedCampaign,
     settingsReferenceSession,
     settingsCampaignTotalDurationMs,

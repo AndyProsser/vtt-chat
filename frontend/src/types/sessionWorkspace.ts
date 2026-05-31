@@ -58,19 +58,12 @@ export type SessionWorkspaceProps = {
   dmAutoTargetOnFirstPlayerJoin: boolean
   wsState: ComponentProps<typeof ReconnectBanner>['wsState']
   wsRetrySecondsRemaining: number | null
-  toolbarStatusColorKey: ComponentProps<typeof SessionToolbar>['statusColorKey']
-  toolbarStatusLabel: string
-  toolbarCoreWsState: ComponentProps<typeof SessionToolbar>['coreWsState']
-  toolbarLivekitState: ComponentProps<typeof SessionToolbar>['livekitState']
   rightRailIndicators: ComponentProps<typeof SessionWorkspaceFrame>['rightRailIndicators']
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-  selectedRoomName?: string
-  selectedRoomType?: ComponentProps<typeof ChatWindow>['roomType']
   campaignId: UUID | undefined
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof ChatWindow>['sendWsEvent']
-  isGreenroomChatMode: boolean
   totalSessionDurationMs: number
   canEditCampaignInfo: boolean
   onSaveCampaignInfo: ComponentProps<typeof CampaignInformationPanel>['onSaveCampaignInfo']

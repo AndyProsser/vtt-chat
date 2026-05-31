@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react'
-import type { UUID, CoreWsState, LiveKitConnectionState } from '@shared'
+import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { useConnectionStatus } from '@/hooks/useConnectionStatus'
 import {
@@ -13,8 +13,6 @@ import '@/styles/components/workspaces/shared/toolbar/SessionToolbar.css'
 
 interface ConnectionStatusLeafProps {
   wsState: 'connected' | 'connecting' | 'disconnected' | 'reconnecting'
-  coreWsState: CoreWsState
-  livekitState: LiveKitConnectionState
   sessionId?: UUID | null
   roomId?: UUID | null
 }
@@ -35,8 +33,6 @@ interface ConnectionStatusLeafProps {
  */
 export const ConnectionStatusLeaf = memo(function ConnectionStatusLeafInner({
   wsState,
-  coreWsState,
-  livekitState,
   sessionId,
   roomId,
 }: ConnectionStatusLeafProps) {
@@ -46,9 +42,15 @@ export const ConnectionStatusLeaf = memo(function ConnectionStatusLeafInner({
     roomId,
   })
 
-  const coreToneClass = useMemo(() => toneFromCoreState(coreWsState), [coreWsState])
+  const coreToneClass = useMemo(
+    () => toneFromCoreState(connectionStatus.coreWsState),
+    [connectionStatus.coreWsState]
+  )
 
-  const audioToneClass = useMemo(() => toneFromAudioState(livekitState), [livekitState])
+  const audioToneClass = useMemo(
+    () => toneFromAudioState(connectionStatus.livekitState),
+    [connectionStatus.livekitState]
+  )
 
   return (
     <Tooltip>
@@ -70,11 +72,15 @@ export const ConnectionStatusLeaf = memo(function ConnectionStatusLeafInner({
         <div className="session-toolbar__status-tooltip-title">{CONNECTION_STATUS_COPY.title}</div>
         <div className="session-toolbar__status-tooltip-row">
           <span>{CONNECTION_STATUS_COPY.coreLabel}</span>
-          <strong className={coreToneClass}>{getCoreWsStateLabel(coreWsState)}</strong>
+          <strong className={coreToneClass}>
+            {getCoreWsStateLabel(connectionStatus.coreWsState)}
+          </strong>
         </div>
         <div className="session-toolbar__status-tooltip-row">
           <span>{CONNECTION_STATUS_COPY.audioLabel}</span>
-          <strong className={audioToneClass}>{getLiveKitConnectionStateLabel(livekitState)}</strong>
+          <strong className={audioToneClass}>
+            {getLiveKitConnectionStateLabel(connectionStatus.livekitState)}
+          </strong>
         </div>
       </TooltipContent>
     </Tooltip>

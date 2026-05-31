@@ -12,7 +12,7 @@ import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, SessionPresence as PresenceRecord } from '@/types/room'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { ApiSessionStats } from '@/types/session/workspaces'
-import { getVisibleRoomsForSessionState, isGreenRoom } from '@/utils/session/workspaces'
+import { getVisibleRoomsForSessionState } from '@/utils/session/workspaces'
 
 type SessionWorkspaceProps = ComponentProps<typeof SessionWorkspace>
 
@@ -175,13 +175,6 @@ export const SessionWorkspaceChromeConnector = memo(
       selectedRoomIdOverride,
       visibleRooms,
     ])
-    const selectedRoom = useMemo(
-      () => visibleRooms.find((room) => room.id === selectedRoomId) || null,
-      [selectedRoomId, visibleRooms]
-    )
-    const selectedRoomName = selectedRoom?.name
-    const selectedRoomType = selectedRoom?.type
-    const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
     const connectedRoomId = useMemo<UUID | ''>(() => {
       const ownPresence = currentPresence.find(
         (presence) => presence.userId === effectiveActorUserId
@@ -258,8 +251,6 @@ export const SessionWorkspaceChromeConnector = memo(
         currentPauseStats={currentPauseStats}
         rightRailIndicators={rightRailIndicators}
         selectedRoomId={selectedRoomId}
-        selectedRoomName={selectedRoomName}
-        selectedRoomType={selectedRoomType}
         connectedPlayers={derivedState.connectedPlayers}
         connectedSpectatorsCount={derivedState.connectedSpectatorsCount}
         effectiveSessionRole={derivedState.effectiveSessionRole}
@@ -272,13 +263,8 @@ export const SessionWorkspaceChromeConnector = memo(
         cooldownControlLockedReason={derivedState.cooldownControlLockedReason}
         canExtendCooldown={derivedState.canExtendCooldown}
         extendCooldownLockedReason={derivedState.extendCooldownLockedReason}
-        toolbarStatusColorKey={derivedState.connectionStatus.statusColorKey}
-        toolbarStatusLabel={derivedState.connectionStatus.label}
-        toolbarCoreWsState={derivedState.connectionStatus.coreWsState}
-        toolbarLivekitState={derivedState.connectionStatus.livekitState}
         canEditSessionSettings={derivedState.canEditSessionSettings}
         canEditEndedSessionName={derivedState.canEditEndedSessionName}
-        isGreenroomChatMode={isGreenroomChatMode}
       />
     )
   },

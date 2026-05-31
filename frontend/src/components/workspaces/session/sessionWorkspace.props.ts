@@ -38,19 +38,12 @@ type BuildSessionWorkspacePropsParams = {
   dmAutoTargetOnFirstPlayerJoin: boolean
   wsState: ComponentProps<typeof SessionWorkspace>['wsState']
   wsRetrySecondsRemaining: ComponentProps<typeof SessionWorkspace>['wsRetrySecondsRemaining']
-  toolbarStatusColorKey: ComponentProps<typeof SessionWorkspace>['toolbarStatusColorKey']
-  toolbarStatusLabel: ComponentProps<typeof SessionWorkspace>['toolbarStatusLabel']
-  toolbarCoreWsState: ComponentProps<typeof SessionWorkspace>['toolbarCoreWsState']
-  toolbarLivekitState: ComponentProps<typeof SessionWorkspace>['toolbarLivekitState']
   rightRailIndicators: ComponentProps<typeof SessionWorkspace>['rightRailIndicators']
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: ComponentProps<typeof SessionWorkspace>['fetchWithAuthGuard']
-  selectedRoomName: ComponentProps<typeof SessionWorkspace>['selectedRoomName']
-  selectedRoomType: ComponentProps<typeof SessionWorkspace>['selectedRoomType']
   campaignId: UUID | undefined
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof SessionWorkspace>['sendWsEvent']
-  isGreenroomChatMode: boolean
   totalSessionDurationMs: number
   canEditCampaignInfo: boolean
   onSaveCampaignInfo: ComponentProps<typeof SessionWorkspace>['onSaveCampaignInfo']
@@ -115,19 +108,12 @@ export function buildSessionWorkspaceProps(
     dmAutoTargetOnFirstPlayerJoin: params.dmAutoTargetOnFirstPlayerJoin,
     wsState: params.wsState,
     wsRetrySecondsRemaining: params.wsRetrySecondsRemaining,
-    toolbarStatusColorKey: params.toolbarStatusColorKey,
-    toolbarStatusLabel: params.toolbarStatusLabel,
-    toolbarCoreWsState: params.toolbarCoreWsState,
-    toolbarLivekitState: params.toolbarLivekitState,
     rightRailIndicators: params.rightRailIndicators,
     partyPresenceRefreshVersion: params.partyPresenceRefreshVersion,
     fetchWithAuthGuard: params.fetchWithAuthGuard,
-    selectedRoomName: params.selectedRoomName,
-    selectedRoomType: params.selectedRoomType,
     campaignId: params.campaignId,
     messageGroupingWindowMs: params.messageGroupingWindowMs,
     sendWsEvent: params.sendWsEvent,
-    isGreenroomChatMode: params.isGreenroomChatMode,
     totalSessionDurationMs: params.totalSessionDurationMs,
     canEditCampaignInfo: params.canEditCampaignInfo,
     onSaveCampaignInfo: params.onSaveCampaignInfo,

@@ -4,6 +4,8 @@ import { ChatWindow } from '@/components/workspaces/session/chat/ChatWindow'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { SpectatorWaitScreen } from '@/components/workspaces/session/SpectatorWaitScreen'
 import type { ComponentProps } from 'react'
+import { useStore } from '@/hooks/useStore'
+import { isGreenRoom } from '@/utils/session/workspaces'
 
 type SessionWorkspaceCenterPaneProps = {
   view: 'chat' | 'notes'
@@ -15,8 +17,6 @@ type SessionWorkspaceCenterPaneProps = {
   apiUrl: string
   token: string
   currentSessionId: UUID
-  selectedRoomName?: string
-  selectedRoomType?: ComponentProps<typeof ChatWindow>['roomType']
   campaignId: UUID | undefined
   effectiveSessionUser: {
     id: UUID
@@ -26,13 +26,21 @@ type SessionWorkspaceCenterPaneProps = {
   }
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof ChatWindow>['sendWsEvent']
-  isGreenroomChatMode: boolean
   onPendingNewMessageCountChange?: ComponentProps<
     typeof ChatWindow
   >['onPendingNewMessageCountChange']
 }
 
 function SessionWorkspaceCenterPaneComponent(props: SessionWorkspaceCenterPaneProps) {
+  const selectedRoom = useStore((state) => {
+    if (!props.selectedRoomId) {
+      return null
+    }
+
+    return state.rooms[props.currentSessionId]?.[props.selectedRoomId] ?? null
+  })
+  const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
+
   return (
     <div
       className="session-command-center-pane"
@@ -60,12 +68,12 @@ function SessionWorkspaceCenterPaneComponent(props: SessionWorkspaceCenterPanePr
                 sessionId={props.currentSessionId}
                 roomId={props.selectedRoomId}
                 campaignId={props.campaignId}
-                roomName={props.selectedRoomName}
-                roomType={props.selectedRoomType}
+                roomName={selectedRoom?.name}
+                roomType={selectedRoom?.type}
                 user={props.effectiveSessionUser}
                 messageGroupingWindowMs={props.messageGroupingWindowMs}
                 sendWsEvent={props.sendWsEvent}
-                forceMessageType={props.isGreenroomChatMode ? MessageType.OOC : undefined}
+                forceMessageType={isGreenroomChatMode ? MessageType.OOC : undefined}
                 onPendingNewMessageCountChange={props.onPendingNewMessageCountChange}
               />
             ) : (

@@ -87,11 +87,9 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       return (
         <SessionToolbar
           actions={actions}
-          statusColorKey={props.toolbarStatusColorKey}
-          statusLabel={props.toolbarStatusLabel}
-          coreWsState={props.toolbarCoreWsState}
-          livekitState={props.toolbarLivekitState}
+          wsState={props.wsState}
           sessionId={currentSessionId}
+          selectedRoomId={props.selectedRoomId}
           sessionState={currentSessionState}
           cooldownDurationMs={configuredCooldownDurationMs}
           isTransitioningSession={props.isTransitioningSession}
@@ -133,10 +131,8 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.onExitToSelector,
       props.onOpenUserSettings,
       props.onStopSession,
-      props.toolbarCoreWsState,
-      props.toolbarLivekitState,
-      props.toolbarStatusColorKey,
-      props.toolbarStatusLabel,
+      props.selectedRoomId,
+      props.wsState,
     ]
   )
 
@@ -216,13 +212,10 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           apiUrl={props.apiUrl}
           token={props.token}
           currentSessionId={currentSessionId}
-          selectedRoomName={props.selectedRoomName}
-          selectedRoomType={props.selectedRoomType}
           campaignId={props.campaignId}
           effectiveSessionUser={props.effectiveSessionUser}
           messageGroupingWindowMs={props.messageGroupingWindowMs}
           sendWsEvent={props.sendWsEvent}
-          isGreenroomChatMode={props.isGreenroomChatMode}
           onPendingNewMessageCountChange={setChatUnreadCount}
         />
       )
@@ -233,11 +226,8 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.configuredCooldownDurationMs,
       props.effectiveSessionRole,
       props.effectiveSessionUser,
-      props.isGreenroomChatMode,
       props.messageGroupingWindowMs,
       props.selectedRoomId,
-      props.selectedRoomName,
-      props.selectedRoomType,
       props.sendWsEvent,
       props.token,
       currentSessionEndedAt,
