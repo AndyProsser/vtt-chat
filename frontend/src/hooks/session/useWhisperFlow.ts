@@ -288,17 +288,32 @@ export function useWhisperFlow({
     whisperRoom,
   ])
 
-  return {
-    whisperRoom,
-    whisperRooms,
-    whisperActive,
-    whisperModeLocked,
-    whisperDisplayedPlayerCount,
-    whisperEndBlockedByPendingMoves,
-    noteWhisperEntry,
-    handleEndWhisper,
-    rememberDmVoiceRoom,
-    getRememberedDmVoiceRoom,
-    setWhisperExitVoiceRoom,
-  }
+  return useMemo(
+    () => ({
+      whisperRoom,
+      whisperRooms,
+      whisperActive,
+      whisperModeLocked,
+      whisperDisplayedPlayerCount,
+      whisperEndBlockedByPendingMoves,
+      noteWhisperEntry,
+      handleEndWhisper,
+      rememberDmVoiceRoom,
+      getRememberedDmVoiceRoom,
+      setWhisperExitVoiceRoom,
+    }),
+    [
+      getRememberedDmVoiceRoom,
+      handleEndWhisper,
+      noteWhisperEntry,
+      rememberDmVoiceRoom,
+      setWhisperExitVoiceRoom,
+      whisperActive,
+      whisperDisplayedPlayerCount,
+      whisperEndBlockedByPendingMoves,
+      whisperModeLocked,
+      whisperRoom,
+      whisperRooms,
+    ]
+  )
 }

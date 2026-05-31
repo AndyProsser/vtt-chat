@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { MessageType, Role, SessionState, type UUID } from '@shared'
 import { ChatWindow } from '@/components/workspaces/session/chat/ChatWindow'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
@@ -31,7 +32,7 @@ type SessionWorkspaceCenterPaneProps = {
   >['onPendingNewMessageCountChange']
 }
 
-export function SessionWorkspaceCenterPane(props: SessionWorkspaceCenterPaneProps) {
+function SessionWorkspaceCenterPaneComponent(props: SessionWorkspaceCenterPaneProps) {
   return (
     <div
       className="session-command-center-pane"
@@ -90,3 +91,5 @@ export function SessionWorkspaceCenterPane(props: SessionWorkspaceCenterPaneProp
     </div>
   )
 }
+
+export const SessionWorkspaceCenterPane = memo(SessionWorkspaceCenterPaneComponent)

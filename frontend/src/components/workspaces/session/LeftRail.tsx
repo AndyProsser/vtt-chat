@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import { memo, useMemo, type ComponentProps } from 'react'
 import { type Role } from '@shared'
 import type { UUID } from '@shared'
 import { AudioPanel } from '@/components/workspaces/session/audio/AudioPanel'
@@ -34,7 +34,17 @@ type SessionWorkspaceLeftRailProps = {
   onOpenInfoPanel?: () => void
 }
 
-export function SessionWorkspaceLeftRail(props: SessionWorkspaceLeftRailProps) {
+function SessionWorkspaceLeftRailComponent(props: SessionWorkspaceLeftRailProps) {
+  const rooms = useMemo(
+    () =>
+      props.visibleRooms.map((room) => ({
+        id: room.id,
+        name: room.name,
+        type: room.type,
+      })),
+    [props.visibleRooms]
+  )
+
   return (
     <div className="session-left-rail-stack" data-ui-component="SessionLeftRailStack">
       <LeftRailPanel
@@ -52,11 +62,7 @@ export function SessionWorkspaceLeftRail(props: SessionWorkspaceLeftRailProps) {
         connectedSpectatorsCount={props.connectedSpectatorsCount}
         dmUserId={props.dmUserId}
         currentUserId={props.effectiveSessionUserId}
-        rooms={props.visibleRooms.map((room) => ({
-          id: room.id,
-          name: room.name,
-          type: room.type,
-        }))}
+        rooms={rooms}
         roomMembersByRoomId={props.roomMembersByRoomId}
         sessionEndedAt={props.sessionEndedAt}
         cooldownDurationMs={props.configuredCooldownDurationMs}
@@ -84,3 +90,5 @@ export function SessionWorkspaceLeftRail(props: SessionWorkspaceLeftRailProps) {
     </div>
   )
 }
+
+export const SessionWorkspaceLeftRail = memo(SessionWorkspaceLeftRailComponent)

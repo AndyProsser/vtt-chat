@@ -480,17 +480,28 @@ export function RoomSelector({
     syncSessionTopologyFromServer,
     getRoomMemberIdsFromServer,
   })
+  const {
+    whisperRoom,
+    whisperActive,
+    whisperModeLocked,
+    whisperEndBlockedByPendingMoves,
+    noteWhisperEntry,
+    handleEndWhisper,
+    rememberDmVoiceRoom,
+    getRememberedDmVoiceRoom,
+    setWhisperExitVoiceRoom,
+  } = whisperFlow
 
   useEffect(() => {
-    whisperEntryRef.current = whisperFlow.noteWhisperEntry
-  }, [whisperFlow.noteWhisperEntry])
+    whisperEntryRef.current = noteWhisperEntry
+  }, [noteWhisperEntry])
 
   useEffect(() => {
     lastWhisperPlayerMovedOutRef.current = async (mainRoomId: UUID) => {
-      whisperFlow.setWhisperExitVoiceRoom(mainRoomId)
-      await whisperFlow.handleEndWhisper()
+      setWhisperExitVoiceRoom(mainRoomId)
+      await handleEndWhisper()
     }
-  }, [whisperFlow])
+  }, [handleEndWhisper, setWhisperExitVoiceRoom])
 
   const getParticipantMetaLineForRoom = useCallback(
     (member: GroupParticipantWithGroupId | GroupParticipantStatus) =>
@@ -897,7 +908,7 @@ export function RoomSelector({
   )
 
   const handleBroadcastToggleClick = useCallback(async () => {
-    if (whisperFlow.whisperModeLocked) {
+    if (whisperModeLocked) {
       setMoveError('Broadcast is locked while whisper is active')
       return
     }
@@ -906,7 +917,7 @@ export function RoomSelector({
       if (broadcastModeEnabled) {
         await onToggleBroadcastMode(false)
 
-        const previousRoomId = whisperFlow.getRememberedDmVoiceRoom()
+        const previousRoomId = getRememberedDmVoiceRoom()
         if (previousRoomId && allRooms.some((room) => room.id === previousRoomId)) {
           onSelectRoom(previousRoomId)
         }
@@ -915,7 +926,7 @@ export function RoomSelector({
       }
 
       if (selectedRoomId) {
-        whisperFlow.rememberDmVoiceRoom(selectedRoomId)
+        rememberDmVoiceRoom(selectedRoomId)
       }
 
       await onToggleBroadcastMode(true)
@@ -925,19 +936,17 @@ export function RoomSelector({
   }, [
     allRooms,
     broadcastModeEnabled,
+    getRememberedDmVoiceRoom,
     onSelectRoom,
     onToggleBroadcastMode,
+    rememberDmVoiceRoom,
     selectedRoomId,
-    whisperFlow,
+    whisperModeLocked,
   ])
 
   const handleSetDmVoiceRoom = useCallback(
     async (roomId: UUID) => {
-      if (
-        whisperFlow.whisperModeLocked &&
-        whisperFlow.whisperRoom &&
-        roomId !== whisperFlow.whisperRoom.id
-      ) {
+      if (whisperModeLocked && whisperRoom && roomId !== whisperRoom.id) {
         setMoveError('DM voice target is locked to whisper while whisper is active')
         return
       }
@@ -958,7 +967,7 @@ export function RoomSelector({
         }
       }
 
-      whisperFlow.rememberDmVoiceRoom(roomId)
+      rememberDmVoiceRoom(roomId)
 
       if (broadcastModeEnabled) {
         try {
@@ -976,8 +985,10 @@ export function RoomSelector({
       getRoomMemberIdsFromServer,
       onSelectRoom,
       onToggleBroadcastMode,
+      rememberDmVoiceRoom,
       roomMoves.displayedParticipantsByRoom,
-      whisperFlow,
+      whisperModeLocked,
+      whisperRoom,
     ]
   )
 
@@ -1096,8 +1107,8 @@ export function RoomSelector({
   }, [])
 
   const handleHeaderEndWhisper = useCallback(() => {
-    void whisperFlow.handleEndWhisper()
-  }, [whisperFlow])
+    void handleEndWhisper()
+  }, [handleEndWhisper])
 
   const clearPendingRoomDelete = useCallback(
     (roomId: UUID) => {
@@ -1122,7 +1133,7 @@ export function RoomSelector({
 
       try {
         if (isWhisperGroup(room)) {
-          await whisperFlow.handleEndWhisper()
+          await handleEndWhisper()
           clearPendingRoomDelete(room.id)
           return
         }
@@ -1146,7 +1157,7 @@ export function RoomSelector({
           }
 
           await syncSessionTopologyFromServer()
-          whisperFlow.rememberDmVoiceRoom(mainRoom.id)
+          rememberDmVoiceRoom(mainRoom.id)
           onSelectRoom(mainRoom.id)
 
           if (selectedRoomId === room.id) {
@@ -1210,13 +1221,14 @@ export function RoomSelector({
       clearPendingRoomDelete,
       dmUserId,
       getRoomMemberIdsFromServer,
+      handleEndWhisper,
       onSelectRoom,
+      rememberDmVoiceRoom,
       roomMoves,
       selectedRoomId,
       sessionId,
       syncSessionTopologyFromServer,
       token,
-      whisperFlow,
     ]
   )
 
@@ -1313,9 +1325,9 @@ export function RoomSelector({
       isDenseRoomLayout={isDenseRoomLayout}
       draggedUserId={roomMoves.draggedUserId}
       broadcastModeEnabled={broadcastModeEnabled}
-      whisperModeLocked={whisperFlow.whisperModeLocked}
-      whisperRoomId={whisperFlow.whisperRoom?.id}
-      whisperEndBlockedByPendingMoves={whisperFlow.whisperEndBlockedByPendingMoves}
+      whisperModeLocked={whisperModeLocked}
+      whisperRoomId={whisperRoom?.id}
+      whisperEndBlockedByPendingMoves={whisperEndBlockedByPendingMoves}
       pendingDelete={Boolean(pendingRoomDeletes[room.id])}
       selectedRoomId={selectedRoomId}
       environmentPickerRoomId={activeEnvironmentPickerRoomId}
@@ -1371,9 +1383,9 @@ export function RoomSelector({
             canManageRooms={canManageRooms}
             isGreenroom={isGreenroom}
             broadcastModeEnabled={broadcastModeEnabled}
-            whisperModeLocked={whisperFlow.whisperModeLocked}
-            whisperActive={whisperFlow.whisperActive}
-            whisperEndBlockedByPendingMoves={whisperFlow.whisperEndBlockedByPendingMoves}
+            whisperModeLocked={whisperModeLocked}
+            whisperActive={whisperActive}
+            whisperEndBlockedByPendingMoves={whisperEndBlockedByPendingMoves}
             isDevResettingMocks={isDevResettingMocks}
             showCreateGroupControl={showCreateGroupControl}
             showCreateGroupModal={showCreateGroupModal}
