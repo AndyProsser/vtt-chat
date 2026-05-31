@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { UUID } from '@shared'
 import { RoomType, isGreenroomSessionState } from '@shared'
 import { useStore } from '@/hooks/useStore'
-import type { Room as RoomRecord, SessionPresence as PresenceRecord } from '@/types/room'
+import type { Room as RoomRecord } from '@/types/room'
 import { isGreenRoom } from '@/utils/session/workspaces'
 
 /**
@@ -25,13 +25,6 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
 
     return (state.rooms[sessionId] ?? null) as Record<UUID, RoomRecord> | null
   })
-  const currentSessionPresenceByUser = useStore((state) => {
-    if (!sessionId) {
-      return null
-    }
-
-    return (state.sessionPresence[sessionId] ?? null) as Record<UUID, PresenceRecord> | null
-  })
   const currentSessionState = useStore((state) => {
     if (!sessionId) {
       return null
@@ -47,16 +40,19 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
 
     return state.mockTakeoverUserIdBySession[sessionId] ?? null
   })
+  const effectiveActorUserId = (activeTakeoverUserId || currentUserId) as UUID
+  const effectiveActorPrimaryRoomId = useStore((state) => {
+    if (!sessionId || !effectiveActorUserId) {
+      return ''
+    }
+
+    return state.sessionPresence[sessionId]?.[effectiveActorUserId]?.primaryRoomId ?? ''
+  })
 
   const visibleRoomsArray = useMemo<RoomRecord[]>(
     () => Object.values(currentSessionRoomsById ?? {}),
     [currentSessionRoomsById]
   )
-  const currentPresence = useMemo<PresenceRecord[]>(
-    () => Object.values(currentSessionPresenceByUser ?? {}),
-    [currentSessionPresenceByUser]
-  )
-  const effectiveActorUserId = (activeTakeoverUserId || currentUserId) as UUID
   const isTakeoverActive = Boolean(activeTakeoverUserId)
 
   const selectedRoomId = useMemo<UUID | ''>(() => {
@@ -83,12 +79,11 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
     }
 
     // Priority 2: Connected room (if valid)
-    const ownPresence = currentPresence.find((presence) => presence.userId === effectiveActorUserId)
     if (
-      ownPresence?.primaryRoomId &&
-      visibleRoomsArray.some((room) => room.id === ownPresence.primaryRoomId)
+      effectiveActorPrimaryRoomId &&
+      visibleRoomsArray.some((room) => room.id === effectiveActorPrimaryRoomId)
     ) {
-      return ownPresence.primaryRoomId
+      return effectiveActorPrimaryRoomId
     }
 
     // Priority 3: MAIN room fallback
@@ -99,9 +94,8 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
     const mainRoom = visibleRoomsArray.find((room) => room.type === RoomType.MAIN)
     return (mainRoom || visibleRoomsArray[0])?.id || ''
   }, [
-    currentPresence,
     currentSessionState,
-    effectiveActorUserId,
+    effectiveActorPrimaryRoomId,
     isTakeoverActive,
     selectedRoomIdOverride,
     visibleRoomsArray,
