@@ -9,11 +9,7 @@ import type { RightRailTab } from '@/types/ui'
 import { isJournalNote } from '@/utils/notesPanel'
 import { SessionWorkspace } from '@/components/workspaces/SessionWorkspace'
 import type { Session as SessionRecord } from '@/types/session'
-import type {
-  Room as RoomRecord,
-  RoomUser as RoomMember,
-  SessionPresence as PresenceRecord,
-} from '@/types/room'
+import type { Room as RoomRecord, SessionPresence as PresenceRecord } from '@/types/room'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { ApiSessionStats } from '@/types/session/workspaces'
 import { getVisibleRoomsForSessionState, isGreenRoom } from '@/utils/session/workspaces'
@@ -56,7 +52,6 @@ const EMPTY_RIGHT_RAIL_INDICATORS = Object.freeze({
 
 const EMPTY_ROOMS_BY_ID = Object.freeze({}) as Record<UUID, RoomRecord>
 const EMPTY_PRESENCE_BY_USER = Object.freeze({}) as Record<UUID, PresenceRecord>
-const EMPTY_ROOM_MEMBERS_BY_ID = Object.freeze({}) as Record<UUID, RoomMember[]>
 const EMPTY_SESSION_STATS: ApiSessionStats | undefined = undefined
 const EMPTY_VISIBLE_ROOMS: RoomRecord[] = []
 
@@ -100,7 +95,6 @@ export const SessionWorkspaceChromeConnector = memo(
       const statsBySession = state.sessionStatsBySessionId as Record<UUID, ApiSessionStats>
       return statsBySession[state.currentSessionId]
     })
-    const roomMembersByRoomId = useStore((state) => state.roomMembers) as Record<UUID, RoomMember[]>
     const currentEnvironment = useStore((state) => state.currentEnvironment)
     const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
     const dmOverrides = useStore((state) => state.dmOverrides)
@@ -133,7 +127,6 @@ export const SessionWorkspaceChromeConnector = memo(
       () => Object.values(currentSessionPresenceByUser),
       [currentSessionPresenceByUser]
     )
-    const typedRoomMembers = roomMembersByRoomId as Record<UUID, RoomMember[]>
     const isTakeoverActive = Boolean(activeTakeoverUserId)
     const effectiveActorUserId = (activeTakeoverUserId || user.id) as UUID
     const visibleRooms = useMemo<RoomRecord[]>(
@@ -227,7 +220,6 @@ export const SessionWorkspaceChromeConnector = memo(
       currentPresence,
       isGreenroom,
       currentRooms,
-      typedRoomMembers,
       activeTakeoverUserId,
       takeoverPresence,
       user,

@@ -4,11 +4,7 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus'
 import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
 import { resolveMembershipRole, type CampaignSummary } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
-import type {
-  SessionPresence as PresenceRecord,
-  Room as RoomRecord,
-  RoomUser as RoomMember,
-} from '@/types/room'
+import type { SessionPresence as PresenceRecord, Room as RoomRecord } from '@/types/room'
 import type { ApiSessionStats } from '@/types/session/workspaces'
 import { isGreenRoom, toValidPostSessionDurationMinutes } from '@/utils/session/workspaces'
 
@@ -24,7 +20,6 @@ type UseWorkspacesDerivedStateParams = {
   currentPresence: PresenceRecord[]
   isGreenroom: boolean
   currentRooms: RoomRecord[]
-  typedRoomMembers: Record<UUID, RoomMember[]>
   activeTakeoverUserId: UUID | null
   takeoverPresence: PresenceRecord | null
   user: {
@@ -54,7 +49,6 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
     currentPresence,
     isGreenroom,
     currentRooms,
-    typedRoomMembers,
     activeTakeoverUserId,
     takeoverPresence,
     user,
@@ -99,17 +93,17 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
       return undefined
     }
 
-    const members = typedRoomMembers[greenroom.id] || []
     const uniqueUserIds = new Set<UUID>()
-    for (const member of members) {
-      if (member.role === Role.SYSTEM) {
+    for (const presence of currentPresence) {
+      if (presence.primaryRoomId !== greenroom.id || presence.role === Role.SYSTEM) {
         continue
       }
-      uniqueUserIds.add(member.userId)
+
+      uniqueUserIds.add(presence.userId)
     }
 
     return uniqueUserIds.size
-  }, [currentRooms, currentSession, isGreenroom, typedRoomMembers])
+  }, [currentPresence, currentRooms, currentSession, isGreenroom])
 
   const liveConnectedPresenceCount = currentPresence.filter(
     (presence) => presence.state !== PresenceState.OFFLINE
