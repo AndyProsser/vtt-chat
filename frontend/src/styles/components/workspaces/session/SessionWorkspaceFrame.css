@@ -123,6 +123,17 @@
   animation: slide-in-from-right 180ms var(--ease-out);
 }
 
+.session-workspace-frame__right-rail-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: calc(100% - 420px);
+  z-index: 110;
+  background: transparent;
+  pointer-events: auto;
+}
+
 .session-workspace-frame__right-rail-overlay::after {
   content: '';
   position: absolute;

@@ -233,8 +233,8 @@ export function SessionWorkspaceFrame({
     setIsChatDockOpen(true)
   }
 
-  const handleRightRailClickOutside = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.currentTarget !== event.target || isRightRailClosing) {
+  const handleRightRailClickOutside = (event: React.MouseEvent<HTMLElement>) => {
+    if (isRightRailClosing) {
       return
     }
 
@@ -304,12 +304,19 @@ export function SessionWorkspaceFrame({
           {shouldRenderCenterPaneBase ? renderCenterPane(toolbarCenterPaneView) : null}
 
           {isDockOverlayVisible && (
+            <div
+              className="session-workspace-frame__right-rail-backdrop"
+              onClick={handleRightRailClickOutside}
+              data-ui-component="SessionWorkspaceRightRailBackdrop"
+            />
+          )}
+
+          {isDockOverlayVisible && (
             <aside
               data-testid={isChatDockOpen ? 'chat-dock-panel' : 'right-rail'}
               className={`session-workspace-frame__right-rail-overlay ${
                 isRightRailClosing ? 'session-workspace-frame__right-rail-overlay--closing' : ''
               } ${isChatDockOpen ? 'session-workspace-frame__right-rail-overlay--chat' : `session-workspace-frame__right-rail-overlay--tab-${pointerTabIndex}`}`}
-              onClick={handleRightRailClickOutside}
               data-ui-component={
                 isChatDockOpen ? 'SessionWorkspaceChatDock' : 'SessionWorkspaceRightRail'
               }
