@@ -3,6 +3,7 @@ import type { UUID } from '@shared'
 import { RoomType, isGreenroomSessionState } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import type { Room as RoomRecord, SessionPresence as PresenceRecord } from '@/types/room'
+import { isGreenRoom } from '@/utils/session/workspaces'
 
 /**
  * Computes the selected room ID for a given session.
@@ -63,6 +64,8 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
       return ''
     }
 
+    const greenroom = visibleRoomsArray.find((room) => isGreenRoom(room))
+
     // Priority 1: Manual override (if valid)
     if (
       !isTakeoverActive &&
@@ -70,6 +73,13 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
       visibleRoomsArray.some((room) => room.id === selectedRoomIdOverride)
     ) {
       return selectedRoomIdOverride
+    }
+
+    // In greenroom states, the UI should snap back to the greenroom immediately
+    // even if presence still points at the last live room until the transition
+    // event finishes updating every layer.
+    if (isGreenroomSessionState(currentSessionState) && greenroom) {
+      return greenroom.id
     }
 
     // Priority 2: Connected room (if valid)
@@ -82,11 +92,8 @@ export function useSessionSelectedRoomId(sessionId: UUID | null): UUID | '' {
     }
 
     // Priority 3: MAIN room fallback
-    if (isGreenroomSessionState(currentSessionState)) {
-      const greenroom = visibleRoomsArray.find((room) => room.type === RoomType.GREENROOM)
-      if (greenroom) {
-        return greenroom.id
-      }
+    if (isGreenroomSessionState(currentSessionState) && greenroom) {
+      return greenroom.id
     }
 
     const mainRoom = visibleRoomsArray.find((room) => room.type === RoomType.MAIN)
