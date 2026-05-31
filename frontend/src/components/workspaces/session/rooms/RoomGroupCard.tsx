@@ -24,6 +24,7 @@ export interface GroupCardProps {
   sessionId: UUID
   currentUserId: UUID
   canManageRooms: boolean
+  isSessionActive: boolean
   isGreenroom: boolean
   isDenseRoomLayout: boolean
   draggedUserId: UUID | null
@@ -124,6 +125,7 @@ function areGroupCardPropsEqual(previous: GroupCardProps, next: GroupCardProps):
     previous.dmUserId === next.dmUserId &&
     previous.sessionId === next.sessionId &&
     previous.currentUserId === next.currentUserId &&
+    previous.isSessionActive === next.isSessionActive &&
     previous.activeTakeoverUserId === next.activeTakeoverUserId &&
     previous.environmentPickerLayerRef === next.environmentPickerLayerRef &&
     previous.distanceTargets === next.distanceTargets &&
@@ -162,6 +164,7 @@ function RoomGroupCardComponent({
   sessionId,
   currentUserId,
   canManageRooms,
+  isSessionActive,
   isGreenroom,
   isDenseRoomLayout,
   draggedUserId,
@@ -443,6 +446,7 @@ function RoomGroupCardComponent({
           sessionId={sessionId}
           currentUserId={currentUserId}
           canManageRooms={canManageRooms}
+          isSessionActive={isSessionActive}
           isGreenroom={isGreenroom}
           touchFeedbackUserId={touchFeedbackUserId}
           setTouchFeedbackUserId={setTouchFeedbackUserId}

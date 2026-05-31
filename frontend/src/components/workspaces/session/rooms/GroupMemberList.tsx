@@ -1,9 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import type { UUID } from '@shared'
 import { LONG_PRESS_MOVE_CANCEL_PX } from '@/constants/voiceGroup.constants'
 import { AvatarOverlay } from './AvatarOverlay'
-import { GroupMemberProfileCard } from './GroupMemberProfileCard'
+import { GroupMemberSharedProfileHoverCard } from './GroupMemberSharedProfileHoverCard'
 import { PlayerContextMenu } from './context-menu/PlayerContextMenu'
 import type {
   GroupPanelGroupWithParticipants,
@@ -23,6 +22,7 @@ export interface GroupMemberListProps {
   /** Local user id — used by the SpeakingIndicator to pick the self/device path. */
   currentUserId: UUID
   canManageRooms: boolean
+  isSessionActive: boolean
   isGreenroom: boolean
   touchFeedbackUserId: UUID | null
   setTouchFeedbackUserId: (userId: UUID | null) => void
@@ -60,6 +60,7 @@ interface GroupMemberItemProps {
   sessionId: UUID
   currentUserId: UUID
   canManageRooms: boolean
+  isSessionActive: boolean
   isGreenroom: boolean
   touchFeedbackUserId: UUID | null
   isProfileHovered: boolean
@@ -101,6 +102,7 @@ function areGroupMemberItemPropsEqual(
     previous.sessionId === next.sessionId &&
     previous.currentUserId === next.currentUserId &&
     previous.canManageRooms === next.canManageRooms &&
+    previous.isSessionActive === next.isSessionActive &&
     previous.isGreenroom === next.isGreenroom &&
     previous.touchFeedbackUserId === next.touchFeedbackUserId &&
     previous.isProfileHovered === next.isProfileHovered &&
@@ -143,6 +145,7 @@ const GroupMemberItem = memo(function GroupMemberItem({
   sessionId,
   currentUserId,
   canManageRooms,
+  isSessionActive,
   isGreenroom,
   touchFeedbackUserId,
   isProfileHovered,
@@ -230,7 +233,7 @@ const GroupMemberItem = memo(function GroupMemberItem({
     [clearTouchFeedback, member.userId]
   )
 
-  const canDrag = canManageRooms && !isGreenroom && member.roleLabel !== 'DM'
+  const canDrag = canManageRooms && isSessionActive && !isGreenroom && member.roleLabel !== 'DM'
   const isSelf = member.userId === currentUserId
   const isPlayerTarget = member.roleLabel !== 'DM'
   const isTakeoverEligible = member.roleLabel === 'PLAYER'
@@ -310,6 +313,7 @@ export function GroupMemberList({
   sessionId,
   currentUserId,
   canManageRooms,
+  isSessionActive,
   isGreenroom,
   touchFeedbackUserId,
   setTouchFeedbackUserId,
@@ -396,44 +400,6 @@ export function GroupMemberList({
     return null
   }
 
-  const hoverCard =
-    hoveredProfileMember && hoverAnchorRect && typeof document !== 'undefined'
-      ? createPortal(
-          <div
-            className="room-selector-profile-tooltip"
-            style={{
-              position: 'fixed',
-              zIndex: 1200,
-              width: 320,
-              left: Math.max(
-                8,
-                Math.min(
-                  window.innerWidth - 328,
-                  hoverAnchorRect.left + hoverAnchorRect.width / 2 - 160
-                )
-              ),
-              top:
-                hoverAnchorRect.bottom + 8 + 220 <= window.innerHeight - 8
-                  ? hoverAnchorRect.bottom + 8
-                  : Math.max(8, hoverAnchorRect.top - 228),
-            }}
-            onMouseEnter={clearHoverCloseTimer}
-            onMouseLeave={scheduleHoverCardClose}
-          >
-            <GroupMemberProfileCard
-              sessionId={sessionId}
-              isSelf={hoveredProfileMember.userId === currentUserId}
-              member={hoveredProfileMember}
-              metaLine={getParticipantMetaLine(hoveredProfileMember)}
-              statEntries={getStatEntries(hoveredProfileMember)}
-              environmentName={getResolvedGroupEnvironmentName(room)}
-              activeTakeover={activeTakeoverUserId === hoveredProfileMember.userId}
-            />
-          </div>,
-          document.body
-        )
-      : null
-
   return (
     <>
       {participants.map((member) => (
@@ -444,6 +410,7 @@ export function GroupMemberList({
           sessionId={sessionId}
           currentUserId={currentUserId}
           canManageRooms={canManageRooms}
+          isSessionActive={isSessionActive}
           isGreenroom={isGreenroom}
           touchFeedbackUserId={touchFeedbackUserId}
           isProfileHovered={hoveredProfileUserId === member.userId}
@@ -465,7 +432,19 @@ export function GroupMemberList({
           onMemberDragEnd={onMemberDragEnd}
         />
       ))}
-      {hoverCard}
+      <GroupMemberSharedProfileHoverCard
+        sessionId={sessionId}
+        currentUserId={currentUserId}
+        room={room}
+        member={hoveredProfileMember}
+        activeTakeoverUserId={activeTakeoverUserId}
+        anchorRect={hoverAnchorRect}
+        getParticipantMetaLine={getParticipantMetaLine}
+        getStatEntries={getStatEntries}
+        getResolvedGroupEnvironmentName={getResolvedGroupEnvironmentName}
+        onMouseEnter={clearHoverCloseTimer}
+        onMouseLeave={scheduleHoverCardClose}
+      />
     </>
   )
 }

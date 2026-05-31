@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { PresenceState, RoomType } from '@shared'
+import { PresenceState, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import {
@@ -1287,6 +1287,7 @@ export function RoomSelector({
       sessionId={sessionId}
       currentUserId={currentUser?.id ?? ('' as UUID)}
       canManageRooms={canManageRooms}
+      isSessionActive={sessionState === SessionState.ACTIVE}
       isGreenroom={isGreenroom}
       isDenseRoomLayout={isDenseRoomLayout}
       draggedUserId={roomMoves.draggedUserId}

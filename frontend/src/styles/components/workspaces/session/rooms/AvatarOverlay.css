@@ -156,7 +156,7 @@
   color: color-mix(in srgb, var(--color-brand) 85%, var(--color-text-primary));
   text-transform: uppercase;
   flex-shrink: 0;
-  cursor: help;
+  cursor: pointer;
 }
 
 .avatar-role-chip--hovered {
