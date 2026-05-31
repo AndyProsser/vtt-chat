@@ -289,7 +289,7 @@ export async function applyGroupEnvironment(
       },
       body: JSON.stringify({
         sessionId,
-        groupId,
+        roomId: groupId,
         environmentName,
       }),
     })
