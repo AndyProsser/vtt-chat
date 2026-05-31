@@ -20,6 +20,37 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
   const handleForcedRightRailTabApplied = useCallback(() => {
     setForcedRightRailTab(null)
   }, [])
+  const handleStartSession = useCallback(() => {
+    if (!props.currentSession) {
+      return
+    }
+
+    props.onStartSession(props.currentSession.id)
+  }, [props.currentSession, props.onStartSession])
+
+  const handlePauseSession = useCallback(() => {
+    if (!props.currentSession) {
+      return
+    }
+
+    props.onPauseSession(props.currentSession.id)
+  }, [props.currentSession, props.onPauseSession])
+
+  const handleCancelCooldown = useCallback(() => {
+    if (!props.currentSession) {
+      return
+    }
+
+    props.onCancelCooldown(props.currentSession.id)
+  }, [props.currentSession, props.onCancelCooldown])
+
+  const handleExtendCooldown = useCallback(() => {
+    if (!props.currentSession) {
+      return
+    }
+
+    props.onExtendCooldown(props.currentSession.id, props.configuredCooldownDurationMs)
+  }, [props.configuredCooldownDurationMs, props.currentSession, props.onExtendCooldown])
 
   const renderSystemToasts = useCallback(
     () => (
@@ -56,13 +87,11 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           cooldownControlLockedReason={props.cooldownControlLockedReason}
           canExtendCooldown={props.canExtendCooldown}
           extendCooldownLockedReason={props.extendCooldownLockedReason}
-          onStartSession={() => props.onStartSession(props.currentSession!.id)}
-          onPauseSession={() => props.onPauseSession(props.currentSession!.id)}
+          onStartSession={handleStartSession}
+          onPauseSession={handlePauseSession}
           onStopSession={props.onStopSession}
-          onCancelCooldown={() => props.onCancelCooldown(props.currentSession!.id)}
-          onExtendCooldown={() =>
-            props.onExtendCooldown(props.currentSession!.id, props.configuredCooldownDurationMs)
-          }
+          onCancelCooldown={handleCancelCooldown}
+          onExtendCooldown={handleExtendCooldown}
           onOpenUserSettings={props.onOpenUserSettings}
           onExitToSelector={props.onExitToSelector}
         />
@@ -81,15 +110,15 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.connectionStatus.statusColorKey,
       props.cooldownControlLockedReason,
       props.cooldownControlVisible,
-      props.currentSession,
       props.extendCooldownLockedReason,
+      handleCancelCooldown,
+      handleExtendCooldown,
+      handlePauseSession,
+      handleStartSession,
       props.isTransitioningSession,
-      props.onCancelCooldown,
+      props.currentSession,
       props.onExitToSelector,
-      props.onExtendCooldown,
       props.onOpenUserSettings,
-      props.onPauseSession,
-      props.onStartSession,
       props.onStopSession,
     ]
   )

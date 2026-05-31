@@ -4,7 +4,7 @@
  * Integrates with Zustand store through event handlers.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EventEnvelope } from '@shared'
 import type { UUID } from '@shared'
 import { SessionState } from '@shared'
@@ -423,13 +423,13 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     }
   }, [enabled, sessionId, token, url])
 
-  const send = (event: EventEnvelope) => {
+  const send = useCallback((event: EventEnvelope) => {
     if (clientRef.current) {
       clientRef.current.send(event)
     }
-  }
+  }, [])
 
-  const retryConnection = async () => {
+  const retryConnection = useCallback(async () => {
     const client = clientRef.current
     if (!client) {
       return
@@ -443,7 +443,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)))
     }
-  }
+  }, [])
 
   return {
     state,

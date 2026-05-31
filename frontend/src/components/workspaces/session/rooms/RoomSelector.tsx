@@ -1078,6 +1078,27 @@ export function RoomSelector({
     [apiUrl, createRoom, dmUserId, onSelectRoom, sessionId, token]
   )
 
+  const handleHeaderBroadcastToggle = useCallback(() => {
+    void handleBroadcastToggleClick()
+  }, [handleBroadcastToggleClick])
+
+  const handleHeaderDevReset = useCallback(() => {
+    void handleDevResetMocks()
+  }, [handleDevResetMocks])
+
+  const handleHeaderToggleCreateGroupModal = useCallback(() => {
+    setEnvironmentPickerRoomId(null)
+    setShowCreateGroupModal((current) => !current)
+  }, [])
+
+  const handleHeaderCloseCreateGroupModal = useCallback(() => {
+    setShowCreateGroupModal(false)
+  }, [])
+
+  const handleHeaderEndWhisper = useCallback(() => {
+    void whisperFlow.handleEndWhisper()
+  }, [whisperFlow])
+
   const clearPendingRoomDelete = useCallback(
     (roomId: UUID) => {
       setPendingRoomDeletes((state) => {
@@ -1362,22 +1383,13 @@ export function RoomSelector({
             token={token}
             sessionId={sessionId}
             activeTakeoverUserId={activeTakeoverUserId || null}
-            onBroadcastToggle={() => {
-              void handleBroadcastToggleClick()
-            }}
-            onDevReset={() => {
-              void handleDevResetMocks()
-            }}
+            onBroadcastToggle={handleHeaderBroadcastToggle}
+            onDevReset={handleHeaderDevReset}
             onReturnToUser={handleReturnToMyUser}
-            onToggleCreateGroupModal={() => {
-              setEnvironmentPickerRoomId(null)
-              setShowCreateGroupModal((current) => !current)
-            }}
-            onCloseCreateGroupModal={() => setShowCreateGroupModal(false)}
+            onToggleCreateGroupModal={handleHeaderToggleCreateGroupModal}
+            onCloseCreateGroupModal={handleHeaderCloseCreateGroupModal}
             onCreateGroup={handleCreateGroup}
-            onEndWhisper={() => {
-              void whisperFlow.handleEndWhisper()
-            }}
+            onEndWhisper={handleHeaderEndWhisper}
           />
         </header>
 

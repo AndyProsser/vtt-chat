@@ -196,23 +196,35 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
   const takeoverDisplayName =
     takeoverPresence?.characterName || takeoverPresence?.username || user.username
 
-  const effectiveSessionUser =
-    effectiveSessionRole === user.role && !activeTakeoverUserId
-      ? {
-          ...user,
-          campaignMembershipRole: selectedCampaign?.memberRole as
-            | 'DM'
-            | 'PLAYER'
-            | 'SPECTATOR'
-            | undefined,
-        }
-      : {
-          ...user,
-          id: (activeTakeoverUserId || user.id) as UUID,
-          username: takeoverDisplayName,
-          role: effectiveSessionRole,
-          campaignMembershipRole: effectiveSessionRole as unknown as 'DM' | 'PLAYER' | 'SPECTATOR',
-        }
+  const effectiveSessionUser = useMemo(
+    () =>
+      effectiveSessionRole === user.role && !activeTakeoverUserId
+        ? {
+            ...user,
+            campaignMembershipRole: selectedCampaign?.memberRole as
+              | 'DM'
+              | 'PLAYER'
+              | 'SPECTATOR'
+              | undefined,
+          }
+        : {
+            ...user,
+            id: (activeTakeoverUserId || user.id) as UUID,
+            username: takeoverDisplayName,
+            role: effectiveSessionRole,
+            campaignMembershipRole: effectiveSessionRole as unknown as
+              | 'DM'
+              | 'PLAYER'
+              | 'SPECTATOR',
+          },
+    [
+      activeTakeoverUserId,
+      effectiveSessionRole,
+      selectedCampaign?.memberRole,
+      takeoverDisplayName,
+      user,
+    ]
+  )
 
   const canStartFromGreenroom =
     !activeTakeoverUserId &&

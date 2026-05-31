@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
@@ -31,7 +31,7 @@ export interface GroupsHeaderActionsProps {
   onEndWhisper: () => void
 }
 
-export function GroupsHeaderActions({
+export const GroupsHeaderActions = memo(function GroupsHeaderActions({
   headerModeCopy,
   canManageRooms,
   isGreenroom,
@@ -253,7 +253,7 @@ export function GroupsHeaderActions({
       ) : null}
     </div>
   )
-}
+})
 
 // Legacy compatibility aliases
 export { GroupsHeaderActions as RoomHeaderActions }
