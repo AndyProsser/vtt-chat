@@ -81,10 +81,6 @@ const EMPTY_PAUSE_STATS = {
   pauseStartedAt: undefined,
 }
 
-const EMPTY_SESSION_VISIBLE_ROOMS: [] = []
-const EMPTY_SESSION_ROOM_MEMBERS: Record<UUID, never[]> = Object.freeze({})
-const EMPTY_SESSION_ROOM_ENVIRONMENTS: Record<UUID, string> = Object.freeze({})
-
 export function WorkspaceInitialization({
   apiUrl,
   wsUrl,
@@ -877,16 +873,10 @@ export function WorkspaceInitialization({
         connectedSpectatorsCount: 0,
         effectiveSessionRole,
         effectiveSessionUser: user,
-        visibleRooms: EMPTY_SESSION_VISIBLE_ROOMS,
-        roomMembersByRoomId: EMPTY_SESSION_ROOM_MEMBERS,
         selectedRoomId: '',
         onSelectRoom: handleRoomSelection,
-        broadcastModeEnabled: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.broadcastModeEnabled,
         onToggleBroadcastMode: handleToggleBroadcastMode,
         dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
-        dmOverrides: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.dmOverrides,
-        currentConditionName: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.currentConditionName,
-        roomEnvironmentNames: EMPTY_SESSION_ROOM_ENVIRONMENTS,
         wsState,
         wsRetrySecondsRemaining,
         connectionStatus,

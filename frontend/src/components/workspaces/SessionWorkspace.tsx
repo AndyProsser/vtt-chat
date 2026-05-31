@@ -167,16 +167,10 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           connectedSpectatorsCount={props.connectedSpectatorsCount}
           dmUserId={currentSessionDmId}
           effectiveSessionUserId={props.effectiveSessionUser.id}
-          visibleRooms={props.visibleRooms}
-          roomMembersByRoomId={props.roomMembersByRoomId}
           selectedRoomId={props.selectedRoomId}
           onSelectRoom={props.onSelectRoom}
-          broadcastModeEnabled={props.broadcastModeEnabled}
           onToggleBroadcastMode={props.onToggleBroadcastMode}
           dmAutoTargetOnFirstPlayerJoin={props.dmAutoTargetOnFirstPlayerJoin}
-          dmOverrides={props.dmOverrides}
-          currentConditionName={props.currentConditionName}
-          roomEnvironmentNames={props.roomEnvironmentNames ?? {}}
           sessionEndedAt={currentSessionEndedAt}
           configuredCooldownDurationMs={props.configuredCooldownDurationMs}
         />
@@ -184,23 +178,17 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
     },
     [
       props.apiUrl,
-      props.broadcastModeEnabled,
       props.configuredCooldownDurationMs,
       props.connectedPlayers,
       props.connectedSpectatorsCount,
-      props.currentConditionName,
       props.dmAutoTargetOnFirstPlayerJoin,
-      props.dmOverrides,
       props.effectiveSessionRole,
       props.effectiveSessionUser.id,
       props.onSelectRoom,
       props.onToggleBroadcastMode,
-      props.roomEnvironmentNames,
-      props.roomMembersByRoomId,
       props.selectedRoomId,
       props.sessionCount,
       props.token,
-      props.visibleRooms,
       currentSessionDmId,
       currentSessionEndedAt,
       currentSessionId,

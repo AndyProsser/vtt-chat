@@ -48,8 +48,6 @@ const EMPTY_PAUSE_STATS: SessionWorkspaceProps['currentPauseStats'] = {
   pauseStartedAt: undefined,
 }
 
-const EMPTY_DM_OVERRIDES = Object.freeze({}) as SessionWorkspaceProps['dmOverrides']
-
 const EMPTY_RIGHT_RAIL_INDICATORS = Object.freeze({
   notes: 0,
   journal: 0,
@@ -264,13 +262,7 @@ export const SessionWorkspaceChromeConnector = memo(
       <SessionWorkspace
         {...baseProps}
         currentPauseStats={currentPauseStats}
-        dmOverrides={dmOverrides}
-        broadcastModeEnabled={broadcastModeEnabled}
-        currentConditionName={currentConditionName}
-        roomEnvironmentNames={roomEnvironmentNames}
         rightRailIndicators={rightRailIndicators}
-        visibleRooms={visibleRooms}
-        roomMembersByRoomId={typedRoomMembers}
         selectedRoomId={selectedRoomId}
         selectedRoom={selectedRoom}
         connectedPlayers={derivedState.connectedPlayers}
@@ -296,8 +288,5 @@ export const SessionWorkspaceChromeConnector = memo(
 
 export const SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS = {
   currentPauseStats: EMPTY_PAUSE_STATS,
-  dmOverrides: EMPTY_DM_OVERRIDES,
-  broadcastModeEnabled: false,
-  currentConditionName: undefined,
   rightRailIndicators: EMPTY_RIGHT_RAIL_INDICATORS,
 } as const

@@ -32,16 +32,10 @@ type BuildSessionWorkspacePropsParams = {
   connectedSpectatorsCount: number
   effectiveSessionRole: ComponentProps<typeof SessionWorkspace>['effectiveSessionRole']
   effectiveSessionUser: ComponentProps<typeof SessionWorkspace>['effectiveSessionUser']
-  visibleRooms: ComponentProps<typeof SessionWorkspace>['visibleRooms']
-  roomMembersByRoomId: ComponentProps<typeof SessionWorkspace>['roomMembersByRoomId']
   selectedRoomId: UUID | ''
   onSelectRoom: ComponentProps<typeof SessionWorkspace>['onSelectRoom']
-  broadcastModeEnabled: boolean
   onToggleBroadcastMode: ComponentProps<typeof SessionWorkspace>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean
-  dmOverrides: ComponentProps<typeof SessionWorkspace>['dmOverrides']
-  currentConditionName: ComponentProps<typeof SessionWorkspace>['currentConditionName']
-  roomEnvironmentNames: ComponentProps<typeof SessionWorkspace>['roomEnvironmentNames']
   wsState: ComponentProps<typeof SessionWorkspace>['wsState']
   wsRetrySecondsRemaining: ComponentProps<typeof SessionWorkspace>['wsRetrySecondsRemaining']
   connectionStatus: ComponentProps<typeof SessionWorkspace>['connectionStatus']
@@ -111,16 +105,10 @@ export function buildSessionWorkspaceProps(
     connectedSpectatorsCount: params.connectedSpectatorsCount,
     effectiveSessionRole: params.effectiveSessionRole,
     effectiveSessionUser: params.effectiveSessionUser,
-    visibleRooms: params.visibleRooms,
-    roomMembersByRoomId: params.roomMembersByRoomId,
     selectedRoomId: params.selectedRoomId,
     onSelectRoom: params.onSelectRoom,
-    broadcastModeEnabled: params.broadcastModeEnabled,
     onToggleBroadcastMode: params.onToggleBroadcastMode,
     dmAutoTargetOnFirstPlayerJoin: params.dmAutoTargetOnFirstPlayerJoin,
-    dmOverrides: params.dmOverrides,
-    currentConditionName: params.currentConditionName,
-    roomEnvironmentNames: params.roomEnvironmentNames,
     wsState: params.wsState,
     wsRetrySecondsRemaining: params.wsRetrySecondsRemaining,
     connectionStatus: params.connectionStatus,

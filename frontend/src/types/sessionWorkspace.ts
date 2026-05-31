@@ -53,16 +53,10 @@ export type SessionWorkspaceProps = {
     role: Role
     authType?: 'FULL' | 'GUEST'
   }
-  visibleRooms: RoomRecord[]
-  roomMembersByRoomId: Record<UUID, RoomMember[]>
   selectedRoomId: UUID | ''
   onSelectRoom: (roomId: UUID) => void
-  broadcastModeEnabled: boolean
   onToggleBroadcastMode: ComponentProps<typeof LeftRailPanel>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean
-  dmOverrides: ComponentProps<typeof LeftRailPanel>['dmOverrides']
-  currentConditionName: string | undefined
-  roomEnvironmentNames: ComponentProps<typeof LeftRailPanel>['roomEnvironmentNames']
   wsState: ComponentProps<typeof ReconnectBanner>['wsState']
   wsRetrySecondsRemaining: number | null
   connectionStatus: {
