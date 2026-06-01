@@ -91,7 +91,8 @@ export function useWorkspacesApiBootstrap(params: UseWorkspacesApiBootstrapParam
         inFlightGetRequestsRef.current.set(requestKey, inFlightRequest)
       }
 
-      return (await inFlightRequest).clone()
+      const response = await inFlightRequest
+      return typeof response.clone === 'function' ? response.clone() : response
     },
     [forceLogoutToAuthScreen]
   )
