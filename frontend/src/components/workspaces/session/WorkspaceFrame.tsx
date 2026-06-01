@@ -253,7 +253,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
   useEffect(() => {
     const wasWideLayout = previousIsWideLayoutRef.current
 
-    if (isWideLayout && !wasWideLayout && !toolbarRightRailOpen) {
+    if (isWideLayout && !toolbarRightRailOpen) {
       setToolbarRightRailOpen(true)
     }
 

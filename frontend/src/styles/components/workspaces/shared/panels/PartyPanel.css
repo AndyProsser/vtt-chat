@@ -177,6 +177,7 @@
 .party-card-wrap {
   display: block;
   width: 100%;
+  padding-right: 0.25rem;
 }
 
 /* ─── Base card ───────────────────────────────────────────────────────────────── */

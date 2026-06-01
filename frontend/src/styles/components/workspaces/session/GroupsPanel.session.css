@@ -75,19 +75,34 @@
   color: var(--color-text-primary);
   padding: 0.5rem 0.65rem;
   font-size: 0.76rem;
+  outline: none;
+}
+
+.session-groups-panel__create-input:focus {
+  border-color: var(--color-border-focus);
 }
 
 .session-groups-panel__create-button {
   width: 2rem;
   height: 2rem;
-  border: 1px solid color-mix(in srgb, var(--color-brand) 54%, var(--color-border-soft));
+  border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-brand) 18%, var(--color-surface));
-  color: color-mix(in srgb, var(--color-brand) 72%, var(--color-text-primary));
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.session-groups-panel__create-button .material-symbols-outlined {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.session-groups-panel__create-button:not(:disabled):hover {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
 }
 
 .session-groups-panel__body {
@@ -188,6 +203,11 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.session-groups-room-card__icon-button .material-symbols-outlined {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .session-groups-room-card__icon-button--danger {

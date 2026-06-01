@@ -402,7 +402,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
               onClick={() => {
                 void handleCreateGroup()
               }}
-              disabled={isCreating}
+              disabled={isCreating || !newGroupName.trim()}
             >
               <span className="material-symbols-outlined" aria-hidden="true">
                 group_add
