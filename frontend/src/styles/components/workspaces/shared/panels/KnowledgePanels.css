@@ -1,5 +1,15 @@
 @import '../../session/theme.css';
 
+.session-workspace-frame__rails {
+  --knowledge-panels__right-rail-width: 420px;
+}
+
+@media (min-width: 1080px) {
+  .session-workspace-frame__rails {
+    --knowledge-panels__right-rail-width: clamp(360px, 32vw, 440px);
+  }
+}
+
 .knowledge-panel {
   display: grid;
   gap: var(--space-3);

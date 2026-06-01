@@ -6,6 +6,7 @@
  */
 
 @import '../../session/theme.css';
+@import '../shared/panels/KnowledgePanels.css';
 
 .session-workspace-frame {
   position: relative;
@@ -58,7 +59,6 @@
 .session-workspace-frame__rails {
   --session-workspace-frame__rails-bottom-gap: 8px;
   --session-workspace-frame__rails-desktop-offset: 5.35rem;
-  --session-workspace-frame__right-rail-width: 420px;
   --session-workspace-frame__rails-height: calc(
     100dvh - var(--session-workspace-frame__rails-desktop-offset) -
       var(--session-workspace-frame__rails-bottom-gap)
@@ -107,7 +107,7 @@
   position: absolute;
   top: 0;
   right: -0.45rem;
-  width: var(--session-workspace-frame__right-rail-width);
+  width: var(--knowledge-panels__right-rail-width);
   max-height: 100%;
   overflow: hidden;
   z-index: 120;
@@ -129,7 +129,7 @@
   top: 0;
   left: 0;
   bottom: 0;
-  width: calc(100% - var(--session-workspace-frame__right-rail-width));
+  width: calc(100% - var(--knowledge-panels__right-rail-width));
   z-index: 110;
   background: transparent;
   pointer-events: auto;
@@ -339,12 +339,8 @@
 }
 
 @media (min-width: 1080px) {
-  .session-workspace-frame__rails {
-    --session-workspace-frame__right-rail-width: clamp(360px, 32vw, 440px);
-  }
-
   .session-workspace-frame__center-pane {
-    padding-right: calc(var(--session-workspace-frame__right-rail-width) + 0.28rem);
+    padding-right: calc(var(--knowledge-panels__right-rail-width) + 0.28rem);
     overflow: hidden;
   }
 
