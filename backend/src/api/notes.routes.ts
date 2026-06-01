@@ -718,11 +718,16 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       timestamp: message.createdAt,
       payload: {
         messageId: message.id,
+        roomId: message.roomId,
         authorId: message.authorId,
         authorUsername: message.authorUsername,
         content: message.content,
         type: message.type,
         isDmOnly: message.isDmOnly,
+        isOffTheRecord: message.isOffTheRecord,
+        visibleTo: message.visibleTo,
+        targetIds: message.targetIds,
+        metadata: message.metadata,
       },
     }
     wsManager.broadcastEventToSession(message.sessionId as UUID, chatEvent, publishAudienceUsers)
