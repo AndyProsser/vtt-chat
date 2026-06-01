@@ -397,7 +397,7 @@ export function NotesPanel({
         />
       ) : null}
 
-      <div className="notes-workspace-content workspace-panel-scroll-region">
+      <div className="notes-workspace-content knowledge-panel-results--scroll">
         {isLoading ? (
           <p className="text-sm text-ui-secondary">Loading handouts...</p>
         ) : displayedNotes.length === 0 ? (

@@ -793,7 +793,7 @@ export function PartyPanel({
             <span>No party members yet.</span>
           </div>
         ) : (
-          <div className="party-sheet__cards workspace-panel-scroll-region">
+          <div className="party-sheet__cards knowledge-panel-results--scroll">
             {groupMembersByStatusAndRole(members).map((group) => (
               <div key={group.groupLabel} className="party-sheet__group">
                 <h5 className="party-sheet__group-header">{group.groupLabel}</h5>

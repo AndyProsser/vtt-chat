@@ -306,7 +306,7 @@ export function HistoryPanel({
         </label>
       </div>
 
-      <div className="knowledge-panel__content knowledge-panel-history__content workspace-panel-scroll-region">
+      <div className="knowledge-panel__content knowledge-panel-history__content knowledge-panel-results--scroll">
         {virtualRows.length === 0 ? (
           <div className="knowledge-panel-empty" role="status">
             No results for that search.

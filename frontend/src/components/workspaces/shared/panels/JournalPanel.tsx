@@ -876,7 +876,7 @@ function JournalBrowser({
           </div>
         </div>
         <div
-          className="knowledge-panel-session-list workspace-panel-scroll-region"
+          className="knowledge-panel-session-list knowledge-panel-results--scroll"
           role="list"
           aria-label="Recent sessions"
         >
