@@ -359,6 +359,7 @@ export function CampaignCard({
             <TooltipTrigger asChild>
               <span
                 className={`session-campaign-card__state-dot state-${state.toLowerCase()}`}
+                role="img"
                 aria-label={`Campaign ${getCampaignVisualStateLabel(state).toLowerCase()}`}
               />
             </TooltipTrigger>
@@ -449,7 +450,6 @@ export function CampaignCard({
             .join(' ')}
           aria-label="Campaign description"
           tabIndex={isDescriptionTruncated ? 0 : -1}
-          aria-expanded={isDescriptionPopoverOpen}
         >
           <p ref={previewTextRef} className="session-campaign-card__description-preview-text">
             {descriptionPreviewText}

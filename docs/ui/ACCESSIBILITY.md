@@ -60,9 +60,10 @@ Use this checklist before closing accessibility-related work:
 - Global focus-visible ring baseline is defined in `frontend/src/styles/components/session/theme.css`.
 - Global reduced-motion baseline is defined in `frontend/src/styles/components/session/theme.css`.
 - Dedicated accessibility guidance doc is now present at `docs/ui/ACCESSIBILITY.md`.
+- Automated accessibility smoke checks are now in `frontend/tests/components/Accessibility.smoke.test.tsx` (axe on `CampaignCard` and `SessionToolbar`).
 
 ## Follow-up Work
 
-- Add automated accessibility checks to CI (axe-based smoke pass for critical routes).
+- Add accessibility smoke checks to CI release gates (run existing axe-based tests on pull requests).
 - Add targeted keyboard navigation tests for right-rail tabs and session toolbar controls.
 - Add contrast snapshots for theme token regressions.

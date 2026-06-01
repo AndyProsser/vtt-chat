@@ -436,6 +436,8 @@ Evidence snapshot (2026-06-01):
 - Added global keyboard focus-visible baseline in `frontend/src/styles/components/session/theme.css` so keyboard navigation has deterministic visible focus styling.
 - Added global reduced-motion baseline in `frontend/src/styles/components/session/theme.css` under `@media (prefers-reduced-motion: reduce)` to minimize animations/transitions and disable smooth-scroll behavior.
 - Added focused keyboard interaction coverage for lobby campaign cards in `frontend/tests/components/CampaignCard.keyboard.test.tsx` (Enter and Space activation).
+- Added automated accessibility smoke checks in `frontend/tests/components/Accessibility.smoke.test.tsx` using axe for key lobby/session surfaces (`CampaignCard`, `SessionToolbar`).
+- Fixed CampaignCard ARIA issues identified by smoke checks in `frontend/src/components/workspaces/lobby/LobbyView.CampaignCard.tsx` (valid state-dot semantics and removal of invalid `aria-expanded` on non-control element).
 
 ---
 

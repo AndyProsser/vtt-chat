@@ -232,6 +232,7 @@
 
 .cip-poster-surface.has-image {
   background-color: color-mix(in srgb, var(--color-surface-subtle) 70%, black 30%);
+  min-height: 220px;
 }
 
 .cip-poster-overlay {
