@@ -1997,52 +1997,57 @@
 }
 
 .notes-share-popover__group {
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-subtle);
-  padding: 0.25rem;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 72%, transparent);
+  border-radius: 0;
+  background: transparent;
+  padding: 0.45rem 0 0;
 }
 
 .notes-share-popover__group-title {
   width: 100%;
   text-align: left;
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--color-text-primary);
-  padding: 0.3rem 0.45rem;
-  font-size: 0.75rem;
+  padding: 0.1rem 0.1rem 0.3rem;
+  font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.2rem;
 }
 
 .notes-share-popover__group-title.is-selected {
-  border-color: var(--color-border-focus);
+  color: var(--color-accent);
 }
 
 .notes-share-popover__players {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0.35rem;
+  gap: 0.22rem;
+}
+
+.notes-share-popover__players--compact {
+  padding-left: 0.05rem;
 }
 
 .notes-share-popover__player {
-  border: 1px solid var(--color-border-soft);
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 58%, transparent);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
   color: var(--color-text-primary);
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.32rem 0.4rem;
+  padding: 0.28rem 0.4rem;
   text-align: left;
   cursor: pointer;
 }
 
 .notes-share-popover__player.is-selected {
   border-color: var(--color-border-focus);
-  background: color-mix(in srgb, var(--color-brand) 12%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-brand) 10%, var(--color-surface));
 }
 
 .notes-share-popover__player-avatar {
@@ -2078,12 +2083,12 @@
   text-overflow: ellipsis;
 }
 
-.notes-share-popover__player-name {
+.notes-share-popover__player-character {
   font-size: 0.74rem;
   font-weight: 700;
 }
 
-.notes-share-popover__player-character {
+.notes-share-popover__player-name {
   font-size: 0.68rem;
   color: var(--color-text-secondary);
 }

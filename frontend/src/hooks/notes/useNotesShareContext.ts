@@ -52,6 +52,7 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
         id: presence.userId,
         username: presence.username,
         role: presence.role,
+        playerName: presence.playerName || null,
         avatarUrl: presence.avatarUrl || null,
         characterName: presence.characterName || null,
         status: 'HERE',
@@ -69,15 +70,13 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
         if (!memberIsPlayer) {
           continue
         }
-        if (member.username.startsWith('dev_mock_')) {
-          continue
-        }
 
         if (!seen.has(member.userId)) {
           seen.set(member.userId, {
             id: member.userId,
             username: member.username,
             role: Role.PLAYER,
+            playerName: member.playerName || null,
             avatarUrl: member.avatarUrl || null,
             characterName: member.characterName || null,
             status: 'HERE',
@@ -87,11 +86,11 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
     }
 
     // Include known player presence records even when they are temporarily not in roomMembers.
-    for (const [userId, user] of presencePlayersById) {
+    presencePlayersById.forEach((user, userId) => {
       if (!seen.has(userId)) {
         seen.set(userId, user)
       }
-    }
+    })
 
     return Array.from(seen.values())
   }, [params.currentUserId, roomMembers, sessionPresenceByUser, sessionRooms])

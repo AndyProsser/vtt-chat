@@ -133,6 +133,8 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
 
   const renderPlayerCard = (player: NotesShareUser) => {
     const isSelected = selectedUsers.has(player.id)
+    const characterName = player.characterName || player.username
+    const playerDisplayName = player.playerName || 'Unknown Player'
     return (
       <button
         key={player.id}
@@ -144,16 +146,12 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
           {player.avatarUrl ? (
             <img src={player.avatarUrl} alt="" />
           ) : (
-            (player.characterName || player.username).slice(0, 1).toUpperCase()
+            playerDisplayName.slice(0, 1).toUpperCase()
           )}
         </span>
         <span className="notes-share-popover__player-copy">
-          <span className="notes-share-popover__player-name">
-            {player.characterName || player.username}
-          </span>
-          {player.characterName ? (
-            <span className="notes-share-popover__player-character">{player.username}</span>
-          ) : null}
+          <span className="notes-share-popover__player-character">{characterName}</span>
+          <span className="notes-share-popover__player-name">{playerDisplayName}</span>
         </span>
       </button>
     )
@@ -241,7 +239,7 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
                     >
                       {group.name}
                     </button>
-                    <div className="notes-share-popover__players">
+                    <div className="notes-share-popover__players notes-share-popover__players--compact">
                       {group.members.map(renderPlayerCard)}
                     </div>
                   </section>
@@ -257,7 +255,7 @@ export function NoteSharePopover(props: NoteSharePopoverProps) {
                   >
                     Offline
                   </button>
-                  <div className="notes-share-popover__players">
+                  <div className="notes-share-popover__players notes-share-popover__players--compact">
                     {offlineGroupMembers.map(renderPlayerCard)}
                   </div>
                 </section>

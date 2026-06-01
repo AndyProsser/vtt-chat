@@ -16,8 +16,11 @@ export function NoteDeleteDialog({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-2200 bg-slate-900/45" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-[42%] z-2201 w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-ui-md border border-ui-border bg-ui-surface p-4 shadow-xl">
+        <DialogPrimitive.Overlay className="session-modal-backdrop session-modal-backdrop--overlay" />
+        <DialogPrimitive.Content
+          className="session-modal session-modal--confirm-dialog session-modal--floating"
+          style={{ top: '50%', zIndex: 2201 }}
+        >
           <DialogPrimitive.Title className="text-base font-semibold text-ui-primary">
             Delete Note
           </DialogPrimitive.Title>
