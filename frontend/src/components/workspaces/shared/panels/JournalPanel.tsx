@@ -449,6 +449,44 @@ function JournalEditor({
               ) : null}
             </div>
           </div>
+          {isDm && resolvedIsEditing ? (
+            <div className="cip-inline-actions" aria-label="Journal actions">
+              <TooltipProvider delayDuration={140}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="session-icon-action session-icon-action--icon"
+                      aria-label={isSaving ? 'Saving journal' : 'Save journal'}
+                      onClick={() => void handleSave()}
+                      disabled={isSaving}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        {isSaving ? 'hourglass_top' : 'save'}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Save journal</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="session-icon-action session-icon-action--icon"
+                      aria-label="Cancel editing journal"
+                      onClick={handleCancel}
+                      disabled={isSaving}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        undo
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Cancel editing</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          ) : null}
         </header>
       ) : null}
 
@@ -537,28 +575,7 @@ function JournalEditor({
         )}
       </div>
 
-      {isDm && resolvedIsEditing ? (
-        <div className="knowledge-panel__journal-actions">
-          <button
-            type="button"
-            className="knowledge-panel-action"
-            onClick={() => void handleSave()}
-            disabled={isSaving}
-            aria-label="Save journal"
-          >
-            {isSaving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            className="knowledge-panel-action"
-            onClick={handleCancel}
-            disabled={isSaving}
-            aria-label="Cancel editing"
-          >
-            Cancel
-          </button>
-        </div>
-      ) : null}
+
 
       {!isDm && !entry ? <p className="knowledge-panel-copy">{playerFacingRoast}</p> : null}
     </section>
@@ -683,6 +700,10 @@ function JournalBrowser({
     setEditingSessionId(effectiveSessionId)
   }, [editingSessionId, effectiveSessionId, isDm])
 
+  const handleCancelEditSelected = useCallback(() => {
+    setEditingSessionId(null)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
 
@@ -803,23 +824,42 @@ function JournalBrowser({
         </div>
         {isDm ? (
           <TooltipProvider delayDuration={140}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="session-icon-action session-icon-action--icon"
-                  onClick={handleToggleEditSelected}
-                  aria-label={isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    {isSelectedSessionEditing ? 'save' : 'edit'}
-                  </span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                {isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
-              </TooltipContent>
-            </Tooltip>
+            <div className="cip-inline-actions" aria-label="Journal actions">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="session-icon-action session-icon-action--icon"
+                    onClick={handleToggleEditSelected}
+                    aria-label={isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {isSelectedSessionEditing ? 'save' : 'edit'}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
+                </TooltipContent>
+              </Tooltip>
+              {isSelectedSessionEditing ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="session-icon-action session-icon-action--icon"
+                      onClick={handleCancelEditSelected}
+                      aria-label="Cancel editing journal"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        undo
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Cancel editing</TooltipContent>
+                </Tooltip>
+              ) : null}
+            </div>
           </TooltipProvider>
         ) : null}
       </header>
