@@ -188,4 +188,40 @@ describe('system messages service', () => {
       })
     )
   })
+
+  it('queries previous terminal session with deterministic tie-breakers', async () => {
+    mocks.prisma.session.findUnique.mockResolvedValue({
+      campaignId: '99999999-9999-4999-8999-999999999999',
+      campaign: {
+        name: 'Shattered Crown',
+        description: '',
+      },
+    })
+    mocks.prisma.session.findFirst.mockResolvedValue({
+      id: '66666666-6666-4666-8666-666666666666',
+      name: 'Session 25 - 2026-05-13',
+    })
+    mocks.prisma.note.findMany.mockResolvedValue([])
+
+    await emitSessionRecapMessage({
+      sessionId: SESSION_ID,
+      mainRoomId: MAIN_ROOM_ID,
+      dmId: DM_ID,
+      dmUsername: 'gm',
+    })
+
+    expect(mocks.prisma.session.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          state: { in: ['ENDED', 'CLEANUP'] },
+        }),
+        orderBy: [
+          { endedAt: 'desc' },
+          { startedAt: 'desc' },
+          { createdAt: 'desc' },
+          { id: 'desc' },
+        ],
+      })
+    )
+  })
 })

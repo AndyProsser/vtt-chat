@@ -59,8 +59,12 @@ export async function emitSessionRecapMessage(params: {
 
   // Step 2: Find the most recent ENDED session for the same campaign
   const previousSession = await prisma.session.findFirst({
-    where: { campaignId: currentSession.campaignId, state: 'ENDED', NOT: { id: params.sessionId } },
-    orderBy: { endedAt: 'desc' },
+    where: {
+      campaignId: currentSession.campaignId,
+      state: { in: ['ENDED', 'CLEANUP'] },
+      NOT: { id: params.sessionId },
+    },
+    orderBy: [{ endedAt: 'desc' }, { startedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
     select: { id: true, name: true },
   })
   const campaignName = currentSession.campaign?.name?.trim() || 'This campaign'
