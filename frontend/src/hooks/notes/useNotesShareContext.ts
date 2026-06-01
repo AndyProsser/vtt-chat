@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Role, RoomType, type UUID } from '@shared'
+import { useStore } from '@/hooks/useStore'
 import type {
   NotesShareRoom,
   NotesShareUser,
@@ -72,8 +73,18 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
             (room: NotesShareRoom) => room.type === RoomType.GROUP || room.type === RoomType.MAIN
           )
 
+          const playerUserIds = new Set(playerUsers.map((player) => player.id))
+          const roomMembersFromStore = useStore.getState().roomMembers
           const roomMemberEntries = await Promise.all(
             shareableRooms.map(async (room) => {
+              const cachedMembers = roomMembersFromStore[room.id]
+              if (cachedMembers) {
+                const memberIds = cachedMembers
+                  .map((member) => member.userId)
+                  .filter((memberId) => playerUserIds.has(memberId))
+                return [room.id, memberIds] as const
+              }
+
               try {
                 const roomMembersRes = await fetch(
                   `${params.apiUrl}/api/rooms/${room.id}/members`,
@@ -88,9 +99,7 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
 
                 const roomMembersData = (await roomMembersRes.json()) as RoomMembersResponse
                 const memberIds: UUID[] = Array.isArray(roomMembersData.members)
-                  ? roomMembersData.members.filter((memberId: UUID) =>
-                      playerUsers.some((player: NotesShareUser) => player.id === memberId)
-                    )
+                  ? roomMembersData.members.filter((memberId: UUID) => playerUserIds.has(memberId))
                   : []
 
                 return [room.id, memberIds] as const

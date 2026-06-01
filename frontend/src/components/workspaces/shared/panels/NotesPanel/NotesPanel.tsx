@@ -4,13 +4,13 @@ import {
   Role,
   RoomType,
   isGreenroomSessionState,
-  type NoteAttachmentEntity,
   type SessionState,
   type UUID,
 } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/hooks/useStore'
+import { useSessionSelectedRoomId } from '@/hooks/session/useSessionSelectedRoomId'
 import type { Note } from '@/types/notes'
 import type { NotesPublishTarget } from '@/types/notesPublish'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
@@ -66,9 +66,7 @@ export function NotesPanel({
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [visibility, setVisibility] = useState<NoteVisibility>(NoteVisibility.DM_ONLY)
   const [tagsText, setTagsText] = useState('')
-  const [attachments, setAttachments] = useState<NoteAttachmentEntity[]>([])
   const { shareUsers, shareRooms, roomMemberIdsByRoomId } = useNotesShareContext({
     apiUrl,
     token,
@@ -76,7 +74,6 @@ export function NotesPanel({
     sessionId,
     currentUserId: user.id,
   })
-  const [allowedUsers, setAllowedUsers] = useState<UUID[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [publishFilter, setPublishFilter] = useState<NotesPublishFilter>('ALL')
@@ -84,6 +81,7 @@ export function NotesPanel({
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const canMutateNotes = user.role === Role.DM
+  const selectedRoomId = useSessionSelectedRoomId(sessionId ?? null)
   const publishRooms = useMemo(
     () =>
       shareRooms.filter((room) => {
@@ -140,9 +138,7 @@ export function NotesPanel({
     }
 
     if (!showCreateForm) {
-      setVisibility(NoteVisibility.DM_ONLY)
-      setAllowedUsers([])
-      setAttachments([])
+      // New notes always start DM-only and become shared only after an explicit save.
     }
 
     setShowCreateForm((current) => !current)
@@ -203,10 +199,10 @@ export function NotesPanel({
           campaignId,
           title,
           content,
-          visibility,
+          visibility: NoteVisibility.DM_ONLY,
           tags,
-          allowedUsers: visibility === NoteVisibility.CUSTOM ? allowedUsers : [],
-          attachments,
+          allowedUsers: [],
+          attachments: [],
         }),
       })
 
@@ -238,9 +234,6 @@ export function NotesPanel({
       setTitle('')
       setContent('')
       setTagsText('')
-      setVisibility(NoteVisibility.DM_ONLY)
-      setAllowedUsers([])
-      setAttachments([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create note')
     } finally {
@@ -376,23 +369,13 @@ export function NotesPanel({
 
       {canMutateNotes && showCreateForm ? (
         <NotesCreateForm
-          campaignId={campaignId}
           title={title}
           content={content}
-          visibility={visibility}
-          allowedUsers={allowedUsers}
-          attachments={attachments}
           tagsText={tagsText}
-          shareUsers={shareUsers}
-          shareRooms={shareRooms}
-          roomMemberIdsByRoomId={roomMemberIdsByRoomId}
           isCreating={isCreating}
           onSubmit={handleCreate}
           onTitleChange={setTitle}
           onContentChange={setContent}
-          onVisibilityChange={setVisibility}
-          onAllowedUsersChange={setAllowedUsers}
-          onAttachmentsChange={setAttachments}
           onTagsTextChange={setTagsText}
         />
       ) : null}
@@ -421,7 +404,6 @@ export function NotesPanel({
               {selectedNote ? (
                 <NoteCard
                   key={selectedNote.id}
-                  campaignId={campaignId}
                   note={selectedNote}
                   shareUsers={shareUsers}
                   shareRooms={shareRooms}
@@ -431,6 +413,7 @@ export function NotesPanel({
                   canManageShare={canMutateNotes}
                   canPublish={canMutateNotes}
                   isPublishDisabled={isPublishDisabledInCurrentState}
+                  selectedRoomId={selectedRoomId || null}
                   onSave={handleSave}
                   onDelete={handleDelete}
                   onPublish={handlePublish}

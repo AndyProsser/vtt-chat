@@ -13,7 +13,6 @@ import {
   parseNoteHashtags,
   serializeNoteHashtags,
 } from '../../../../../utils/notesPanel'
-import { NoteAttachmentsField } from './NoteAttachmentsField'
 import { NoteAttachmentsGallery } from './NoteAttachmentsGallery'
 import { NoteDeleteDialog } from './NoteDeleteDialog'
 import { NotePublishDialog } from './NotePublishDialog'
@@ -21,12 +20,12 @@ import { NoteSharePopover } from './NoteSharePopover'
 import { areStringArraysEqual, areUuidArraysEqual } from './noteCard.utils'
 
 interface NoteCardProps {
-  campaignId: UUID
   note: Note
   canEdit: boolean
   canManageShare: boolean
   canPublish: boolean
   isPublishDisabled: boolean
+  selectedRoomId?: UUID | null
   shareUsers?: NotesShareUser[]
   shareRooms?: NotesShareRoom[]
   publishRooms?: NotesPublishRoom[]
@@ -42,12 +41,12 @@ interface NoteCardProps {
 }
 
 export function NoteCard({
-  campaignId,
   note,
   canEdit,
   canManageShare,
   canPublish,
   isPublishDisabled,
+  selectedRoomId = null,
   shareUsers = [],
   shareRooms = [],
   publishRooms = [],
@@ -211,8 +210,24 @@ export function NoteCard({
       return
     }
 
-    if (publishRooms.length === 1 && publishRooms[0]?.type === RoomType.MAIN) {
+    if (publishRooms.length === 0) {
       await handleConfirmPublish({ audience: 'EVERYONE' })
+      return
+    }
+
+    if (publishRooms.length === 1) {
+      const onlyRoom = publishRooms[0]
+      if (onlyRoom?.type === RoomType.MAIN) {
+        await handleConfirmPublish({ audience: 'EVERYONE' })
+        return
+      }
+
+      await handleConfirmPublish({ audience: 'ROOM', roomId: onlyRoom.id })
+      return
+    }
+
+    if (selectedRoomId && publishRooms.some((room) => room.id === selectedRoomId)) {
+      await handleConfirmPublish({ audience: 'ROOM', roomId: selectedRoomId })
       return
     }
 
@@ -246,7 +261,7 @@ export function NoteCard({
           </div>
 
           <div className="notes-note-header__actions">
-            {canPublish ? (
+            {canPublish && !isEditing ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -266,14 +281,17 @@ export function NoteCard({
                     ? 'Publish is unavailable in greenroom'
                     : hasPublishedThisSession
                       ? 'Published this session (click to publish again)'
-                      : publishRooms.length === 1 && publishRooms[0]?.type === RoomType.MAIN
+                      : publishRooms.length === 0 ||
+                          (publishRooms.length === 1 && publishRooms[0]?.type === RoomType.MAIN)
                         ? 'Publish to everyone'
-                        : 'Choose where to post'}
+                        : publishRooms.length > 1 && selectedRoomId
+                          ? 'Publish to current room'
+                          : 'Choose where to post'}
                 </TooltipContent>
               </Tooltip>
             ) : null}
 
-            {canManageShare ? (
+            {canManageShare && !isEditing ? (
               <NoteSharePopover
                 open={sharePopoverOpen}
                 onOpenChange={handleShareOpenChange}
@@ -354,13 +372,6 @@ export function NoteCard({
               placeholder="Write your handout"
               variant="full"
               insertActions={imageInsertActions}
-            />
-            <NoteAttachmentsField
-              campaignId={campaignId}
-              attachments={attachments}
-              disabled={isSaving}
-              onChange={setAttachments}
-              showToast={showToast}
             />
             <div className="notes-edit-meta-row">
               <div className="notes-edit-meta-col">

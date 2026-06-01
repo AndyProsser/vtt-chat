@@ -22,23 +22,11 @@ export function NotePublishDialog(props: NotePublishDialogProps) {
             Post Handout To Chat
           </DialogPrimitive.Title>
           <DialogPrimitive.Description className="mt-2 text-sm text-ui-secondary">
-            Choose where this handout should appear. Posting to a room also shares the handout with
-            the players currently in that room.
+            Choose a room. Posting will also update handout sharing to match the players currently
+            in that room.
           </DialogPrimitive.Description>
 
           <div className="mt-4 flex flex-col gap-2">
-            <button
-              type="button"
-              disabled={props.isSubmitting}
-              onClick={() => void props.onConfirmPublish({ audience: 'EVERYONE' })}
-              className="rounded-ui-sm border border-ui-border bg-ui-surface-subtle px-3 py-3 text-left text-sm text-ui-primary transition hover:bg-ui-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <div className="font-medium">Everyone</div>
-              <div className="mt-1 text-xs text-ui-secondary">
-                Post as a global handout card visible in everyone&apos;s chat.
-              </div>
-            </button>
-
             {props.rooms.map((room) => {
               const memberCount = props.roomMemberIdsByRoomId[room.id]?.length || 0
               const roomLabel = room.type === RoomType.MAIN ? 'Main room' : 'Group'
