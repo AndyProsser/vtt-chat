@@ -477,8 +477,21 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
 
+  const session = await getSession(publishSessionId as UUID)
+  if (!session) {
+    return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+  }
+  const sessionRecord = await findSessionById(publishSessionId as string)
+  const noteCampaignId = note.campaignId ?? (sessionRecord?.campaignId as UUID | null)
+  if (!noteCampaignId) {
+    return res.status(500).json({
+      code: ErrorCode.INTERNAL_ERROR,
+      message: 'Note is missing campaign context; cannot publish',
+    })
+  }
+
   // Auth via campaign membership — notes are campaign-scoped, not session-scoped
-  const requesterRole = await resolveCampaignRole(note.campaignId, user.userId as UUID)
+  const requesterRole = await resolveCampaignRole(noteCampaignId, user.userId as UUID)
   if (!requesterRole) {
     return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
   }
@@ -487,14 +500,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   }
 
   // Validate that the provided session belongs to the same campaign as the note.
-  // Use findSessionById (raw DB record) because getSession/mapSessionRecord strips campaignId
-  // from the returned Session shape — getSessionCampaignId would always return undefined.
-  const session = await getSession(publishSessionId as UUID)
-  if (!session) {
-    return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
-  }
-  const sessionRecord = await findSessionById(publishSessionId as string)
-  if (!sessionRecord || sessionRecord.campaignId !== note.campaignId) {
+  if (!sessionRecord || sessionRecord.campaignId !== noteCampaignId) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: 'Session does not belong to the same campaign as the note',
@@ -502,7 +508,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   }
 
   const visibleNotes = await getVisibleCampaignNotes(
-    note.campaignId,
+    noteCampaignId,
     user.userId as UUID,
     requesterRole
   )
@@ -628,7 +634,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     action: 'NOTE_PUBLISHED',
     noteId: published.id,
     sessionId: session.id,
-    campaignId: note.campaignId,
+    campaignId: noteCampaignId,
     actorUserId: user.userId,
     actorUsername: user.username,
     actorRole: requesterRole,
@@ -703,7 +709,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
 
   await appendSessionAuditEvent({
     sessionId: session.id,
-    campaignId: note.campaignId,
+    campaignId: noteCampaignId,
     actorUserId: user.userId as UUID,
     actorRole: requesterRole,
     actionType: 'NOTES.PUBLISHED',
@@ -787,7 +793,12 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
     }
 
-    if (!existingNote.campaignId) {
+    let noteCampaignId: UUID | undefined = existingNote.campaignId ?? undefined
+    if (!noteCampaignId && existingNote.sessionId) {
+      const noteSessionRecord = await findSessionById(existingNote.sessionId as string)
+      noteCampaignId = (noteSessionRecord?.campaignId as UUID | null) ?? undefined
+    }
+    if (!noteCampaignId) {
       logger.error('notes.routes', 'DELETE /:noteId — note has no campaignId', { noteId })
       return res.status(500).json({
         code: ErrorCode.INTERNAL_ERROR,
@@ -795,7 +806,7 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
-    const deleteRole = await resolveCampaignRole(existingNote.campaignId, user.userId as UUID)
+    const deleteRole = await resolveCampaignRole(noteCampaignId, user.userId as UUID)
     if (!deleteRole) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
     }
@@ -814,7 +825,7 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
     if (deleteSession) {
       await appendSessionAuditEvent({
         sessionId: deleteSession.id,
-        campaignId: note.campaignId,
+        campaignId: noteCampaignId,
         actorUserId: user.userId as UUID,
         actorRole: deleteRole,
         actionType: 'NOTES.DELETED',
@@ -840,7 +851,7 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
         roomId: null,
         timestamp: Date.now(),
         payload: {
-          campaignId: note.campaignId,
+          campaignId: noteCampaignId,
           noteId: note.id,
         },
       }

@@ -311,7 +311,7 @@ export function NoteCard({
               />
             ) : null}
 
-            {canEdit && isEditing ? (
+            {canEdit ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -337,7 +337,7 @@ export function NoteCard({
                     type="button"
                     onClick={() => void handleEditSaveToggle()}
                     disabled={isSaving}
-                    className={`notes-note-header-action${hasDraftChanges ? ' notes-note-header-action--dirty' : ''}`}
+                    className={`notes-note-header-action${isEditing && hasDraftChanges ? ' notes-note-header-action--dirty' : ''}`}
                     aria-label={isEditing ? 'Save handout' : 'Edit handout'}
                   >
                     <span className="material-symbols-outlined" aria-hidden="true">

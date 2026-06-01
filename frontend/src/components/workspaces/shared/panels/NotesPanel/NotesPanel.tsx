@@ -52,7 +52,6 @@ export function NotesPanel({
   const addNote = useStore((state) => state.addNote)
   const clearNotes = useStore((state) => state.clearNotes)
   const updateNote = useStore((state) => state.updateNote)
-  const deleteNote = useStore((state) => state.deleteNote)
   const notes = useMemo(
     () =>
       Object.values(notesByCampaign || {})
@@ -67,9 +66,6 @@ export function NotesPanel({
   const [content, setContent] = useState('')
   const [tagsText, setTagsText] = useState('')
   const { shareUsers, shareRooms, roomMemberIdsByRoomId } = useNotesShareContext({
-    apiUrl,
-    token,
-    campaignId,
     sessionId,
     currentUserId: user.id,
   })
@@ -319,8 +315,15 @@ export function NotesPanel({
       throw new Error(body.message ?? `HTTP ${res.status}`)
     }
 
-    deleteNote(campaignId, noteId as UUID)
-    if (selectedNoteId === (noteId as UUID)) {
+    const refreshedNotes = await fetchCampaignNotesOnce(apiUrl, campaignId, token)
+    clearNotes(campaignId)
+    for (const refreshedNote of refreshedNotes) {
+      addNote(campaignId, refreshedNote)
+    }
+
+    if (selectedNoteId === (noteId as UUID) && refreshedNotes.length > 0) {
+      setSelectedNoteId(refreshedNotes[0]?.id ?? null)
+    } else if (selectedNoteId === (noteId as UUID)) {
       setSelectedNoteId(null)
     }
   }

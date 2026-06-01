@@ -1,23 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Role, RoomType, type UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
-import type {
-  NotesShareRoom,
-  NotesShareUser,
-  PartyPresenceMember,
-  PartyPresenceResponse,
-} from '@/types/notesShare'
+import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 
 interface UseNotesShareContextParams {
-  apiUrl: string
-  token: string
-  campaignId: UUID
   sessionId?: UUID | null
   currentUserId: UUID
 }
 
 export function useNotesShareContext(params: UseNotesShareContextParams) {
-  const [shareUsers, setShareUsers] = useState<NotesShareUser[]>([])
   const sessionRooms = useStore((state) =>
     params.sessionId ? state.rooms[params.sessionId] || null : null
   )
@@ -37,6 +28,41 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
       }))
   }, [sessionRooms])
 
+  const shareUsers = useMemo<NotesShareUser[]>(() => {
+    if (!sessionRooms) {
+      return []
+    }
+
+    const seen = new Map<UUID, NotesShareUser>()
+    for (const room of Object.values(sessionRooms)) {
+      const members = roomMembers[room.id] || []
+      for (const member of members) {
+        if (member.userId === params.currentUserId) {
+          continue
+        }
+        if (member.role !== Role.PLAYER) {
+          continue
+        }
+        if (member.username.startsWith('dev_mock_')) {
+          continue
+        }
+
+        if (!seen.has(member.userId)) {
+          seen.set(member.userId, {
+            id: member.userId,
+            username: member.username,
+            role: member.role,
+            avatarUrl: member.avatarUrl || null,
+            characterName: member.characterName || null,
+            status: 'HERE',
+          })
+        }
+      }
+    }
+
+    return Array.from(seen.values())
+  }, [params.currentUserId, roomMembers, sessionRooms])
+
   const roomMemberIdsByRoomId = useMemo<Record<UUID, UUID[]>>(() => {
     if (shareRooms.length === 0) {
       return {}
@@ -54,58 +80,6 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
 
     return result
   }, [roomMembers, shareRooms, shareUsers])
-
-  useEffect(() => {
-    let cancelled = false
-
-    const loadShareContext = async () => {
-      try {
-        const partyRes = await fetch(
-          `${params.apiUrl}/api/campaigns/${params.campaignId}/party-presence`,
-          {
-            headers: { Authorization: `Bearer ${params.token}` },
-          }
-        )
-
-        if (!partyRes.ok) {
-          return
-        }
-
-        const membersData = (await partyRes.json()) as PartyPresenceResponse
-        const users: PartyPresenceMember[] = Array.isArray(membersData.members)
-          ? membersData.members
-          : []
-        const playerUsers: NotesShareUser[] = users
-          .filter(
-            (candidate) =>
-              candidate.userId !== params.currentUserId &&
-              candidate.role === Role.PLAYER &&
-              !candidate.username.startsWith('dev_mock_')
-          )
-          .map((candidate) => ({
-            id: candidate.userId,
-            username: candidate.username,
-            role: candidate.role,
-            avatarUrl: candidate.avatarUrl || null,
-            characterName: candidate.characterName || null,
-            status: candidate.status,
-          }))
-
-        if (!cancelled) {
-          setShareUsers(playerUsers)
-        }
-      } catch {
-        if (!cancelled) {
-          setShareUsers([])
-        }
-      }
-    }
-
-    void loadShareContext()
-    return () => {
-      cancelled = true
-    }
-  }, [params.apiUrl, params.campaignId, params.currentUserId, params.sessionId, params.token])
 
   return {
     shareUsers,
