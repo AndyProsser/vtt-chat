@@ -8,6 +8,7 @@ type UseWorkspacesWsRetryToastParams = {
   wsState: ConnectionState
   wsError: Error | null
   wsRetryWindowExpired: boolean
+  suppressReconnectUi: boolean
   sessionLifecycleActions: Pick<
     UseSessionLifecycleActions,
     'setWsRetryWindowExpired' | 'setWsRetrySecondsRemaining'
@@ -27,6 +28,7 @@ export function useWorkspacesWsRetryToast({
   wsState,
   wsError,
   wsRetryWindowExpired,
+  suppressReconnectUi,
   sessionLifecycleActions,
   wsRetryWindowStartRef,
   wsRetryToastTimerRef,
@@ -39,6 +41,20 @@ export function useWorkspacesWsRetryToast({
   }, [wsError, wsErrorMessageRef])
 
   useEffect(() => {
+    if (suppressReconnectUi) {
+      wsRetryWindowStartRef.current = null
+      sessionLifecycleActions.setWsRetryWindowExpired(false)
+      sessionLifecycleActions.setWsRetrySecondsRemaining(null)
+
+      if (wsRetryToastTimerRef.current !== null) {
+        window.clearTimeout(wsRetryToastTimerRef.current)
+        wsRetryToastTimerRef.current = null
+      }
+
+      dismissToast(WS_ERROR_TOAST_ID)
+      return
+    }
+
     if (wsState === 'connected') {
       wsRetryWindowStartRef.current = null
       sessionLifecycleActions.setWsRetryWindowExpired(false)
@@ -81,9 +97,19 @@ export function useWorkspacesWsRetryToast({
         wsRetryToastTimerRef.current = null
       }
     }
-  }, [wsState, sessionLifecycleActions, wsRetryToastTimerRef, wsRetryWindowStartRef])
+  }, [
+    suppressReconnectUi,
+    wsState,
+    sessionLifecycleActions,
+    wsRetryToastTimerRef,
+    wsRetryWindowStartRef,
+  ])
 
   useEffect(() => {
+    if (suppressReconnectUi) {
+      return
+    }
+
     if (wsState === 'connected' || wsRetryWindowExpired || wsRetryWindowStartRef.current === null) {
       return
     }
@@ -107,9 +133,20 @@ export function useWorkspacesWsRetryToast({
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [wsRetryWindowExpired, wsState, sessionLifecycleActions, wsRetryWindowStartRef])
+  }, [
+    suppressReconnectUi,
+    wsRetryWindowExpired,
+    wsState,
+    sessionLifecycleActions,
+    wsRetryWindowStartRef,
+  ])
 
   useEffect(() => {
+    if (suppressReconnectUi) {
+      dismissToast(WS_ERROR_TOAST_ID)
+      return
+    }
+
     if (!wsRetryWindowExpired || wsState === 'connected') {
       dismissToast(WS_ERROR_TOAST_ID)
       return
@@ -140,6 +177,7 @@ export function useWorkspacesWsRetryToast({
     })
   }, [
     retryConnection,
+    suppressReconnectUi,
     showToast,
     wsRetryWindowExpired,
     wsState,

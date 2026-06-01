@@ -36,6 +36,7 @@ export type UseWorkspacesSessionOrchestrationParams = {
   setExitUpgradePassword: Dispatch<SetStateAction<string>>
   setExitUpgradeLoading: Dispatch<SetStateAction<boolean>>
   setError: Dispatch<SetStateAction<string | null>>
+  onIntentionalResetReconnect?: () => void
 }
 
 /**
@@ -69,6 +70,7 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
     setExitUpgradePassword,
     setExitUpgradeLoading,
     setError,
+    onIntentionalResetReconnect,
   } = params
   const pendingTransitionBySessionIdRef = useRef<Map<UUID, SessionState>>(new Map())
   const queuedTransitionBySessionIdRef = useRef<Map<UUID, SessionState>>(new Map())
@@ -203,6 +205,8 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
             setError(payload.message || 'Failed to reset ended session')
             return
           }
+
+          onIntentionalResetReconnect?.()
         }
 
         await startCampaignSession(selectedCampaignId, sessionList)
@@ -221,6 +225,7 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
       token,
       setError,
       startCampaignSession,
+      onIntentionalResetReconnect,
     ]
   )
 

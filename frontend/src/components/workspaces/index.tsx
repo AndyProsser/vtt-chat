@@ -4,7 +4,7 @@
  * Tests the full UI → Event → Store pipeline.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { SessionState, Role, isGreenroomSessionState } from '@shared'
 import type { UUID } from '@shared'
@@ -71,6 +71,7 @@ import {
   toNullableUuid,
 } from '@/utils/session/workspaceInitialization'
 import { toValidPostSessionDurationMinutes } from '@/utils/session/workspaces'
+import { WS_RESET_RECONNECT_UI_SUPPRESS_MS } from '@/constants/workspaces.constants'
 import type { EditorWorkspaceView } from '@/types/workspaces'
 import '@/styles/components/workspaces/Workspaces.css'
 
@@ -175,6 +176,30 @@ export function WorkspaceInitialization({
   const [isCampaignRestorePending, setIsCampaignRestorePending] = useState<boolean>(
     getInitialCampaignRestorePending
   )
+  const [suppressWsReconnectUi, setSuppressWsReconnectUi] = useState(false)
+  const wsResetReconnectSuppressTimerRef = useRef<number | null>(null)
+
+  const markIntentionalResetReconnect = useCallback(() => {
+    setSuppressWsReconnectUi(true)
+
+    if (wsResetReconnectSuppressTimerRef.current !== null) {
+      window.clearTimeout(wsResetReconnectSuppressTimerRef.current)
+    }
+
+    wsResetReconnectSuppressTimerRef.current = window.setTimeout(() => {
+      setSuppressWsReconnectUi(false)
+      wsResetReconnectSuppressTimerRef.current = null
+    }, WS_RESET_RECONNECT_UI_SUPPRESS_MS)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (wsResetReconnectSuppressTimerRef.current !== null) {
+        window.clearTimeout(wsResetReconnectSuppressTimerRef.current)
+        wsResetReconnectSuppressTimerRef.current = null
+      }
+    }
+  }, [])
 
   const {
     clearPersistedActiveSessionContext,
@@ -558,6 +583,7 @@ export function WorkspaceInitialization({
     setExitUpgradePassword,
     setExitUpgradeLoading,
     setError,
+    onIntentionalResetReconnect: markIntentionalResetReconnect,
   })
 
   useWorkspacesActiveSessionContext({
@@ -652,6 +678,7 @@ export function WorkspaceInitialization({
     wsState,
     wsError,
     wsRetryWindowExpired,
+    suppressReconnectUi: suppressWsReconnectUi,
     sessionLifecycleActions,
     wsRetryWindowStartRef,
     wsRetryToastTimerRef,
@@ -885,6 +912,7 @@ export function WorkspaceInitialization({
         dmAutoTargetOnFirstPlayerJoin: settingsDmAutoTargetOnFirstPlayerJoin,
         wsState,
         wsRetrySecondsRemaining,
+        suppressWsReconnectUi,
         rightRailIndicators: SESSION_WORKSPACE_CONNECTOR_PLACEHOLDERS.rightRailIndicators,
         partyPresenceRefreshVersion,
         fetchWithAuthGuard,
@@ -949,6 +977,7 @@ export function WorkspaceInitialization({
       sessionList,
       sessionSettingsName,
       sessionSettingsPlannedDurationMinutes,
+      suppressWsReconnectUi,
       sessionWorkspaceCampaignPolicy,
       settingsCampaignTotalDurationMs,
       settingsDefaultSessionDurationMins,

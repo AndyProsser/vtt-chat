@@ -18,6 +18,7 @@ export const SESSION_SUMMARY_TAG = 'session-summary'
 export const SESSION_SUMMARY_TITLE = 'Session Summary'
 export const WS_ERROR_TOAST_ID = 'workspaces:ws-error'
 export const WS_AUTO_RETRY_WINDOW_MS = 30_000
+export const WS_RESET_RECONNECT_UI_SUPPRESS_MS = 8_000
 export const WORKSPACES_MEMORY_PRESSURE_TOAST_ID = 'workspaces:memory-pressure'
 export const WORKSPACES_MEMORY_PRESSURE_THRESHOLD_BYTES = 1_000_000_000
 export const WORKSPACES_MEMORY_PRESSURE_POLL_MS = 30_000

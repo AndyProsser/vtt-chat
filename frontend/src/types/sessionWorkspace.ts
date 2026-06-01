@@ -57,6 +57,7 @@ export type SessionWorkspaceProps = {
   dmAutoTargetOnFirstPlayerJoin: boolean
   wsState: ComponentProps<typeof ReconnectBanner>['wsState']
   wsRetrySecondsRemaining: number | null
+  suppressWsReconnectUi: boolean
   rightRailIndicators: ComponentProps<typeof SessionWorkspaceFrame>['rightRailIndicators']
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>

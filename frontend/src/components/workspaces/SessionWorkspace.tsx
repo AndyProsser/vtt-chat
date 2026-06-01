@@ -69,13 +69,14 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
   }, [configuredCooldownDurationMs, currentSessionId, onExtendCooldown])
 
   const renderSystemToasts = useCallback(
-    () => (
-      <ReconnectBanner
-        wsState={props.wsState}
-        manualRetryCountdownSeconds={props.wsRetrySecondsRemaining}
-      />
-    ),
-    [props.wsRetrySecondsRemaining, props.wsState]
+    () =>
+      props.suppressWsReconnectUi ? null : (
+        <ReconnectBanner
+          wsState={props.wsState}
+          manualRetryCountdownSeconds={props.wsRetrySecondsRemaining}
+        />
+      ),
+    [props.suppressWsReconnectUi, props.wsRetrySecondsRemaining, props.wsState]
   )
 
   const renderToolbar = useCallback(

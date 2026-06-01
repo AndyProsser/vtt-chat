@@ -37,6 +37,7 @@ type BuildSessionWorkspacePropsParams = {
   dmAutoTargetOnFirstPlayerJoin: boolean
   wsState: ComponentProps<typeof SessionWorkspace>['wsState']
   wsRetrySecondsRemaining: ComponentProps<typeof SessionWorkspace>['wsRetrySecondsRemaining']
+  suppressWsReconnectUi: ComponentProps<typeof SessionWorkspace>['suppressWsReconnectUi']
   rightRailIndicators: ComponentProps<typeof SessionWorkspace>['rightRailIndicators']
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: ComponentProps<typeof SessionWorkspace>['fetchWithAuthGuard']
@@ -106,6 +107,7 @@ export function buildSessionWorkspaceProps(
     dmAutoTargetOnFirstPlayerJoin: params.dmAutoTargetOnFirstPlayerJoin,
     wsState: params.wsState,
     wsRetrySecondsRemaining: params.wsRetrySecondsRemaining,
+    suppressWsReconnectUi: params.suppressWsReconnectUi,
     rightRailIndicators: params.rightRailIndicators,
     partyPresenceRefreshVersion: params.partyPresenceRefreshVersion,
     fetchWithAuthGuard: params.fetchWithAuthGuard,
