@@ -124,10 +124,10 @@
   background: var(--color-surface);
   color: var(--color-text-primary);
   cursor: pointer;
-  font-size: 0.5em;
+  font-size: 0.71rem;
   font-weight: 600;
-  min-height: 1.2rem;
-  padding: 0.13rem 0.32rem;
+  min-height: 1.9rem;
+  padding: 0.3rem 0.52rem;
 }
 
 .session-toolbar__extra-buttons {

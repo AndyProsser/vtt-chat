@@ -8,6 +8,15 @@
   .session-workspace-frame__rails {
     --knowledge-panels__right-rail-width: clamp(360px, 32vw, 440px);
   }
+
+  .knowledge-panel__content.knowledge-panel-history__content {
+    height: calc(var(--workspace-panel-scroll-max-height) + 6rem);
+    max-height: calc(var(--workspace-panel-scroll-max-height) + 6rem);
+  }
+
+  .knowledge-panel-results--scroll {
+    max-height: calc(var(--workspace-panel-scroll-max-height) + 6rem);
+  }
 }
 
 .knowledge-panel {
