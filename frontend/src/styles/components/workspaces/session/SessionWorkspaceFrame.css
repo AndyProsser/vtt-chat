@@ -363,6 +363,17 @@
   }
 
   .session-workspace-frame__right-rail-layout {
+    height: calc(100% - 0px);
+    max-height: 100%;
+  }
+
+  .session-workspace-frame__right-rail-layout > [data-slot='tabs'] {
+    height: calc(100% - 0px);
+  }
+
+  .session-workspace-frame__right-rail-overlay .knowledge-panels__right-rail-content {
+    --knowledge-panel-scroll-max-height: 100%;
+    height: calc(100% - 0px);
     max-height: 100%;
   }
 }
