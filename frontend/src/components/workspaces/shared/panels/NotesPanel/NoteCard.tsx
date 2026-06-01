@@ -19,6 +19,33 @@ import { NotePublishDialog } from './NotePublishDialog'
 import { NoteSharePopover } from './NoteSharePopover'
 import { areStringArraysEqual, areUuidArraysEqual } from './noteCard.utils'
 
+const EMPTY_UUIDS: UUID[] = []
+const EMPTY_ATTACHMENTS: NoteAttachmentEntity[] = []
+
+function areAttachmentsEqual(a: NoteAttachmentEntity[], b: NoteAttachmentEntity[]): boolean {
+  if (a === b) {
+    return true
+  }
+  if (a.length !== b.length) {
+    return false
+  }
+
+  for (let index = 0; index < a.length; index += 1) {
+    const left = a[index]
+    const right = b[index]
+    if (
+      left.id !== right.id ||
+      left.name !== right.name ||
+      left.mime !== right.mime ||
+      left.uri !== right.uri
+    ) {
+      return false
+    }
+  }
+
+  return true
+}
+
 interface NoteCardProps {
   note: Note
   canEdit: boolean
@@ -53,13 +80,17 @@ export function NoteCard({
   onDelete,
   onPublish,
 }: NoteCardProps) {
+  const noteAllowedUsers = note.allowedUsers ?? EMPTY_UUIDS
+  const noteAttachments = note.attachments ?? EMPTY_ATTACHMENTS
+  const noteTagsText = useMemo(() => serializeNoteHashtags(note.tags), [note.tags])
+
   const [isEditing, setIsEditing] = useState(false)
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
   const [visibility, setVisibility] = useState<NoteVisibility>(note.visibility)
-  const [tagsText, setTagsText] = useState(serializeNoteHashtags(note.tags))
-  const [allowedUsers, setAllowedUsers] = useState<UUID[]>(note.allowedUsers || [])
-  const [attachments, setAttachments] = useState<NoteAttachmentEntity[]>(note.attachments || [])
+  const [tagsText, setTagsText] = useState(noteTagsText)
+  const [allowedUsers, setAllowedUsers] = useState<UUID[]>(noteAllowedUsers)
+  const [attachments, setAttachments] = useState<NoteAttachmentEntity[]>(noteAttachments)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -70,12 +101,16 @@ export function NoteCard({
   const imageInsertActions = useMemo(() => createNotesImageInsertActions(showToast), [showToast])
 
   const syncDraftFromNote = () => {
-    setTitle(note.title)
-    setContent(note.content)
-    setVisibility(note.visibility)
-    setTagsText(serializeNoteHashtags(note.tags))
-    setAllowedUsers(note.allowedUsers || [])
-    setAttachments(note.attachments || [])
+    setTitle((current) => (current === note.title ? current : note.title))
+    setContent((current) => (current === note.content ? current : note.content))
+    setVisibility((current) => (current === note.visibility ? current : note.visibility))
+    setTagsText((current) => (current === noteTagsText ? current : noteTagsText))
+    setAllowedUsers((current) =>
+      areUuidArraysEqual(current, noteAllowedUsers) ? current : [...noteAllowedUsers]
+    )
+    setAttachments((current) =>
+      areAttachmentsEqual(current, noteAttachments) ? current : [...noteAttachments]
+    )
   }
 
   useEffect(() => {
@@ -87,9 +122,12 @@ export function NoteCard({
     isEditing,
     isSaving,
     note.allowedUsers,
+    noteAttachments,
     note.content,
     note.tags,
     note.title,
+    noteAllowedUsers,
+    noteTagsText,
     note.visibility,
     sharePopoverOpen,
   ])
@@ -107,8 +145,8 @@ export function NoteCard({
     content !== note.content ||
     visibility !== note.visibility ||
     !areStringArraysEqual(saveDraftTags, note.tags) ||
-    !areUuidArraysEqual(normalizedAllowedUsers, note.allowedUsers || []) ||
-    JSON.stringify(attachments) !== JSON.stringify(note.attachments || [])
+    !areUuidArraysEqual(normalizedAllowedUsers, noteAllowedUsers) ||
+    !areAttachmentsEqual(attachments, noteAttachments)
 
   const shareStatus = getNoteShareStatus(visibility, normalizedAllowedUsers)
   const persistDraft = async (exitEditAfterSave: boolean) => {
