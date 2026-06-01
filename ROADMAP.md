@@ -413,7 +413,7 @@ Evidence snapshot (2026-05-30):
 
 ### W4-UX-Polish: Accessibility and Responsive Hardening
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High
 **Depends on**: W0-Rightbar, W0-Lobby
 
@@ -423,13 +423,19 @@ Evidence snapshot (2026-05-30):
 
 - [ ] All UI surfaces pass WCAG AA keyboard navigation and screen-reader testing
 - [ ] Dark and light themes render correctly across all components
-- [ ] Reduced-motion preferences are respected
+- [x] Reduced-motion preferences are respected
 - [ ] No hard-coded one-mode colors in shared user-facing UI
 - [ ] Responsive testing passes at breakpoints: <680px (mobile), 680-1080px (tablet), ≥1080px (desktop)
 
 **Related Docs**:
 
-- [docs/ui/ACCESSIBILITY.md](docs/ui/ACCESSIBILITY.md) (to be created)
+- [docs/ui/ACCESSIBILITY.md](docs/ui/ACCESSIBILITY.md)
+
+Evidence snapshot (2026-06-01):
+
+- Added global keyboard focus-visible baseline in `frontend/src/styles/components/session/theme.css` so keyboard navigation has deterministic visible focus styling.
+- Added global reduced-motion baseline in `frontend/src/styles/components/session/theme.css` under `@media (prefers-reduced-motion: reduce)` to minimize animations/transitions and disable smooth-scroll behavior.
+- Added focused keyboard interaction coverage for lobby campaign cards in `frontend/tests/components/CampaignCard.keyboard.test.tsx` (Enter and Space activation).
 
 ---
 
