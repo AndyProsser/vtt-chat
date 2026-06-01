@@ -59,7 +59,9 @@ export async function getBulkJournalStatus(
     const tags = Array.isArray(row.tags) ? (row.tags as string[]) : []
     const hashtags = tags.filter((tag) => tag !== JOURNAL_TAG)
     const hasContent = (row.content ?? '').trim().length > 0
-    result[row.sessionId] = { hasJournal: true, hasContent, hashtags }
+    if (row.sessionId) {
+      result[row.sessionId] = { hasJournal: true, hasContent, hashtags }
+    }
   }
 
   // Sessions with no journal row default to empty status

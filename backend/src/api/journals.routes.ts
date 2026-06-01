@@ -59,16 +59,22 @@ router.post('/status', requireAuth, async (req: Request, res: Response) => {
   }
 
   if (!Array.isArray(sessionIds) || sessionIds.length === 0) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'sessionIds must be a non-empty array' })
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'sessionIds must be a non-empty array' })
   }
 
   if (sessionIds.length > 200) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'sessionIds may not exceed 200 entries' })
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'sessionIds may not exceed 200 entries' })
   }
 
   for (const id of sessionIds) {
     if (!isValidUUID(id)) {
-      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Invalid sessionId: ${id}` })
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: `Invalid sessionId: ${id}` })
     }
   }
 
@@ -79,7 +85,9 @@ router.post('/status', requireAuth, async (req: Request, res: Response) => {
   })
 
   if (!membership) {
-    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a member of this campaign' })
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Not a member of this campaign' })
   }
 
   // Restrict to sessions that actually belong to this campaign (prevents cross-campaign probing)
@@ -199,6 +207,7 @@ router.post('/:sessionId', requireAuth, async (req: Request, res: Response) => {
 
   try {
     const journal = await createOrUpdateSessionJournal({
+      campaignId: (session as any).campaignId as UUID,
       sessionId: sessionId as UUID,
       title,
       content: journalContent,

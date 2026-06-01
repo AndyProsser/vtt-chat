@@ -293,7 +293,7 @@ export function NotesPanel({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(target),
+      body: JSON.stringify({ ...target, sessionId: sessionId ?? undefined }),
     })
 
     if (!res.ok) {

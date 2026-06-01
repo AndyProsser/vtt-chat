@@ -21,7 +21,6 @@ import {
   updateNote,
 } from '@/services/notes.service'
 import { getCampaignForUser } from '@/repositories/campaign.repository'
-import { listSessionsByCampaign } from '@/repositories/session.repository'
 import { MessageType } from '@shared'
 import { sendMessage } from '@/services/chat.service'
 import type { WebSocketManager } from '@/ws'
@@ -208,37 +207,13 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
   }
 
-  let noteSession = null as Awaited<ReturnType<typeof getSession>>
-  if (sessionId) {
-    if (!isValidUUID(sessionId)) {
-      return res.status(400).json({ code: ErrorCode.INVALID_SESSION, message: 'Invalid sessionId' })
+  // Validate sessionId belongs to campaign if provided (used as WS broadcast target only)
+  let broadcastSession = null as Awaited<ReturnType<typeof getSession>>
+  if (sessionId && isValidUUID(sessionId)) {
+    broadcastSession = await getSession(sessionId as UUID)
+    if (broadcastSession && getSessionCampaignId(broadcastSession) !== (campaignId as UUID)) {
+      broadcastSession = null
     }
-
-    noteSession = await getSession(sessionId as UUID)
-    if (!noteSession) {
-      return res
-        .status(404)
-        .json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
-    }
-
-    if (getSessionCampaignId(noteSession) !== (campaignId as UUID)) {
-      return res.status(400).json({
-        code: ErrorCode.INVALID_INPUT,
-        message: 'Session does not belong to campaign',
-      })
-    }
-  }
-
-  if (!noteSession) {
-    const sessions = await listSessionsByCampaign(campaignId)
-    noteSession = sessions[0] ? await getSession(sessions[0].id as UUID) : null
-  }
-
-  if (!noteSession) {
-    return res.status(409).json({
-      code: ErrorCode.CONFLICT,
-      message: 'Create a session first to anchor campaign notes',
-    })
   }
 
   if (visibility === NoteVisibility.DM_ONLY && requesterRole !== 'DM') {
@@ -249,7 +224,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
 
   const note = await createNote({
     campaignId: campaignId as UUID,
-    sessionId: noteSession.id,
+    sessionId: broadcastSession?.id,
     authorId: user.userId as UUID,
     authorUsername: user.username,
     title,
@@ -261,59 +236,61 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   })
   const created = note.created
 
-  await appendSessionAuditEvent({
-    sessionId: noteSession.id,
-    campaignId: getSessionCampaignId(noteSession),
-    actorUserId: user.userId as UUID,
-    actorRole: requesterRole,
-    actionType: created ? 'NOTES.CREATED' : 'NOTES.UPDATED',
-    targetType: 'NOTE',
-    targetId: note.id,
-    visibilityClass: toNoteAuditVisibilityClass(note.visibility),
-    timestamp: created ? note.createdAt : note.updatedAt,
-    metadata: {
-      noteVisibility: note.visibility,
-      tagCount: note.tags.length,
-      allowedUserCount: note.allowedUsers?.length ?? 0,
-      attachmentCount: note.attachments?.length ?? 0,
-      published: Boolean((note as { publishedAt?: number | null }).publishedAt),
-    },
-  })
-
-  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-  if (wsManager) {
-    const event: EventEnvelope = {
-      id: crypto.randomUUID() as UUID,
-      type: created ? 'NOTES:CREATED' : 'NOTES:UPDATED',
-      version: 1,
-      userId: user.userId as UUID,
-      userRole: requesterRole as any,
-      sessionId: noteSession.id,
-      roomId: null,
+  if (broadcastSession) {
+    await appendSessionAuditEvent({
+      sessionId: broadcastSession.id,
+      campaignId: campaignId as UUID,
+      actorUserId: user.userId as UUID,
+      actorRole: requesterRole,
+      actionType: created ? 'NOTES.CREATED' : 'NOTES.UPDATED',
+      targetType: 'NOTE',
+      targetId: note.id,
+      visibilityClass: toNoteAuditVisibilityClass(note.visibility),
       timestamp: created ? note.createdAt : note.updatedAt,
-      payload: {
-        noteId: note.id,
-        ownerId: note.authorId,
-        ownerUsername: note.authorUsername,
-        title: note.title,
-        content: note.content,
-        visibility: note.visibility,
-        tags: note.tags,
-        allowedUsers: note.allowedUsers,
-        attachments: note.attachments,
+      metadata: {
+        noteVisibility: note.visibility,
+        tagCount: note.tags.length,
+        allowedUserCount: note.allowedUsers?.length ?? 0,
+        attachmentCount: note.attachments?.length ?? 0,
+        published: Boolean((note as { publishedAt?: number | null }).publishedAt),
       },
-    }
+    })
 
-    wsManager.broadcastEventToSession(
-      noteSession.id,
-      event,
-      noteVisibleTo({
-        authorId: note.authorId,
-        visibility: note.visibility,
-        allowedUsers: note.allowedUsers,
-        dmId: noteSession.dmId,
-      })
-    )
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: created ? 'NOTES:CREATED' : 'NOTES:UPDATED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: requesterRole as any,
+        sessionId: broadcastSession.id,
+        roomId: null,
+        timestamp: created ? note.createdAt : note.updatedAt,
+        payload: {
+          noteId: note.id,
+          ownerId: note.authorId,
+          ownerUsername: note.authorUsername,
+          title: note.title,
+          content: note.content,
+          visibility: note.visibility,
+          tags: note.tags,
+          allowedUsers: note.allowedUsers,
+          attachments: note.attachments,
+        },
+      }
+
+      wsManager.broadcastEventToSession(
+        broadcastSession.id,
+        event,
+        noteVisibleTo({
+          authorId: note.authorId,
+          visibility: note.visibility,
+          allowedUsers: note.allowedUsers,
+          dmId: broadcastSession.dmId,
+        })
+      )
+    }
   }
 
   return res.status(created ? 201 : 200).json({ note })
@@ -347,23 +324,10 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
 
-  const noteSession = await getSession(existingNote.sessionId)
-  if (!noteSession) {
-    return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+  const requesterRole = await resolveCampaignRole(existingNote.campaignId, user.userId as UUID)
+  if (!requesterRole) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
   }
-
-  const authz = await resolveEffectiveSessionRole({
-    sessionId: noteSession.id,
-    userId: user.userId as UUID,
-  })
-  if (!authz.ok) {
-    return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
-      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.SESSION_NOT_FOUND : ErrorCode.FORBIDDEN,
-      message: authz.message,
-    })
-  }
-
-  const requesterRole = authz.role
 
   if (visibility === NoteVisibility.DM_ONLY && requesterRole !== 'DM') {
     return res
@@ -404,64 +368,62 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
     })
   }
 
-  const session = await getSession(note.sessionId)
-  if (!session) {
-    return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
-  }
+  // Broadcast to session if note is session-linked
+  const updateSession = note.sessionId ? await getSession(note.sessionId) : null
 
-  const eventRole = authz.role
-
-  await appendSessionAuditEvent({
-    sessionId: note.sessionId,
-    campaignId: getSessionCampaignId(session),
-    actorUserId: user.userId as UUID,
-    actorRole: eventRole,
-    actionType: 'NOTES.UPDATED',
-    targetType: 'NOTE',
-    targetId: note.id,
-    visibilityClass: toNoteAuditVisibilityClass(note.visibility),
-    timestamp: note.updatedAt,
-    metadata: {
-      noteVisibility: note.visibility,
-      tagCount: note.tags.length,
-      allowedUserCount: note.allowedUsers?.length ?? 0,
-      attachmentCount: note.attachments?.length ?? 0,
-      published: Boolean((note as { publishedAt?: number | null }).publishedAt),
-    },
-  })
-
-  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-  if (wsManager) {
-    const event: EventEnvelope = {
-      id: crypto.randomUUID() as UUID,
-      type: 'NOTES:UPDATED',
-      version: 1,
-      userId: user.userId as UUID,
-      userRole: eventRole as any,
-      sessionId: note.sessionId,
-      roomId: null,
+  if (updateSession) {
+    await appendSessionAuditEvent({
+      sessionId: updateSession.id,
+      campaignId: note.campaignId,
+      actorUserId: user.userId as UUID,
+      actorRole: requesterRole,
+      actionType: 'NOTES.UPDATED',
+      targetType: 'NOTE',
+      targetId: note.id,
+      visibilityClass: toNoteAuditVisibilityClass(note.visibility),
       timestamp: note.updatedAt,
-      payload: {
-        noteId: note.id,
-        title: note.title,
-        content: note.content,
-        visibility: note.visibility,
-        tags: note.tags,
-        allowedUsers: note.allowedUsers,
-        attachments: note.attachments,
+      metadata: {
+        noteVisibility: note.visibility,
+        tagCount: note.tags.length,
+        allowedUserCount: note.allowedUsers?.length ?? 0,
+        attachmentCount: note.attachments?.length ?? 0,
+        published: Boolean((note as { publishedAt?: number | null }).publishedAt),
       },
-    }
+    })
 
-    wsManager.broadcastEventToSession(
-      note.sessionId,
-      event,
-      noteVisibleTo({
-        authorId: note.authorId,
-        visibility: note.visibility,
-        allowedUsers: note.allowedUsers,
-        dmId: session.dmId,
-      })
-    )
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager) {
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'NOTES:UPDATED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: requesterRole as any,
+        sessionId: updateSession.id,
+        roomId: null,
+        timestamp: note.updatedAt,
+        payload: {
+          noteId: note.id,
+          title: note.title,
+          content: note.content,
+          visibility: note.visibility,
+          tags: note.tags,
+          allowedUsers: note.allowedUsers,
+          attachments: note.attachments,
+        },
+      }
+
+      wsManager.broadcastEventToSession(
+        updateSession.id,
+        event,
+        noteVisibleTo({
+          authorId: note.authorId,
+          visibility: note.visibility,
+          allowedUsers: note.allowedUsers,
+          dmId: updateSession.dmId,
+        })
+      )
+    }
   }
 
   return res.status(200).json({ note })
@@ -472,9 +434,16 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   const { noteId } = req.params
   const requestedRoomId = req.body?.roomId
   const publishAudience = req.body?.audience === 'ROOM' ? 'ROOM' : 'EVERYONE'
+  const publishSessionId = req.body?.sessionId
 
   if (!isValidUUID(noteId)) {
     return res.status(400).json({ code: ErrorCode.INVALID_NOTE_ID, message: 'Invalid noteId' })
+  }
+
+  if (!isValidUUID(publishSessionId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_SESSION, message: 'sessionId is required to publish a note' })
   }
 
   const note = await getNoteById(noteId as UUID)
@@ -482,24 +451,32 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
 
-  const session = await getSession(note.sessionId)
+  // Auth via campaign membership — notes are campaign-scoped, not session-scoped
+  const requesterRole = await resolveCampaignRole(note.campaignId, user.userId as UUID)
+  if (!requesterRole) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+  }
+  if (requesterRole !== 'DM') {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Only DM may publish notes' })
+  }
+
+  // Validate that the provided session belongs to the same campaign as the note
+  const session = await getSession(publishSessionId as UUID)
   if (!session) {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
-
-  const authz = await resolveEffectiveSessionRole({
-    sessionId: session.id,
-    userId: user.userId as UUID,
-  })
-  if (!authz.ok) {
-    return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
-      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.SESSION_NOT_FOUND : ErrorCode.FORBIDDEN,
-      message: authz.message,
+  if (getSessionCampaignId(session) !== note.campaignId) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Session does not belong to the same campaign as the note',
     })
   }
 
-  const requesterRole = authz.role
-  const visibleNotes = await getVisibleNotes(note.sessionId, user.userId as UUID, requesterRole)
+  const visibleNotes = await getVisibleCampaignNotes(
+    note.campaignId,
+    user.userId as UUID,
+    requesterRole
+  )
   if (!visibleNotes.find((n) => n.id === note.id)) {
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
@@ -516,7 +493,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     }
 
     const room = await getRoom(requestedRoomId as UUID)
-    if (!room || room.sessionId !== note.sessionId) {
+    if (!room || room.sessionId !== session.id) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
 
@@ -530,11 +507,11 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       })
     }
 
-    const sessionUsers = await getSessionUsers(note.sessionId)
+    const sessionUsers = await getSessionUsers(session.id)
     const playerIds = new Set(
       sessionUsers.filter((sessionUser) => sessionUser.role === 'PLAYER').map((entry) => entry.id)
     )
-    const roomMemberIds = await getRoomMemberIds(note.sessionId, room.id)
+    const roomMemberIds = await getRoomMemberIds(session.id, room.id)
     const targetPlayerIds = roomMemberIds.filter((memberId) => playerIds.has(memberId))
 
     if (targetPlayerIds.length === 0) {
@@ -592,8 +569,8 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   logger.info('ADMIN:NOTE_PUBLISHED', 'Note published to chat', {
     action: 'NOTE_PUBLISHED',
     noteId: published.id,
-    sessionId: published.sessionId,
-    campaignId: (session as any).campaignId ?? null,
+    sessionId: session.id,
+    campaignId: note.campaignId,
     actorUserId: user.userId,
     actorUsername: user.username,
     actorRole: requesterRole,
@@ -607,7 +584,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       ? `${published.content.slice(0, NOTE_PUBLISH_SNIPPET_MAX_LENGTH)}...`
       : published.content
 
-  const sessionUsers = await getSessionUsers(published.sessionId)
+  const sessionUsers = await getSessionUsers(session.id)
   const sessionUsernamesById = new Map(
     sessionUsers.map((sessionUser) => [sessionUser.id as UUID, sessionUser.username] as const)
   )
@@ -632,7 +609,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   })
 
   const message = await sendMessage({
-    sessionId: published.sessionId,
+    sessionId: session.id,
     roomId: publishRoomId,
     authorId: user.userId as UUID,
     authorUsername: user.username,
@@ -657,7 +634,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   })
 
   await createSessionLog({
-    sessionId: published.sessionId,
+    sessionId: session.id,
     userId: user.userId as UUID,
     username: user.username,
     eventType: 'STATE_CHANGED',
@@ -667,8 +644,8 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   })
 
   await appendSessionAuditEvent({
-    sessionId: published.sessionId,
-    campaignId: getSessionCampaignId(session),
+    sessionId: session.id,
+    campaignId: note.campaignId,
     actorUserId: user.userId as UUID,
     actorRole: requesterRole,
     actionType: 'NOTES.PUBLISHED',
@@ -692,7 +669,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       version: 1,
       userId: user.userId as UUID,
       userRole: requesterRole as any,
-      sessionId: published.sessionId,
+      sessionId: session.id,
       roomId: null,
       timestamp: published.updatedAt,
       payload: {
@@ -705,7 +682,7 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       },
     }
 
-    wsManager.broadcastEventToSession(published.sessionId, notesEvent, publishAudienceUsers)
+    wsManager.broadcastEventToSession(session.id, notesEvent, publishAudienceUsers)
 
     const chatEvent: EventEnvelope = {
       id: crypto.randomUUID() as UUID,
@@ -749,18 +726,12 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
   }
 
-  const authz = await resolveEffectiveSessionRole({
-    sessionId: existingNote.sessionId,
-    userId: user.userId as UUID,
-  })
-  if (!authz.ok) {
-    return res.status(authz.code === 'SESSION_NOT_FOUND' ? 404 : 403).json({
-      code: authz.code === 'SESSION_NOT_FOUND' ? ErrorCode.SESSION_NOT_FOUND : ErrorCode.FORBIDDEN,
-      message: authz.message,
-    })
+  const deleteRole = await resolveCampaignRole(existingNote.campaignId, user.userId as UUID)
+  if (!deleteRole) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
   }
 
-  const note = await deleteNote(noteId as UUID, user.userId as UUID, authz.role)
+  const note = await deleteNote(noteId as UUID, user.userId as UUID, deleteRole)
   if (!note) {
     return res.status(403).json({
       code: ErrorCode.FORBIDDEN,
@@ -768,37 +739,42 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
     })
   }
 
-  await appendSessionAuditEvent({
-    sessionId: note.sessionId,
-    campaignId: getSessionCampaignId(existingNote),
-    actorUserId: user.userId as UUID,
-    actorRole: authz.role,
-    actionType: 'NOTES.DELETED',
-    targetType: 'NOTE',
-    targetId: note.id,
-    visibilityClass: 'SYSTEM',
-    timestamp: Date.now(),
-    metadata: {
-      deletedBy: user.userId as UUID,
-    },
-  })
+  // Only emit session-scoped events if the note was linked to a session
+  const deleteSession = note.sessionId ? await getSession(note.sessionId) : null
+
+  if (deleteSession) {
+    await appendSessionAuditEvent({
+      sessionId: deleteSession.id,
+      campaignId: note.campaignId,
+      actorUserId: user.userId as UUID,
+      actorRole: deleteRole,
+      actionType: 'NOTES.DELETED',
+      targetType: 'NOTE',
+      targetId: note.id,
+      visibilityClass: 'SYSTEM',
+      timestamp: Date.now(),
+      metadata: {
+        deletedBy: user.userId as UUID,
+      },
+    })
+  }
 
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-  if (wsManager) {
+  if (wsManager && deleteSession) {
     const event: EventEnvelope = {
       id: crypto.randomUUID() as UUID,
       type: 'NOTES:DELETED',
       version: 1,
       userId: user.userId as UUID,
-      userRole: authz.role as any,
-      sessionId: note.sessionId,
+      userRole: deleteRole as any,
+      sessionId: deleteSession.id,
       roomId: null,
       timestamp: Date.now(),
       payload: {
         noteId: note.id,
       },
     }
-    wsManager.broadcastEventToSession(note.sessionId, event)
+    wsManager.broadcastEventToSession(deleteSession.id, event)
   }
 
   return res.status(200).json({ ok: true })

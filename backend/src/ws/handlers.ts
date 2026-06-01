@@ -165,7 +165,18 @@ export const notesHandlers = {
         ? (requestedVisibility as NoteVisibility)
         : NoteVisibility.DM_ONLY
 
+      const session = event.sessionId ? await getSession(event.sessionId as any) : null
+      const campaignId = (session as any)?.campaignId as string | undefined
+      if (!campaignId) {
+        logger.warn('ws.handlers', 'NOTES:CREATED — could not resolve campaignId, skipping', {
+          sessionId: event.sessionId,
+        })
+        logHandled('NOTES:CREATED', event)
+        return
+      }
+
       await createNote({
+        campaignId: campaignId as any,
         sessionId: event.sessionId as any,
         authorId: event.userId as any,
         authorUsername: payload.authorUsername || 'Unknown',

@@ -26,6 +26,7 @@ const JOURNAL_TAG = '_journal'
  * @returns Updated/created journal note
  */
 export async function createOrUpdateSessionJournal(params: {
+  campaignId: UUID
   sessionId: UUID
   title: string
   content: string
@@ -74,7 +75,7 @@ export async function createOrUpdateSessionJournal(params: {
   const journalId = randomUUID() as UUID
   const newJournal: StoredNote = {
     id: journalId,
-    campaignId: undefined,
+    campaignId: params.campaignId,
     sessionId: params.sessionId,
     authorId: params.authorId,
     authorUsername: params.authorUsername,
@@ -90,7 +91,8 @@ export async function createOrUpdateSessionJournal(params: {
 
   await createNoteRecord({
     id: newJournal.id,
-    sessionId: newJournal.sessionId,
+    campaignId: newJournal.campaignId,
+    sessionId: newJournal.sessionId ?? null,
     authorId: newJournal.authorId,
     authorUsername: newJournal.authorUsername,
     title: newJournal.title,
