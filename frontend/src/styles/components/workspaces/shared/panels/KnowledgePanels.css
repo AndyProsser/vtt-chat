@@ -1939,7 +1939,7 @@
 }
 
 .notes-share-popover {
-  width: min(10rem, 92vw);
+  width: min(12rem, 92vw);
   max-height: min(30rem, 70vh);
   overflow: auto;
   border: 1px solid var(--color-border-soft);
@@ -2000,7 +2000,7 @@
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
   background: var(--color-surface-subtle);
-  padding: 0.4rem;
+  padding: 0.25rem;
 }
 
 .notes-share-popover__group-title {
