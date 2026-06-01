@@ -12,6 +12,7 @@ import {
 import type { EventEnvelope, UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession, getSessionUsers } from '@/services/session/core.service'
+import { findSessionById } from '@/repositories/session.repository'
 import {
   createNote,
   deleteNote,
@@ -485,12 +486,15 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Only DM may publish notes' })
   }
 
-  // Validate that the provided session belongs to the same campaign as the note
+  // Validate that the provided session belongs to the same campaign as the note.
+  // Use findSessionById (raw DB record) because getSession/mapSessionRecord strips campaignId
+  // from the returned Session shape — getSessionCampaignId would always return undefined.
   const session = await getSession(publishSessionId as UUID)
   if (!session) {
     return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
   }
-  if (getSessionCampaignId(session) !== note.campaignId) {
+  const sessionRecord = await findSessionById(publishSessionId as string)
+  if (!sessionRecord || sessionRecord.campaignId !== note.campaignId) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: 'Session does not belong to the same campaign as the note',
@@ -746,63 +750,78 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
     return res.status(400).json({ code: ErrorCode.INVALID_NOTE_ID, message: 'Invalid noteId' })
   }
 
-  const existingNote = await getNoteById(noteId as UUID)
-  if (!existingNote) {
-    return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
-  }
-
-  const deleteRole = await resolveCampaignRole(existingNote.campaignId, user.userId as UUID)
-  if (!deleteRole) {
-    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
-  }
-
-  const note = await deleteNote(noteId as UUID, user.userId as UUID, deleteRole)
-  if (!note) {
-    return res.status(403).json({
-      code: ErrorCode.FORBIDDEN,
-      message: 'Cannot delete note (not found or insufficient permissions)',
-    })
-  }
-
-  // Only emit session-scoped events if the note was linked to a session
-  const deleteSession = note.sessionId ? await getSession(note.sessionId) : null
-
-  if (deleteSession) {
-    await appendSessionAuditEvent({
-      sessionId: deleteSession.id,
-      campaignId: note.campaignId,
-      actorUserId: user.userId as UUID,
-      actorRole: deleteRole,
-      actionType: 'NOTES.DELETED',
-      targetType: 'NOTE',
-      targetId: note.id,
-      visibilityClass: 'SYSTEM',
-      timestamp: Date.now(),
-      metadata: {
-        deletedBy: user.userId as UUID,
-      },
-    })
-  }
-
-  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-  if (wsManager && deleteSession) {
-    const event: EventEnvelope = {
-      id: crypto.randomUUID() as UUID,
-      type: 'NOTES:DELETED',
-      version: 1,
-      userId: user.userId as UUID,
-      userRole: deleteRole as any,
-      sessionId: deleteSession.id,
-      roomId: null,
-      timestamp: Date.now(),
-      payload: {
-        noteId: note.id,
-      },
+  try {
+    const existingNote = await getNoteById(noteId as UUID)
+    if (!existingNote) {
+      return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
     }
-    wsManager.broadcastEventToSession(deleteSession.id, event)
-  }
 
-  return res.status(200).json({ ok: true })
+    if (!existingNote.campaignId) {
+      logger.error('notes.routes', 'DELETE /:noteId — note has no campaignId', { noteId })
+      return res.status(500).json({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: 'Note is missing campaign context; cannot delete',
+      })
+    }
+
+    const deleteRole = await resolveCampaignRole(existingNote.campaignId, user.userId as UUID)
+    if (!deleteRole) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+    }
+
+    const note = await deleteNote(noteId as UUID, user.userId as UUID, deleteRole)
+    if (!note) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Cannot delete note (not found or insufficient permissions)',
+      })
+    }
+
+    // Only emit session-scoped events if the note was linked to a session
+    const deleteSession = note.sessionId ? await getSession(note.sessionId) : null
+
+    if (deleteSession) {
+      await appendSessionAuditEvent({
+        sessionId: deleteSession.id,
+        campaignId: note.campaignId,
+        actorUserId: user.userId as UUID,
+        actorRole: deleteRole,
+        actionType: 'NOTES.DELETED',
+        targetType: 'NOTE',
+        targetId: note.id,
+        visibilityClass: 'SYSTEM',
+        timestamp: Date.now(),
+        metadata: {
+          deletedBy: user.userId as UUID,
+        },
+      })
+    }
+
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager && deleteSession) {
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'NOTES:DELETED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: deleteRole as any,
+        sessionId: deleteSession.id,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          noteId: note.id,
+        },
+      }
+      wsManager.broadcastEventToSession(deleteSession.id, event)
+    }
+
+    return res.status(200).json({ ok: true })
+  } catch (err) {
+    logger.error('notes.routes', 'DELETE /:noteId — unexpected error', { noteId, err })
+    return res
+      .status(500)
+      .json({ code: ErrorCode.INTERNAL_ERROR, message: 'Unable to delete note' })
+  }
 })
 
 export default router
