@@ -16,8 +16,8 @@ function isJournalNoteCandidate(params: { title: string; tags?: string[] }): boo
 }
 
 export async function createNote(params: {
-  campaignId?: UUID
-  sessionId: UUID
+  campaignId: UUID
+  sessionId?: UUID
   authorId: UUID
   authorUsername: string
   title: string
@@ -28,10 +28,12 @@ export async function createNote(params: {
   attachments?: StoredNote['attachments']
 }): Promise<StoredNote & { created: boolean }> {
   if (isJournalNoteCandidate({ title: params.title, tags: params.tags })) {
-    const existingJournal = (await listSessionNotes(params.sessionId)).find((row) => {
-      const tags = Array.isArray(row.tags) ? (row.tags as string[]) : []
-      return tags.includes(JOURNAL_TAG) || row.title === 'Session Journal'
-    })
+    const existingJournal = params.sessionId
+      ? (await listSessionNotes(params.sessionId)).find((row) => {
+          const tags = Array.isArray(row.tags) ? (row.tags as string[]) : []
+          return tags.includes(JOURNAL_TAG) || row.title === 'Session Journal'
+        })
+      : undefined
 
     if (existingJournal) {
       const now = Date.now()
@@ -80,7 +82,8 @@ export async function createNote(params: {
 
   await createNoteRecord({
     id: note.id,
-    sessionId: note.sessionId,
+    campaignId: note.campaignId,
+    sessionId: note.sessionId ?? null,
     authorId: note.authorId,
     authorUsername: note.authorUsername,
     title: note.title,

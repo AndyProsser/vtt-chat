@@ -635,10 +635,13 @@ describe('ChatWindow timeline behavior', () => {
   })
 
   it('renders the connected message-type bar and whisper picker for players', async () => {
+    useStore.getState().updateSession(SESSION_ID, { state: SessionState.ACTIVE })
+
     renderWithTooltip(
       <MessageInput
         onSend={vi.fn().mockResolvedValue(undefined)}
         role={Role.PLAYER}
+        sessionId={SESSION_ID}
         whisperRecipients={[
           {
             id: '99999999-9999-4999-8999-999999999999',
@@ -661,7 +664,15 @@ describe('ChatWindow timeline behavior', () => {
   })
 
   it('hides the DM type button for the DM', () => {
-    renderWithTooltip(<MessageInput onSend={vi.fn().mockResolvedValue(undefined)} role={Role.DM} />)
+    useStore.getState().updateSession(SESSION_ID, { state: SessionState.ACTIVE })
+
+    renderWithTooltip(
+      <MessageInput
+        onSend={vi.fn().mockResolvedValue(undefined)}
+        role={Role.DM}
+        sessionId={SESSION_ID}
+      />
+    )
 
     expect(screen.getByRole('radio', { name: 'IC' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'OOC' })).toBeTruthy()

@@ -137,6 +137,7 @@ model Campaign {
   externalLinks                 CampaignExternalLink[]
   spectatorWaitlist             SpectatorWaitlist[]
   sessions                      Session[]
+  notes                         Note[]
   greenroomMessages             ChatMessage[]
   recordings                    RecordingMetadata[]
   portabilityArtifacts          ImportExportArtifact[]
@@ -297,8 +298,10 @@ model ChatMessage {
 
 model Note {
   id             String         @id @default(uuid()) @db.Uuid
-  sessionId      String         @db.Uuid
-  session        Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  campaignId     String         @db.Uuid
+  campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sessionId      String?        @db.Uuid
+  session        Session?       @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   authorId       String         @db.Uuid
   authorUsername String
   title          String
@@ -311,6 +314,7 @@ model Note {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
+  @@index([campaignId])
   @@index([sessionId])
   @@index([authorId])
   @@index([visibility])
