@@ -218,7 +218,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 
 ### W0-Rightbar: Info Panels and Settings Toolbar
 
-**Status**: 🟡 In Progress (near-complete rightbar icon dock)
+**Status**: 🟡 In Progress (completion slice shipped: Audio tab removed; wide-screen right panel now persistent/expanded)
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
@@ -247,7 +247,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
 - [x] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
 - [x] Right-panel dismisses on backdrop click
-- [ ] Mobile responsive: collapse/expand at <720px; side-panel at ≥1200px
+- [ ] Mobile responsive: collapse/expand at <680px; side-panel at ≥1080px
 
 **Related Docs**:
 
@@ -297,6 +297,13 @@ Evidence snapshot (2026-05-30):
 - Handout cards render stored attachment thumbnails in read mode and allow DM add/remove attachment edits without leaving the panel.
 - Lobby discovery now returns both PUBLIC and PRIVATE non-member campaign cards; private cards stay dimmed and locked when no live spectator path exists.
 - Full-account WATCH entry now uses `POST /api/campaigns/:id/watch` for both PUBLIC and PRIVATE live campaigns and no longer depends on spectator invite codes in the lobby card action resolver.
+
+Evidence snapshot (2026-06-01):
+
+- Removed the redundant right-rail `Audio` panel from canonical tab policy and session right-rail rendering.
+- Right-rail behavior at desktop widths now treats `>=1080px` as expanded mode with a selected panel kept open by default.
+- Crossing from `>=1080px` down to `<1080px` now auto-collapses the right panel to preserve compact layout behavior.
+- Desktop right-panel width now has a hard maximum of `440px`.
 
 **Evidence snapshot (2026-05-20):**
 

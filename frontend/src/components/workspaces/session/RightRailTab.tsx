@@ -124,19 +124,6 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
           />
         )
       }
-      audioPanel={
-        <CampaignScaffoldPanel
-          title="Campaign Audio"
-          iconName="voice"
-          subtitle="Audio policy controls are being reduced to a cleaner campaign-first surface."
-          sections={[
-            'Default campaign audio policy',
-            'Environment and override presets',
-            'Broadcast and moderation policy',
-          ]}
-          campaignName={props.selectedCampaign?.name}
-        />
-      }
       notesPanel={
         props.campaignId ? (
           <NotesPanel

@@ -120,14 +120,18 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
   const toggleToolbarRightRail = useStore((state) => state.toggleToolbarRightRail)
 
   const [isCompactLayout, setIsCompactLayout] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 1100 : false
+    typeof window !== 'undefined' ? window.innerWidth < 1080 : false
+  )
+  const [isWideLayout, setIsWideLayout] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1080 : false
   )
   const [isDockLayout, setIsDockLayout] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 720 : false
+    typeof window !== 'undefined' ? window.innerWidth <= 680 : false
   )
   const [isRightRailVisible, setIsRightRailVisible] = useState(toolbarRightRailOpen)
   const [isRightRailClosing, setIsRightRailClosing] = useState(false)
   const [isChatDockOpen, setIsChatDockOpen] = useState(false)
+  const previousIsWideLayoutRef = useRef(isWideLayout)
   const lastTabToggleRef = useRef<{ at: number; tab: RightRailTab | null }>({
     at: 0,
     tab: null,
@@ -164,13 +168,18 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
   )
 
   const handleToggleRightRail = useCallback(() => {
+    if (isWideLayout) {
+      setToolbarRightRailOpen(true)
+      return
+    }
+
     telemetryClient.track('UI_PANEL_TOGGLE', {
       surface: 'command-center-right-rail',
       nextOpen: !toolbarRightRailOpen,
       role,
     })
     toggleToolbarRightRail()
-  }, [role, toggleToolbarRightRail, toolbarRightRailOpen])
+  }, [isWideLayout, role, setToolbarRightRailOpen, toggleToolbarRightRail, toolbarRightRailOpen])
 
   const handleOpenRightRailTab = useCallback(
     (tab: RightRailTab) => {
@@ -230,8 +239,9 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
 
   useEffect(() => {
     const handleResize = () => {
-      setIsCompactLayout(window.innerWidth <= 1100)
-      setIsDockLayout(window.innerWidth <= 720)
+      setIsCompactLayout(window.innerWidth < 1080)
+      setIsWideLayout(window.innerWidth >= 1080)
+      setIsDockLayout(window.innerWidth <= 680)
     }
 
     window.addEventListener('resize', handleResize)
@@ -239,6 +249,20 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
       window.removeEventListener('resize', handleResize)
     }
   }, [])
+
+  useEffect(() => {
+    const wasWideLayout = previousIsWideLayoutRef.current
+
+    if (isWideLayout && !wasWideLayout && !toolbarRightRailOpen) {
+      setToolbarRightRailOpen(true)
+    }
+
+    if (!isWideLayout && wasWideLayout && toolbarRightRailOpen) {
+      setToolbarRightRailOpen(false)
+    }
+
+    previousIsWideLayoutRef.current = isWideLayout
+  }, [isWideLayout, setToolbarRightRailOpen, toolbarRightRailOpen])
 
   useEffect(() => {
     if (!isDockLayout && isChatDockOpen) {
@@ -291,7 +315,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
     }
     lastTabToggleRef.current = { at: now, tab }
 
-    if (toolbarRightRailOpen && activeRightRailTab === tab) {
+    if (!isWideLayout && toolbarRightRailOpen && activeRightRailTab === tab) {
       setToolbarRightRailOpen(false)
       return
     }
@@ -319,6 +343,10 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
 
   const handleRightRailClickOutside = (event: React.MouseEvent<HTMLElement>) => {
     if (isRightRailClosing) {
+      return
+    }
+
+    if (isWideLayout) {
       return
     }
 

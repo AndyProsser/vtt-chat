@@ -6,7 +6,6 @@ interface RightRailContentProps {
   informationPanel: ReactNode
   partyPanel: ReactNode
   roomsPanel: ReactNode
-  audioPanel: ReactNode
   notesPanel: ReactNode
   journalPanel: ReactNode
   historyPanel: ReactNode
@@ -18,7 +17,6 @@ export function RightRailContent({
   informationPanel,
   partyPanel,
   roomsPanel,
-  audioPanel,
   notesPanel,
   journalPanel,
   historyPanel,
@@ -31,8 +29,6 @@ export function RightRailContent({
       return <>{partyPanel}</>
     case 'rooms':
       return <>{roomsPanel}</>
-    case 'audio':
-      return <>{audioPanel}</>
     case 'notes':
       return <>{notesPanel}</>
     case 'journal':

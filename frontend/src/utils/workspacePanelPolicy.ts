@@ -29,8 +29,6 @@ export function getWorkspacePanelLabel(tab: WorkspacePanelTab): string {
       return 'Handouts'
     case 'history':
       return 'History'
-    case 'audio':
-      return 'Audio'
     case 'settings':
       return 'Settings'
     default:
@@ -40,7 +38,7 @@ export function getWorkspacePanelLabel(tab: WorkspacePanelTab): string {
 
 export function getWorkspacePanelIcon(
   tab: WorkspacePanelTab
-): 'panel' | 'party' | 'rooms' | 'journal' | 'notes' | 'history' | 'voice' | 'settings' {
+): 'panel' | 'party' | 'rooms' | 'journal' | 'notes' | 'history' | 'settings' {
   switch (tab) {
     case 'information':
       return 'panel'
@@ -54,8 +52,6 @@ export function getWorkspacePanelIcon(
       return 'notes'
     case 'history':
       return 'history'
-    case 'audio':
-      return 'voice'
     case 'settings':
       return 'settings'
     default:
