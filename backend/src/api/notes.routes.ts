@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express'
+import { Prisma } from '@prisma/client'
 import {
   isValidUUID,
   isValidNoteTitle,
@@ -145,13 +146,37 @@ router.get('/campaign/:campaignId', requireAuth, async (req: Request, res: Respo
   if (!requesterRole) {
     return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
   }
+  try {
+    const notes = await getVisibleCampaignNotes(
+      campaignId as UUID,
+      user.userId as UUID,
+      requesterRole
+    )
+    return res.status(200).json({ notes })
+  } catch (error) {
+    logger.error('notes.routes', 'Failed to list campaign notes', {
+      campaignId,
+      userId: user.userId,
+      error,
+    })
 
-  const notes = await getVisibleCampaignNotes(
-    campaignId as UUID,
-    user.userId as UUID,
-    requesterRole
-  )
-  return res.status(200).json({ notes })
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2022' &&
+      String(error.message).includes('campaignId')
+    ) {
+      return res.status(503).json({
+        code: ErrorCode.INTERNAL_ERROR,
+        message:
+          'Notes schema is out of date. Run backend Prisma migrations to add Note.campaignId.',
+      })
+    }
+
+    return res.status(500).json({
+      code: ErrorCode.INTERNAL_ERROR,
+      message: 'Unable to load campaign notes',
+    })
+  }
 })
 
 router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
