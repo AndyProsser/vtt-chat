@@ -640,7 +640,9 @@ describe('roomSlice', () => {
         )
 
         expect(useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]).toBe(true)
-        expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('SPEAKING')
+        // SPEAKING is only tracked in presenceSpeakingBySession (fast path); sessionPresence
+        // retains the prior state (ONLINE) to avoid cascading re-renders.
+        expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('ONLINE')
 
         useStore.getState().handlePresenceStateChanged(
           makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {

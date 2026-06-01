@@ -112,8 +112,11 @@ export function useWorkspacesHydrationLifecycle(
     }
 
     if (!sessionChanged && isReconnect) {
+      // Only suppress if the reconnect did not go through an explicit 'reconnecting' state.
+      // A genuine reconnect (prev === 'reconnecting') must always rehydrate.
       const recentSessionChangeHydratedAt = recentSessionChangeHydratedAtRef.current
       if (
+        prev !== 'reconnecting' &&
         recentSessionChangeHydratedAt !== null &&
         Date.now() - recentSessionChangeHydratedAt < RECENT_SESSION_CHANGE_RECONNECT_SUPPRESS_MS
       ) {

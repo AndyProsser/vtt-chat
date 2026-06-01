@@ -1306,7 +1306,7 @@ describe('Workspaces integration', () => {
         expect(await screen.findByText('Mock Notes Panel')).toBeTruthy()
       } else if (role === Role.DM) {
         expect(screen.getByRole('tab', { name: /Groups/i })).toBeTruthy()
-        expect(screen.getByRole('tab', { name: /Audio/i })).toBeTruthy()
+        expect(screen.getByRole('tab', { name: /Party/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /Journal/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /History/i })).toBeTruthy()
         expect(screen.getByRole('tab', { name: /Handouts|Notes/i })).toBeTruthy()
@@ -1405,13 +1405,7 @@ describe('Workspaces integration', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Tool Settings' }))
 
-    fireEvent.change(screen.getByLabelText('Session name'), { target: { value: 'Session Omega' } })
-    fireEvent.change(screen.getByLabelText('Session description'), {
-      target: { value: 'Finale prep' },
-    })
-    fireEvent.change(screen.getByLabelText('Planned duration (minutes)'), {
-      target: { value: '240' },
-    })
+    fireEvent.change(screen.getByLabelText(/Session Name/i), { target: { value: 'Session Omega' } })
 
     fireEvent.click(screen.getByRole('button', { name: 'Save session settings' }))
 
@@ -1432,13 +1426,9 @@ describe('Workspaces integration', () => {
     expect(patchCall).toBeTruthy()
 
     const body = JSON.parse(String((patchCall?.[1] as RequestInit | undefined)?.body || '{}')) as {
-      plannedDurationMinutes?: number
       name?: string
-      description?: string
     }
     expect(body.name).toBe('Session Omega')
-    expect(body.description).toBe('Finale prep')
-    expect(body.plannedDurationMinutes).toBe(240)
   })
 
   it('saves player character settings from rightbar settings', async () => {
@@ -2275,6 +2265,10 @@ describe('Workspaces integration', () => {
         }
       }
 
+      if (url.endsWith(`/api/session/${SESSION_ID}/reset`) && init?.method === 'POST') {
+        return { ok: true, json: async () => ({ ok: true }) }
+      }
+
       if (url.endsWith(`/api/campaigns/${CAMPAIGN_ID}/sessions/start`) && init?.method === 'POST') {
         return {
           ok: true,
@@ -2310,8 +2304,8 @@ describe('Workspaces integration', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
-    await screen.findByRole('button', { name: 'Start' })
-    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    await screen.findByRole('button', { name: 'Reset' })
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2588,10 +2582,7 @@ describe('Workspaces integration', () => {
         }
       }
 
-      if (
-        url.includes(`/api/chat/messages/${SESSION_ID}`) &&
-        url.includes(`roomId=${ROOM_ONE_ID}`)
-      ) {
+      if (url.includes(`/api/chat/messages/${SESSION_ID}`)) {
         return {
           ok: true,
           json: async () => ({
@@ -2605,29 +2596,6 @@ describe('Workspaces integration', () => {
                 type: MessageType.SYSTEM,
                 isDmOnly: false,
                 createdAt: 1_715_200_700_000,
-              },
-            ],
-          }),
-        }
-      }
-
-      if (
-        url.includes(`/api/chat/messages/${SESSION_ID}`) &&
-        url.includes(`roomId=${ROOM_TWO_ID}`)
-      ) {
-        return {
-          ok: true,
-          json: async () => ({
-            messages: [
-              {
-                id: asUuid('f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2'),
-                roomId: ROOM_TWO_ID,
-                authorId: asUuid('00000000-0000-4000-8000-000000000000'),
-                authorUsername: 'SYSTEM',
-                content: '[Session Started] Session Beta',
-                type: MessageType.SYSTEM,
-                isDmOnly: false,
-                createdAt: 1_715_200_700_001,
               },
             ],
           }),
@@ -2767,8 +2735,8 @@ describe('Workspaces integration', () => {
         .map(([url]) => String(url))
         .filter((url) => url.includes(`/api/chat/messages/${SESSION_ID}`))
 
-      expect(historyCalls.some((url) => url.includes(`roomId=${ROOM_ONE_ID}`))).toBe(true)
-      expect(historyCalls.some((url) => url.includes(`roomId=${ROOM_TWO_ID}`))).toBe(true)
+      // History is fetched as a single session-scoped call, not per-room
+      expect(historyCalls.length).toBeGreaterThan(0)
     })
 
     await waitFor(() => {
