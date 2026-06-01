@@ -42,7 +42,7 @@
   left: 50%;
   transform: translateX(-50%);
   width: min(92%, 620px);
-  z-index: 40;
+  z-index: 260;
   pointer-events: none;
 }
 

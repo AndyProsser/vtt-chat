@@ -194,7 +194,7 @@ async function getCampaignGroupsReferenceSession(params: {
     return null
   }
 
-  const dateLabel = new Date().toLocaleDateString('en-CA')
+  const dateLabel = new Date().toLocaleDateString('en-AU')
   const session = await createSession(
     `Session 1 - ${dateLabel}`,
     params.dmUserId,

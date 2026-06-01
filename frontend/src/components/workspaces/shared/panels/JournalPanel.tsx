@@ -121,7 +121,7 @@ function JournalEditor({
 
     const load = async () => {
       try {
-        const res = await fetch(`${apiUrl}/api/notes/${sessionId}`, {
+        const res = await fetch(`${apiUrl}/api/journals/${sessionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
@@ -129,14 +129,8 @@ function JournalEditor({
           return
         }
 
-        const data = (await res.json()) as { notes?: RawNote[] }
-        const notes = data.notes ?? []
-        const journalNote = notes.find(
-          (note) =>
-            note.tags?.includes(JOURNAL_TAG) ||
-            note.title === 'Session Journal' ||
-            note.title === resolvedJournalTitle
-        )
+        const data = (await res.json()) as { journal?: RawNote }
+        const journalNote = data.journal
 
         if (cancelled) {
           return
@@ -185,58 +179,32 @@ function JournalEditor({
     setSaveError(null)
 
     try {
-      let res: Response
-
-      if (entry) {
-        res = await fetch(`${apiUrl}/api/notes/${entry.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            title: resolvedJournalTitle,
-            name: resolvedJournalTitle,
-            content: draft,
-            markdown: draft,
-            tags: [JOURNAL_TAG, ...normalizedDraftHashtags],
-          }),
-        })
-      } else {
-        if (!campaignId) {
-          throw new Error('Campaign context is missing for journal creation')
-        }
-
-        res = await fetch(`${apiUrl}/api/notes`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            campaignId,
-            sessionId,
-            title: resolvedJournalTitle,
-            name: resolvedJournalTitle,
-            content: draft,
-            markdown: draft,
-            visibility: 'PLAYERS_VISIBLE',
-            tags: [JOURNAL_TAG, ...normalizedDraftHashtags],
-          }),
-        })
-      }
+      // Use the new /api/journals/:sessionId endpoint for session-specific journal operations
+      const res = await fetch(`${apiUrl}/api/journals/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: resolvedJournalTitle,
+          content: draft,
+          markdown: draft,
+          tags: normalizedDraftHashtags,
+        }),
+      })
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`)
       }
 
-      const data = (await res.json()) as { note?: RawNote }
-      if (!data.note) {
+      const data = (await res.json()) as { journal?: RawNote }
+      if (!data.journal) {
         return
       }
 
-      const saved = noteToEntry(data.note, sessionName, sessionId)
+      const saved = noteToEntry(data.journal, sessionName, sessionId)
       setEntry(saved)
 
       addNote(sessionId, {
