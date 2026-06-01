@@ -607,16 +607,20 @@ function JournalBrowser({
   const [journalStatusBySession, setJournalStatusBySession] = useState<
     Record<string, SessionJournalStatus>
   >({})
-  const [closingSessionId, setClosingSessionId] = useState<UUID | null>(null)
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
   const [editingSessionId, setEditingSessionId] = useState<UUID | null>(null)
   const [saveRequestVersionBySession, setSaveRequestVersionBySession] = useState<
     Record<string, number>
   >({})
-  const prevEffectiveSessionIdRef = useRef<UUID | null>(null)
+  // Track every session whose editor has been mounted; keep it mounted (hidden) thereafter
+  // so re-expanding a card doesn't trigger a second fetch.
+  const [mountedEditorIds, setMountedEditorIds] = useState<Set<string>>(new Set())
   const lastStatusLoadKeyRef = useRef<string>('')
+  // Track sessions saved locally this lifecycle so the bulk status load doesn't overwrite them.
+  const locallyUpdatedSessionIdsRef = useRef<Set<string>>(new Set())
 
   const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
+    locallyUpdatedSessionIdsRef.current.add(sessionId)
     setJournalStatusBySession((current) => ({
       ...current,
       [sessionId]: nextStatus,
@@ -655,15 +659,19 @@ function JournalBrowser({
     [recentSessions]
   )
 
+  // When a session is selected, register its editor for keep-alive mounting.
   useEffect(() => {
-    const prev = prevEffectiveSessionIdRef.current
-    prevEffectiveSessionIdRef.current = effectiveSessionId ?? null
-
-    if (prev && effectiveSessionId && prev !== effectiveSessionId) {
-      setClosingSessionId(prev)
-      const timer = window.setTimeout(() => setClosingSessionId(null), 300)
-      return () => window.clearTimeout(timer)
+    if (!effectiveSessionId) {
+      return
     }
+    setMountedEditorIds((prev) => {
+      if (prev.has(effectiveSessionId)) {
+        return prev
+      }
+      const next = new Set(prev)
+      next.add(effectiveSessionId)
+      return next
+    })
   }, [effectiveSessionId])
 
   const getSessionRunDateLabel = useCallback((session: Session): string => {
@@ -733,7 +741,7 @@ function JournalBrowser({
           }),
         })
 
-        if (!res.ok || !campaignId) {
+        if (!res.ok) {
           return
         }
 
@@ -742,14 +750,25 @@ function JournalBrowser({
         }
 
         if (!cancelled) {
-          setJournalStatusBySession(data.statuses)
+          // Server data wins for all sessions except those saved locally this render
+          // (tracked in locallyUpdatedSessionIdsRef) so a fresh save is never overwritten
+          // by a concurrent in-flight bulk status response.
+          setJournalStatusBySession((prev) => {
+            const merged = { ...prev, ...data.statuses }
+            for (const id of locallyUpdatedSessionIdsRef.current) {
+              if (prev[id]) {
+                merged[id] = prev[id]
+              }
+            }
+            return merged
+          })
         }
       } catch {
         // Non-critical: cards degrade to unknown recap status
       }
     }
 
-    if (recentSessions.length > 0) {
+    if (campaignId && recentSessions.length > 0) {
       void loadStatuses()
     }
 
@@ -880,7 +899,7 @@ function JournalBrowser({
             const isSelected = session.id === effectiveSessionId
             const sessionStatus = journalStatusBySession[session.id]
             const hasContent = Boolean(sessionStatus?.hasContent)
-            const isClosing = session.id === closingSessionId
+            const isEditorMounted = isSelected || mountedEditorIds.has(session.id)
             const sessionHashtags = sessionStatus?.hashtags ?? []
             const visibleSessionHashtags = sessionHashtags.slice(0, 3)
             const hiddenTagCount = Math.max(
@@ -985,34 +1004,33 @@ function JournalBrowser({
                   </div>
                 </div>
 
-                {isSelected || isClosing ? (
+                {isEditorMounted ? (
                   <div
-                    className={`knowledge-panel-session-item__editor${isClosing ? ' is-closing' : ''}`}
-                    aria-hidden={isClosing || undefined}
+                    className="knowledge-panel-session-item__editor"
+                    hidden={!isSelected || undefined}
+                    aria-hidden={!isSelected || undefined}
                   >
-                    {isSelected || isClosing ? (
-                      <JournalEditor
-                        key={`journal-editor:${session.id}`}
-                        apiUrl={apiUrl}
-                        token={token}
-                        campaignId={campaignId}
-                        sessionId={session.id}
-                        sessionName={session.name}
-                        role={role}
-                        autoSave
-                        isEditingOverride={editingSessionId === session.id}
-                        saveRequestVersion={saveRequestVersionBySession[session.id] ?? 0}
-                        emptyStateContent={!hasContent ? emptyRecapContent : undefined}
-                        hideHeader
-                        onSaved={({ hasContent: nextHasContent, hasJournal, hashtags }) => {
-                          updateJournalStatus(session.id, {
-                            hasContent: nextHasContent,
-                            hasJournal,
-                            hashtags,
-                          })
-                        }}
-                      />
-                    ) : null}
+                    <JournalEditor
+                      key={`journal-editor:${session.id}`}
+                      apiUrl={apiUrl}
+                      token={token}
+                      campaignId={campaignId}
+                      sessionId={session.id}
+                      sessionName={session.name}
+                      role={role}
+                      autoSave
+                      isEditingOverride={editingSessionId === session.id}
+                      saveRequestVersion={saveRequestVersionBySession[session.id] ?? 0}
+                      emptyStateContent={!hasContent ? emptyRecapContent : undefined}
+                      hideHeader
+                      onSaved={({ hasContent: nextHasContent, hasJournal, hashtags }) => {
+                        updateJournalStatus(session.id, {
+                          hasContent: nextHasContent,
+                          hasJournal,
+                          hashtags,
+                        })
+                      }}
+                    />
                   </div>
                 ) : null}
               </div>
