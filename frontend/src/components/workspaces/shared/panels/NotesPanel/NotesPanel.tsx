@@ -126,6 +126,9 @@ export function NotesPanel({
   const isPublishDisabledInCurrentState =
     !currentSessionState || isGreenroomSessionState(currentSessionState)
 
+  const isSharingDisabledInCurrentState =
+    !currentSessionState || isGreenroomSessionState(currentSessionState)
+
   const handleToggleCreateForm = () => {
     if (!canMutateNotes) {
       return
@@ -422,6 +425,7 @@ export function NotesPanel({
                   canManageShare={canMutateNotes}
                   canPublish={canMutateNotes}
                   isPublishDisabled={isPublishDisabledInCurrentState}
+                  isSharingDisabled={isSharingDisabledInCurrentState}
                   onSave={handleSave}
                   onDelete={handleDelete}
                   onPublish={handlePublish}

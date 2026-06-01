@@ -234,13 +234,19 @@
   background: transparent;
 }
 
+.md-editor--readonly .md-editor__surface {
+  min-height: 0;
+}
+
 .md-editor--readonly .md-editor__content {
+  min-height: 0;
   padding: 0;
   cursor: default;
 }
 
 .md-editor--readonly .md-editor__content .ProseMirror {
   pointer-events: none;
+  min-height: 0;
 }
 
 /* ── Focus ring ────────────────────────────────────────────────────── */

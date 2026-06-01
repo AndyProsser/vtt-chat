@@ -8,11 +8,7 @@ import { useToast } from '@/hooks/useToast'
 import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 import type { NotesPublishRoom, NotesPublishTarget } from '@/types/notesPublish'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
-import {
-  getNoteShareStatus,
-  parseNoteHashtags,
-  serializeNoteHashtags,
-} from '../../../../../utils/notesPanel'
+import { getNoteShareStatus, parseNoteHashtags, serializeNoteHashtags } from '@/utils/notesPanel'
 import { NoteAttachmentsGallery } from './NoteAttachmentsGallery'
 import { NoteDeleteDialog } from './NoteDeleteDialog'
 import { NotePublishDialog } from './NotePublishDialog'
@@ -52,6 +48,7 @@ interface NoteCardProps {
   canManageShare: boolean
   canPublish: boolean
   isPublishDisabled: boolean
+  isSharingDisabled: boolean
   shareUsers?: NotesShareUser[]
   shareRooms?: NotesShareRoom[]
   publishRooms?: NotesPublishRoom[]
@@ -72,6 +69,7 @@ export function NoteCard({
   canManageShare,
   canPublish,
   isPublishDisabled,
+  isSharingDisabled,
   shareUsers = [],
   shareRooms = [],
   publishRooms = [],
@@ -338,7 +336,7 @@ export function NoteCard({
                   <button
                     type="button"
                     className={`notes-note-header-action notes-note-header-action--tone-${shareStatus.tone}`}
-                    disabled={isSaving || !canEdit}
+                    disabled={isSaving || isSharingDisabled || !canEdit}
                     aria-label="Share handout"
                   >
                     <span className="material-symbols-outlined" aria-hidden="true">
@@ -349,7 +347,7 @@ export function NoteCard({
               />
             ) : null}
 
-            {canEdit ? (
+            {isEditing ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -428,6 +426,13 @@ export function NoteCard({
               variant="full"
             />
             <NoteAttachmentsGallery attachments={note.attachments} />
+            <div className="knowledge-panel-chip-row">
+              {saveDraftTags.map((tag) => (
+                <span key={tag} className="knowledge-panel-chip muted">
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 

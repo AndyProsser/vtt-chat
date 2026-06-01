@@ -96,7 +96,7 @@ function JournalEditor({
   onSaved,
 }: JournalEditorProps) {
   const isDm = role === 'DM'
-  const resolvedJournalTitle = sessionName ? `Journal - ${sessionName}` : 'Session Journal'
+  const resolvedJournalTitle = sessionName ? `${sessionName}` : 'Session Journal'
 
   const [entry, setEntry] = useState<JournalEntry | null>(null)
   const [draft, setDraft] = useState('')
@@ -1131,9 +1131,7 @@ function JournalBrowser({
                           hasContent: nextHasContent,
                           hasJournal,
                           hashtags,
-                          journalTitle: session.name
-                            ? `Journal - ${session.name}`
-                            : 'Session Journal',
+                          journalTitle: session.name ? `${session.name}` : 'Session Journal',
                           journalUpdatedAt: Date.now(),
                           needsRecap: !nextHasContent,
                         })
