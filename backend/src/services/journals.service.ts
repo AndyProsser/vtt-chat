@@ -9,7 +9,8 @@
  * - Is visible to all players in that session
  */
 
-export { getSessionJournal } from '@/services/journals/get-journal.service'
+export { getSessionJournal, getBulkJournalStatus } from '@/services/journals/get-journal.service'
+export type { JournalStatusEntry } from '@/services/journals/get-journal.service'
 export { createOrUpdateSessionJournal } from '@/services/journals/upsert-journal.service'
 
 export function __resetJournalsStoreForTests(): void {

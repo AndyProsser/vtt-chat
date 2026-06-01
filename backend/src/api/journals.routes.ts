@@ -12,10 +12,16 @@ import type { UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
-import { getSessionJournal, createOrUpdateSessionJournal } from '@/services/journals.service'
+import {
+  getSessionJournal,
+  createOrUpdateSessionJournal,
+  getBulkJournalStatus,
+} from '@/services/journals.service'
+import { getPrismaClient } from '@/infra/db'
 import { logger } from '@/utils/logger'
 
 const router = Router()
+const prisma = getPrismaClient()
 
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = extractTokenFromHeader(req.headers.authorization)
@@ -35,6 +41,62 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   ;(req as any).user = user
   next()
 }
+
+/**
+ * POST /api/journals/status
+ * Get recap/hashtag status for multiple sessions in a single call.
+ * Only returns hasJournal, hasContent, and hashtags — not the full content.
+ *
+ * Request body: { campaignId: string, sessionIds: string[] }
+ * Response:     { statuses: Record<sessionId, { hasJournal, hasContent, hashtags }> }
+ */
+router.post('/status', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId, sessionIds } = req.body
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+  }
+
+  if (!Array.isArray(sessionIds) || sessionIds.length === 0) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'sessionIds must be a non-empty array' })
+  }
+
+  if (sessionIds.length > 200) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'sessionIds may not exceed 200 entries' })
+  }
+
+  for (const id of sessionIds) {
+    if (!isValidUUID(id)) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Invalid sessionId: ${id}` })
+    }
+  }
+
+  // Verify the user is a member of the campaign
+  const membership = await prisma.campaignMembership.findUnique({
+    where: { campaignId_userId: { campaignId, userId: user.userId } },
+    select: { role: true },
+  })
+
+  if (!membership) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a member of this campaign' })
+  }
+
+  // Restrict to sessions that actually belong to this campaign (prevents cross-campaign probing)
+  const validSessions = await prisma.session.findMany({
+    where: { id: { in: sessionIds }, campaignId },
+    select: { id: true },
+  })
+  const validIds = validSessions.map((s) => s.id) as UUID[]
+
+  try {
+    const statuses = await getBulkJournalStatus(validIds)
+    return res.status(200).json({ statuses })
+  } catch (error) {
+    logger.error('journals.routes', 'Error fetching bulk journal status', error as Error)
+    return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Server error' })
+  }
+})
 
 /**
  * GET /api/journals/:sessionId

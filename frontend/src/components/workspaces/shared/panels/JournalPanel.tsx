@@ -575,8 +575,6 @@ function JournalEditor({
         )}
       </div>
 
-
-
       {!isDm && !entry ? <p className="knowledge-panel-copy">{playerFacingRoast}</p> : null}
     </section>
   )
@@ -722,40 +720,32 @@ function JournalBrowser({
     lastStatusLoadKeyRef.current = recentSessionsStatusKey
 
     const loadStatuses = async () => {
-      const entries = await Promise.all(
-        recentSessions.map(async (session) => {
-          try {
-            const response = await fetch(`${apiUrl}/api/notes/${session.id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-
-            if (!response.ok) {
-              return [session.id, { hasJournal: false, hasContent: false }] as const
-            }
-
-            const data = (await response.json()) as { notes?: RawNote[] }
-            const journalNote = (data.notes ?? []).find(
-              (note) => note.tags?.includes(JOURNAL_TAG) || note.title === 'Session Journal'
-            )
-            const markdown = (journalNote?.markdown ?? journalNote?.content ?? '').trim()
-            const hashtags = (journalNote?.tags ?? []).filter((tag) => tag !== JOURNAL_TAG)
-
-            return [
-              session.id,
-              {
-                hasJournal: Boolean(journalNote),
-                hasContent: markdown.length > 0,
-                hashtags,
-              },
-            ] as const
-          } catch {
-            return [session.id, { hasJournal: false, hasContent: false, hashtags: [] }] as const
-          }
+      try {
+        const res = await fetch(`${apiUrl}/api/journals/status`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            campaignId,
+            sessionIds: recentSessions.map((s) => s.id),
+          }),
         })
-      )
 
-      if (!cancelled) {
-        setJournalStatusBySession(Object.fromEntries(entries))
+        if (!res.ok || !campaignId) {
+          return
+        }
+
+        const data = (await res.json()) as {
+          statuses: Record<string, { hasJournal: boolean; hasContent: boolean; hashtags: string[] }>
+        }
+
+        if (!cancelled) {
+          setJournalStatusBySession(data.statuses)
+        }
+      } catch {
+        // Non-critical: cards degrade to unknown recap status
       }
     }
 
@@ -766,7 +756,7 @@ function JournalBrowser({
     return () => {
       cancelled = true
     }
-  }, [apiUrl, recentSessions, recentSessionsStatusKey, token])
+  }, [apiUrl, campaignId, recentSessions, recentSessionsStatusKey, token])
 
   const recapSummary = useMemo(() => {
     const statuses = recentSessions.map((session) => journalStatusBySession[session.id])
@@ -1009,7 +999,7 @@ function JournalBrowser({
                         sessionId={session.id}
                         sessionName={session.name}
                         role={role}
-                        autoSave={false}
+                        autoSave
                         isEditingOverride={editingSessionId === session.id}
                         saveRequestVersion={saveRequestVersionBySession[session.id] ?? 0}
                         emptyStateContent={!hasContent ? emptyRecapContent : undefined}
