@@ -8,6 +8,7 @@ import {
   getRandomMemoryPressureHumorMessage,
   getWorkspacesMemoryPressureGuardConfig,
 } from '@/constants/workspacesMemoryPressure.constants'
+import { useStore } from '@/state/store'
 import { dismissToast, type ShowToastInput } from '@/state/toastCenter'
 import { telemetryClient } from '@/utils/telemetry'
 import { logger } from '@/utils/logger'
@@ -19,8 +20,74 @@ type UseWorkspacesMemoryPressureGuardParams = {
 
 type BrowserMemoryReading = {
   bytes: number
-  source: 'measureUserAgentSpecificMemory' | 'performance.memory' | 'simulated'
+  source:
+    | 'measureUserAgentSpecificMemory'
+    | 'performance.memory'
+    | 'heuristic.storeGrowth'
+    | 'simulated'
   simulated: boolean
+}
+
+type HeuristicSnapshot = {
+  totalSessionMessages: number
+  totalRoomMembers: number
+  totalSessionPresenceEntries: number
+  totalPresenceDeviceSessions: number
+  totalLiveKitConnections: number
+  weightedTotal: number
+}
+
+const HEURISTIC_GROWTH_STREAK_REQUIRED = 3
+const HEURISTIC_WEIGHTED_TOTAL_THRESHOLD = 640
+const HEURISTIC_MIN_PRESENCE_ENTRIES = 80
+
+function countRecordKeys<T>(record: Record<string, T>): number {
+  let total = 0
+  for (const _key in record) {
+    total += 1
+  }
+  return total
+}
+
+function collectHeuristicSnapshot(): HeuristicSnapshot {
+  const state = useStore.getState()
+
+  let totalSessionMessages = 0
+  for (const sessionMessages of Object.values(state.messages)) {
+    totalSessionMessages += countRecordKeys(sessionMessages)
+  }
+
+  let totalRoomMembers = 0
+  for (const members of Object.values(state.roomMembers)) {
+    totalRoomMembers += members.length
+  }
+
+  let totalSessionPresenceEntries = 0
+  let totalPresenceDeviceSessions = 0
+  for (const presenceByUser of Object.values(state.sessionPresence)) {
+    totalSessionPresenceEntries += countRecordKeys(presenceByUser)
+    for (const presence of Object.values(presenceByUser)) {
+      totalPresenceDeviceSessions += presence.deviceSessions?.length || 0
+    }
+  }
+
+  const totalLiveKitConnections = countRecordKeys(state.livekitConnections)
+
+  const weightedTotal =
+    totalSessionMessages +
+    totalRoomMembers * 2 +
+    totalSessionPresenceEntries * 3 +
+    totalPresenceDeviceSessions * 4 +
+    totalLiveKitConnections * 24
+
+  return {
+    totalSessionMessages,
+    totalRoomMembers,
+    totalSessionPresenceEntries,
+    totalPresenceDeviceSessions,
+    totalLiveKitConnections,
+    weightedTotal,
+  }
 }
 
 type PerformanceWithMemory = Performance & {
@@ -52,6 +119,8 @@ export function useWorkspacesMemoryPressureGuard({
     let cancelled = false
     const config = getWorkspacesMemoryPressureGuardConfig()
     const reloadGraceSeconds = formatMemoryPressureReloadSeconds(config.reloadGraceMs)
+    let previousHeuristicSnapshot: HeuristicSnapshot | null = null
+    let heuristicGrowthStreak = 0
 
     const clearReloadTimer = () => {
       if (reloadTimerRef.current !== null) {
@@ -141,14 +210,19 @@ export function useWorkspacesMemoryPressureGuard({
         return
       }
 
+      const isHeuristic = reading.source === 'heuristic.storeGrowth'
       const usageGb = (reading.bytes / 1_000_000_000).toFixed(2)
       const autoReloadAllowed = canAutoReload()
       const humor = getRandomMemoryPressureHumorMessage()
       latestHighReadingRef.current = reading
       latestHumorIndexRef.current = humor.index
       const message = autoReloadAllowed
-        ? `${humor.text} This tab is using about ${usageGb} GB of memory. VTT-Chat will refresh in ${reloadGraceSeconds} seconds to avoid a browser crash and then rehydrate the session.`
-        : `${humor.text} This tab is using about ${usageGb} GB of memory. Refresh now to avoid a browser crash. Automatic refresh is cooling down from a recent recovery.`
+        ? isHeuristic
+          ? `${humor.text} Browser memory APIs are unavailable, but session-state growth indicates high memory pressure. VTT-Chat will refresh in ${reloadGraceSeconds} seconds to avoid a browser crash and then rehydrate the session.`
+          : `${humor.text} This tab is using about ${usageGb} GB of memory. VTT-Chat will refresh in ${reloadGraceSeconds} seconds to avoid a browser crash and then rehydrate the session.`
+        : isHeuristic
+          ? `${humor.text} Browser memory APIs are unavailable, but session-state growth indicates high memory pressure. Refresh now to avoid a browser crash. Automatic refresh is cooling down from a recent recovery.`
+          : `${humor.text} This tab is using about ${usageGb} GB of memory. Refresh now to avoid a browser crash. Automatic refresh is cooling down from a recent recovery.`
 
       isToastVisibleRef.current = true
       showToast({
@@ -217,6 +291,36 @@ export function useWorkspacesMemoryPressureGuard({
         return {
           bytes: heapBytes as number,
           source: 'performance.memory',
+          simulated: false,
+        }
+      }
+
+      // Firefox and other browsers may not expose byte-level memory APIs.
+      // Fall back to a conservative store-growth heuristic so pressure can
+      // still be surfaced during long-running mock/disconnect soak runs.
+      const snapshot = collectHeuristicSnapshot()
+
+      if (previousHeuristicSnapshot) {
+        if (snapshot.weightedTotal > previousHeuristicSnapshot.weightedTotal) {
+          heuristicGrowthStreak += 1
+        } else {
+          heuristicGrowthStreak = Math.max(0, heuristicGrowthStreak - 1)
+        }
+      }
+
+      previousHeuristicSnapshot = snapshot
+
+      const hasMeaningfulPresencePopulation =
+        snapshot.totalSessionPresenceEntries >= HEURISTIC_MIN_PRESENCE_ENTRIES
+      const heuristicPressureDetected =
+        hasMeaningfulPresencePopulation &&
+        heuristicGrowthStreak >= HEURISTIC_GROWTH_STREAK_REQUIRED &&
+        snapshot.weightedTotal >= HEURISTIC_WEIGHTED_TOTAL_THRESHOLD
+
+      if (heuristicPressureDetected) {
+        return {
+          bytes: config.thresholdBytes + 64_000_000,
+          source: 'heuristic.storeGrowth',
           simulated: false,
         }
       }

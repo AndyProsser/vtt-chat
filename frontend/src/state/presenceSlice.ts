@@ -2,6 +2,9 @@ import type { UUID } from '@shared'
 import { PresenceState } from '@shared'
 import type { EventEnvelope } from '@shared'
 import {
+  PRESENCE_OFFLINE_RETENTION_MS,
+  PRESENCE_SESSION_MAX_ENTRIES,
+  PRESENCE_SESSION_RETAIN_ENTRIES,
   PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS,
   TYPING_INDICATOR_TTL_MS,
   TYPING_RENEW_MIN_EXTENSION_MS,
@@ -33,6 +36,52 @@ function pruneTypingIndicators(indicators: TypingIndicator[], now: number): Typi
   }
 
   return next
+}
+
+function pruneSessionPresenceEntries(
+  presenceByUser: Record<UUID, SessionPresence>,
+  now: number
+): Record<UUID, SessionPresence> {
+  const entries = Object.entries(presenceByUser) as Array<[UUID, SessionPresence]>
+  if (entries.length === 0) {
+    return presenceByUser
+  }
+
+  // Remove long-expired OFFLINE entries first.
+  const retained: Array<[UUID, SessionPresence]> = []
+  for (const [userId, presence] of entries) {
+    const lastSeenAt = presence.lastSeenAt || 0
+    const isOfflineExpired =
+      presence.state === PresenceState.OFFLINE && now - lastSeenAt > PRESENCE_OFFLINE_RETENTION_MS
+
+    if (!isOfflineExpired) {
+      retained.push([userId, presence])
+    }
+  }
+
+  if (retained.length <= PRESENCE_SESSION_MAX_ENTRIES && retained.length === entries.length) {
+    return presenceByUser
+  }
+
+  if (retained.length <= PRESENCE_SESSION_MAX_ENTRIES) {
+    return Object.fromEntries(retained) as Record<UUID, SessionPresence>
+  }
+
+  // If the map still exceeds bounds, prefer non-offline users and most-recent activity.
+  retained.sort((left, right) => {
+    const leftOffline = left[1].state === PresenceState.OFFLINE ? 1 : 0
+    const rightOffline = right[1].state === PresenceState.OFFLINE ? 1 : 0
+    if (leftOffline !== rightOffline) {
+      return leftOffline - rightOffline
+    }
+
+    return (right[1].lastSeenAt || 0) - (left[1].lastSeenAt || 0)
+  })
+
+  return Object.fromEntries(retained.slice(0, PRESENCE_SESSION_RETAIN_ENTRIES)) as Record<
+    UUID,
+    SessionPresence
+  >
 }
 
 export interface SessionStatsSnapshot {
@@ -302,26 +351,27 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
     set((state) => {
       const sessionPresence = state.sessionPresence[sessionId] || {}
       const existing = sessionPresence[userId]
+      const nextPresenceBySession = {
+        ...sessionPresence,
+        [userId]: existing
+          ? {
+              ...existing,
+              state: PresenceState.IDLE,
+              primaryRoomId: undefined,
+              lastSeenAt: leftAt,
+            }
+          : {
+              userId,
+              username: '',
+              state: PresenceState.IDLE,
+              lastSeenAt: leftAt,
+            },
+      }
 
       return {
         sessionPresence: {
           ...state.sessionPresence,
-          [sessionId]: {
-            ...sessionPresence,
-            [userId]: existing
-              ? {
-                  ...existing,
-                  state: PresenceState.IDLE,
-                  primaryRoomId: undefined,
-                  lastSeenAt: leftAt,
-                }
-              : {
-                  userId,
-                  username: '',
-                  state: PresenceState.IDLE,
-                  lastSeenAt: leftAt,
-                },
-          },
+          [sessionId]: pruneSessionPresenceEntries(nextPresenceBySession, leftAt),
         },
       }
     }),
@@ -352,6 +402,8 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
       const nextPreviousGroupId =
         previousGroupId !== undefined ? previousGroupId : existing?.previousGroupId
       const nextUsername = username || existing?.username || ''
+      const nextPrimaryRoomId =
+        state === PresenceState.OFFLINE ? undefined : resolvedRoomId || undefined
 
       const hasProfilePatch =
         playerName !== undefined ||
@@ -367,7 +419,7 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
         existing &&
         !hasProfilePatch &&
         existing.state === state &&
-        existing.primaryRoomId === resolvedRoomId &&
+        existing.primaryRoomId === nextPrimaryRoomId &&
         existing.ghost === nextGhost &&
         existing.previousGroupId === nextPreviousGroupId &&
         existing.username === nextUsername &&
@@ -378,47 +430,40 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
         return currentState
       }
 
+      const nextSessionPresence = {
+        ...bySession,
+        [userId]: {
+          ...existing,
+          userId,
+          username: nextUsername,
+          playerName: playerName !== undefined ? (playerName ?? undefined) : existing?.playerName,
+          avatarUrl: avatarUrl !== undefined ? (avatarUrl ?? undefined) : existing?.avatarUrl,
+          characterName:
+            characterName !== undefined ? (characterName ?? undefined) : existing?.characterName,
+          characterClass:
+            characterClass !== undefined ? (characterClass ?? undefined) : existing?.characterClass,
+          characterSubclass:
+            characterSubclass !== undefined
+              ? (characterSubclass ?? undefined)
+              : existing?.characterSubclass,
+          characterRace:
+            characterRace !== undefined ? (characterRace ?? undefined) : existing?.characterRace,
+          level: level !== undefined ? (level ?? undefined) : existing?.level,
+          characterStats:
+            characterStats !== undefined ? (characterStats ?? undefined) : existing?.characterStats,
+          state,
+          ghost: nextGhost,
+          primaryRoomId: nextPrimaryRoomId,
+          previousGroupId: nextPreviousGroupId,
+          privateRoomId: existing?.privateRoomId,
+          lastSeenAt: changedAt,
+        },
+      }
+
       return {
         sessionPresence: {
           ...currentState.sessionPresence,
-          [sessionId]: {
-            ...bySession,
-            [userId]: {
-              ...existing,
-              userId,
-              username: nextUsername,
-              playerName:
-                playerName !== undefined ? (playerName ?? undefined) : existing?.playerName,
-              avatarUrl: avatarUrl !== undefined ? (avatarUrl ?? undefined) : existing?.avatarUrl,
-              characterName:
-                characterName !== undefined
-                  ? (characterName ?? undefined)
-                  : existing?.characterName,
-              characterClass:
-                characterClass !== undefined
-                  ? (characterClass ?? undefined)
-                  : existing?.characterClass,
-              characterSubclass:
-                characterSubclass !== undefined
-                  ? (characterSubclass ?? undefined)
-                  : existing?.characterSubclass,
-              characterRace:
-                characterRace !== undefined
-                  ? (characterRace ?? undefined)
-                  : existing?.characterRace,
-              level: level !== undefined ? (level ?? undefined) : existing?.level,
-              characterStats:
-                characterStats !== undefined
-                  ? (characterStats ?? undefined)
-                  : existing?.characterStats,
-              state,
-              ghost: nextGhost,
-              primaryRoomId: resolvedRoomId,
-              previousGroupId: nextPreviousGroupId,
-              privateRoomId: existing?.privateRoomId,
-              lastSeenAt: changedAt,
-            },
-          },
+          [sessionId]: pruneSessionPresenceEntries(nextSessionPresence, changedAt),
         },
       }
     }),
