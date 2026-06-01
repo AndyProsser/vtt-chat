@@ -197,7 +197,7 @@
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
   border-radius: var(--radius-lg);
-  padding: 0.45rem;
+  padding: 0.25rem;
   box-shadow: 0 12px 28px rgba(2, 6, 23, 0.24);
 }
 

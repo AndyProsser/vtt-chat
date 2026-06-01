@@ -183,7 +183,7 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
       </div>
       <button
         type="button"
-        className="session-icon-action"
+        className="session-icon-action session-icon-action--icon"
         aria-label={isSaving ? 'Saving settings' : 'Save session settings'}
         disabled={
           isSaving || !props.campaignId || (!props.canEditSessionSettings && !canEditNameOnly)

@@ -342,7 +342,7 @@ export function NotesPanel({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="notes-toolbar-segment notes-toolbar-segment--icon"
+                    className="session-icon-action session-icon-action--icon"
                     onClick={handleToggleCreateForm}
                     aria-label={showCreateForm ? 'Hide handout creator' : 'Create handout'}
                   >

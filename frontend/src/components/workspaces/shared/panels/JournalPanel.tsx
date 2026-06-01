@@ -841,7 +841,7 @@ function JournalBrowser({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  className="session-toolbar__icon-btn"
+                  className="session-icon-action session-icon-action--icon"
                   onClick={handleToggleEditSelected}
                   aria-label={isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
                 >
