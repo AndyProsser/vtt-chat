@@ -6,8 +6,6 @@ import type {
   NotesShareUser,
   PartyPresenceMember,
   PartyPresenceResponse,
-  RoomMembersResponse,
-  RoomsResponse,
 } from '@/types/notesShare'
 
 interface UseNotesShareContextParams {
@@ -28,16 +26,12 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
 
     const loadShareContext = async () => {
       try {
-        const [partyRes, roomsRes] = await Promise.all([
-          fetch(`${params.apiUrl}/api/campaigns/${params.campaignId}/party-presence`, {
+        const partyRes = await fetch(
+          `${params.apiUrl}/api/campaigns/${params.campaignId}/party-presence`,
+          {
             headers: { Authorization: `Bearer ${params.token}` },
-          }),
-          params.sessionId
-            ? fetch(`${params.apiUrl}/api/rooms/session/${params.sessionId}`, {
-                headers: { Authorization: `Bearer ${params.token}` },
-              })
-            : Promise.resolve(null),
-        ])
+          }
+        )
 
         if (!partyRes.ok) {
           return
@@ -66,50 +60,36 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
         let shareableRooms: NotesShareRoom[] = []
         let nextRoomMembers: Record<UUID, UUID[]> = {}
 
-        if (roomsRes && roomsRes.ok) {
-          const roomsData = (await roomsRes.json()) as RoomsResponse
-          const rooms: NotesShareRoom[] = Array.isArray(roomsData.rooms) ? roomsData.rooms : []
-          shareableRooms = rooms.filter(
-            (room: NotesShareRoom) => room.type === RoomType.GROUP || room.type === RoomType.MAIN
-          )
+        // Read rooms from RoomSlice instead of making REST call
+        if (params.sessionId) {
+          const sessionRooms = useStore.getState().rooms[params.sessionId]
+          if (sessionRooms) {
+            shareableRooms = Object.values(sessionRooms)
+              .filter((room) => room.type === RoomType.GROUP || room.type === RoomType.MAIN)
+              .map((room) => ({
+                id: room.id,
+                name: room.name,
+                type: room.type,
+              }))
+          }
+        }
 
+        // Build room member map from Zustand, no REST fallback needed when rooms come from store
+        if (shareableRooms.length > 0) {
           const playerUserIds = new Set(playerUsers.map((player) => player.id))
           const roomMembersFromStore = useStore.getState().roomMembers
-          const roomMemberEntries = await Promise.all(
-            shareableRooms.map(async (room) => {
-              const cachedMembers = roomMembersFromStore[room.id]
-              if (cachedMembers) {
-                const memberIds = cachedMembers
-                  .map((member) => member.userId)
-                  .filter((memberId) => playerUserIds.has(memberId))
-                return [room.id, memberIds] as const
-              }
 
-              try {
-                const roomMembersRes = await fetch(
-                  `${params.apiUrl}/api/rooms/${room.id}/members`,
-                  {
-                    headers: { Authorization: `Bearer ${params.token}` },
-                  }
-                )
-
-                if (!roomMembersRes.ok) {
-                  return [room.id, []] as const
-                }
-
-                const roomMembersData = (await roomMembersRes.json()) as RoomMembersResponse
-                const memberIds: UUID[] = Array.isArray(roomMembersData.members)
-                  ? roomMembersData.members.filter((memberId: UUID) => playerUserIds.has(memberId))
-                  : []
-
-                return [room.id, memberIds] as const
-              } catch {
-                return [room.id, []] as const
-              }
-            })
-          )
-
-          nextRoomMembers = Object.fromEntries(roomMemberEntries)
+          for (const room of shareableRooms) {
+            const cachedMembers = roomMembersFromStore[room.id]
+            if (cachedMembers) {
+              const memberIds = cachedMembers
+                .map((member) => member.userId)
+                .filter((memberId) => playerUserIds.has(memberId))
+              nextRoomMembers[room.id] = memberIds
+            } else {
+              nextRoomMembers[room.id] = []
+            }
+          }
         }
 
         if (!cancelled) {
