@@ -20,13 +20,19 @@ export async function getSessionJournal(sessionId: UUID): Promise<StoredNote | n
     return tags.includes(JOURNAL_TAG) || note.title === 'Session Journal'
   })
 
-  return journal ? mapStoredNote(journal) : null
+  // Fallback for legacy rows that are session-scoped journals but lost canonical
+  // tag/title markers during prior migrations/edits.
+  const fallback = notes[0] || null
+  return journal ? mapStoredNote(journal) : fallback ? mapStoredNote(fallback) : null
 }
 
 export interface JournalStatusEntry {
   hasJournal: boolean
   hasContent: boolean
   hashtags: string[]
+  journalTitle?: string
+  journalUpdatedAt?: number
+  needsRecap: boolean
 }
 
 /**
@@ -44,30 +50,56 @@ export async function getBulkJournalStatus(
   const rows = await prisma.note.findMany({
     where: {
       sessionId: { in: sessionIds },
-      OR: [{ tags: { array_contains: JOURNAL_TAG } }, { title: 'Session Journal' }],
     },
     select: {
       sessionId: true,
       tags: true,
       content: true,
+      title: true,
+      updatedAt: true,
+    },
+    orderBy: {
+      updatedAt: 'desc',
     },
   })
 
-  // Build a result entry per sessionId found
+  // Build a result entry per sessionId found, preferring explicit journal markers.
   const result: Record<string, JournalStatusEntry> = {}
+  const bestScoreBySession: Record<string, number> = {}
+
   for (const row of rows) {
     const tags = Array.isArray(row.tags) ? (row.tags as string[]) : []
+    const isExplicitJournal = tags.includes(JOURNAL_TAG) || row.title === 'Session Journal'
+    const score = isExplicitJournal ? 2 : 1
     const hashtags = tags.filter((tag) => tag !== JOURNAL_TAG)
     const hasContent = (row.content ?? '').trim().length > 0
     if (row.sessionId) {
-      result[row.sessionId] = { hasJournal: true, hasContent, hashtags }
+      const previousScore = bestScoreBySession[row.sessionId] ?? 0
+      if (score >= previousScore) {
+        result[row.sessionId] = {
+          hasJournal: true,
+          hasContent,
+          hashtags,
+          journalTitle: row.title || undefined,
+          journalUpdatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
+          needsRecap: !hasContent,
+        }
+        bestScoreBySession[row.sessionId] = score
+      }
     }
   }
 
   // Sessions with no journal row default to empty status
   for (const id of sessionIds) {
     if (!result[id]) {
-      result[id] = { hasJournal: false, hasContent: false, hashtags: [] }
+      result[id] = {
+        hasJournal: false,
+        hasContent: false,
+        hashtags: [],
+        journalTitle: undefined,
+        journalUpdatedAt: undefined,
+        needsRecap: true,
+      }
     }
   }
 

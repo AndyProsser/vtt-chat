@@ -11,6 +11,7 @@ import { isValidUUID, ErrorCode, NoteVisibility } from '@shared'
 import type { UUID } from '@shared'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { getSession } from '@/services/session/core.service'
+import { findSessionById } from '@/repositories/session.repository'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 import {
   getSessionJournal,
@@ -206,8 +207,16 @@ router.post('/:sessionId', requireAuth, async (req: Request, res: Response) => {
   }
 
   try {
+    const sessionRecord = await findSessionById(sessionId as string)
+    if (!sessionRecord?.campaignId) {
+      return res.status(500).json({
+        code: ErrorCode.INTERNAL_ERROR,
+        message: 'Session is missing campaign context',
+      })
+    }
+
     const journal = await createOrUpdateSessionJournal({
-      campaignId: (session as any).campaignId as UUID,
+      campaignId: sessionRecord.campaignId as UUID,
       sessionId: sessionId as UUID,
       title,
       content: journalContent,

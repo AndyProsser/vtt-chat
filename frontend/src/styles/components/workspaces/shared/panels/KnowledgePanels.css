@@ -487,15 +487,36 @@
 }
 
 .knowledge-panel-card-header__left {
+  flex: 1;
   min-width: 0;
 }
 
 .knowledge-panel-card-header__right {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--space-1, 4px);
   flex-shrink: 0;
+}
+
+.knowledge-panel-card-header__right .knowledge-panel-chip-row {
+  justify-content: flex-end;
+}
+
+.knowledge-panel-card-subheader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.knowledge-panel-card-subheader .knowledge-panel-card-subtitle {
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.knowledge-panel-card-subheader .knowledge-panel-chip-row--right {
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .knowledge-panel-chip-row--right {
@@ -2040,7 +2061,7 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.28rem 0.4rem;
+  padding: 0.18rem 0.3rem;
   text-align: left;
   cursor: pointer;
 }
@@ -2051,8 +2072,8 @@
 }
 
 .notes-share-popover__player-avatar {
-  width: 1.45rem;
-  height: 1.45rem;
+  width: 1.6rem;
+  height: 1.6rem;
   border-radius: 999px;
   overflow: hidden;
   border: 1px solid var(--color-border-soft);
@@ -2084,12 +2105,12 @@
 }
 
 .notes-share-popover__player-character {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 700;
 }
 
 .notes-share-popover__player-name {
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   color: var(--color-text-secondary);
 }
 

@@ -28,6 +28,9 @@ export interface SessionJournalStatus {
   hasJournal: boolean
   hasContent: boolean
   hashtags: string[]
+  journalTitle?: string
+  journalUpdatedAt?: number
+  needsRecap?: boolean
 }
 
 export interface OptimisticSessionSelection {

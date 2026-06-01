@@ -615,12 +615,8 @@ function JournalBrowser({
   // Track every session whose editor has been mounted; keep it mounted (hidden) thereafter
   // so re-expanding a card doesn't trigger a second fetch.
   const [mountedEditorIds, setMountedEditorIds] = useState<Set<string>>(new Set())
-  const lastStatusLoadKeyRef = useRef<string>('')
-  // Track sessions saved locally this lifecycle so the bulk status load doesn't overwrite them.
-  const locallyUpdatedSessionIdsRef = useRef<Set<string>>(new Set())
 
   const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
-    locallyUpdatedSessionIdsRef.current.add(sessionId)
     setJournalStatusBySession((current) => ({
       ...current,
       [sessionId]: nextStatus,
@@ -719,14 +715,6 @@ function JournalBrowser({
       }
     }
 
-    if (lastStatusLoadKeyRef.current === recentSessionsStatusKey) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    lastStatusLoadKeyRef.current = recentSessionsStatusKey
-
     const loadStatuses = async () => {
       try {
         const res = await fetch(`${apiUrl}/api/journals/status`, {
@@ -746,20 +734,132 @@ function JournalBrowser({
         }
 
         const data = (await res.json()) as {
-          statuses: Record<string, { hasJournal: boolean; hasContent: boolean; hashtags: string[] }>
+          statuses?: Record<
+            string,
+            {
+              hasJournal: boolean
+              hasContent: boolean
+              hashtags: string[]
+              journalTitle?: string
+              journalUpdatedAt?: number
+              needsRecap?: boolean
+            }
+          >
+          statusList?: Array<{
+            sessionId?: string
+            hasJournal?: boolean
+            hasContent?: boolean
+            hashtags?: string[]
+            tags?: string[]
+            journalTitle?: string
+            title?: string
+            journalUpdatedAt?: number
+            updatedAt?: number
+            needsRecap?: boolean
+          }>
+          journals?: Record<
+            string,
+            {
+              hasJournal?: boolean
+              hasContent?: boolean
+              hashtags?: string[]
+              tags?: string[]
+              journalTitle?: string
+              title?: string
+              journalUpdatedAt?: number
+              updatedAt?: number
+              needsRecap?: boolean
+            }
+          >
         }
 
         if (!cancelled) {
-          // Server data wins for all sessions except those saved locally this render
-          // (tracked in locallyUpdatedSessionIdsRef) so a fresh save is never overwritten
-          // by a concurrent in-flight bulk status response.
-          setJournalStatusBySession((prev) => {
-            const merged = { ...prev, ...data.statuses }
-            for (const id of locallyUpdatedSessionIdsRef.current) {
-              if (prev[id]) {
-                merged[id] = prev[id]
+          const incomingStatuses = data.statuses ?? data.journals ?? {}
+          const statusListMap = (data.statusList ?? []).reduce<
+            Record<
+              string,
+              {
+                hasJournal?: boolean
+                hasContent?: boolean
+                hashtags?: string[]
+                tags?: string[]
+                journalTitle?: string
+                title?: string
+                journalUpdatedAt?: number
+                updatedAt?: number
+                needsRecap?: boolean
+              }
+            >
+          >((accumulator, entry) => {
+            const sessionId = entry.sessionId
+            if (!sessionId) {
+              return accumulator
+            }
+
+            accumulator[sessionId] = entry
+            return accumulator
+          }, {})
+
+          const resolvedIncoming = {
+            ...incomingStatuses,
+            ...statusListMap,
+          }
+
+          const normalizeStatus = (rawStatus?: {
+            hasJournal?: boolean
+            hasContent?: boolean
+            hashtags?: string[]
+            tags?: string[]
+            journalTitle?: string
+            title?: string
+            journalUpdatedAt?: number
+            updatedAt?: number
+            needsRecap?: boolean
+          }): SessionJournalStatus => {
+            if (!rawStatus) {
+              return {
+                hasJournal: false,
+                hasContent: false,
+                hashtags: [],
+                journalTitle: undefined,
+                journalUpdatedAt: undefined,
+                needsRecap: true,
               }
             }
+
+            const hashtags = Array.isArray(rawStatus.hashtags)
+              ? rawStatus.hashtags
+              : Array.isArray(rawStatus.tags)
+                ? rawStatus.tags
+                : []
+            const hasContent = Boolean(rawStatus.hasContent)
+            const hasJournal =
+              typeof rawStatus.hasJournal === 'boolean'
+                ? rawStatus.hasJournal
+                : hasContent || hashtags.length > 0
+
+            return {
+              hasJournal,
+              hasContent,
+              hashtags,
+              journalTitle: rawStatus.journalTitle ?? rawStatus.title,
+              journalUpdatedAt: rawStatus.journalUpdatedAt ?? rawStatus.updatedAt,
+              needsRecap:
+                typeof rawStatus.needsRecap === 'boolean' ? rawStatus.needsRecap : !hasContent,
+            }
+          }
+
+          // Rebuild status entries for current sessions so stale values cannot linger.
+          setJournalStatusBySession((prev) => {
+            const merged = { ...prev }
+
+            for (const session of recentSessions) {
+              const direct = resolvedIncoming[session.id]
+              const lower = resolvedIncoming[session.id.toLowerCase()]
+              const upper = resolvedIncoming[session.id.toUpperCase()]
+              merged[session.id] = normalizeStatus(direct ?? lower ?? upper)
+            }
+
             return merged
           })
         }
@@ -899,6 +999,7 @@ function JournalBrowser({
             const isSelected = session.id === effectiveSessionId
             const sessionStatus = journalStatusBySession[session.id]
             const hasContent = Boolean(sessionStatus?.hasContent)
+            const needsRecap = sessionStatus?.needsRecap ?? !hasContent
             const isEditorMounted = isSelected || mountedEditorIds.has(session.id)
             const sessionHashtags = sessionStatus?.hashtags ?? []
             const visibleSessionHashtags = sessionHashtags.slice(0, 3)
@@ -906,6 +1007,10 @@ function JournalBrowser({
               0,
               sessionHashtags.length - visibleSessionHashtags.length
             )
+            const cardTitle = sessionStatus?.journalTitle || session.name
+            const cardDate = sessionStatus?.journalUpdatedAt
+              ? new Date(sessionStatus.journalUpdatedAt).toLocaleDateString()
+              : getSessionRunDateLabel(session)
             const nextSession = index > 0 ? visibleSessions[index - 1] : undefined
             const missingCopy = buildMissingRecapCopy(session, nextSession)
             const selectedRoastOptions = getDmRoastOptions(`${session.id}:${session.name}`)
@@ -944,61 +1049,59 @@ function JournalBrowser({
                       <TruncatedTextWithTooltip
                         as="h4"
                         className="knowledge-panel-card-title knowledge-panel-card-title--truncate"
-                        text={session.name}
+                        text={cardTitle}
                       />
-                      <p className="knowledge-panel-card-subtitle">
-                        {getSessionRunDateLabel(session)}
-                      </p>
                     </div>
                     <div className="knowledge-panel-card-header__right">
                       <div className="knowledge-panel-chip-row">
                         {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
-                        {!hasContent ? (
+                        {needsRecap ? (
                           <span className="knowledge-panel-chip knowledge-panel-chip--warn">
                             Needs Recap
                           </span>
                         ) : null}
-                        <span
-                          className="material-symbols-outlined knowledge-panel-card__expand-icon"
-                          aria-hidden="true"
-                        >
-                          {isSelected ? 'expand_less' : 'expand_more'}
-                        </span>
                       </div>
-                      {sessionHashtags.length > 0 ? (
-                        <div className="knowledge-panel-chip-row knowledge-panel-chip-row--right">
-                          {visibleSessionHashtags.map((tag) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              className={`knowledge-panel-chip muted ${
-                                activeTagFilter === normalizeCardHashtag(tag)
-                                  ? 'knowledge-panel-chip--active'
-                                  : ''
-                              }`}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                const normalizedTag = normalizeCardHashtag(tag)
-                                setActiveTagFilter((current) =>
-                                  current === normalizedTag ? null : normalizedTag
-                                )
-                                setOptimisticSelection({
-                                  sessionId: session.id,
-                                  baselineControlledSessionId: controlledSessionId,
-                                })
-                                onSessionChange(session.id)
-                              }}
-                              aria-label={`Filter by ${normalizeCardHashtag(tag)}`}
-                            >
-                              {normalizeCardHashtag(tag)}
-                            </button>
-                          ))}
-                          {hiddenTagCount > 0 ? (
-                            <span className="knowledge-panel-card-tags-more muted">
-                              {hiddenTagCount} more...
-                            </span>
-                          ) : null}
-                        </div>
+                      <span
+                        className="material-symbols-outlined knowledge-panel-card__expand-icon"
+                        aria-hidden="true"
+                      >
+                        {isSelected ? 'expand_less' : 'expand_more'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="knowledge-panel-card-subheader">
+                    <p className="knowledge-panel-card-subtitle">{cardDate}</p>
+                    <div className="knowledge-panel-chip-row knowledge-panel-chip-row--right">
+                      {visibleSessionHashtags.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          className={`knowledge-panel-chip muted ${
+                            activeTagFilter === normalizeCardHashtag(tag)
+                              ? 'knowledge-panel-chip--active'
+                              : ''
+                          }`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            const normalizedTag = normalizeCardHashtag(tag)
+                            setActiveTagFilter((current) =>
+                              current === normalizedTag ? null : normalizedTag
+                            )
+                            setOptimisticSelection({
+                              sessionId: session.id,
+                              baselineControlledSessionId: controlledSessionId,
+                            })
+                            onSessionChange(session.id)
+                          }}
+                          aria-label={`Filter by ${normalizeCardHashtag(tag)}`}
+                        >
+                          {normalizeCardHashtag(tag)}
+                        </button>
+                      ))}
+                      {hiddenTagCount > 0 ? (
+                        <span className="knowledge-panel-card-tags-more muted">
+                          {hiddenTagCount} more...
+                        </span>
                       ) : null}
                     </div>
                   </div>
@@ -1028,6 +1131,11 @@ function JournalBrowser({
                           hasContent: nextHasContent,
                           hasJournal,
                           hashtags,
+                          journalTitle: session.name
+                            ? `Journal - ${session.name}`
+                            : 'Session Journal',
+                          journalUpdatedAt: Date.now(),
+                          needsRecap: !nextHasContent,
                         })
                       }}
                     />
