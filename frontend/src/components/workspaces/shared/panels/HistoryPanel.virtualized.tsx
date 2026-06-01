@@ -524,15 +524,33 @@ export function HistoryPanelVirtualList({
       return
     }
 
-    const frameId = window.requestAnimationFrame(() => {
+    let retryCount = 0
+    const maxRetries = 8
+    let lastScrollHeight = 0
+
+    const scrollToBottom = () => {
       const container = listApi.element
       if (container) {
-        container.scrollTop = container.scrollHeight
+        const newScrollHeight = container.scrollHeight
+        const scrolledEnough = newScrollHeight > lastScrollHeight + 40
+        lastScrollHeight = newScrollHeight
+
+        if (scrolledEnough && retryCount < maxRetries) {
+          // Heights still changing; recheck in 16ms (~1 frame)
+          retryCount += 1
+          window.setTimeout(scrollToBottom, 16)
+        } else if (container.scrollHeight > 0) {
+          // Heights stable or max retries reached; scroll to bottom
+          container.scrollTop = container.scrollHeight
+        }
       }
-    })
+    }
+
+    // Start scroll-to-bottom after a brief delay to allow ResizeObserver to start
+    const timeoutId = window.setTimeout(scrollToBottom, 24)
 
     return () => {
-      window.cancelAnimationFrame(frameId)
+      window.clearTimeout(timeoutId)
     }
   }, [autoScrollToLastRow, listApi, rows])
 
