@@ -1939,7 +1939,7 @@
 }
 
 .notes-share-popover {
-  width: min(17rem, 92vw);
+  width: min(10rem, 92vw);
   max-height: min(30rem, 70vh);
   overflow: auto;
   border: 1px solid var(--color-border-soft);
@@ -1963,8 +1963,8 @@
 
 .notes-share-popover__modes {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.35rem;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.25rem;
   margin-bottom: 0.55rem;
 }
 

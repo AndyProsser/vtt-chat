@@ -10,7 +10,6 @@ import {
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/hooks/useStore'
-import { useSessionSelectedRoomId } from '@/hooks/session/useSessionSelectedRoomId'
 import type { Note } from '@/types/notes'
 import type { NotesPublishTarget } from '@/types/notesPublish'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
@@ -81,7 +80,6 @@ export function NotesPanel({
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const canMutateNotes = user.role === Role.DM
-  const selectedRoomId = useSessionSelectedRoomId(sessionId ?? null)
   const publishRooms = useMemo(
     () =>
       shareRooms.filter((room) => {
@@ -300,6 +298,14 @@ export function NotesPanel({
       const body = await res.json().catch(() => ({}))
       throw new Error(body.message ?? `HTTP ${res.status}`)
     }
+
+    // Notes are campaign-scoped. Rehydrate after publish so share/published indicators
+    // converge immediately without requiring a page refresh.
+    const refreshedNotes = await fetchCampaignNotesOnce(apiUrl, campaignId, token)
+    clearNotes(campaignId)
+    for (const refreshedNote of refreshedNotes) {
+      addNote(campaignId, refreshedNote)
+    }
   }
 
   const handleDelete = async (noteId: string) => {
@@ -413,7 +419,6 @@ export function NotesPanel({
                   canManageShare={canMutateNotes}
                   canPublish={canMutateNotes}
                   isPublishDisabled={isPublishDisabledInCurrentState}
-                  selectedRoomId={selectedRoomId || null}
                   onSave={handleSave}
                   onDelete={handleDelete}
                   onPublish={handlePublish}

@@ -25,7 +25,6 @@ interface NoteCardProps {
   canManageShare: boolean
   canPublish: boolean
   isPublishDisabled: boolean
-  selectedRoomId?: UUID | null
   shareUsers?: NotesShareUser[]
   shareRooms?: NotesShareRoom[]
   publishRooms?: NotesPublishRoom[]
@@ -46,7 +45,6 @@ export function NoteCard({
   canManageShare,
   canPublish,
   isPublishDisabled,
-  selectedRoomId = null,
   shareUsers = [],
   shareRooms = [],
   publishRooms = [],
@@ -226,11 +224,6 @@ export function NoteCard({
       return
     }
 
-    if (selectedRoomId && publishRooms.some((room) => room.id === selectedRoomId)) {
-      await handleConfirmPublish({ audience: 'ROOM', roomId: selectedRoomId })
-      return
-    }
-
     setPublishDialogOpen(true)
   }
 
@@ -284,9 +277,9 @@ export function NoteCard({
                       : publishRooms.length === 0 ||
                           (publishRooms.length === 1 && publishRooms[0]?.type === RoomType.MAIN)
                         ? 'Publish to everyone'
-                        : publishRooms.length > 1 && selectedRoomId
-                          ? 'Publish to current room'
-                          : 'Choose where to post'}
+                        : publishRooms.length > 1
+                          ? 'Choose a room to publish to'
+                          : 'Publish to the active room'}
                 </TooltipContent>
               </Tooltip>
             ) : null}

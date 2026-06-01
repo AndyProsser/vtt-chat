@@ -557,8 +557,10 @@ Notes visibility/publish sequencing contract:
 - `POST /api/notes` with the reserved journal tag (`_journal`) or canonical journal title (`Session Journal`) is an upsert for that session's journal entry: if a journal note already exists for the session, backend must update it in place, return `200`, and emit `NOTES:UPDATED` instead of creating a duplicate.
 - `POST /api/notes/:noteId/publish` is manual and accepts either `audience: 'EVERYONE'` or `audience: 'ROOM'` with a valid `roomId`.
 - Publish room targets must exclude whisper/private rooms, greenroom, and empty rooms; frontend should offer `Everyone` plus occupied MAIN/GROUP rooms only.
+- If more than one publishable room currently has at least one player, publish must require explicit room selection (`audience: 'ROOM'`); backend must reject `audience: 'EVERYONE'` for that state with `409 CONFLICT`.
 - Publishing to `Everyone` upgrades the note visibility to `PLAYERS_VISIBLE`; publishing to a room upgrades/shares the note to the players currently in that room before emitting chat.
 - Publishing a note emits `NOTES:UPDATED` first and then `CHAT:MESSAGE_SENT`, both using the same visibility audience for that note and the selected room/global destination.
+- `NOTES:CREATED`, `NOTES:UPDATED`, and `NOTES:DELETED` payloads must include `campaignId` so campaign-scoped clients can apply updates without relying on `sessionId` bucket keys; `NOTES:UPDATED` should also include `publishedAt` when present.
 - Published note chat messages must include `message.metadata.noteShared = { kind: 'NOTE_SHARED', noteId, title, markdown, sharedWith, hashtags }` so recipients render a handout card from structured data rather than reparsing the chat text body.
 - Publishing writes both an audit record (`NOTES.PUBLISHED`) and a session-log record for traceability.
 - Note attachments are currently image-only in runtime (`image/*`, max 6 attachments per note, stored as note-scoped attachment objects with `id`, `campaignId`, `mime`, `name`, `uri`, `createdAt`). PDF attachment support remains planned work.

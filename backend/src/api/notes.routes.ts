@@ -39,15 +39,10 @@ import {
 } from '@/services/notes/route-helpers.service'
 import { NOTE_PUBLISH_SNIPPET_MAX_LENGTH } from '@/constants/notes.constants'
 import { createSessionLog } from '@/repositories/session-logs.repository'
-import { getRoom, getRoomMemberIds } from '@/services/room.service'
+import { getRoom, getRoomMemberIds, getRooms } from '@/services/room.service'
 import { isGreenRoomName } from '@/utils'
 
 const router = Router()
-
-function getSessionCampaignId(session: unknown): UUID | undefined {
-  const candidate = session as { campaignId?: UUID } | null
-  return candidate?.campaignId
-}
 
 function toNoteAuditVisibilityClass(visibility: NoteVisibility): SessionAuditVisibilityClass {
   switch (visibility) {
@@ -237,7 +232,8 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
   let broadcastSession = null as Awaited<ReturnType<typeof getSession>>
   if (sessionId && isValidUUID(sessionId)) {
     broadcastSession = await getSession(sessionId as UUID)
-    if (broadcastSession && getSessionCampaignId(broadcastSession) !== (campaignId as UUID)) {
+    const sessionRecord = await findSessionById(sessionId as string)
+    if (!broadcastSession || !sessionRecord || sessionRecord.campaignId !== (campaignId as UUID)) {
       broadcastSession = null
     }
   }
@@ -294,6 +290,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
         roomId: null,
         timestamp: created ? note.createdAt : note.updatedAt,
         payload: {
+          campaignId: note.campaignId,
           noteId: note.id,
           ownerId: note.authorId,
           ownerUsername: note.authorUsername,
@@ -303,6 +300,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
           tags: note.tags,
           allowedUsers: note.allowedUsers,
           attachments: note.attachments,
+          publishedAt: note.publishedAt,
         },
       }
 
@@ -429,6 +427,7 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
         roomId: null,
         timestamp: note.updatedAt,
         payload: {
+          campaignId: note.campaignId,
           noteId: note.id,
           title: note.title,
           content: note.content,
@@ -436,6 +435,7 @@ router.put('/:noteId', requireAuth, async (req: Request, res: Response) => {
           tags: note.tags,
           allowedUsers: note.allowedUsers,
           attachments: note.attachments,
+          publishedAt: note.publishedAt,
         },
       }
 
@@ -508,6 +508,35 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
   )
   if (!visibleNotes.find((n) => n.id === note.id)) {
     return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
+  }
+
+  const sessionUsersForAudienceCheck = await getSessionUsers(session.id)
+  const playerIdsForAudienceCheck = new Set(
+    sessionUsersForAudienceCheck
+      .filter((sessionUser) => sessionUser.role === 'PLAYER')
+      .map((entry) => entry.id)
+  )
+  const publishableRooms = (await getRooms(session.id)).filter(
+    (room) =>
+      room.type === RoomType.MAIN || (room.type === RoomType.GROUP && !isGreenRoomName(room.name))
+  )
+
+  const roomsWithPlayers: UUID[] = []
+  for (const room of publishableRooms) {
+    const roomMemberIds = await getRoomMemberIds(session.id, room.id)
+    const playerCount = roomMemberIds.filter((memberId) =>
+      playerIdsForAudienceCheck.has(memberId)
+    ).length
+    if (playerCount > 0) {
+      roomsWithPlayers.push(room.id)
+    }
+  }
+
+  if (publishAudience === 'EVERYONE' && roomsWithPlayers.length > 1) {
+    return res.status(409).json({
+      code: ErrorCode.CONFLICT,
+      message: 'Multiple rooms currently contain players. Choose a room to publish this handout.',
+    })
   }
 
   let noteToPublish = note
@@ -702,12 +731,14 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       roomId: null,
       timestamp: published.updatedAt,
       payload: {
+        campaignId: published.campaignId,
         noteId: published.id,
         title: published.title,
         content: published.content,
         visibility: published.visibility,
         tags: published.tags,
         allowedUsers: published.allowedUsers,
+        publishedAt: published.publishedAt,
       },
     }
 
@@ -809,6 +840,7 @@ router.delete('/:noteId', requireAuth, async (req: Request, res: Response) => {
         roomId: null,
         timestamp: Date.now(),
         payload: {
+          campaignId: note.campaignId,
           noteId: note.id,
         },
       }

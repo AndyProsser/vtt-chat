@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Role, RoomType, type UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import type {
@@ -18,8 +18,42 @@ interface UseNotesShareContextParams {
 
 export function useNotesShareContext(params: UseNotesShareContextParams) {
   const [shareUsers, setShareUsers] = useState<NotesShareUser[]>([])
-  const [shareRooms, setShareRooms] = useState<NotesShareRoom[]>([])
-  const [roomMemberIdsByRoomId, setRoomMemberIdsByRoomId] = useState<Record<UUID, UUID[]>>({})
+  const sessionRooms = useStore((state) =>
+    params.sessionId ? state.rooms[params.sessionId] || null : null
+  )
+  const roomMembers = useStore((state) => state.roomMembers)
+
+  const shareRooms = useMemo<NotesShareRoom[]>(() => {
+    if (!sessionRooms) {
+      return []
+    }
+
+    return Object.values(sessionRooms)
+      .filter((room) => room.type === RoomType.GROUP || room.type === RoomType.MAIN)
+      .map((room) => ({
+        id: room.id,
+        name: room.name,
+        type: room.type,
+      }))
+  }, [sessionRooms])
+
+  const roomMemberIdsByRoomId = useMemo<Record<UUID, UUID[]>>(() => {
+    if (shareRooms.length === 0) {
+      return {}
+    }
+
+    const playerUserIds = new Set(shareUsers.map((player) => player.id))
+    const result: Record<UUID, UUID[]> = {}
+
+    for (const room of shareRooms) {
+      const roomMembersForRoom = roomMembers[room.id] || []
+      result[room.id] = roomMembersForRoom
+        .map((member) => member.userId)
+        .filter((memberId) => playerUserIds.has(memberId))
+    }
+
+    return result
+  }, [roomMembers, shareRooms, shareUsers])
 
   useEffect(() => {
     let cancelled = false
@@ -57,51 +91,12 @@ export function useNotesShareContext(params: UseNotesShareContextParams) {
             status: candidate.status,
           }))
 
-        let shareableRooms: NotesShareRoom[] = []
-        let nextRoomMembers: Record<UUID, UUID[]> = {}
-
-        // Read rooms from RoomSlice instead of making REST call
-        if (params.sessionId) {
-          const sessionRooms = useStore.getState().rooms[params.sessionId]
-          if (sessionRooms) {
-            shareableRooms = Object.values(sessionRooms)
-              .filter((room) => room.type === RoomType.GROUP || room.type === RoomType.MAIN)
-              .map((room) => ({
-                id: room.id,
-                name: room.name,
-                type: room.type,
-              }))
-          }
-        }
-
-        // Build room member map from Zustand, no REST fallback needed when rooms come from store
-        if (shareableRooms.length > 0) {
-          const playerUserIds = new Set(playerUsers.map((player) => player.id))
-          const roomMembersFromStore = useStore.getState().roomMembers
-
-          for (const room of shareableRooms) {
-            const cachedMembers = roomMembersFromStore[room.id]
-            if (cachedMembers) {
-              const memberIds = cachedMembers
-                .map((member) => member.userId)
-                .filter((memberId) => playerUserIds.has(memberId))
-              nextRoomMembers[room.id] = memberIds
-            } else {
-              nextRoomMembers[room.id] = []
-            }
-          }
-        }
-
         if (!cancelled) {
           setShareUsers(playerUsers)
-          setShareRooms(shareableRooms)
-          setRoomMemberIdsByRoomId(nextRoomMembers)
         }
       } catch {
         if (!cancelled) {
           setShareUsers([])
-          setShareRooms([])
-          setRoomMemberIdsByRoomId({})
         }
       }
     }
