@@ -4,9 +4,15 @@
   --knowledge-panels__right-rail-width: 420px;
 }
 
+@media (max-width: 720px) {
+  .session-workspace-frame__rails {
+    --knowledge-panels__right-rail-width: clamp(360px, 100vw, 460px);
+  }
+}
+
 @media (min-width: 1080px) {
   .session-workspace-frame__rails {
-    --knowledge-panels__right-rail-width: clamp(360px, 32vw, 440px);
+    --knowledge-panels__right-rail-width: clamp(410px, 32vw, 460px);
   }
 }
 

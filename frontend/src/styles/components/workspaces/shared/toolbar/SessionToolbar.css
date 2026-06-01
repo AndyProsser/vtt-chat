@@ -58,17 +58,17 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.55rem;
-  height: 1.55rem;
+  width: 1.8rem;
+  height: 1.8rem;
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-brand) 16%, var(--color-surface));
 }
 
 .session-toolbar__brand-mark .ui-icon {
-  width: 0.88rem;
-  height: 0.88rem;
-  font-size: 0.88rem;
+  width: 1.68rem;
+  height: 1.68rem;
+  font-size: 1.68rem;
 }
 
 .session-toolbar__brand-title {
@@ -583,7 +583,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 680px) {
   .session-toolbar {
     border-radius: var(--radius-md);
     padding: 0.42rem 0.5rem;
@@ -616,5 +616,61 @@
 
   .session-toolbar__timer-state-wrap {
     display: none;
+  }
+
+  /* Collapse the timer pill to a single lane when the state chip is hidden. */
+  .session-toolbar__timer-pill {
+    grid-template-columns: 1fr;
+    min-width: auto;
+  }
+
+  .session-toolbar__timer-main {
+    justify-content: center;
+  }
+
+  .session-toolbar__timer-pill strong {
+    min-width: 0;
+  }
+
+  /* On very small screens, keep the timer in flow so it sits beside action controls. */
+  .session-toolbar__zone--left {
+    flex: 0 0 auto;
+  }
+
+  .session-toolbar__center-slot {
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    margin-left: auto;
+    margin-right: 0;
+    order: 2;
+    z-index: 2;
+  }
+
+  .session-toolbar__zone--right {
+    order: 3;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 440px) {
+  .session-toolbar__brand-title {
+    display: none;
+  }
+
+  .session-toolbar {
+    gap: 0.36rem;
+    padding: 0.38rem 0.44rem;
+  }
+
+  .session-toolbar__timer-pill {
+    padding-left: 0.36rem;
+    padding-right: 0.36rem;
+  }
+
+  .session-toolbar__timer-pill strong {
+    font-size: 0.76rem;
+    letter-spacing: 0.02em;
   }
 }

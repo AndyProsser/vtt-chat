@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-05-28
+**Last Updated**: 2026-06-01
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -218,7 +218,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 
 ### W0-Rightbar: Info Panels and Settings Toolbar
 
-**Status**: 🟡 In Progress (completion slice shipped: Audio tab removed; wide-screen right panel now persistent/expanded)
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
@@ -247,7 +247,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
 - [x] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
 - [x] Right-panel dismisses on backdrop click
-- [ ] Mobile responsive: collapse/expand at <680px; side-panel at ≥1080px
+- [x] Mobile responsive: collapse/expand at <680px; side-panel at ≥1080px
 
 **Related Docs**:
 
@@ -301,6 +301,7 @@ Evidence snapshot (2026-05-30):
 Evidence snapshot (2026-06-01):
 
 - Removed the redundant right-rail `Audio` panel from canonical tab policy and session right-rail rendering.
+- Right-rail mobile behavior now uses compact overlay mode below `680px` with explicit collapse/expand interaction instead of persistent docked paneling.
 - Right-rail behavior at desktop widths now treats `>=1080px` as expanded mode with a selected panel kept open by default.
 - Crossing from `>=1080px` down to `<1080px` now auto-collapses the right panel to preserve compact layout behavior.
 - Desktop right-panel width now has a hard maximum of `440px`.
@@ -320,7 +321,7 @@ Evidence snapshot (2026-06-01):
 
 ### W0-Lobby: Campaign Discovery and Join Flow
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
@@ -424,7 +425,7 @@ Evidence snapshot (2026-05-30):
 - [ ] Dark and light themes render correctly across all components
 - [ ] Reduced-motion preferences are respected
 - [ ] No hard-coded one-mode colors in shared user-facing UI
-- [ ] Responsive testing passes at breakpoints: <768px (mobile), 768-1279px (tablet), ≥1280px (desktop)
+- [ ] Responsive testing passes at breakpoints: <680px (mobile), 680-1080px (tablet), ≥1080px (desktop)
 
 **Related Docs**:
 

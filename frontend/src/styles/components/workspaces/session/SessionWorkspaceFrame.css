@@ -586,3 +586,9 @@
     gap: 0.45rem;
   }
 }
+
+@media (max-width: 720px) {
+  .knowledge-panels__right-rail-overlay {
+    right: 1px;
+  }
+}
