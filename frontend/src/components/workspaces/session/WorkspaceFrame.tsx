@@ -419,7 +419,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
 
           {isDockOverlayVisible && (
             <div
-              className="session-workspace-frame__right-rail-backdrop"
+              className="knowledge-panels__right-rail-backdrop"
               onClick={handleRightRailClickOutside}
               data-ui-component="SessionWorkspaceRightRailBackdrop"
             />
@@ -428,15 +428,15 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
           {isDockOverlayVisible && (
             <aside
               data-testid={isChatDockOpen ? 'chat-dock-panel' : 'right-rail'}
-              className={`session-workspace-frame__right-rail-overlay ${
-                isRightRailClosing ? 'session-workspace-frame__right-rail-overlay--closing' : ''
-              } ${isChatDockOpen ? 'session-workspace-frame__right-rail-overlay--chat' : `session-workspace-frame__right-rail-overlay--tab-${pointerTabIndex}`}`}
+              className={`knowledge-panels__right-rail-overlay ${
+                isRightRailClosing ? 'knowledge-panels__right-rail-overlay--closing' : ''
+              } ${isChatDockOpen ? 'knowledge-panels__right-rail-overlay--chat' : `knowledge-panels__right-rail-overlay--tab-${pointerTabIndex}`}`}
               data-ui-component={
                 isChatDockOpen ? 'SessionWorkspaceChatDock' : 'SessionWorkspaceRightRail'
               }
               data-ui-state={activeDockTab}
             >
-              <div className="session-workspace-frame__right-rail-layout">
+              <div className="knowledge-panels__right-rail-layout">
                 {isChatDockOpen ? (
                   <div
                     data-testid="chat-dock-content"
@@ -461,17 +461,14 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
         </div>
 
         <aside
-          className="session-workspace-frame__right-rail-dock"
+          className="knowledge-panels__right-rail-dock"
           aria-label="Tools"
           data-ui-component="SessionWorkspaceDock"
         >
           {tooltipLabelsEnabled ? (
             <TooltipProvider delayDuration={140}>
               <Tabs value={activeRightRailTab}>
-                <TabsList
-                  className="session-workspace-frame__right-rail-toolbar"
-                  aria-label="Tool panels"
-                >
+                <TabsList className="knowledge-panels__right-rail-toolbar" aria-label="Tool panels">
                   {isDockLayout ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -479,7 +476,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
                           type="button"
                           aria-label="Open chat"
                           aria-pressed={isChatDockOpen}
-                          className="session-workspace-frame__right-rail-trigger"
+                          className="knowledge-panels__right-rail-trigger"
                           data-state={isChatDockOpen ? 'active' : 'inactive'}
                           onClick={(event) => {
                             handleChatDockClick(event.timeStamp)
@@ -488,7 +485,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
                           <Icon name="chat" />
                           {chatBadgeCount > 0 ? (
                             <span
-                              className="session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--chat"
+                              className="knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--chat"
                               aria-hidden="true"
                             >
                               {formatIndicatorCount(chatBadgeCount)}
@@ -509,7 +506,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
                           <TabsTrigger
                             value={tab}
                             aria-label={`Tool ${label}`}
-                            className="session-workspace-frame__right-rail-trigger"
+                            className="knowledge-panels__right-rail-trigger"
                             onClick={(event) => {
                               handleRightRailTabClick(tab, event.timeStamp)
                             }}
@@ -517,7 +514,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
                             <Icon name={getWorkspacePanelIcon(tab)} />
                             {indicatorCount > 0 ? (
                               <span
-                                className={`session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--${tab}`}
+                                className={`knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--${tab}`}
                                 aria-hidden="true"
                               >
                                 {formatIndicatorCount(indicatorCount)}
@@ -534,16 +531,13 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
             </TooltipProvider>
           ) : (
             <Tabs value={activeRightRailTab}>
-              <TabsList
-                className="session-workspace-frame__right-rail-toolbar"
-                aria-label="Tool panels"
-              >
+              <TabsList className="knowledge-panels__right-rail-toolbar" aria-label="Tool panels">
                 {isDockLayout ? (
                   <button
                     type="button"
                     aria-label="Open chat"
                     aria-pressed={isChatDockOpen}
-                    className="session-workspace-frame__right-rail-trigger"
+                    className="knowledge-panels__right-rail-trigger"
                     data-state={isChatDockOpen ? 'active' : 'inactive'}
                     onClick={(event) => {
                       handleChatDockClick(event.timeStamp)
@@ -552,7 +546,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
                     <Icon name="chat" />
                     {chatBadgeCount > 0 ? (
                       <span
-                        className="session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--chat"
+                        className="knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--chat"
                         aria-hidden="true"
                       >
                         {formatIndicatorCount(chatBadgeCount)}
@@ -569,7 +563,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
                       key={tab}
                       value={tab}
                       aria-label={`Tool ${label}`}
-                      className="session-workspace-frame__right-rail-trigger"
+                      className="knowledge-panels__right-rail-trigger"
                       onClick={(event) => {
                         handleRightRailTabClick(tab, event.timeStamp)
                       }}
@@ -577,7 +571,7 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
                       <Icon name={getWorkspacePanelIcon(tab)} />
                       {indicatorCount > 0 ? (
                         <span
-                          className={`session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--${tab}`}
+                          className={`knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--${tab}`}
                           aria-hidden="true"
                         >
                           {formatIndicatorCount(indicatorCount)}
