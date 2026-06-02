@@ -101,6 +101,21 @@
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 64%, transparent);
 }
 
+.session-note-shared-card__markdown-pre {
+  color: var(--color-text-primary);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.session-note-shared-card__inline-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 64%, transparent);
+}
+
 .session-note-shared-card__footer {
   display: flex;
   align-items: center;

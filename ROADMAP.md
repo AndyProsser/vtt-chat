@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-01
+**Last Updated**: 2026-06-02
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -305,6 +305,18 @@ Evidence snapshot (2026-06-01):
 - Right-rail behavior at desktop widths now treats `>=1080px` as expanded mode with a selected panel kept open by default.
 - Crossing from `>=1080px` down to `<1080px` now auto-collapses the right panel to preserve compact layout behavior.
 - Desktop right-panel width now has a hard maximum of `440px`.
+
+Evidence snapshot (2026-06-02):
+
+- Environment apply optimistic flow implemented in `frontend/src/components/workspaces/session/GroupsPanel.session.tsx`:
+  - Frontend now applies environment changes optimistically (local state updated immediately), calls `POST /api/audio/environments/apply`, and reverts to the previous environment on failure with a user-facing toast.
+  - Added local applying-tracking to avoid UI races during concurrent applies.
+  - Server WS broadcasts remain authoritative; optimistic updates improve perceived latency while preserving correctness on eventual server confirmation.
+
+  Acceptance notes:
+  - Optimistic apply reduces perceived latency for DM environment changes.
+  - Revert-on-failure ensures clients do not drift if the backend rejects the change.
+  - Next: add visual loading affordance on group cards and unit tests for revert flows.
 
 **Evidence snapshot (2026-05-20):**
 

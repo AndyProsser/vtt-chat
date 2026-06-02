@@ -108,6 +108,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   const dmVoiceTargetGroupId = useStore((state) => state.dmVoiceTargetGroupId)
   const setSessionGroups = useStore((state) => state.setSessionGroups)
   const setSessionGroupEnvironment = useStore((state) => state.setSessionGroupEnvironment)
+  const clearSessionGroupEnvironment = useStore((state) => state.clearSessionGroupEnvironment)
   const setDmVoiceTarget = useStore((state) => (state as any).setDmVoiceTarget)
   const addRoomMember = useStore((state) => (state as any).addRoomMember)
   const removeRoomMember = useStore((state) => (state as any).removeRoomMember)
@@ -369,15 +370,36 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     }
   }
 
+  const [applyingEnvironments, setApplyingEnvironments] = useState<UUID[]>([])
+
   const handleSetEnvironment = async (groupId: UUID, environmentName: string) => {
+    // Optimistic apply: store previous env, update local state immediately,
+    // call API, and revert on failure.
+    const prevEnv = roomEnvironmentNames[groupId] || fallbackRoomEnvironments[groupId]
+
     try {
+      // mark applying
+      setApplyingEnvironments((prev) => [...prev, groupId])
+
+      // optimistic update
+      setSessionGroupEnvironment(sessionId, groupId, environmentName)
+
       await applyGroupEnvironment(sessionId, groupId, environmentName, token, apiUrl)
 
-      setSessionGroupEnvironment(sessionId, groupId, environmentName)
+      // success: nothing further (server WS will keep clients consistent)
     } catch (err) {
+      // revert optimistic change
+      if (prevEnv === undefined) {
+        clearSessionGroupEnvironment(sessionId, groupId)
+      } else {
+        setSessionGroupEnvironment(sessionId, groupId, prevEnv)
+      }
+
       logger.error('GroupsPanelSession', 'Failed to set environment', err)
       const errorMsg = err instanceof Error ? err.message : 'Failed to set environment'
       showToast({ message: errorMsg, variant: 'error' })
+    } finally {
+      setApplyingEnvironments((prev) => prev.filter((id) => id !== groupId))
     }
   }
 
