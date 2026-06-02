@@ -234,6 +234,15 @@ async function listCampaignGroupsForReferenceSession(campaignId: UUID, sessionId
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const campaigns = await listCampaignsForUser(user.userId as UUID)
+  try {
+    logger.debug('campaign.routes', 'listCampaignsForUser response', {
+      userId: user.userId,
+      campaignsCount: Array.isArray(campaigns) ? campaigns.length : 0,
+      campaignIds: Array.isArray(campaigns) ? campaigns.map((c: any) => c.id) : [],
+    })
+  } catch {
+    // ignore logging errors
+  }
   res.status(200).json({ campaigns })
 })
 

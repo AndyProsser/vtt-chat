@@ -93,6 +93,21 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
         const data = await response.json()
         const nextCampaigns = (data.campaigns || []) as CampaignSummary[]
         const pendingCampaignId = sessionStorage.getItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
+        // DEV-HELPER: log campaigns returned from server to diagnose membership issues
+        try {
+          // eslint-disable-next-line no-console
+          console.debug(
+            'Lobby: loaded campaigns',
+            nextCampaigns.map((c) => ({
+              id: c.id,
+              name: c.name,
+              isMember: (c as any).isMember,
+              memberRole: (c as any).memberRole,
+            }))
+          )
+        } catch {
+          // ignore
+        }
         const pendingNotice = sessionStorage.getItem(LOBBY_NOTICE_STORAGE_KEY)
         setCampaigns(nextCampaigns)
 

@@ -6,8 +6,6 @@ import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignJoinRequestSummary, CampaignSummary } from '@/types/session/campaign'
 import {
   buildDefaultChapterName,
-  getPreferredSession,
-  getLatestSessionChronologically,
   normalizeSessionRecord,
   parsePlayerInviteCode,
 } from '@/utils/session/workspaces'
@@ -153,74 +151,44 @@ export function useWorkspacesCampaignEntryOrchestration(
         return
       }
 
-      // Determine preferred session: prefer an explicit preference, then
-      // the active/paused/draft preference, but as a fallback always open
-      // the most recently-created session so refreshes load the latest.
-      // Prefer explicit preference, then the latest session chronologically
-      // (so refresh opens the most recent session). Fall back to the
-      // state-based preference if neither of the above yields a result.
-      const preferredSession =
-        (preferredSessionId
-          ? targetSessions.find((session) => session.id === preferredSessionId) || null
-          : null) ||
-        getLatestSessionChronologically(targetSessions) ||
-        getPreferredSession(targetSessions)
+      // Server is authoritative about which session to open. Use the
+      // server-provided sessions list order (most-recent first) as the
+      // canonical source. If the caller provided an explicit
+      // `preferredSessionId`, attempt to join that session and rely on the
+      // server's response. Otherwise, use the server's most recent session
+      // (targetSessions[0]) when present.
+      const serverPreferredSession = targetSessions.length > 0 ? targetSessions[0] : null
 
-      if (preferredSession) {
-        // If the preferred session is ended/cleanup and no DM is online,
-        // let the DM auto-start a fresh session. Players will still be bound
-        // to the most recent session (ended) and will see a waiting state.
-        const isEndedOrCleanup =
-          preferredSession.state === SessionState.ENDED ||
-          preferredSession.state === SessionState.CLEANUP
-
-        const hasDmOnline = targetCampaign?.dmOnline ?? false
-        const canStartAsDm = targetCampaign?.currentDmId === userId
-
-        if (isEndedOrCleanup && !hasDmOnline && canStartAsDm) {
-          // Auto-start a new session as DM to provide a fresh chapter immediately.
-          try {
-            const response = await fetchWithAuthGuard(
-              `${apiUrl}/api/campaigns/${targetCampaignId}/sessions/start`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                  name: getSessionStartName(targetSessions, targetCampaign?.name),
-                }),
-              }
-            )
-
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({}))
-              throw new Error(errorData.message || 'Failed to start campaign chapter')
-            }
-
-            const payload = (await response.json()) as { session: SessionRecord }
-            let joinedSession = null
-            if (shouldEnsureMembership(payload.session)) {
-              joinedSession = await ensureSessionMembership(payload.session.id)
-            }
-            replaceSessions([normalizeSessionRecord(payload.session), ...targetSessions])
-            setCurrentSession((joinedSession && joinedSession.id) || payload.session.id)
-            onSessionCreated?.(payload.session.id)
+      // If the caller has an explicit preferred session id, let the server
+      // resolve membership for that id and use the returned session.
+      if (preferredSessionId) {
+        try {
+          const joined = await ensureSessionMembership(preferredSessionId)
+          if (joined && joined.id) {
+            replaceSessions(targetSessions)
+            setCurrentSession(joined.id)
             return
-          } catch (err) {
-            // Fall through to normal membership/selection logic on error
-            const message = err instanceof Error ? err.message : 'An error occurred'
-            setError(message)
           }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'An error occurred'
+          setError(message)
         }
+      }
 
-        let joinedPreferred = null
-        if (shouldEnsureMembership(preferredSession)) {
-          joinedPreferred = await ensureSessionMembership(preferredSession.id)
+      if (serverPreferredSession) {
+        // If the most recent session is in ENDED/CLEANUP, the backend may
+        // already have created a fresh session for us (see server logic).
+        // We still call ensureSessionMembership to let the server finalize
+        // any presence and return the authoritative session to bind to.
+        try {
+          const joined = await ensureSessionMembership(serverPreferredSession.id)
+          replaceSessions(targetSessions)
+          setCurrentSession((joined && joined.id) || serverPreferredSession.id)
+          return
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'An error occurred'
+          setError(message)
         }
-        setCurrentSession((joinedPreferred && joinedPreferred.id) || preferredSession.id)
-        return
       }
 
       const canStartAsDm = targetCampaign?.currentDmId === userId
