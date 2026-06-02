@@ -11,6 +11,7 @@ import type { SessionState } from '@shared'
 import { PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS } from '@/constants/chatPresence.constants'
 import type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 import type { PresenceSlice } from './presenceSlice'
+import { logger } from '@/utils/logger'
 
 export type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 
@@ -391,6 +392,12 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
   },
 
   handleUserJoined: (event) => {
+    logger.info('ws.handlers', 'handleUserJoined', {
+      sessionId: event.sessionId,
+      eventId: event.id,
+      payload: event.payload,
+      timestamp: event.timestamp,
+    })
     const payload = event.payload as {
       roomId: UUID
       userId: UUID
@@ -486,6 +493,12 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
   },
 
   handlePresenceStateChanged: (event) => {
+    logger.info('ws.handlers', 'handlePresenceStateChanged', {
+      sessionId: event.sessionId,
+      eventId: event.id,
+      payload: event.payload,
+      timestamp: event.timestamp,
+    })
     const payload = event.payload as {
       roomId?: UUID | null
       userId: UUID
@@ -893,9 +906,17 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       }
     })
 
+    // Normalize user previousGroupId null -> undefined to satisfy typed contract
+    const normalizedUsers = payload.users.map((u) => ({
+      userId: u.userId,
+      username: u.username,
+      roomId: u.roomId,
+      previousGroupId: u.previousGroupId === null ? undefined : (u.previousGroupId as any),
+    }))
+
     get().applySessionRoomTransitionPresence({
       sessionId: event.sessionId,
-      users: payload.users,
+      users: normalizedUsers,
       targetRoomId: payload.targetRoomId,
       targetState: payload.targetState,
       changedAt: event.timestamp,

@@ -12,6 +12,7 @@ import type {
   ApiTakeoverIdentitySnapshot,
 } from '@/types/session/workspaces'
 import type { UUID } from '@shared'
+import { useStore } from '@/state/store'
 
 type DmOverridePayload = {
   userId: UUID

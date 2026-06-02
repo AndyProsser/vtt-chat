@@ -387,10 +387,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       // 1. DM creates a new session (IDLE → ACTIVE)
       // 2. DM resets and starts a new session after ending (ENDED → ACTIVE)
       // Players must be forced to the new session so WS client auth/binding updates.
-      const shouldRebind =
-        isFreshSessionStart &&
-        state.currentSessionId !== event.sessionId &&
-        state.currentSessionId !== null
+      const shouldRebind = isFreshSessionStart && state.currentSessionId !== event.sessionId
 
       const nextCurrentSessionId = shouldRebind ? event.sessionId : state.currentSessionId
       const currentSession = nextCurrentSessionId

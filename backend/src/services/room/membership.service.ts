@@ -143,6 +143,7 @@ export async function joinRoom(params: {
     previousGroupId,
     privateRoomId: existing?.privateRoomId,
     ghost: existing?.ghost || false,
+    userMuted: existing?.userMuted || false,
     state: params.state || existing?.state || PresenceState.ONLINE,
     lastSeenAt: Date.now(),
   }
@@ -209,6 +210,7 @@ export async function updatePresenceState(params: {
     campaignId: params.campaignId || existing?.campaignId,
     userId: params.userId,
     username: params.username,
+    userMuted: existing?.userMuted || false,
     primaryRoomId:
       params.primaryRoomId !== undefined ? params.primaryRoomId : (existing?.primaryRoomId as UUID),
     previousGroupId:

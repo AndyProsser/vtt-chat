@@ -140,6 +140,7 @@ export function useLiveKit(
   const localAudioRef = useRef<LocalAudioTrack | null>(null)
   const localVideoRef = useRef<LocalVideoTrack | null>(null)
   const isMountedRef = useRef(true)
+  const pendingConnectRef = useRef(false)
   const isConnectingRef = useRef(false)
   const connectingTargetRef = useRef<string | null>(null)
   const connectionAttemptRef = useRef(0)
@@ -156,6 +157,8 @@ export function useLiveKit(
   const upsertLiveKitConnection = useStore((state) => state.upsertLiveKitConnection)
   const setLiveKitLocalInputTrack = useStore((state) => state.setLiveKitLocalInputTrack)
   const clearLiveKitConnection = useStore((state) => state.clearLiveKitConnection)
+  const setUserMute = useStore((state) => state.setUserMute)
+  const currentUserId = useStore((state) => state.currentUser?.id)
   const setLiveKitLocalInputTrackRef = useRef(setLiveKitLocalInputTrack)
   const cleanupConnectionKeyRef = useRef(connectionKey)
   const sharedLiveKitState = useStore((state) => state.livekitConnections?.[connectionKey] ?? null)
@@ -252,14 +255,41 @@ export function useLiveKit(
     }
   }, [])
 
+  const syncBackendMuteState = useCallback(
+    async (muted: boolean) => {
+      try {
+        const token = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null
+        if (!token) return
+
+        await fetch(muted ? '/api/audio/mute' : '/api/audio/unmute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sessionId, muted }),
+        })
+      } catch (err) {
+        logger.info('useLiveKit', `Failed to sync mute state to backend: ${String(err)}`)
+      }
+    },
+    [sessionId]
+  )
+
   useEffect(() => {
     if (hasUserActivation || typeof window === 'undefined') {
       return
     }
 
     const markActivated = () => {
+      logger.info('useLiveKit', 'User activation detected (pointer/keydown)')
       setHasUserActivation(true)
+      // Attempt to start audio as early as possible; connect will be triggered
+      // by the pending-connect effect below.
       void startRoomAudioAfterGesture(roomRef.current)
+      if (pendingConnectRef.current) {
+        logger.info('useLiveKit', 'Pending connect detected at activation; will resume via effect')
+      }
     }
 
     window.addEventListener('pointerdown', markActivated, { once: true, passive: true })
@@ -567,6 +597,31 @@ export function useLiveKit(
    * Connect to LiveKit room
    */
   const connect = useCallback(async () => {
+    // If the page has not seen a user activation gesture, defer connecting
+    // to avoid the LiveKit client creating an AudioContext which browsers
+    // may block on page load. The connect will be attempted after the
+    // first user gesture (see activation listener above).
+    if (!hasUserActivation) {
+      logger.info(
+        'useLiveKit',
+        'Deferring LiveKit connect until user activation to avoid autoplay policy'
+      )
+      pendingConnectRef.current = true
+      // Mark ourselves as muted while audio is not connected so other clients
+      // see us as muted (we have an active connection intent but no audio).
+      try {
+        if (currentUserId) {
+          try {
+            setUserMute?.(sessionId, currentUserId, true)
+          } catch {}
+          void syncBackendMuteState(true)
+        }
+      } catch (e) {
+        // ignore
+      }
+      return
+    }
+
     if (isConnectingRef.current || roomRef.current) {
       logConnectionStartDiag('connect_skipped_already_active')
       return
@@ -716,6 +771,19 @@ export function useLiveKit(
           hasLocalPublication: getHasLocalPublication(activeRoom),
           error: null,
         })
+        // If we now have a local publication, ensure backend/user mute state is cleared
+        try {
+          const hasLocal = getHasLocalPublication(activeRoom)
+          if (hasLocal && currentUserId) {
+            // clear local UI mute
+            try {
+              setUserMute?.(sessionId, currentUserId, false)
+            } catch {}
+            void syncBackendMuteState(false)
+          }
+        } catch (e) {
+          // ignore
+        }
       }
 
       const handleLocalTrackUnpublished = () => {
@@ -972,20 +1040,34 @@ export function useLiveKit(
       })
     }
   }, [
-    decrementRoomListenerCount,
-    fetchToken,
-    getHasLocalPublication,
-    incrementRoomListenerCount,
-    isExpectedDisconnectError,
-    logConnectionStartDiag,
-    logRoomListenerSnapshot,
-    publishConnectionSnapshot,
-    roomId,
+    hasUserActivation,
     sessionId,
+    roomId,
+    tokenChannel,
+    logConnectionStartDiag,
+    publishConnectionSnapshot,
+    currentUserId,
+    syncBackendMuteState,
+    setUserMute,
+    fetchToken,
     setRoomState,
     teardownRoomListeners,
-    tokenChannel,
+    incrementRoomListenerCount,
+    logRoomListenerSnapshot,
+    getHasLocalPublication,
+    decrementRoomListenerCount,
+    isExpectedDisconnectError,
   ])
+
+  // If a connect was deferred because the page lacked user activation, run it
+  // now that `connect` is defined and user activation has occurred.
+  useEffect(() => {
+    if (hasUserActivation && pendingConnectRef.current) {
+      logger.info('useLiveKit', 'Resuming deferred LiveKit connect after user activation')
+      pendingConnectRef.current = false
+      void connect()
+    }
+  }, [hasUserActivation, connect])
 
   const attemptDualRoomHandoff = useCallback(
     async (targetConnectionKey: string): Promise<boolean> => {

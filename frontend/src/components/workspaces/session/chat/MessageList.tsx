@@ -25,6 +25,7 @@ export interface MessageListProps {
   onListScroll?: UIEventHandler<HTMLDivElement>
   onListWheel?: WheelEventHandler<HTMLDivElement>
   roomDirectory?: Record<string, { name: string }>
+  participantDirectory?: Record<UUID, { displayName: string; avatarUrl?: string | null }>
   activeRoomId?: string
   hideIntermissionMarkers?: boolean
   emptyDayLabel?: string
@@ -453,6 +454,7 @@ function MessageListComponent({
   )
   return (
     <MessageListVirtualized
+      sessionId={sessionId}
       preparedMessages={preparedMessages}
       currentUserId={currentUserId}
       currentUserRole={currentUserRole}

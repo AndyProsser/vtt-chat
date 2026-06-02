@@ -35,6 +35,7 @@ export interface ApiPresence {
   characterStats?: Record<string, unknown> | null
   primaryRoomId?: UUID
   privateRoomId?: UUID
+  userMuted?: boolean
   state: PresenceState
   lastSeenAt: number
 }
