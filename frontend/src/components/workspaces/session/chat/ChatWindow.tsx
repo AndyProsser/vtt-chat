@@ -939,22 +939,38 @@ function ChatWindowComponent({
       {isLoading ? (
         <div className="session-chat-window__loading-state">Loading messages…</div>
       ) : (
-        <MessageList
-          messages={visibleMessages}
-          sessionId={sessionId}
-          currentUserId={user.id}
-          currentUserRole={String(user.role)}
-          sessionDmId={sessionRecord?.dmId}
-          groupingWindowMs={messageGroupingWindowMs}
-          listRef={messageListRef}
-          topSentinelRef={topSentinelRef}
-          onListScroll={handleListScroll}
-          onListWheel={handleListWheel}
-          roomDirectory={roomDirectory}
-          activeRoomId={roomId}
-          hideIntermissionMarkers={isGreenroomMode}
-          emptyDayLabel={isGreenroomMode ? 'Today' : undefined}
-        />
+        <>
+          {isGreenroomMode && hasHiddenOlderGreenroomHistory ? (
+            <div className="session-chat-window__hidden-older">
+              <button
+                type="button"
+                className="session-chat-window__hidden-older-button"
+                onClick={() => {
+                  revealOlderGreenroomHistory()
+                }}
+              >
+                Load earlier messages
+              </button>
+            </div>
+          ) : null}
+
+          <MessageList
+            messages={visibleMessages}
+            sessionId={sessionId}
+            currentUserId={user.id}
+            currentUserRole={String(user.role)}
+            sessionDmId={sessionRecord?.dmId}
+            groupingWindowMs={messageGroupingWindowMs}
+            listRef={messageListRef}
+            topSentinelRef={topSentinelRef}
+            onListScroll={handleListScroll}
+            onListWheel={handleListWheel}
+            roomDirectory={roomDirectory}
+            activeRoomId={roomId}
+            hideIntermissionMarkers={isGreenroomMode}
+            emptyDayLabel={isGreenroomMode ? 'Today' : undefined}
+          />
+        </>
       )}
 
       {!isLoading &&
