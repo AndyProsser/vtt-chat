@@ -473,7 +473,7 @@ export function WorkspaceInitialization({
 
   const ensureSessionMembership = useCallback(
     async (sessionId: UUID) => {
-      await sessionMembershipController.ensureSessionMembership(sessionId)
+      return await sessionMembershipController.ensureSessionMembership(sessionId)
     },
     [sessionMembershipController]
   )

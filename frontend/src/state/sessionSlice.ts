@@ -382,12 +382,24 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         nextCooldownExtensionCounts[event.sessionId] = 0
       }
 
-      const currentSession = state.currentSessionId
-        ? sessionById(nextSessions, state.currentSessionId)
+      // AUTO-REBIND: If a fresh session starts and currentSessionId is different,
+      // force-bind to the new session. This occurs when:
+      // 1. DM creates a new session (IDLE → ACTIVE)
+      // 2. DM resets and starts a new session after ending (ENDED → ACTIVE)
+      // Players must be forced to the new session so WS client auth/binding updates.
+      const shouldRebind =
+        isFreshSessionStart &&
+        state.currentSessionId !== event.sessionId &&
+        state.currentSessionId !== null
+
+      const nextCurrentSessionId = shouldRebind ? event.sessionId : state.currentSessionId
+      const currentSession = nextCurrentSessionId
+        ? sessionById(nextSessions, nextCurrentSessionId)
         : null
 
       return {
         sessions: nextSessions,
+        currentSessionId: nextCurrentSessionId,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
         pauseStats: { ...state.pauseStats, [event.sessionId]: nextStats },
         cooldownExtensionCounts: nextCooldownExtensionCounts,

@@ -366,10 +366,17 @@ export const createSessionMembershipController = (ctx: SessionControllerContext)
       )
 
       if (!response.ok && response.status !== 409) {
-        return
+        return null
+      }
+
+      if (response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        // Return the server-provided session record when available so callers
+        // can rely on server authority rather than local assumptions.
+        return (payload as { session?: SessionRecord }).session ?? null
       }
     } catch {
-      return
+      return null
     }
   },
 })

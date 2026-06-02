@@ -7,6 +7,7 @@ import type { CampaignJoinRequestSummary, CampaignSummary } from '@/types/sessio
 import {
   buildDefaultChapterName,
   getPreferredSession,
+  getLatestSessionChronologically,
   normalizeSessionRecord,
   parsePlayerInviteCode,
 } from '@/utils/session/workspaces'
@@ -152,16 +153,73 @@ export function useWorkspacesCampaignEntryOrchestration(
         return
       }
 
+      // Determine preferred session: prefer an explicit preference, then
+      // the active/paused/draft preference, but as a fallback always open
+      // the most recently-created session so refreshes load the latest.
+      // Prefer explicit preference, then the latest session chronologically
+      // (so refresh opens the most recent session). Fall back to the
+      // state-based preference if neither of the above yields a result.
       const preferredSession =
         (preferredSessionId
           ? targetSessions.find((session) => session.id === preferredSessionId) || null
-          : null) || getPreferredSession(targetSessions)
+          : null) ||
+        getLatestSessionChronologically(targetSessions) ||
+        getPreferredSession(targetSessions)
 
       if (preferredSession) {
-        if (shouldEnsureMembership(preferredSession)) {
-          await ensureSessionMembership(preferredSession.id)
+        // If the preferred session is ended/cleanup and no DM is online,
+        // let the DM auto-start a fresh session. Players will still be bound
+        // to the most recent session (ended) and will see a waiting state.
+        const isEndedOrCleanup =
+          preferredSession.state === SessionState.ENDED ||
+          preferredSession.state === SessionState.CLEANUP
+
+        const hasDmOnline = targetCampaign?.dmOnline ?? false
+        const canStartAsDm = targetCampaign?.currentDmId === userId
+
+        if (isEndedOrCleanup && !hasDmOnline && canStartAsDm) {
+          // Auto-start a new session as DM to provide a fresh chapter immediately.
+          try {
+            const response = await fetchWithAuthGuard(
+              `${apiUrl}/api/campaigns/${targetCampaignId}/sessions/start`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  name: getSessionStartName(targetSessions, targetCampaign?.name),
+                }),
+              }
+            )
+
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}))
+              throw new Error(errorData.message || 'Failed to start campaign chapter')
+            }
+
+            const payload = (await response.json()) as { session: SessionRecord }
+            let joinedSession = null
+            if (shouldEnsureMembership(payload.session)) {
+              joinedSession = await ensureSessionMembership(payload.session.id)
+            }
+            replaceSessions([normalizeSessionRecord(payload.session), ...targetSessions])
+            setCurrentSession((joinedSession && joinedSession.id) || payload.session.id)
+            onSessionCreated?.(payload.session.id)
+            return
+          } catch (err) {
+            // Fall through to normal membership/selection logic on error
+            const message = err instanceof Error ? err.message : 'An error occurred'
+            setError(message)
+          }
         }
-        setCurrentSession(preferredSession.id)
+
+        let joinedPreferred = null
+        if (shouldEnsureMembership(preferredSession)) {
+          joinedPreferred = await ensureSessionMembership(preferredSession.id)
+        }
+        setCurrentSession((joinedPreferred && joinedPreferred.id) || preferredSession.id)
         return
       }
 
@@ -192,11 +250,12 @@ export function useWorkspacesCampaignEntryOrchestration(
         }
 
         const payload = (await response.json()) as { session: SessionRecord }
+        let joinedNew = null
         if (shouldEnsureMembership(payload.session)) {
-          await ensureSessionMembership(payload.session.id)
+          joinedNew = await ensureSessionMembership(payload.session.id)
         }
         replaceSessions([normalizeSessionRecord(payload.session), ...targetSessions])
-        setCurrentSession(payload.session.id)
+        setCurrentSession((joinedNew && joinedNew.id) || payload.session.id)
         onSessionCreated?.(payload.session.id)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
