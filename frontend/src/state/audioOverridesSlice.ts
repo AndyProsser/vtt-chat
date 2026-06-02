@@ -116,6 +116,12 @@ export const createAudioOverridesSlice: StateCreator<
 
       return { dmOverrides: replaceAudioDMOverrides(normalizedOverrides) }
     }),
+  setDmVoiceTarget: (groupId?: UUID) =>
+    set(() => ({
+      dmVoiceMode: 'TARGET_GROUP',
+      dmVoiceTargetGroupId: groupId,
+      broadcastModeEnabled: false,
+    })),
 
   setBroadcastState: (params) =>
     set(() => ({

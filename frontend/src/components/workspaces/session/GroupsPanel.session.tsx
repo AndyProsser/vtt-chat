@@ -28,6 +28,7 @@ import {
   deleteGroup,
   applyGroupEnvironment,
 } from '@/services/groupsPanel.service'
+import { moveRoomMember } from '@/services/groupsPanel.service'
 import { isGreenRoomName } from '@/constants/roomPresence.constants'
 import '@/styles/components/workspaces/session/GroupsPanel.session.css'
 import SessionGroupCard from './GroupCard.session'
@@ -107,6 +108,9 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   const dmVoiceTargetGroupId = useStore((state) => state.dmVoiceTargetGroupId)
   const setSessionGroups = useStore((state) => state.setSessionGroups)
   const setSessionGroupEnvironment = useStore((state) => state.setSessionGroupEnvironment)
+  const setDmVoiceTarget = useStore((state) => (state as any).setDmVoiceTarget)
+  const addRoomMember = useStore((state) => (state as any).addRoomMember)
+  const removeRoomMember = useStore((state) => (state as any).removeRoomMember)
 
   const sessionRooms = liveSessionRooms.length > 0 ? liveSessionRooms : fallbackSessionRooms
   const isGreenroom = isGreenroomSessionState(sessionState)
@@ -377,6 +381,61 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     }
   }
 
+  const handleMoveMember = async (targetUserId: UUID, targetRoomId: UUID) => {
+    // Optimistic UI: move the member locally first
+    const prevEntry = (Object.entries(membersByRoomId) as Array<[UUID, RoomUser[]]>).find(
+      ([, members]) => (members || []).some((m) => m.userId === targetUserId)
+    )
+    const prevRoomId = (prevEntry && prevEntry[0]) as UUID | undefined
+
+    let prevMember: any = null
+    if (prevRoomId) {
+      prevMember = (membersByRoomId[prevRoomId] || []).find((m) => m.userId === targetUserId)
+    }
+
+    if (prevRoomId === targetRoomId) {
+      return
+    }
+
+    try {
+      if (prevMember && prevRoomId) {
+        removeRoomMember(prevRoomId, targetUserId)
+      }
+
+      if (prevMember) {
+        const optimisticMember = { ...prevMember, previousGroupId: prevRoomId || undefined }
+        addRoomMember(targetRoomId, optimisticMember)
+      }
+
+      await moveRoomMember(sessionId, targetUserId, targetRoomId, token, apiUrl)
+
+      // Refresh canonical rooms from server to ensure consistency
+      const rooms = await fetchSessionGroups(sessionId, token, apiUrl)
+      setSessionGroups(sessionId, rooms)
+
+      const targetRoom = rooms.find((r) => r.id === targetRoomId)
+      if (targetRoom && targetRoom.type === 'PRIVATE') {
+        try {
+          setDmVoiceTarget(targetRoom.id)
+        } catch (e) {
+          // non-critical
+        }
+      }
+    } catch (err) {
+      // Revert optimistic change on failure
+      if (prevMember) {
+        removeRoomMember(targetRoomId, targetUserId)
+        if (prevRoomId) {
+          addRoomMember(prevRoomId, prevMember)
+        }
+      }
+
+      logger.error('GroupsPanelSession', 'Failed to move member', err)
+      const errorMsg = err instanceof Error ? err.message : 'Failed to move member'
+      showToast({ message: errorMsg, variant: 'error' })
+    }
+  }
+
   return (
     <section className="session-groups-panel" aria-label="Groups panel">
       <header className="session-groups-panel__header">
@@ -451,6 +510,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
                   onClose={() => handleCloseGroup(room.id)}
                   onDelete={() => handleDeleteGroup(room.id)}
                   onSetEnvironment={(env) => handleSetEnvironment(room.id, env)}
+                  onMoveMember={handleMoveMember}
                 />
               )
             })}
@@ -475,6 +535,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
             onClose={() => handleCloseGroup(whisperRoom.id)}
             onDelete={() => handleDeleteGroup(whisperRoom.id)}
             onSetEnvironment={(env) => handleSetEnvironment(whisperRoom.id, env)}
+            onMoveMember={handleMoveMember}
           />
         </div>
       ) : null}

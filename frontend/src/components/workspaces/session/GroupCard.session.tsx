@@ -5,7 +5,7 @@
  */
 
 import React, { useMemo, useState } from 'react'
-import { PresenceState, RoomType } from '@shared'
+import { PresenceState, RoomType, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
 import type { Room, RoomUser } from '@/types/room'
@@ -89,6 +89,7 @@ interface SessionGroupCardProps {
   onClose: () => void
   onDelete: () => void
   onSetEnvironment: (env: string) => void
+  onMoveMember?: (targetUserId: UUID, targetRoomId: UUID) => void
 }
 
 /**
@@ -108,6 +109,7 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
   onClose,
   onDelete,
   onSetEnvironment,
+  onMoveMember,
 }) => {
   const { tooltipLabelsEnabled } = useTooltipLabelsPreference()
   const isWhisper = room.type === RoomType.PRIVATE
@@ -134,8 +136,33 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
     [members]
   )
 
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault()
+    const data = event.dataTransfer.getData('text/plain')
+    if (!data) return
+    try {
+      const parsed = JSON.parse(data)
+      const targetUserId = parsed?.targetUserId
+      if (!canManage) return
+      if (targetUserId && onMoveMember) {
+        onMoveMember(targetUserId as UUID, room.id as UUID)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault()
+  }
+
   return (
-    <article className="session-groups-room-card" data-ui-component="SessionGroupCard">
+    <article
+      className="session-groups-room-card"
+      data-ui-component="SessionGroupCard"
+      onDragOver={canManage ? handleDragOver : undefined}
+      onDrop={canManage ? handleDrop : undefined}
+    >
       <header className="session-groups-room-card__header">
         <div className="session-groups-room-card__header-copy">
           <h4 className="session-groups-room-card__title">{room.name}</h4>
@@ -296,6 +323,18 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
               key={member.userId}
               className={`session-groups-member-card session-groups-member-card--${presenceDotState}`}
               data-ui-component="SessionGroupMemberCard"
+              draggable={canManage && member.role !== 'DM'}
+              onDragStart={(e) => {
+                try {
+                  e.dataTransfer.setData(
+                    'text/plain',
+                    JSON.stringify({ targetUserId: member.userId })
+                  )
+                  e.dataTransfer.effectAllowed = 'move'
+                } catch {
+                  // ignore
+                }
+              }}
             >
               <span
                 className={`session-groups-member-card__avatar session-groups-member-card__avatar--${presenceDotState}`}

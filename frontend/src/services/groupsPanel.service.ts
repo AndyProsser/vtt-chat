@@ -330,3 +330,39 @@ export async function clearGroupEnvironment(
     throw err
   }
 }
+
+export interface MoveRoomMemberResponse {
+  ok: boolean
+  movedBy: UUID
+  movedFromRoomId: UUID | null
+  movedToRoomId: UUID
+}
+
+export async function moveRoomMember(
+  sessionId: UUID,
+  targetUserId: UUID,
+  targetRoomId: UUID,
+  token: string,
+  apiUrl: string
+): Promise<MoveRoomMemberResponse> {
+  try {
+    const res = await fetch(`${apiUrl}/api/rooms/${targetRoomId}/move-user`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sessionId, targetUserId }),
+    })
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      throw new Error(errorData.message || `Failed to move user: ${res.status}`)
+    }
+
+    return await res.json()
+  } catch (err) {
+    logger.error('groupsPanel.service', 'Failed to move room member', err)
+    throw err
+  }
+}
