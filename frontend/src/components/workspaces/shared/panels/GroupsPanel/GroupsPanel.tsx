@@ -69,6 +69,12 @@ export const GroupsPanel: React.FC<GroupsPanelProps> = ({
   }, [campaignId, token, apiUrl, setCampaignGroups, showToast])
 
   const handleCreateGroup = async (name: string) => {
+    const reserved = new Set(['MAIN', 'WHISPER', 'GREENROOM'])
+    if (reserved.has(name.trim().toUpperCase())) {
+      showToast({ message: `"${name}" is a reserved room name`, variant: 'error' })
+      return
+    }
+
     try {
       setIsCreating(true)
       const newGroup = await createCampaignGroup(campaignId, name, undefined, token, apiUrl)

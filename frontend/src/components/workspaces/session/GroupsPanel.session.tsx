@@ -29,6 +29,7 @@ import {
   applyGroupEnvironment,
 } from '@/services/groupsPanel.service'
 import { moveRoomMember } from '@/services/groupsPanel.service'
+import { optimisticMoveMember, optimisticApplyEnvironment } from '@/services/groupsPanel.client'
 import { isGreenRoomName } from '@/constants/roomPresence.constants'
 import '@/styles/components/workspaces/session/GroupsPanel.session.css'
 import SessionGroupCard from './GroupCard.session'
@@ -323,6 +324,12 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       return
     }
 
+    const reserved = new Set(['MAIN', 'WHISPER', 'GREENROOM'])
+    if (reserved.has(trimmedName.toUpperCase())) {
+      showToast({ message: `"${trimmedName}" is a reserved room name`, variant: 'error' })
+      return
+    }
+
     try {
       setIsCreating(true)
       const room = await createSessionGroup(sessionId, trimmedName, token, apiUrl)
@@ -373,88 +380,43 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   const [applyingEnvironments, setApplyingEnvironments] = useState<UUID[]>([])
 
   const handleSetEnvironment = async (groupId: UUID, environmentName: string) => {
-    // Optimistic apply: store previous env, update local state immediately,
-    // call API, and revert on failure.
-    const prevEnv = roomEnvironmentNames[groupId] || fallbackRoomEnvironments[groupId]
-
     try {
-      // mark applying
-      setApplyingEnvironments((prev) => [...prev, groupId])
-
-      // optimistic update
-      setSessionGroupEnvironment(sessionId, groupId, environmentName)
-
-      await applyGroupEnvironment(sessionId, groupId, environmentName, token, apiUrl)
-
-      // success: nothing further (server WS will keep clients consistent)
+      await optimisticApplyEnvironment({
+        sessionId,
+        groupId,
+        environmentName,
+        setSessionGroupEnvironment,
+        clearSessionGroupEnvironment,
+        applyGroupEnvironmentFn: applyGroupEnvironment,
+        token,
+        apiUrl,
+        showToast,
+        setApplying: (updater) => setApplyingEnvironments(updater as any),
+        getPrevEnv: () => roomEnvironmentNames[groupId] || fallbackRoomEnvironments[groupId],
+      })
     } catch (err) {
-      // revert optimistic change
-      if (prevEnv === undefined) {
-        clearSessionGroupEnvironment(sessionId, groupId)
-      } else {
-        setSessionGroupEnvironment(sessionId, groupId, prevEnv)
-      }
-
       logger.error('GroupsPanelSession', 'Failed to set environment', err)
-      const errorMsg = err instanceof Error ? err.message : 'Failed to set environment'
-      showToast({ message: errorMsg, variant: 'error' })
-    } finally {
-      setApplyingEnvironments((prev) => prev.filter((id) => id !== groupId))
     }
   }
 
   const handleMoveMember = async (targetUserId: UUID, targetRoomId: UUID) => {
-    // Optimistic UI: move the member locally first
-    const prevEntry = (Object.entries(membersByRoomId) as Array<[UUID, RoomUser[]]>).find(
-      ([, members]) => (members || []).some((m) => m.userId === targetUserId)
-    )
-    const prevRoomId = (prevEntry && prevEntry[0]) as UUID | undefined
-
-    let prevMember: any = null
-    if (prevRoomId) {
-      prevMember = (membersByRoomId[prevRoomId] || []).find((m) => m.userId === targetUserId)
-    }
-
-    if (prevRoomId === targetRoomId) {
-      return
-    }
-
     try {
-      if (prevMember && prevRoomId) {
-        removeRoomMember(prevRoomId, targetUserId)
-      }
-
-      if (prevMember) {
-        const optimisticMember = { ...prevMember, previousGroupId: prevRoomId || undefined }
-        addRoomMember(targetRoomId, optimisticMember)
-      }
-
-      await moveRoomMember(sessionId, targetUserId, targetRoomId, token, apiUrl)
-
-      // Refresh canonical rooms from server to ensure consistency
-      const rooms = await fetchSessionGroups(sessionId, token, apiUrl)
-      setSessionGroups(sessionId, rooms)
-
-      const targetRoom = rooms.find((r) => r.id === targetRoomId)
-      if (targetRoom && targetRoom.type === 'PRIVATE') {
-        try {
-          setDmVoiceTarget(targetRoom.id)
-        } catch (e) {
-          // non-critical
-        }
-      }
+      await optimisticMoveMember({
+        sessionId,
+        targetUserId,
+        targetRoomId,
+        addRoomMember: addRoomMember as any,
+        removeRoomMember: removeRoomMember as any,
+        setSessionGroups,
+        fetchSessionGroupsFn: fetchSessionGroups,
+        moveRoomMemberFn: moveRoomMember,
+        setDmVoiceTarget: setDmVoiceTarget as any,
+        token,
+        apiUrl,
+        showToast,
+      })
     } catch (err) {
-      // Revert optimistic change on failure
-      if (prevMember) {
-        removeRoomMember(targetRoomId, targetUserId)
-        if (prevRoomId) {
-          addRoomMember(prevRoomId, prevMember)
-        }
-      }
-
       logger.error('GroupsPanelSession', 'Failed to move member', err)
-      const errorMsg = err instanceof Error ? err.message : 'Failed to move member'
-      showToast({ message: errorMsg, variant: 'error' })
     }
   }
 
