@@ -191,6 +191,7 @@ export function useWorkspacesHydrationLifecycle(
           primaryRoomId: entry.primaryRoomId,
           privateRoomId: entry.privateRoomId,
           lastSeenAt: entry.lastSeenAt,
+          userMuted: entry.userMuted,
         }))
 
         setSelectedRoomIdOverride(currentSession.id, '')
@@ -199,6 +200,15 @@ export function useWorkspacesHydrationLifecycle(
         if (presencePayload.stats) {
           replaceSessionStatsSnapshot(currentSession.id, presencePayload.stats)
         }
+
+        // Recover user mute state from presence
+        const userMuteMap: Record<UUID, boolean> = {}
+        for (const entry of presencePayload.presence || []) {
+          if (entry.userMuted) {
+            userMuteMap[entry.userId as UUID] = true
+          }
+        }
+        useStore.getState().setUserMuteBySession(currentSession.id as UUID, userMuteMap)
 
         if (import.meta.env.DEV) {
           const identity = presencePayload.identity

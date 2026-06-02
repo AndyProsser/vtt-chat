@@ -9,6 +9,7 @@ import {
   type PlayerSettingsPanelProps,
 } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type { CampaignSettingsPanelProps } from '@/types/campaignSettingsPanel'
+import { Role } from '@shared'
 
 export type WorkspaceSettingsRole = 'DM' | 'PLAYER' | 'SPECTATOR'
 
@@ -23,26 +24,27 @@ export function WorkspaceSettingsPanel(props: WorkspaceSettingsPanelProps) {
   const [devShowAsPlayer, setDevShowAsPlayer] = useState(false)
   const effectiveRole = import.meta.env.DEV && devShowAsPlayer ? 'PLAYER' : props.role
 
-  const devBanner = import.meta.env.DEV ? (
-    <div className="csp-dev-role-banner" role="status" aria-label="Dev role switcher">
-      <span className="csp-dev-badge">DEV</span>
-      <span className="csp-dev-label">View as:</span>
-      <button
-        type="button"
-        className={`csp-dev-role-pill ${!devShowAsPlayer ? 'is-active' : ''}`}
-        onClick={() => setDevShowAsPlayer(false)}
-      >
-        DM
-      </button>
-      <button
-        type="button"
-        className={`csp-dev-role-pill ${devShowAsPlayer ? 'is-active' : ''}`}
-        onClick={() => setDevShowAsPlayer(true)}
-      >
-        Player
-      </button>
-    </div>
-  ) : null
+  const devBanner =
+    import.meta.env.DEV && props.role === Role.DM ? (
+      <div className="csp-dev-role-banner" role="status" aria-label="Dev role switcher">
+        <span className="csp-dev-badge">DEV</span>
+        <span className="csp-dev-label">View as:</span>
+        <button
+          type="button"
+          className={`csp-dev-role-pill ${!devShowAsPlayer ? 'is-active' : ''}`}
+          onClick={() => setDevShowAsPlayer(false)}
+        >
+          DM
+        </button>
+        <button
+          type="button"
+          className={`csp-dev-role-pill ${devShowAsPlayer ? 'is-active' : ''}`}
+          onClick={() => setDevShowAsPlayer(true)}
+        >
+          Player
+        </button>
+      </div>
+    ) : null
 
   if (effectiveRole === 'PLAYER') {
     if (!props.playerSettings) {

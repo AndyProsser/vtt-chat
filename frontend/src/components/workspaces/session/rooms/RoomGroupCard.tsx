@@ -301,7 +301,7 @@ function RoomGroupCardComponent({
                       className="room-selector-item__env-icon"
                       aria-label="Change group environment"
                       data-room-env-trigger={room.id}
-                      disabled={isGreenroom}
+                      disabled={!canManageRooms || isGreenroom}
                       onClick={() => onToggleEnvironmentPicker(room.id)}
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">

@@ -469,6 +469,7 @@ export function WorkspaceInitialization({
     loadUserCharacters,
     selectedCampaignId,
     loadDmVoiceTargetingSetting,
+    currentUserId: user.userId,
   })
 
   const ensureSessionMembership = useCallback(

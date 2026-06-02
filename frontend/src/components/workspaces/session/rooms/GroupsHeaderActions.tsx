@@ -160,7 +160,7 @@ export const GroupsHeaderActions = memo(function GroupsHeaderActions({
           </TooltipContent>
         </Tooltip>
       ) : null}
-      {import.meta.env.DEV && (canManageRooms || takeoverActive) ? (
+      {import.meta.env.DEV && canManageRooms ? (
         <div className="room-selector-header__mock-wrap" ref={mockPanelRef}>
           <Tooltip>
             <TooltipTrigger asChild>

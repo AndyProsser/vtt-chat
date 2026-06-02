@@ -33,6 +33,7 @@ import {
   type GroupParticipantWithGroupId,
   type GroupsPanelProps,
 } from '@/types/groupPanel'
+import { DmVoiceTargetIndicator } from './DmVoiceTargetIndicator'
 import type { SessionPresence } from '@/types/room'
 import { useRoomMoves } from '@/hooks/session/useRoomMoves'
 import { useWhisperFlow } from '@/hooks/session/useWhisperFlow'
@@ -94,6 +95,7 @@ export function RoomSelector({
   const replaceSessionTopology = useStore((state) => state.replaceSessionTopology)
   const replaceSessionStatsSnapshot = useStore((state) => state.replaceSessionStatsSnapshot)
   const replaceDMOverrides = useStore((state) => state.replaceDMOverrides)
+
   // Narrow subscription: only the DM's own presence entry. When other users' ghost bits flip,
   // applySessionPresenceStateChange spreads the per-session map but preserves existing per-user
   // object references — so this selector returns the same reference and does NOT cause a re-render.
@@ -649,13 +651,18 @@ export function RoomSelector({
 
   const displayedParticipantsByRoom = roomMoves.displayedParticipantsByRoom
 
-  const dmVoiceTargetRoom = useMemo(
-    () => allRooms.find((room) => room.id === selectedRoomId) || null,
-    [allRooms, selectedRoomId]
-  )
+  const dmVoiceTargetRoom = useMemo(() => {
+    const targetRoomId = canManageRooms ? selectedRoomId : dmParticipant?.roomId
+
+    if (!targetRoomId) {
+      return null
+    }
+
+    return allRooms.find((room) => room.id === targetRoomId) || null
+  }, [allRooms, canManageRooms, dmParticipant?.roomId, selectedRoomId])
 
   const dmDetachedParticipant = useMemo((): GroupParticipantWithGroupId | null => {
-    if (!canManageRooms || isGreenroom) {
+    if (isGreenroom) {
       return null
     }
 
@@ -693,15 +700,7 @@ export function RoomSelector({
       roleLabel: ROOM_ROLE_LABELS.dm,
       roomId: resolvedTargetRoomId,
     }
-  }, [
-    allRooms,
-    canManageRooms,
-    currentUser,
-    dmParticipant,
-    dmSelfPresence,
-    dmVoiceTargetRoom,
-    isGreenroom,
-  ])
+  }, [allRooms, currentUser, dmParticipant, dmSelfPresence, dmVoiceTargetRoom, isGreenroom])
 
   const dmDetachedEnvironmentName = useMemo(() => {
     if (!dmVoiceTargetRoom) {
@@ -946,6 +945,12 @@ export function RoomSelector({
 
   const handleSetDmVoiceRoom = useCallback(
     async (roomId: UUID) => {
+      if (!canManageRooms) {
+        return
+      }
+
+      setMoveError(null)
+
       if (whisperModeLocked && whisperRoom && roomId !== whisperRoom.id) {
         setMoveError('DM voice target is locked to whisper while whisper is active')
         return
@@ -967,26 +972,55 @@ export function RoomSelector({
         }
       }
 
-      rememberDmVoiceRoom(roomId)
-
       if (broadcastModeEnabled) {
         try {
           await onToggleBroadcastMode(false)
         } catch (error) {
           setMoveError(error instanceof Error ? error.message : 'Failed to toggle broadcast mode')
+          return
         }
       }
 
+      try {
+        const dmBackgroundVolume = useStore.getState().dmBackgroundVolume
+        const response = await fetch(`${apiUrl}/api/audio/voice-mode`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            sessionId,
+            voiceMode: 'TARGET_GROUP',
+            targetGroupId: roomId,
+            backgroundVolume: dmBackgroundVolume,
+          }),
+        })
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as { message?: string }
+          throw new Error(payload.message || 'Failed to set DM voice target')
+        }
+      } catch (error) {
+        setMoveError(error instanceof Error ? error.message : 'Failed to set DM voice target')
+        return
+      }
+
+      rememberDmVoiceRoom(roomId)
       onSelectRoom(roomId)
     },
     [
       allRooms,
+      apiUrl,
       broadcastModeEnabled,
+      canManageRooms,
       getRoomMemberIdsFromServer,
       onSelectRoom,
       onToggleBroadcastMode,
       rememberDmVoiceRoom,
       roomMoves.displayedParticipantsByRoom,
+      sessionId,
+      token,
       whisperModeLocked,
       whisperRoom,
     ]
@@ -1419,9 +1453,11 @@ export function RoomSelector({
                         type="button"
                         className="room-selector-dm__profile"
                         onClick={() => {
-                          if (dmVoiceTargetRoom) {
-                            void handleSetDmVoiceRoom(dmVoiceTargetRoom.id)
+                          if (!canManageRooms || !dmVoiceTargetRoom) {
+                            return
                           }
+
+                          void handleSetDmVoiceRoom(dmVoiceTargetRoom.id)
                         }}
                       >
                         <AvatarOverlay
@@ -1448,10 +1484,7 @@ export function RoomSelector({
                       />
                     </TooltipContent>
                   </Tooltip>
-                  <p className="room-selector-dm__voice-target">
-                    Voice target:{' '}
-                    <strong>{dmVoiceTargetRoom?.name || ROOM_PRESENCE_COPY.mainGroup}</strong>
-                  </p>
+                  <DmVoiceTargetIndicator allRooms={allRooms} />
                 </div>
               </section>
             ) : null}

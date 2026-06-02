@@ -13,6 +13,7 @@ type UseWorkspacesInitializationLifecycleParams = {
   loadUserCharacters: () => Promise<void>
   selectedCampaignId: UUID | '' | null
   loadDmVoiceTargetingSetting: (campaignId: UUID) => Promise<boolean | null | void>
+  currentUserId: UUID | null
 }
 
 /**
@@ -28,6 +29,7 @@ export function useWorkspacesInitializationLifecycle({
   loadUserCharacters,
   selectedCampaignId,
   loadDmVoiceTargetingSetting,
+  currentUserId,
 }: UseWorkspacesInitializationLifecycleParams) {
   useEffect(() => {
     const hasSessionSurface = Boolean(currentSessionId) && Boolean(currentSession)
@@ -62,6 +64,18 @@ export function useWorkspacesInitializationLifecycle({
       return
     }
 
+    // Only DM should load DM-specific settings; players get 403 on this endpoint
+    const isDm = currentSession?.dmId === currentUserId
+    if (!isDm) {
+      return
+    }
+
     void loadDmVoiceTargetingSetting(selectedCampaignId)
-  }, [currentSession?.id, loadDmVoiceTargetingSetting, selectedCampaignId])
+  }, [
+    currentSession?.id,
+    currentSession?.dmId,
+    currentUserId,
+    loadDmVoiceTargetingSetting,
+    selectedCampaignId,
+  ])
 }

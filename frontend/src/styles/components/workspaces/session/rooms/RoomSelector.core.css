@@ -391,6 +391,10 @@
   cursor: pointer;
 }
 
+.room-selector-item__env-icon:disabled {
+  cursor: default;
+}
+
 .room-selector-item__env-icon .material-symbols-outlined {
   font-size: 0.9rem;
 }
