@@ -787,11 +787,13 @@ export async function listCampaignMembersForPresence(
     const activeCharacter = characterByUser.get(membership.userId)
     const metadata = (activeCharacter?.metadata as Record<string, unknown> | null) || null
     const rawLevel = metadata && typeof metadata.level === 'number' ? metadata.level : null
+    const effectiveRole =
+      membership.userId === membership.campaign.currentDmId ? 'DM' : membership.role
 
     return {
       userId: membership.userId,
       username: membership.user.username,
-      role: membership.role,
+      role: effectiveRole,
       playerName: membership.user.displayName || membership.user.username,
       avatarUrl: activeCharacter?.avatarUrl || membership.user.avatarUrl || null,
       characterName: activeCharacter?.name || null,

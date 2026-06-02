@@ -336,7 +336,7 @@ describe('chat routes', () => {
     expect(response.body.field).toBe('recipientId')
   })
 
-  it('returns 409 when session is not active', async () => {
+  it('allows OOC chat while session is PAUSED', async () => {
     const app = buildApp()
     mocks.getSession.mockResolvedValue({
       id: SESSION_ID,
@@ -354,7 +354,30 @@ describe('chat routes', () => {
         type: MessageType.OOC,
       })
 
+    expect(response.status).toBe(201)
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns 409 for non-OOC chat while session is PAUSED', async () => {
+    const app = buildApp()
+    mocks.getSession.mockResolvedValue({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.PAUSED,
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'in character during pause',
+        type: MessageType.IC,
+      })
+
     expect(response.status).toBe(409)
+    expect(response.body.message).toBe('Only OOC messages are allowed during intermission')
     expect(mocks.sendMessage).not.toHaveBeenCalled()
   })
 

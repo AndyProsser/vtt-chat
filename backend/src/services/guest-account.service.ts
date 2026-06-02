@@ -92,6 +92,30 @@ export async function findOrCreateGuestAccount(params: {
     })
   }
 
+  if (
+    params.fullAccountPolicy === 'reject' &&
+    (process.env.NODE_ENV || '').toLowerCase() === 'development'
+  ) {
+    // DEV guard: avoid creating a second guest identity when a likely matching
+    // full account already exists (common with passwordless dev usernames like
+    // "andy-qw3x" while invite email is "andy@...").
+    const emailLocalPart = (params.email.split('@')[0] || '').trim().toLowerCase()
+    if (emailLocalPart) {
+      const likelyFullAccount = await prisma.user.findFirst({
+        where: {
+          authType: 'FULL',
+          isActive: true,
+          OR: [{ username: emailLocalPart }, { username: { startsWith: `${emailLocalPart}-` } }],
+        },
+        select: { id: true },
+      })
+
+      if (likelyFullAccount) {
+        throw new Error('FULL_ACCOUNT_EXISTS')
+      }
+    }
+  }
+
   return prisma.user.create({
     data: {
       email: params.email,

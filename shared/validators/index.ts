@@ -18,11 +18,11 @@ export function isValidUUID(value: unknown): value is UUID {
 }
 
 /**
- * Username validator: alphanumeric + underscore, 3-32 chars.
+ * Username validator: alphanumeric + underscore/hyphen, 3-32 chars.
  */
 export function isValidUsername(value: unknown): boolean {
   if (typeof value !== 'string') return false
-  const usernameRegex = /^[a-zA-Z0-9_]{3,32}$/
+  const usernameRegex = /^[a-zA-Z0-9_-]{3,32}$/
   return usernameRegex.test(value)
 }
 

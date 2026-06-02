@@ -132,7 +132,7 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
   if (!isEmailLogin && !isValidUsername(username)) {
     return res.status(400).json({
       code: 'INVALID_USERNAME',
-      message: 'username must be alphanumeric and 3-32 characters',
+      message: 'username must be alphanumeric (plus _ or -) and 3-32 characters',
     })
   }
 

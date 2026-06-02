@@ -1459,6 +1459,24 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           },
         })
       }
+
+      // Broadcast SESSION:STATE_CHANGED so all clients update their session state
+      // without needing a page refresh. This must fire after all other transition
+      // events so clients can derive the final state from the authoritative value.
+      wsManager.broadcastEventToSession(session.id, {
+        id: crypto.randomUUID() as UUID,
+        type: 'SESSION:STATE_CHANGED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: session.id,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          state: session.state,
+          previousState: previousSession?.state || null,
+        },
+      })
     }
 
     const cooldownDurationMs = await getEffectiveCooldownDurationMs(session.id)

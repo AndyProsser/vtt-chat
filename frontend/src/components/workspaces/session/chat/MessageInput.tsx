@@ -83,7 +83,23 @@ function MessageInputComponent({
     return ((state.sessions as any)[sessionId] as { state?: SessionState } | undefined)?.state
   })
   const isDmRole = String(role) === 'DM'
-  const isWhisperGroupMode = roomType === RoomType.PRIVATE
+  const currentUserPrimaryRoomId = useStore((state) => {
+    if (!sessionId) {
+      return ''
+    }
+
+    return state.sessionPresence[sessionId]?.[currentUserId]?.primaryRoomId ?? ''
+  })
+  const currentUserPrimaryRoomType = useStore((state) => {
+    if (!sessionId || !currentUserPrimaryRoomId) {
+      return null
+    }
+
+    return state.rooms[sessionId]?.[currentUserPrimaryRoomId]?.type ?? null
+  })
+  const isWhisperGroupMode =
+    currentUserPrimaryRoomType === RoomType.PRIVATE ||
+    (!currentUserPrimaryRoomType && roomType === RoomType.PRIVATE)
   const composerMode = useMemo<ComposerMode>(() => {
     if (sessionState === SessionState.PAUSED) {
       return 'paused'
