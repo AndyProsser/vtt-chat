@@ -948,8 +948,17 @@ function ChatWindowComponent({
                 onClick={() => {
                   revealOlderGreenroomHistory()
                 }}
+                aria-label="Load earlier messages"
               >
-                Load earlier messages
+                <span
+                  className="material-symbols-outlined session-chat-window__hidden-older-icon"
+                  aria-hidden="true"
+                >
+                  history
+                </span>
+                <span className="session-chat-window__hidden-older-text">
+                  Load earlier messages
+                </span>
               </button>
             </div>
           ) : null}
