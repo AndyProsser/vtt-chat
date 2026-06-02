@@ -471,22 +471,37 @@ _DM superpowers: move players between groups, apply conditions, set environments
 - [x] Editor mode: DM can set default environment per group (persistent, survives session boundaries)
 - [x] Editor mode: Player list is not visible (players only joinable in-session)
 - [x] Session mode: Group cards show member count, environment icon, and player list (collapsible)
-- [ ] Session mode: DM drag player from one group card to another (one player at a time)
-- [ ] Session mode: DM drag to WHISPER auto-targets DM voice to WHISPER (locks DM until whisper ends)
+- [x] Session mode: DM drag player from one group card to another (one player at a time)
+- [x] Session mode: DM drag to WHISPER auto-targets DM voice to WHISPER (locks DM until whisper ends)
 - [x] Session mode: Environment icon in group header; click to open environment picker control
 - [ ] Session mode: Environment selection applies to all players in group within 200ms
+- [ ] Session mode: Environment selection applies to all players in group within 200ms (optimistic apply implemented; server 200ms SLA pending)
 - [x] Session mode: "Close" button empties group (moves all members to MAIN), group remains but empty
 - [x] Session mode: "Delete" button appears only when group is empty; deletes group from campaign permanently
 - [ ] Session mode: MAIN, WHISPER, GREENROOM are reserved names (cannot be created by DM)
 - [ ] Session pause: all players move to MAIN, all group environments clear, pre-pause membership is snapshotted
 - [ ] Session resume: players return to pre-pause groups, pre-pause environments reapply
 - [ ] Session end: all groups except MAIN deleted, all members moved to greenroom
-- [ ] Spectators: can see groups (read-only), cannot drag or interact
+- [x] Spectators: can see groups (read-only), cannot drag or interact
 - [x] WS events: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:CLOSED`, `AUDIO:ENVIRONMENT_SET`
 - [x] Zustand slices: `campaignGroupsSlice`, `sessionGroupsSlice`, `groupPanelUISlice`
 - [x] API: Editor routes for campaign groups; session routes for runtime groups; close and environment endpoints
 - [ ] Documentation: `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` (detailed spec)
 - [ ] Documentation: `docs/CONTRACTS.md` updated with group close, environment contracts
+
+Evidence snapshot (2026-06-02 - Groups Panel progress):
+
+- Drag-and-drop member moves implemented (frontend):
+  - `frontend/src/components/workspaces/session/GroupCard.session.tsx` supports HTML5 DnD for member tiles.
+  - `frontend/src/components/workspaces/session/GroupsPanel.session.tsx` implements `handleMoveMember` with optimistic remove/add, API call `moveRoomMember()`, canonical refresh, and revert on failure.
+- DM whisper auto-target: moving a player into a `PRIVATE` room sets DM voice target locally via `setDmVoiceTarget()` for immediate UX lock; server WS confirms authoritative state.
+- Optimistic environment apply: frontend applies environment locally immediately, tracks `applyingEnvironments`, calls `POST /api/audio/environments/apply`, and reverts on failure with toast (see Evidence snapshot 2026-06-02 above).
+- Spectator gating: drop handlers and group visibility respect `canManage` so spectators are read-only and cannot drag/interact.
+
+Next work for Groups Panel:
+
+- Formalize 200ms environment apply SLA or add server-side fast-paths; add unit/integration tests for revert-on-failure cases.
+- Implement full pause/resume group membership and environment reapplication end-to-end (server + client orchestration).
 
 **Related Docs**:
 
