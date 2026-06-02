@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
 import '@/styles/components/workspaces/shared/panels/NoteSharedCard.css'
@@ -62,7 +62,7 @@ export function NoteSharedCard({
         <div className="session-note-shared-card__markdown">
           <div className="session-note-shared-card__markdown-pre">
             {(() => {
-              const parts: Array<string | JSX.Element> = []
+              const parts: Array<string | ReactNode> = []
               const md = note.markdown || ''
               // Match image markdown: ![alt](url)
               const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g

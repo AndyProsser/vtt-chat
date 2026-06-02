@@ -90,6 +90,7 @@ interface SessionGroupCardProps {
   onDelete: () => void
   onSetEnvironment: (env: string) => void
   onMoveMember?: (targetUserId: UUID, targetRoomId: UUID) => void
+  isApplyingEnvironment?: boolean
 }
 
 /**
@@ -110,12 +111,13 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
   onDelete,
   onSetEnvironment,
   onMoveMember,
+  isApplyingEnvironment = false,
 }) => {
   const { tooltipLabelsEnabled } = useTooltipLabelsPreference()
   const isWhisper = room.type === RoomType.PRIVATE
   const isMain = room.type === RoomType.MAIN
   const isGreenRoom = isGreenRoomCard || isGreenRoomName(room.name)
-  const canChangeEnvironment = canManage && !isWhisper && !isGreenRoom
+  const canChangeEnvironment = canManage && !isWhisper && !isGreenRoom && !isApplyingEnvironment
   const canDrainOrDelete = canManage && !isMain && !isGreenRoom
   const showDrainOrDeleteAction = canDrainOrDelete && (!isWhisper || !isEmpty)
   const actionIcon = isWhisper || !isEmpty ? 'reply' : 'delete'
@@ -172,6 +174,9 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
           {!isWhisper ? (
             <p className="session-groups-room-card__environment">
               Environment: {environment || 'Default'}
+              {isApplyingEnvironment ? (
+                <span className="session-groups-room-card__spinner" aria-hidden="true" />
+              ) : null}
             </p>
           ) : null}
         </div>
@@ -206,6 +211,7 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                       className="session-groups-room-card__icon-button"
                       aria-label="Change environment"
                       onClick={() => setShowEnvironmentPicker((current) => !current)}
+                      disabled={isApplyingEnvironment}
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">
                         {environmentGlyph}
@@ -262,6 +268,7 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                   className="session-groups-room-card__icon-button"
                   aria-label="Change environment"
                   onClick={() => setShowEnvironmentPicker((current) => !current)}
+                  disabled={isApplyingEnvironment}
                 >
                   <span className="material-symbols-outlined" aria-hidden="true">
                     {environmentGlyph}
@@ -302,9 +309,11 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                 type="button"
                 className={isSelected ? 'is-active' : ''}
                 onClick={() => {
+                  if (isApplyingEnvironment) return
                   onSetEnvironment(option)
                   setShowEnvironmentPicker(false)
                 }}
+                disabled={isApplyingEnvironment}
               >
                 <span className="material-symbols-outlined" aria-hidden="true">
                   {resolveEnvironmentGlyph(option)}

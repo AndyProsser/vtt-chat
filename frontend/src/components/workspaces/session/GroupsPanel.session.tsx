@@ -533,6 +533,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
                   onDelete={() => handleDeleteGroup(room.id)}
                   onSetEnvironment={(env) => handleSetEnvironment(room.id, env)}
                   onMoveMember={handleMoveMember}
+                  isApplyingEnvironment={applyingEnvironments.includes(room.id)}
                 />
               )
             })}
@@ -558,6 +559,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
             onDelete={() => handleDeleteGroup(whisperRoom.id)}
             onSetEnvironment={(env) => handleSetEnvironment(whisperRoom.id, env)}
             onMoveMember={handleMoveMember}
+            isApplyingEnvironment={applyingEnvironments.includes(whisperRoom.id)}
           />
         </div>
       ) : null}
