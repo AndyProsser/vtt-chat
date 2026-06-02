@@ -39,7 +39,7 @@ type UseWorkspacesCampaignEntryOrchestrationParams = {
   setLobbyNotice: Dispatch<SetStateAction<string | null>>
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
   fetchCampaignSessionsData: (campaignId: UUID) => Promise<SessionRecord[]>
-  ensureSessionMembership: (sessionId: UUID) => Promise<void>
+  ensureSessionMembership: (sessionId: UUID) => Promise<SessionRecord | null>
   replaceSessions: (sessions: SessionRecord[]) => void
   setCurrentSession: (sessionId: UUID | null) => void
   openEditorCampaignWorkspace: (campaignId: UUID) => void

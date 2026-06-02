@@ -12,6 +12,7 @@ import { PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS } from '@/constants/chatPresence
 import type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 import type { PresenceSlice } from './presenceSlice'
 import { logger } from '@/utils/logger'
+import { fetchUserProfile } from '@/services/session.service'
 
 export type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 
@@ -440,10 +441,13 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       },
     }))
 
+    // Upsert minimal presence immediately for fast UI reaction. If the server
+    // sent only userId (or otherwise omitted profile fields), fetch the richer
+    // user record from the session users API and apply a profile update.
     get().upsertSessionPresenceOnJoin({
       sessionId: event.sessionId,
       userId: payload.userId,
-      username: payload.username,
+      username: payload.username || '',
       roomId: payload.roomId,
       joinedAt,
       playerName: payload.playerName,
@@ -455,6 +459,87 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       level: payload.level,
       characterStats: payload.characterStats,
     })
+
+    const needsEnrichment =
+      !payload.username || payload.avatarUrl === undefined || payload.playerName === undefined
+
+    if (needsEnrichment) {
+      logger.info('roomSlice', 'needsEnrichment=true for joined user', {
+        sessionId: event.sessionId,
+        userId: payload.userId,
+        payloadUsername: payload.username,
+        payloadAvatar: payload.avatarUrl,
+        payloadPlayerName: payload.playerName,
+      })
+      ;(async () => {
+        try {
+          logger.info('roomSlice', 'calling fetchUserProfile for joined user', {
+            sessionId: event.sessionId,
+            userId: payload.userId,
+          })
+          const found = await fetchUserProfile(event.sessionId as UUID, payload.userId)
+          if (!found) return
+
+          // Apply richer profile to presence and room member projection
+          get().applySessionPresenceProfileUpdate({
+            sessionId: event.sessionId,
+            userId: payload.userId,
+            username: found.username || undefined,
+            updatedAt: Date.now(),
+            roomId: payload.roomId,
+            previousGroupId: found.previousGroupId || undefined,
+            playerName: found.playerName || null,
+            avatarUrl: found.avatarUrl || null,
+            characterName: found.characterName || null,
+            characterClass: found.characterClass || null,
+            characterSubclass: found.characterSubclass || null,
+            characterRace: found.characterRace || null,
+            level: found.level ?? null,
+            characterStats: found.characterStats ?? null,
+          })
+
+          // Apply device session snapshot and explicit mute state if present
+          if (found.deviceSessions) {
+            try {
+              get().applySessionPresenceDeviceSessions({
+                sessionId: event.sessionId as UUID,
+                userId: payload.userId,
+                deviceSessions: found.deviceSessions as any,
+              })
+            } catch (e) {
+              logger.warn('roomSlice', 'applySessionPresenceDeviceSessions failed', e)
+            }
+          }
+
+          if (typeof found.userMuted === 'boolean' && (get() as any).setUserMute) {
+            try {
+              ;(get() as any).setUserMute(event.sessionId as UUID, payload.userId, found.userMuted)
+            } catch (e) {
+              logger.warn('roomSlice', 'setUserMute failed', e)
+            }
+          }
+
+          set((state) => ({
+            roomMembers: {
+              ...state.roomMembers,
+              [payload.roomId]: upsertMember(state.roomMembers[payload.roomId] || [], {
+                ...nextMember,
+                playerName: found.playerName ?? nextMember.playerName,
+                avatarUrl: found.avatarUrl ?? nextMember.avatarUrl,
+                characterName: found.characterName ?? nextMember.characterName,
+                characterClass: found.characterClass ?? nextMember.characterClass,
+                characterSubclass: found.characterSubclass ?? nextMember.characterSubclass,
+                characterRace: found.characterRace ?? nextMember.characterRace,
+                level: found.level ?? nextMember.level,
+                characterStats: found.characterStats ?? nextMember.characterStats,
+              }),
+            },
+          }))
+        } catch (err) {
+          logger.warn('roomSlice', 'Failed to enrich joined user profile', err)
+        }
+      })()
+    }
   },
 
   handleUserLeft: (event) => {
