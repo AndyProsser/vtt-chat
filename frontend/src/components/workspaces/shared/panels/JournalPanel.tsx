@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { type Role, type UUID } from '@shared'
+import { SessionState, type Role, type UUID } from '@shared'
 import {
   JOURNAL_AUTO_SAVE_DEBOUNCE_MS,
   JOURNAL_AI_UNAVAILABLE_COPY,
@@ -604,6 +604,7 @@ function JournalBrowser({
   onSessionChange,
 }: JournalBrowserProps) {
   const isDm = role === 'DM'
+  const currentSessionId = useStore((state) => state.currentSessionId)
   const [journalStatusBySession, setJournalStatusBySession] = useState<
     Record<string, SessionJournalStatus>
   >({})
@@ -623,9 +624,18 @@ function JournalBrowser({
     }))
   }, [])
 
+  const eligibleSessions = useMemo(
+    () =>
+      sessions.filter(
+        (session) =>
+          session.id !== currentSessionId &&
+          (session.state === SessionState.ENDED || session.state === SessionState.CLEANUP)
+      ),
+    [currentSessionId, sessions]
+  )
   const sortedSessions = useMemo(
-    () => [...sessions].sort((left, right) => right.createdAt - left.createdAt),
-    [sessions]
+    () => [...eligibleSessions].sort((left, right) => right.createdAt - left.createdAt),
+    [eligibleSessions]
   )
   const fallbackSession = sortedSessions[0] ?? null
   const controlledSessionId = selectedSessionId || fallbackSession?.id || null
@@ -913,7 +923,7 @@ function JournalBrowser({
           </div>
         </header>
         <p className="knowledge-panel-empty">
-          No sessions exist yet. Start and complete a session before writing the session journal.
+          No ended sessions found yet. The journal appears after a session reaches ENDED or CLEANUP.
         </p>
       </section>
     )
