@@ -63,6 +63,8 @@ import {
   listSessionLogsForRequester,
   listSessionUsersForRequester,
 } from '@/services/session/access.service'
+import { getSessionParticipantProfiles } from '@/repositories/session.repository'
+import { sessionDisconnectCascadeService } from '@/services/session/disconnect-cascade.service'
 import { resolveRoleForSessionJoin } from '@/services/session/authz.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
@@ -509,6 +511,52 @@ async function listSessionMembersHandler(req: Request, res: Response) {
   }
 }
 
+/**
+ * Emits SESSION:MEMBER_JOINED carrying the full character/presence profile for a user.
+ * Must be called BEFORE ROOM:USER_JOINED so that presence is populated when room handlers run.
+ */
+async function broadcastMemberJoined(params: {
+  wsManager: WebSocketManager
+  sessionId: UUID
+  userId: UUID
+  userRole: Role
+  username: string
+  primaryRoomId: UUID | null
+  state: PresenceState
+}): Promise<void> {
+  const profiles = await getSessionParticipantProfiles(params.sessionId)
+  const profile = profiles[params.userId] || {}
+  const timestamp = Date.now()
+
+  params.wsManager.broadcastEventToSession(params.sessionId, {
+    id: crypto.randomUUID() as UUID,
+    type: 'SESSION:MEMBER_JOINED',
+    version: 1,
+    userId: params.userId,
+    userRole: params.userRole,
+    sessionId: params.sessionId,
+    roomId: params.primaryRoomId,
+    timestamp,
+    payload: {
+      userId: params.userId,
+      username: params.username,
+      role: params.userRole,
+      playerName: (profile as any).playerName ?? null,
+      avatarUrl: (profile as any).avatarUrl ?? null,
+      characterName: (profile as any).characterName ?? null,
+      characterClass: (profile as any).characterClass ?? null,
+      characterSubclass: (profile as any).characterSubclass ?? null,
+      characterRace: (profile as any).characterRace ?? null,
+      level: (profile as any).level ?? null,
+      characterStats: (profile as any).characterStats ?? null,
+      primaryRoomId: params.primaryRoomId,
+      state: params.state,
+      ghost: false,
+      joinedAt: timestamp,
+    },
+  })
+}
+
 async function joinSessionHandler(req: Request, res: Response) {
   const user = (req as any).user
   const { id } = req.params
@@ -552,6 +600,17 @@ async function joinSessionHandler(req: Request, res: Response) {
 
       if (wsManager && ensured.changed && ensured.roomId && ensured.state) {
         const timestamp = Date.now()
+
+        await broadcastMemberJoined({
+          wsManager,
+          sessionId: id as UUID,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          username: user.username,
+          primaryRoomId: ensured.roomId,
+          state: ensured.state,
+        })
+
         wsManager.broadcastEventToSession(id as UUID, {
           id: crypto.randomUUID() as UUID,
           type: 'ROOM:USER_JOINED',
@@ -690,6 +749,17 @@ async function joinSessionHandler(req: Request, res: Response) {
     if (wsManager) {
       if (ensured.changed && ensured.roomId && ensured.state) {
         const timestamp = Date.now()
+
+        await broadcastMemberJoined({
+          wsManager,
+          sessionId: id as UUID,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          username: user.username,
+          primaryRoomId: ensured.roomId,
+          state: ensured.state,
+        })
+
         wsManager.broadcastEventToSession(id as UUID, {
           id: crypto.randomUUID() as UUID,
           type: 'ROOM:USER_JOINED',
@@ -826,25 +896,24 @@ async function leaveSessionHandler(req: Request, res: Response) {
           },
         })
 
-        if (previousPresence?.primaryRoomId) {
-          wsManager.broadcastEventToSession(id as UUID, {
-            id: crypto.randomUUID() as UUID,
-            type: 'ROOM:USER_LEFT',
-            version: 1,
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'SESSION:MEMBER_LEFT',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: previousPresence?.primaryRoomId || null,
+          timestamp: Date.now(),
+          payload: {
             userId: user.userId as UUID,
-            userRole: user.role,
-            sessionId: id as UUID,
-            roomId: previousPresence.primaryRoomId,
-            timestamp: Date.now(),
-            payload: {
-              roomId: previousPresence.primaryRoomId,
-              userId: user.userId as UUID,
-              username: user.username,
-              leftAt: Date.now(),
-              reason: 'EXIT_SESSION',
-            },
-          })
-        }
+            username: user.username,
+            leftAt: Date.now(),
+            reason: 'VOLUNTARY',
+          },
+        })
+
+        sessionDisconnectCascadeService.cancelUserTimers(id as UUID, user.userId as UUID)
 
         await broadcastSessionStatsSnapshot({
           wsManager,
@@ -896,6 +965,10 @@ async function leaveSessionHandler(req: Request, res: Response) {
       })
     }
 
+    const previousPresence = (await getSessionPresence(id as UUID)).find(
+      (entry) => entry.userId === (user.userId as UUID)
+    )
+
     const removal = await removeUserFromSession(id as UUID, user.userId as UUID)
 
     if (!removal.removed) {
@@ -904,6 +977,10 @@ async function leaveSessionHandler(req: Request, res: Response) {
         message: 'Failed to remove user from session',
       })
     }
+
+    // Clear presence projection and cancel any pending ghost/TTL timers immediately.
+    await removePresenceProjection({ sessionId: id as UUID, userId: user.userId as UUID })
+    sessionDisconnectCascadeService.cancelUserTimers(id as UUID, user.userId as UUID)
 
     await logSessionLeave(id as UUID, user.userId as UUID, user.username)
 
@@ -922,6 +999,23 @@ async function leaveSessionHandler(req: Request, res: Response) {
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
+      wsManager.broadcastEventToSession(id as UUID, {
+        id: crypto.randomUUID() as UUID,
+        type: 'SESSION:MEMBER_LEFT',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: id as UUID,
+        roomId: previousPresence?.primaryRoomId || null,
+        timestamp: Date.now(),
+        payload: {
+          userId: user.userId as UUID,
+          username: user.username,
+          leftAt: Date.now(),
+          reason: 'VOLUNTARY',
+        },
+      })
+
       wsManager.broadcastEventToSession(id as UUID, {
         id: crypto.randomUUID() as UUID,
         type: 'CHAT:MESSAGE_CREATED',

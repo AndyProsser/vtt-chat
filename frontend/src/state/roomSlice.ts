@@ -13,7 +13,6 @@ import type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@
 import type { PresenceSlice } from './presenceSlice'
 import type { UserMuteSlice } from './userMuteSlice'
 import { logger } from '@/utils/logger'
-import { fetchUserProfile } from '@/services/session.service'
 
 export type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 
@@ -38,6 +37,7 @@ export interface RoomSlice {
   handleRoomClosed: (event: EventEnvelope) => void
   handleUserJoined: (event: EventEnvelope) => void
   handleUserLeft: (event: EventEnvelope) => void
+  handleSessionMemberLeft: (event: EventEnvelope) => void
   handlePresenceStateChanged: (event: EventEnvelope) => void
   handlePresenceGhostModeChanged: (event: EventEnvelope) => void
   handlePresenceProfileUpdated: (event: EventEnvelope) => void
@@ -442,9 +442,9 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice & UserMuteS
       },
     }))
 
-    // Upsert minimal presence immediately for fast UI reaction. If the server
-    // sent only userId (or otherwise omitted profile fields), fetch the richer
-    // user record from the session users API and apply a profile update.
+    // SESSION:MEMBER_JOINED always fires before ROOM:USER_JOINED and carries the full
+    // profile snapshot, so existingPresence already has character/player data by this
+    // point. No REST enrichment call is needed.
     get().upsertSessionPresenceOnJoin({
       sessionId: event.sessionId,
       userId: payload.userId,
@@ -460,93 +460,6 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice & UserMuteS
       level: payload.level,
       characterStats: payload.characterStats,
     })
-
-    const needsEnrichment =
-      !payload.username || payload.avatarUrl === undefined || payload.playerName === undefined
-
-    if (needsEnrichment) {
-      logger.info('roomSlice', 'needsEnrichment=true for joined user', {
-        sessionId: event.sessionId,
-        userId: payload.userId,
-        payloadUsername: payload.username,
-        payloadAvatar: payload.avatarUrl,
-        payloadPlayerName: payload.playerName,
-      })
-      ;(async () => {
-        try {
-          logger.info('roomSlice', 'calling fetchUserProfile for joined user', {
-            sessionId: event.sessionId,
-            userId: payload.userId,
-          })
-          const found = await fetchUserProfile(event.sessionId as UUID, payload.userId)
-          if (!found) return
-
-          // Apply richer profile to presence and room member projection
-          get().applySessionPresenceProfileUpdate({
-            sessionId: event.sessionId,
-            userId: payload.userId,
-            username: found.username || undefined,
-            updatedAt: Date.now(),
-            roomId: payload.roomId,
-            previousGroupId: found.previousGroupId || undefined,
-            playerName: found.playerName || null,
-            avatarUrl: found.avatarUrl || null,
-            characterName: found.characterName || null,
-            characterClass: found.characterClass || null,
-            characterSubclass: found.characterSubclass || null,
-            characterRace: found.characterRace || null,
-            level: found.level ?? null,
-            characterStats: found.characterStats ?? null,
-          })
-
-          // Apply device session snapshot and explicit mute state if present
-          if (found.deviceSessions) {
-            try {
-              get().applySessionPresenceDeviceSessions({
-                sessionId: event.sessionId as UUID,
-                userId: payload.userId,
-                deviceSessions: found.deviceSessions as any,
-              })
-            } catch (e) {
-              logger.warn('roomSlice', 'applySessionPresenceDeviceSessions failed', e)
-            }
-          }
-
-          if (typeof found.userMuted === 'boolean') {
-            get().setUserMute(event.sessionId as UUID, payload.userId, found.userMuted)
-          }
-
-          set((state) => {
-            const currentMembers = state.roomMembers[payload.roomId] || []
-            // Guard: if the user left the room while the fetch was in-flight, skip
-            // the upsert. Without this check the enrichment write would re-insert a
-            // departed member, creating a ghost that persists until the next topology
-            // rehydration.
-            if (!currentMembers.some((m) => m.userId === payload.userId)) {
-              return state
-            }
-            return {
-              roomMembers: {
-                ...state.roomMembers,
-                [payload.roomId]: upsertMember(currentMembers, {
-                  ...nextMember,
-                  playerName: found.playerName ?? nextMember.playerName,
-                  avatarUrl: found.avatarUrl ?? nextMember.avatarUrl,
-                  characterName: found.characterName ?? nextMember.characterName,
-                  characterClass: found.characterClass ?? nextMember.characterClass,
-                  characterSubclass: found.characterSubclass ?? nextMember.characterSubclass,
-                  characterRace: found.characterRace ?? nextMember.characterRace,
-                  level: found.level ?? nextMember.level,
-                  characterStats: found.characterStats ?? nextMember.characterStats,
-                }),
-              },
-            }
-          })
-        } catch (err) {
-          logger.warn('roomSlice', 'Failed to enrich joined user profile', err)
-        }
-      })()
-    }
   },
 
   handleUserLeft: (event) => {
@@ -580,6 +493,36 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice & UserMuteS
     get().markSessionPresenceOnLeft({
       sessionId: event.sessionId,
       userId: payload.userId,
+      leftAt,
+    })
+  },
+
+  handleSessionMemberLeft: (event) => {
+    const payload = event.payload as { userId: UUID; username: string; leftAt: number; reason: string }
+    const leftAt = payload.leftAt || event.timestamp
+
+    // Remove user from every room in this session (they may be in a private room or
+    // have been moved by the DM without a corresponding ROOM:USER_LEFT).
+    set((state) => {
+      const updatedMembers: Record<UUID, RoomUser[]> = {}
+      let changed = false
+      for (const [roomId, members] of Object.entries(state.roomMembers)) {
+        const filtered = (members as RoomUser[]).filter((m) => m.userId !== payload.userId)
+        if (filtered.length !== (members as RoomUser[]).length) {
+          updatedMembers[roomId as UUID] = filtered
+          changed = true
+        }
+      }
+      return changed ? { roomMembers: { ...state.roomMembers, ...updatedMembers } } : state
+    })
+
+    // Fully purge presence — they are no longer in the session.
+    get().removeUserSessionPresence(event.sessionId as UUID, payload.userId)
+
+    logger.info('roomSlice', 'handleSessionMemberLeft', {
+      sessionId: event.sessionId,
+      userId: payload.userId,
+      reason: payload.reason,
       leftAt,
     })
   },

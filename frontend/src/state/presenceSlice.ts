@@ -191,6 +191,9 @@ export interface PresenceSlice {
   handlePresenceTypingStarted: (event: EventEnvelope) => void
   handlePresenceTypingStopped: (event: EventEnvelope) => void
   clearPresenceSessionActivity: (sessionId?: UUID) => void
+  /** Remove a single user's presence entry from a session immediately (voluntary leave / ghost expired). */
+  removeUserSessionPresence: (sessionId: UUID, userId: UUID) => void
+  handleSessionMemberJoined: (event: EventEnvelope) => void
 }
 
 function buildWsSpeakingSetFromPresence(
@@ -375,6 +378,70 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
         },
       }
     }),
+
+  removeUserSessionPresence: (sessionId, userId) =>
+    set((state) => {
+      const byUser = state.sessionPresence[sessionId]
+      if (!byUser || !byUser[userId]) return state
+      const { [userId]: _removed, ...rest } = byUser
+      return {
+        sessionPresence: {
+          ...state.sessionPresence,
+          [sessionId]: rest as Record<UUID, SessionPresence>,
+        },
+      }
+    }),
+
+  handleSessionMemberJoined: (event) => {
+    const payload = event.payload as {
+      userId: UUID
+      username: string
+      role: string
+      playerName: string | null
+      avatarUrl: string | null
+      characterName: string | null
+      characterClass: string | null
+      characterSubclass: string | null
+      characterRace: string | null
+      level: number | null
+      characterStats: Record<string, unknown> | null
+      primaryRoomId: UUID | null
+      state: PresenceState
+      ghost: boolean
+      joinedAt: number
+    }
+
+    set((storeState) => {
+      const sessionId = event.sessionId as UUID
+      const existing = storeState.sessionPresence[sessionId]?.[payload.userId]
+      return {
+        sessionPresence: {
+          ...storeState.sessionPresence,
+          [sessionId]: {
+            ...(storeState.sessionPresence[sessionId] || {}),
+            [payload.userId]: {
+              ...existing,
+              userId: payload.userId,
+              username: payload.username,
+              role: payload.role as any,
+              playerName: payload.playerName ?? existing?.playerName ?? null,
+              avatarUrl: payload.avatarUrl ?? existing?.avatarUrl ?? null,
+              characterName: payload.characterName ?? existing?.characterName ?? null,
+              characterClass: payload.characterClass ?? existing?.characterClass ?? null,
+              characterSubclass: payload.characterSubclass ?? existing?.characterSubclass ?? null,
+              characterRace: payload.characterRace ?? existing?.characterRace ?? null,
+              level: payload.level ?? existing?.level ?? null,
+              characterStats: payload.characterStats ?? existing?.characterStats ?? null,
+              primaryRoomId: payload.primaryRoomId ?? existing?.primaryRoomId,
+              state: PresenceState.ONLINE,
+              ghost: false,
+              lastSeenAt: payload.joinedAt,
+            } as SessionPresence,
+          },
+        },
+      }
+    })
+  },
 
   applySessionPresenceStateChange: ({
     sessionId,

@@ -1,10 +1,9 @@
 /**
- * Room and Presence Events
- * Reference: docs/subsystems/PRESENCE-STATE-MACHINE.md
+ * Room Events
+ * Reference: docs/architecture/WEBSOCKETS.md
  *
- * Room events manage membership and transitions.
- * Presence events track user state: online, typing, speaking, idle.
- * Both are role-filtered for visibility.
+ * Room events manage membership, creation, deletion, and bulk session transitions.
+ * Visibility: All session participants unless noted.
  */
 
 import type { UUID, PresenceState, SessionLifecycleState } from '../types'
@@ -16,13 +15,6 @@ export type RoomEventType =
   | 'ROOM:USER_LEFT'
   | 'ROOM:DELETED'
   | 'ROOM:SESSION_TRANSITION_APPLIED'
-
-export type PresenceEventType =
-  | 'PRESENCE:STATE_CHANGED'
-  | 'PRESENCE:USER_GHOST_MODE_CHANGED'
-  | 'PRESENCE:PROFILE_UPDATED'
-  | 'PRESENCE:HEARTBEAT'
-  | 'PRESENCE:RECONNECTED'
 
 /**
  * ROOM:CREATED
@@ -42,8 +34,8 @@ export type RoomCreatedEvent = EventEnvelope<RoomCreated>
 
 /**
  * ROOM:USER_JOINED
- * User joins a room.
- * Generates a system message: "Alice has joined the room".
+ * User joins a room (room-membership change, not session entry).
+ * For session-level entry with full profile data, see SESSION:MEMBER_JOINED.
  * Visibility: All room members see this.
  */
 export interface RoomUserJoined {
@@ -57,8 +49,8 @@ export type RoomUserJoinedEvent = EventEnvelope<RoomUserJoined>
 
 /**
  * ROOM:USER_LEFT
- * User leaves a room (disconnect or voluntary).
- * Generates a system message: "Bob has left the room".
+ * User leaves a room (room-membership change, not full session departure).
+ * For full session departure, see SESSION:MEMBER_LEFT.
  * Visibility: All room members see this.
  */
 export interface RoomUserLeft {
@@ -66,15 +58,15 @@ export interface RoomUserLeft {
   userId: UUID
   username: string
   leftAt: number
-  reason?: 'DISCONNECT' | 'VOLUNTARY' | 'KICKED'
+  reason?: 'VOLUNTARY' | 'KICKED'
 }
 
 export type RoomUserLeftEvent = EventEnvelope<RoomUserLeft>
 
 /**
  * ROOM:DELETED
- * DM deletes a room (private cleanup or archival).
- * Visibility: DM-visible operation.
+ * DM deletes a room (private cleanup or explicit deletion).
+ * Visibility: DM-visible operation; affected members receive ROOM:USER_LEFT first.
  */
 export interface RoomDeleted {
   roomId: UUID
@@ -86,7 +78,8 @@ export type RoomDeletedEvent = EventEnvelope<RoomDeleted>
 
 /**
  * ROOM:SESSION_TRANSITION_APPLIED
- * Server-originated event emitted after bulk session room transition orchestration.
+ * Server-originated event after bulk session room transition orchestration.
+ * Moves all users to the appropriate room for the new session state.
  */
 export interface RoomSessionTransitionApplied {
   previousState: SessionLifecycleState | null
@@ -117,94 +110,7 @@ export interface RoomSessionTransitionApplied {
 export type RoomSessionTransitionAppliedEvent = EventEnvelope<RoomSessionTransitionApplied>
 
 /**
- * PRESENCE:STATE_CHANGED
- * User presence state changed: ONLINE, TYPING, SPEAKING, IDLE, OFFLINE.
- * Ephem eral, updates every state change.
- * Visibility: Role-filtered (spectators see minimal presence).
- */
-export interface PresenceStateChanged {
-  userId: UUID
-  username: string
-  previousState: PresenceState
-  newState: PresenceState
-  changedAt: number
-  previousGroupId?: UUID | null
-}
-
-export type PresenceStateChangedEvent = EventEnvelope<PresenceStateChanged>
-
-/**
- * PRESENCE:USER_GHOST_MODE_CHANGED
- * User ghost-mode projection changed.
- * Visibility: All session members receive this projection update.
- */
-export interface PresenceUserGhostModeChanged {
-  userId: UUID
-  username: string
-  roomId: UUID | null
-  ghostMode: boolean
-  changedAt: number
-  previousGroupId?: UUID | null
-}
-
-export type PresenceUserGhostModeChangedEvent = EventEnvelope<PresenceUserGhostModeChanged>
-
-/**
- * PRESENCE:PROFILE_UPDATED
- * User profile or character metadata changed while remaining in session.
- * Visibility: Room members and session participants see updated profile fields immediately.
- */
-export interface PresenceProfileUpdated {
-  userId: UUID
-  username: string
-  updatedAt: number
-  roomId?: UUID | null
-  previousGroupId?: UUID | null
-  playerName?: string | null
-  avatarUrl?: string | null
-  characterName?: string | null
-  characterClass?: string | null
-  characterSubclass?: string | null
-  characterRace?: string | null
-  level?: number | null
-  characterStats?: Record<string, unknown> | null
-}
-
-export type PresenceProfileUpdatedEvent = EventEnvelope<PresenceProfileUpdated>
-
-/**
- * PRESENCE:HEARTBEAT
- * Ephemeral keepalive to maintain presence state.
- * Sent periodically to detect stale connections.
- * Visibility: Internal, not sent to clients.
- */
-export interface PresenceHeartbeat {
-  userId: UUID
-  roomId: UUID | null
-  state: PresenceState
-  beatsAt: number
-}
-
-export type PresenceHeartbeatEvent = EventEnvelope<PresenceHeartbeat>
-
-/**
- * PRESENCE:RECONNECTED
- * User reconnected after disconnect.
- * Restores previous presence state.
- * Visibility: Room members see reconnect event.
- */
-export interface PresenceReconnected {
-  userId: UUID
-  username: string
-  reconnectedAt: number
-  previousState: PresenceState
-  restoredState: PresenceState
-}
-
-export type PresenceReconnectedEvent = EventEnvelope<PresenceReconnected>
-
-/**
- * Union types.
+ * Union of all room events.
  */
 export type RoomEvent =
   | RoomCreatedEvent
@@ -212,10 +118,3 @@ export type RoomEvent =
   | RoomUserLeftEvent
   | RoomDeletedEvent
   | RoomSessionTransitionAppliedEvent
-
-export type PresenceEvent =
-  | PresenceStateChangedEvent
-  | PresenceUserGhostModeChangedEvent
-  | PresenceProfileUpdatedEvent
-  | PresenceHeartbeatEvent
-  | PresenceReconnectedEvent

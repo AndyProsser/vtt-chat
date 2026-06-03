@@ -275,6 +275,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     })
 
     // Room events
+    dispatcher.register('SESSION:MEMBER_JOINED', (event) => {
+      useStore.getState().handleSessionMemberJoined(event)
+    })
+    dispatcher.register('SESSION:MEMBER_LEFT', (event) => {
+      useStore.getState().handleSessionMemberLeft(event)
+    })
     dispatcher.register('ROOM:CREATED', (event) => {
       useStore.getState().handleRoomCreated(event)
     })

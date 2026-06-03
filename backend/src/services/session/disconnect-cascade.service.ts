@@ -54,6 +54,11 @@ export class SessionDisconnectCascadeService {
     this.clearEveryoneLeavesTimer(sessionId)
   }
 
+  /** Cancel pending ghost/TTL timers for a user who voluntarily left the session. */
+  cancelUserTimers(sessionId: UUID, userId: UUID): void {
+    this.clearUserTimers(sessionId, userId)
+  }
+
   async handleUserDisconnected(context: DisconnectContext): Promise<void> {
     const key = userKey(context.sessionId, context.userId)
     this.clearUserTimers(context.sessionId, context.userId)
@@ -201,25 +206,22 @@ export class SessionDisconnectCascadeService {
       return
     }
 
-    if (current.primaryRoomId) {
-      context.wsManager.broadcastEventToSession(context.sessionId, {
-        id: crypto.randomUUID() as UUID,
-        type: 'ROOM:USER_LEFT',
-        version: 1,
-        userId: SYSTEM_ACTOR_ID,
-        userRole: Role.SYSTEM,
-        sessionId: context.sessionId,
-        roomId: current.primaryRoomId,
-        timestamp: Date.now(),
-        payload: {
-          roomId: current.primaryRoomId,
-          userId: context.userId,
-          username: current.username || context.username,
-          leftAt: Date.now(),
-          reason: 'DISCONNECT',
-        },
-      })
-    }
+    context.wsManager.broadcastEventToSession(context.sessionId, {
+      id: crypto.randomUUID() as UUID,
+      type: 'SESSION:MEMBER_LEFT',
+      version: 1,
+      userId: SYSTEM_ACTOR_ID,
+      userRole: Role.SYSTEM,
+      sessionId: context.sessionId,
+      roomId: current.primaryRoomId || null,
+      timestamp: Date.now(),
+      payload: {
+        userId: context.userId,
+        username: current.username || context.username,
+        leftAt: Date.now(),
+        reason: 'GHOST_EXPIRED',
+      },
+    })
 
     this.clearUserTimers(context.sessionId, context.userId)
 
