@@ -232,18 +232,18 @@ async function listCampaignGroupsForReferenceSession(campaignId: UUID, sessionId
 }
 
 router.get('/', requireAuth, async (req: Request, res: Response) => {
-  const user = (req as any).user
-  const campaigns = await listCampaignsForUser(user.userId as UUID)
   try {
+    const user = (req as any).user
+    const campaigns = await listCampaignsForUser(user.userId as UUID)
     logger.debug('campaign.routes', 'listCampaignsForUser response', {
       userId: user.userId,
       campaignsCount: Array.isArray(campaigns) ? campaigns.length : 0,
-      campaignIds: Array.isArray(campaigns) ? campaigns.map((c: any) => c.id) : [],
     })
-  } catch {
-    // ignore logging errors
+    res.status(200).json({ campaigns })
+  } catch (err) {
+    logger.error('campaign.routes', 'Failed to list campaigns for user', err)
+    res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to retrieve campaigns' })
   }
-  res.status(200).json({ campaigns })
 })
 
 router.get('/invite/:code/validate', async (req: Request, res: Response) => {

@@ -12,7 +12,6 @@ export async function optimisticMoveMember(params: {
   targetRoomId: UUID
   addRoomMember: (roomId: UUID, member: RoomUser) => void
   removeRoomMember: (roomId: UUID, userId: UUID) => void
-  setSessionGroups: (sessionId: UUID, rooms: any[]) => void
   fetchSessionGroupsFn?: (sessionId: UUID, token: string, apiUrl: string) => Promise<any[]>
   moveRoomMemberFn?: (
     sessionId: UUID,
@@ -32,7 +31,6 @@ export async function optimisticMoveMember(params: {
     targetRoomId,
     addRoomMember,
     removeRoomMember,
-    setSessionGroups,
     fetchSessionGroupsFn = fetchSessionGroups,
     moveRoomMemberFn = moveRoomMemberService,
     setDmVoiceTarget,
@@ -48,16 +46,20 @@ export async function optimisticMoveMember(params: {
   // For tests, callers can manage prevMember themselves; here we do a best-effort by fetching server
   let prevRoomId: UUID | undefined
   let prevMember: RoomUser | null = null
+  let targetRoomIsPrivate = false
 
   try {
-    // Try to fetch current rooms to find previous membership (best-effort)
+    // Best-effort fetch to locate the user's current room for revert support,
+    // and to capture whether the target room is PRIVATE (for DM voice auto-target).
     const rooms = await fetchSessionGroupsFn(sessionId, token ?? '', apiUrl ?? '')
     for (const room of rooms) {
       const members: RoomUser[] = (room.members as RoomUser[]) || []
       if (members.some((m) => m.userId === targetUserId)) {
         prevRoomId = room.id as UUID
         prevMember = members.find((m) => m.userId === targetUserId) || null
-        break
+      }
+      if (room.id === targetRoomId) {
+        targetRoomIsPrivate = room.type === 'PRIVATE'
       }
     }
   } catch {
@@ -84,16 +86,11 @@ export async function optimisticMoveMember(params: {
       params.apiUrl ?? ''
     )
 
-    // Refresh canonical
-    try {
-      const rooms = await fetchSessionGroupsFn(sessionId, params.token ?? '', params.apiUrl ?? '')
-      setSessionGroups(sessionId, rooms)
-      const targetRoom = rooms.find((r: any) => r.id === targetRoomId)
-      if (targetRoom && targetRoom.type === 'PRIVATE' && setDmVoiceTarget) {
-        setDmVoiceTarget(targetRoom.id)
-      }
-    } catch {
-      // ignore
+    // DM voice auto-target: if the destination is a PRIVATE (whisper) room, lock
+    // the DM voice to it. Room membership state is updated by the authoritative
+    // ROOM:USER_LEFT / ROOM:USER_JOINED WS broadcasts — no HTTP re-fetch needed.
+    if (targetRoomIsPrivate && setDmVoiceTarget) {
+      setDmVoiceTarget(targetRoomId)
     }
   } catch (err: any) {
     // revert optimistic

@@ -369,12 +369,11 @@ export const createSessionMembershipController = (ctx: SessionControllerContext)
         return null
       }
 
-      if (response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        // Return the server-provided session record when available so callers
-        // can rely on server authority rather than local assumptions.
-        return (payload as { session?: SessionRecord }).session ?? null
-      }
+      // Both 200 (new join) and 409 (already a member) are success paths.
+      // Read the body in both cases — the server may return the session record
+      // for either status so callers can bind to server-authoritative state.
+      const payload = await response.json().catch(() => ({}))
+      return (payload as { session?: SessionRecord }).session ?? null
     } catch {
       return null
     }

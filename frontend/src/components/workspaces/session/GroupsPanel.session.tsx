@@ -407,7 +407,6 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
         targetRoomId,
         addRoomMember: addRoomMember as any,
         removeRoomMember: removeRoomMember as any,
-        setSessionGroups,
         fetchSessionGroupsFn: fetchSessionGroups,
         moveRoomMemberFn: moveRoomMember,
         setDmVoiceTarget: setDmVoiceTarget as any,

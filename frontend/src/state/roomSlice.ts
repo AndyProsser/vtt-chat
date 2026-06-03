@@ -11,6 +11,7 @@ import type { SessionState } from '@shared'
 import { PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS } from '@/constants/chatPresence.constants'
 import type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 import type { PresenceSlice } from './presenceSlice'
+import type { UserMuteSlice } from './userMuteSlice'
 import { logger } from '@/utils/logger'
 import { fetchUserProfile } from '@/services/session.service'
 
@@ -111,7 +112,7 @@ function replaceMemberInRoom(
   }
 }
 
-export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], RoomSlice> = (
+export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice & UserMuteSlice, [], [], RoomSlice> = (
   set,
   get
 ) => ({
@@ -511,12 +512,8 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
             }
           }
 
-          if (typeof found.userMuted === 'boolean' && (get() as any).setUserMute) {
-            try {
-              ;(get() as any).setUserMute(event.sessionId as UUID, payload.userId, found.userMuted)
-            } catch (e) {
-              logger.warn('roomSlice', 'setUserMute failed', e)
-            }
+          if (typeof found.userMuted === 'boolean') {
+            get().setUserMute(event.sessionId as UUID, payload.userId, found.userMuted)
           }
 
           set((state) => {
@@ -588,12 +585,6 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
   },
 
   handlePresenceStateChanged: (event) => {
-    logger.info('ws.handlers', 'handlePresenceStateChanged', {
-      sessionId: event.sessionId,
-      eventId: event.id,
-      payload: event.payload,
-      timestamp: event.timestamp,
-    })
     const payload = event.payload as {
       roomId?: UUID | null
       userId: UUID
