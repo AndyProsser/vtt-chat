@@ -601,7 +601,7 @@ Evidence snapshot (2026-05-24):
 
 ### W-Audio-Environment: Group Environment (Tavern, Cave, Forest, Underwater)
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress (partial — basic apply implemented via W-Groups-Panel)
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -609,18 +609,21 @@ Evidence snapshot (2026-05-24):
 
 **Acceptance Criteria**:
 
-- [ ] Group header shows environment icon
-- [ ] DM click environment icon → popover to select environment
-- [ ] Environment broadcasts to all players in that group
+- [x] Group header shows environment icon
+- [x] DM click environment icon → popover to select environment
+- [x] Optimistic environment apply with revert-on-failure toast (implemented in W-Groups-Panel, 2026-06-02)
+- [x] WS event `AUDIO:ENVIRONMENT_SET` broadcasts to affected clients
+- [ ] Environment apply SLA verified at ≤200ms end-to-end (server fast-path pending)
 - [ ] AudioPanel shows active environment with icon
 - [ ] Environment persists in campaign when session ends
 - [ ] Environment restores when new session starts (campaign-scoped)
 - [ ] Greenroom environment is always neutral (locked, no modification)
-- [ ] WS event `AUDIO:ENVIRONMENT_SET` broadcasts to affected clients
+- [ ] Pause snapshot: environments clear on PAUSED, restore on resume
 
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) (audio section)
+- W-Groups-Panel (evidence snapshot 2026-06-02) — environment apply UI landed here first
 
 ---
 

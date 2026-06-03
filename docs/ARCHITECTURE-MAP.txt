@@ -2,6 +2,14 @@
                                 VTT‑CHAT PLATFORM
 ================================================================================
 
+  NOTE: This file is a high-level orientation overview, not a maintenance
+  target. It is not kept in sync with every file or module addition.
+  For the living architecture reference use:
+    • docs/README.md          — full documentation index
+    • docs/architecture/      — per-subsystem architecture docs
+    • shared/events/*.ts      — authoritative WS event contracts
+
+================================================================================
                          A ROLE‑AWARE, PRIVACY‑FIRST,
                      EVENT‑DRIVEN COMMUNICATION LAYER FOR VTTs
 --------------------------------------------------------------------------------

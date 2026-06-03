@@ -2,7 +2,15 @@
 
 VTT-Chat is a real-time, multi-user voice and chat platform for tabletop RPGs (TTRPGs). Sessions run for months/years. The DM must complete every primary control within **2 clicks or 1 drag**, with a visible response within **200ms**, and no manual recovery steps ever required.
 
-> For the full product spec and living contracts see `.github/copilot-instructions.md`. This file adds Claude-specific guidance and distills the rules you must never violate.
+**This file is the primary AI context for Claude Code.** It distills the rules you must never violate. Supporting references:
+
+| Source | Purpose |
+| ------ | ------- |
+| `.github/copilot-instructions.md` | Full product spec and detailed subsystem rules |
+| `docs/CONTRACTS.md` | Locked API and WS event contracts |
+| `docs/architecture/` | Per-subsystem architecture docs |
+| `shared/events/*.ts` | Authoritative WS event type definitions |
+| `backend/src/ws/index.ts` | WS event registry (runtime source of truth) |
 
 ---
 
@@ -54,17 +62,24 @@ Import `SessionState` from `shared/types/index.ts`. Never use raw strings.
 
 ```
 IDLE ──► ACTIVE ──► PAUSED ──► ACTIVE (resume)
-                 └──► ENDED ──► CLEANUP
+                │          └──► COOLDOWN ──► ENDED ──► CLEANUP
+                └──────────────► COOLDOWN
 ```
 
-| From     | To        | Trigger             |
-| -------- | --------- | ------------------- |
-| `IDLE`   | `ACTIVE`  | DM starts session   |
-| `ACTIVE` | `PAUSED`  | DM pauses           |
-| `ACTIVE` | `ENDED`   | DM ends             |
-| `PAUSED` | `ACTIVE`  | DM resumes          |
-| `PAUSED` | `ENDED`   | DM ends from paused |
-| `ENDED`  | `CLEANUP` | System cleanup      |
+| From       | To         | Trigger                           |
+| ---------- | ---------- | --------------------------------- |
+| `IDLE`     | `ACTIVE`   | DM starts session                 |
+| `ACTIVE`   | `PAUSED`   | DM pauses                         |
+| `ACTIVE`   | `COOLDOWN` | DM ends session (post-game window)|
+| `PAUSED`   | `ACTIVE`   | DM resumes                        |
+| `PAUSED`   | `COOLDOWN` | DM ends from paused state         |
+| `COOLDOWN` | `ENDED`    | Cooldown window expires           |
+| `ENDED`    | `CLEANUP`  | System cleanup completes          |
+| `CLEANUP`  | `IDLE`     | New session provisioned           |
+
+**`COOLDOWN`** is the post-session spectator window. OOC chat is enabled; DM effects are frozen; no group changes. Clients display a countdown timer (`cooldownExpiresAt` is backend-authoritative). Use `SESSION:COOLDOWN_STARTED` and `SESSION:COOLDOWN_EXTENDED` events — never infer from timer drift.
+
+**`RESET`** (DM action on an `ENDED` session): calls `POST /api/session/:id/reset`, which handles `ENDED → CLEANUP` server-side, then provisions a fresh `IDLE` session. Frontend must not send `state=CLEANUP` directly to `PUT /api/session/:id/state`.
 
 **Rules (apply in order for every DM action):** enum usage → API validation → UI gating → Zustand/effects.
 
@@ -107,11 +122,17 @@ Every new WS event must satisfy ALL before shipping:
 - [ ] Unit test in `frontend/tests/state/` and/or `backend/tests/`
 - [ ] Event name listed in WS registry in `backend/src/ws/index.ts`
 
-**Canonical WS events:**
+**Canonical WS events (high-risk subset — not exhaustive):**
 
-- Audio: `AUDIO:ENVIRONMENT_SET`, `AUDIO:DM_OVERRIDE_APPLIED`, `AUDIO:DM_OVERRIDE_REMOVED`, `AUDIO:BROADCAST_STATE_CHANGED`
+The authoritative list is `backend/src/ws/index.ts`. Type definitions live in `shared/events/*.ts`. The events below are the ones most likely to cause bugs if missed or mishandled.
+
+- Audio: `AUDIO:ENVIRONMENT_SET`, `AUDIO:DM_OVERRIDE_APPLIED`, `AUDIO:DM_OVERRIDE_REMOVED`, `AUDIO:BROADCAST_STATE_CHANGED`, `AUDIO:DM_VOICE_MODE_CHANGED`
 - Rooms: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:USER_JOINED`, `ROOM:USER_LEFT`, `ROOM:SESSION_TRANSITION_APPLIED`
-- Session: `SESSION:STATE_CHANGED`, `SESSION:ENDED`
+- Session: `SESSION:STARTED`, `SESSION:PAUSED`, `SESSION:RESUMED`, `SESSION:COOLDOWN_STARTED`, `SESSION:COOLDOWN_EXTENDED`, `SESSION:COOLDOWN_ENDED`, `SESSION:ENDED`
+- Presence: `PRESENCE:STATE_CHANGED`, `PRESENCE:USER_GHOST_MODE_CHANGED`, `PRESENCE:PROFILE_UPDATED`
+- Campaign: `CAMPAIGN:PARTY_PRESENCE_UPDATED`, `CAMPAIGN:JOIN_REQUEST_RECEIVED`, `CAMPAIGN:JOIN_REQUEST_RESOLVED`
+- Chat: `CHAT:MESSAGE_SENT`, `CHAT:MESSAGE_EDITED`, `CHAT:MESSAGE_DELETED`, `CHAT:TYPING_STARTED`, `CHAT:TYPING_STOPPED`
+- Notes: `NOTES:CREATED`, `NOTES:UPDATED`, `NOTES:DELETED`, `NOTES:SHARED`
 
 **Invalid/malformed events:** log at `warn` and discard — do not throw or crash the WS connection.
 
@@ -279,14 +300,18 @@ No source file > 400 lines (excluding blank lines and imports). Split by logical
 
 ## Document Maintenance (update alongside code)
 
-| Document                    | Update trigger                                          |
-| --------------------------- | ------------------------------------------------------- |
-| `CHANGELOG.md`              | Every meaningful change — feature, fix, contract update |
-| `ROADMAP.md`                | Feature completed, added, or re-scoped                  |
-| `docs/CONTRACTS.md`         | Any API endpoint or WS event contract changes           |
-| `docs/ARCHITECTURE-MAP.txt` | New files, modules, or subsystems added                 |
+| Document                                 | Update trigger                                          |
+| ---------------------------------------- | ------------------------------------------------------- |
+| `CHANGELOG.md`                           | Every meaningful change — feature, fix, contract update |
+| `ROADMAP.md`                             | Feature completed, added, or re-scoped                  |
+| `docs/CONTRACTS.md`                      | Any API endpoint or WS event contract changes           |
+| `docs/architecture/SESSION-LIFECYCLE.md` | Session state machine changes or new lifecycle rules    |
+| `docs/architecture/WEBSOCKETS.md`        | New WS event families or transport behavior changes     |
+| `shared/events/*.ts`                     | Source of truth — update before implementing handlers   |
 
 `ROADMAP.md` is tracking-only. Detailed design decisions and acceptance criteria belong in `docs/` files, not inline in the roadmap.
+
+`docs/ARCHITECTURE-MAP.txt` is a high-level ASCII overview — it is **not** a maintenance obligation. Prefer `docs/README.md` and `docs/architecture/` as the living architecture reference.
 
 ---
 
