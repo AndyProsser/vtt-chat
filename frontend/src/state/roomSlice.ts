@@ -519,22 +519,32 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
             }
           }
 
-          set((state) => ({
-            roomMembers: {
-              ...state.roomMembers,
-              [payload.roomId]: upsertMember(state.roomMembers[payload.roomId] || [], {
-                ...nextMember,
-                playerName: found.playerName ?? nextMember.playerName,
-                avatarUrl: found.avatarUrl ?? nextMember.avatarUrl,
-                characterName: found.characterName ?? nextMember.characterName,
-                characterClass: found.characterClass ?? nextMember.characterClass,
-                characterSubclass: found.characterSubclass ?? nextMember.characterSubclass,
-                characterRace: found.characterRace ?? nextMember.characterRace,
-                level: found.level ?? nextMember.level,
-                characterStats: found.characterStats ?? nextMember.characterStats,
-              }),
-            },
-          }))
+          set((state) => {
+            const currentMembers = state.roomMembers[payload.roomId] || []
+            // Guard: if the user left the room while the fetch was in-flight, skip
+            // the upsert. Without this check the enrichment write would re-insert a
+            // departed member, creating a ghost that persists until the next topology
+            // rehydration.
+            if (!currentMembers.some((m) => m.userId === payload.userId)) {
+              return state
+            }
+            return {
+              roomMembers: {
+                ...state.roomMembers,
+                [payload.roomId]: upsertMember(currentMembers, {
+                  ...nextMember,
+                  playerName: found.playerName ?? nextMember.playerName,
+                  avatarUrl: found.avatarUrl ?? nextMember.avatarUrl,
+                  characterName: found.characterName ?? nextMember.characterName,
+                  characterClass: found.characterClass ?? nextMember.characterClass,
+                  characterSubclass: found.characterSubclass ?? nextMember.characterSubclass,
+                  characterRace: found.characterRace ?? nextMember.characterRace,
+                  level: found.level ?? nextMember.level,
+                  characterStats: found.characterStats ?? nextMember.characterStats,
+                }),
+              },
+            }
+          })
         } catch (err) {
           logger.warn('roomSlice', 'Failed to enrich joined user profile', err)
         }

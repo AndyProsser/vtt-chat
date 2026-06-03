@@ -288,8 +288,17 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
   handleSessionStateChanged: (event) => {
     const payload = event.payload as { state: SessionLifecycleState }
     set((state) => {
-      // Guard: only update if session exists (prevent partial shapes from unknown WS events)
+      // AUTO-REBIND pre-check: run BEFORE the session-existence guard so a fresh
+      // ACTIVE start still triggers WS rebind even when SESSION:CREATED was missed
+      // or arrived out of order. The WS client auth is updated via currentSessionId,
+      // so we must not skip this when the session record is absent from the store.
       if (!state.sessions[event.sessionId]) {
+        if (payload.state === 'ACTIVE' && state.currentSessionId !== event.sessionId) {
+          return {
+            currentSessionId: event.sessionId as UUID,
+            isGreenroom: false,
+          }
+        }
         return state
       }
 
