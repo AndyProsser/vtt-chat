@@ -1053,7 +1053,7 @@ async function emitMockSelfUnmute(sessionId: UUID, user: MockPresenceUser): Prom
 
   broadcastEvent(sessionId, {
     id: randomUUID() as UUID,
-    type: 'AUDIO:USER_UNMUTED',
+    type: 'AUDIO:MUTE_STATE_CHANGED',
     version: 1,
     userId: user.userId,
     userRole: Role.PLAYER,
@@ -1062,7 +1062,7 @@ async function emitMockSelfUnmute(sessionId: UUID, user: MockPresenceUser): Prom
     timestamp: mutedAt,
     payload: {
       userId: nextMuteState.userId,
-      userMuted: nextMuteState.userMuted,
+      muted: nextMuteState.userMuted,
       mutedAt: nextMuteState.mutedAt,
     },
   })

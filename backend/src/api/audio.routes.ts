@@ -478,23 +478,7 @@ async function handleSetBroadcastState(req: Request, res: Response) {
     },
   })
 
-  const legacyEvent = createEvent({
-    type: 'AUDIO:VOICE_OF_GOD_CHANGED',
-    user,
-    userRole: authz.role,
-    sessionId: sessionId as UUID,
-    roomId: null,
-    payload: {
-      dmId: state.dmId,
-      enabled: state.enabled,
-      broadcastRoomId: state.broadcastRoomId,
-      changedAt: state.changedAt,
-    },
-  })
-
   eventBroadcaster.broadcastToSession(sessionId as UUID, event)
-  // Compatibility shim for older clients listening to legacy event name.
-  eventBroadcaster.broadcastToSession(sessionId as UUID, legacyEvent)
 
   await appendSessionAuditEvent({
     sessionId: sessionId as UUID,
@@ -521,8 +505,6 @@ async function handleSetBroadcastState(req: Request, res: Response) {
   return res.status(200).json({
     ok: true,
     broadcast: state,
-    // Backward compatibility for older clients.
-    voiceOfGod: state,
     eventId: event.id,
   })
 }
@@ -597,16 +579,15 @@ async function handleSetUserMute(req: Request, res: Response) {
     mutedAt,
   })
 
-  const eventType = muted ? 'AUDIO:USER_MUTED' : 'AUDIO:USER_UNMUTED'
   const event = createEvent({
-    type: eventType as any,
+    type: 'AUDIO:MUTE_STATE_CHANGED' as any,
     user,
     userRole: authz.role,
     sessionId: sessionId as UUID,
     roomId: null,
     payload: {
       userId: state.userId,
-      userMuted: state.userMuted,
+      muted: state.userMuted,
       mutedAt: state.mutedAt,
     },
   })
@@ -623,7 +604,7 @@ async function handleSetUserMute(req: Request, res: Response) {
     visibilityClass: 'ROLE_SCOPED',
     timestamp: state.mutedAt,
     metadata: {
-      userMuted: state.userMuted,
+      muted: state.userMuted,
     },
   })
 

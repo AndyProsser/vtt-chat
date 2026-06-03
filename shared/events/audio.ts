@@ -1,20 +1,13 @@
 /**
- * Notes and Audio Events
- * Reference: docs/subsystems/NOTES-SYSTEM.md, docs/subsystems/AUDIO-ENGINE.md
+ * Audio Events
+ * Reference: docs/subsystems/AUDIO-ENGINE.md
  *
- * Notes events manage persistent note storage with role-filtered visibility.
- * Audio events manage effects, presets, and DM-controlled audio state.
+ * Audio events manage DM-controlled effects, environments, voice modes, and mute state.
+ * Most events are DM-originated; mute state changes are user-originated and broadcast to all.
  */
 
-import type { UUID, NoteVisibility } from '../types'
+import type { UUID } from '../types'
 import type { EventEnvelope } from './base'
-
-export type NotesEventType =
-  | 'NOTES:CREATED'
-  | 'NOTES:UPDATED'
-  | 'NOTES:DELETED'
-  | 'NOTES:SHARED'
-  | 'NOTES:TAG_ADDED'
 
 export type AudioEventType =
   | 'AUDIO:EFFECT_APPLIED'
@@ -24,83 +17,8 @@ export type AudioEventType =
   | 'AUDIO:DM_OVERRIDE_APPLIED'
   | 'AUDIO:DM_OVERRIDE_REMOVED'
   | 'AUDIO:BROADCAST_STATE_CHANGED'
-  | 'AUDIO:VOICE_OF_GOD_CHANGED'
   | 'AUDIO:DM_VOICE_MODE_CHANGED'
-
-/**
- * NOTES:CREATED
- * User creates a note (private, shared, or DM-only).
- * Visibility: Role-filtered by visibility field.
- */
-export interface NotesCreated {
-  noteId: UUID
-  authorId: UUID
-  title: string
-  content: string
-  visibility: NoteVisibility
-  /** If CUSTOM: array of user IDs who can see this */
-  allowedUsers?: UUID[]
-  tags: string[]
-  createdAt: number
-}
-
-export type NotesCreatedEvent = EventEnvelope<NotesCreated>
-
-/**
- * NOTES:UPDATED
- * User updates a note.
- * Visibility: Same as the note's visibility setting.
- */
-export interface NotesUpdated {
-  noteId: UUID
-  authorId: UUID
-  previousContent: string
-  newContent: string
-  updatedAt: number
-}
-
-export type NotesUpdatedEvent = EventEnvelope<NotesUpdated>
-
-/**
- * NOTES:DELETED
- * User deletes a note.
- * Visibility: Role-filtered by the note's original visibility.
- */
-export interface NotesDeleted {
-  noteId: UUID
-  authorId: UUID
-  deletedAt: number
-}
-
-export type NotesDeletedEvent = EventEnvelope<NotesDeleted>
-
-/**
- * NOTES:SHARED
- * User shares a note with specific players (or removes sharing).
- * Visibility: DM-visible operation.
- */
-export interface NotesShared {
-  noteId: UUID
-  authorId: UUID
-  sharedWith: UUID[]
-  sharedAt: number
-}
-
-export type NotesSharedEvent = EventEnvelope<NotesShared>
-
-/**
- * NOTES:TAG_ADDED
- * User adds a tag to a note.
- * Visibility: Same as note visibility.
- */
-export interface NotesTagAdded {
-  noteId: UUID
-  authorId: UUID
-  tag: string
-  addedAt: number
-}
-
-export type NotesTagAddedEvent = EventEnvelope<NotesTagAdded>
+  | 'AUDIO:MUTE_STATE_CHANGED'
 
 /**
  * AUDIO:EFFECT_APPLIED
@@ -192,7 +110,9 @@ export type AudioDMOverrideRemovedEvent = EventEnvelope<AudioDMOverrideRemoved>
 
 /**
  * AUDIO:BROADCAST_STATE_CHANGED
- * DM toggles session-wide broadcast voice mode.
+ * DM toggles session-wide broadcast voice mode (formerly also called VOICE_OF_GOD).
+ * When enabled, DM voice is heard by all session members regardless of room.
+ * Visibility: All session members.
  */
 export interface AudioBroadcastStateChanged {
   dmId: UUID
@@ -202,11 +122,6 @@ export interface AudioBroadcastStateChanged {
 }
 
 export type AudioBroadcastStateChangedEvent = EventEnvelope<AudioBroadcastStateChanged>
-
-/** @deprecated Use AudioBroadcastStateChanged */
-export type AudioVoiceOfGodChanged = AudioBroadcastStateChanged
-/** @deprecated Use AudioBroadcastStateChangedEvent */
-export type AudioVoiceOfGodChangedEvent = AudioBroadcastStateChangedEvent
 
 /**
  * AUDIO:DM_VOICE_MODE_CHANGED
@@ -225,15 +140,27 @@ export interface AudioDmVoiceModeChanged {
 export type AudioDmVoiceModeChangedEvent = EventEnvelope<AudioDmVoiceModeChanged>
 
 /**
- * Union types.
+ * AUDIO:MUTE_STATE_CHANGED
+ * A user's self-mute state changed. Broadcast to all session members so every
+ * client always has an accurate mute indicator for every participant.
+ *
+ * This is the user's own mic-mute toggle, distinct from DM overrides
+ * (AUDIO:DM_OVERRIDE_APPLIED). Speaking indicators must combine both:
+ * NOT (muted OR dmMuted).
+ *
+ * Visibility: All session members.
  */
-export type NotesEvent =
-  | NotesCreatedEvent
-  | NotesUpdatedEvent
-  | NotesDeletedEvent
-  | NotesSharedEvent
-  | NotesTagAddedEvent
+export interface AudioMuteStateChanged {
+  userId: UUID
+  muted: boolean
+  mutedAt: number
+}
 
+export type AudioMuteStateChangedEvent = EventEnvelope<AudioMuteStateChanged>
+
+/**
+ * Union of all audio events.
+ */
 export type AudioEvent =
   | AudioEffectAppliedEvent
   | AudioEffectRemovedEvent
@@ -243,3 +170,4 @@ export type AudioEvent =
   | AudioDMOverrideRemovedEvent
   | AudioBroadcastStateChangedEvent
   | AudioDmVoiceModeChangedEvent
+  | AudioMuteStateChangedEvent

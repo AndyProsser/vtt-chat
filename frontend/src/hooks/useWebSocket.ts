@@ -367,14 +367,8 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('AUDIO:BROADCAST_STATE_CHANGED', (event) => {
       useStore.getState().handleBroadcastStateChanged(event)
     })
-    dispatcher.register('AUDIO:VOICE_OF_GOD_CHANGED', (event) => {
-      useStore.getState().handleBroadcastStateChanged(event)
-    })
-    dispatcher.register('AUDIO:USER_MUTED', (event) => {
-      useStore.getState().handleUserMuted(event)
-    })
-    dispatcher.register('AUDIO:USER_UNMUTED', (event) => {
-      useStore.getState().handleUserUnmuted(event)
+    dispatcher.register('AUDIO:MUTE_STATE_CHANGED', (event) => {
+      useStore.getState().handleMuteStateChanged(event)
     })
 
     // Campaign events

@@ -25,8 +25,7 @@ export interface AudioHandlers {
   handleEnvironmentSet: (event: EventEnvelope) => Promise<void>
   handleDMOverrideApplied: (event: EventEnvelope) => Promise<void>
   handleDMOverrideRemoved: (event: EventEnvelope) => Promise<void>
-  handleUserMuted: (event: EventEnvelope) => Promise<void>
-  handleUserUnmuted: (event: EventEnvelope) => Promise<void>
+  handleMuteStateChanged: (event: EventEnvelope) => Promise<void>
 }
 
 // ============================================================================
@@ -310,70 +309,22 @@ export const audioHandlers: AudioHandlers = {
   },
 
   /**
-   * AUDIO:USER_MUTED
+   * AUDIO:MUTE_STATE_CHANGED
    *
-   * User has muted themselves (not a DM action).
-   * Updates presence record with userMuted flag.
-   *
-   * Payload:
-   * {
-   *   userId: UUID,
-   *   userMuted: true,
-   *   mutedAt: number
-   * }
+   * User's self-mute toggled. State is already persisted via the /mute endpoint;
+   * this handler is for future audit-trail expansion.
    */
-  async handleUserMuted(event: EventEnvelope): Promise<void> {
+  async handleMuteStateChanged(event: EventEnvelope): Promise<void> {
     try {
-      const payload = event.payload as {
-        userId: string
-        userMuted: boolean
-        mutedAt: number
-      }
-
-      logger.info('audio', `User ${payload.userId} muted themselves in session ${event.sessionId}`)
-
-      // State is already persisted via the /mute endpoint;
-      // this handler is mainly for logging and future audit trail expansion
-    } catch (error) {
-      logger.error(
-        'audio',
-        `Error handling AUDIO:USER_MUTED: ${error instanceof Error ? error.message : String(error)}`
-      )
-    }
-  },
-
-  /**
-   * AUDIO:USER_UNMUTED
-   *
-   * User has unmuted themselves (not a DM action).
-   * Updates presence record with userMuted flag.
-   *
-   * Payload:
-   * {
-   *   userId: UUID,
-   *   userMuted: false,
-   *   mutedAt: number
-   * }
-   */
-  async handleUserUnmuted(event: EventEnvelope): Promise<void> {
-    try {
-      const payload = event.payload as {
-        userId: string
-        userMuted: boolean
-        mutedAt: number
-      }
-
+      const payload = event.payload as { userId: string; muted: boolean; mutedAt: number }
       logger.info(
         'audio',
-        `User ${payload.userId} unmuted themselves in session ${event.sessionId}`
+        `User ${payload.userId} ${payload.muted ? 'muted' : 'unmuted'} in session ${event.sessionId}`
       )
-
-      // State is already persisted via the /unmute endpoint;
-      // this handler is mainly for logging and future audit trail expansion
     } catch (error) {
       logger.error(
         'audio',
-        `Error handling AUDIO:USER_UNMUTED: ${error instanceof Error ? error.message : String(error)}`
+        `Error handling AUDIO:MUTE_STATE_CHANGED: ${error instanceof Error ? error.message : String(error)}`
       )
     }
   },

@@ -22,8 +22,7 @@ export interface UserMuteSlice {
   setUserMuteBySession: (sessionId: UUID, muteMap: Record<UUID, boolean>) => void
   clearUserMuteState: (sessionId?: UUID) => void
 
-  handleUserMuted: (event: EventEnvelope) => void
-  handleUserUnmuted: (event: EventEnvelope) => void
+  handleMuteStateChanged: (event: EventEnvelope) => void
 }
 
 export const initialUserMuteState: UserMuteSlice['userMuteState'] = {}
@@ -65,12 +64,8 @@ export const createUserMuteSlice: StateCreator<UserMuteSlice, [], [], UserMuteSl
       return { userMuteState: rest }
     }),
 
-  handleUserMuted: (event) => {
-    const payload = event.payload as {
-      userId: UUID
-      userMuted: boolean
-      mutedAt: number
-    }
+  handleMuteStateChanged: (event) => {
+    const payload = event.payload as { userId: UUID; muted: boolean; mutedAt: number }
 
     set((state) => {
       const sessionMutes = state.userMuteState[event.sessionId] || {}
@@ -79,28 +74,7 @@ export const createUserMuteSlice: StateCreator<UserMuteSlice, [], [], UserMuteSl
           ...state.userMuteState,
           [event.sessionId]: {
             ...sessionMutes,
-            [payload.userId]: true,
-          },
-        },
-      }
-    })
-  },
-
-  handleUserUnmuted: (event) => {
-    const payload = event.payload as {
-      userId: UUID
-      userMuted: boolean
-      mutedAt: number
-    }
-
-    set((state) => {
-      const sessionMutes = state.userMuteState[event.sessionId] || {}
-      return {
-        userMuteState: {
-          ...state.userMuteState,
-          [event.sessionId]: {
-            ...sessionMutes,
-            [payload.userId]: false,
+            [payload.userId]: payload.muted,
           },
         },
       }
