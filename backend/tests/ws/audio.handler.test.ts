@@ -89,6 +89,45 @@ describe('audio ws handlers', () => {
     expect(mocks.removeDMOverrideState).toHaveBeenCalledTimes(1)
   })
 
+  it('logs mute state changed events', async () => {
+    await audioHandlers.handleMuteStateChanged({
+      ...BASE_EVENT,
+      type: 'AUDIO:MUTE_STATE_CHANGED',
+      userId: '66666666-6666-4666-8666-666666666666' as UUID,
+      payload: {
+        userId: '66666666-6666-4666-8666-666666666666',
+        muted: true,
+        mutedAt: 1700000000400,
+      },
+    })
+
+    expect(mocks.loggerInfo).toHaveBeenCalledWith(
+      'audio',
+      expect.stringContaining('muted')
+    )
+  })
+
+  it('logs errors from mute state handler failures', async () => {
+    mocks.loggerInfo.mockImplementation(() => {
+      throw new Error('log failed')
+    })
+
+    await audioHandlers.handleMuteStateChanged({
+      ...BASE_EVENT,
+      type: 'AUDIO:MUTE_STATE_CHANGED',
+      payload: {
+        userId: '66666666-6666-4666-8666-666666666666',
+        muted: false,
+        mutedAt: 1700000000500,
+      },
+    })
+
+    expect(mocks.loggerError).toHaveBeenCalledWith(
+      'audio',
+      expect.stringContaining('Error handling AUDIO:MUTE_STATE_CHANGED')
+    )
+  })
+
   it('logs errors from effect handler failures', async () => {
     mocks.loggerInfo.mockImplementation(() => {
       throw new Error('log failed')

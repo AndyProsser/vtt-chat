@@ -112,10 +112,12 @@ function replaceMemberInRoom(
   }
 }
 
-export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice & UserMuteSlice, [], [], RoomSlice> = (
-  set,
-  get
-) => ({
+export const createRoomSlice: StateCreator<
+  RoomSlice & PresenceSlice & UserMuteSlice,
+  [],
+  [],
+  RoomSlice
+> = (set, get) => ({
   rooms: {},
   roomMembers: {},
   sessionTransitionNotice: {},
@@ -498,7 +500,12 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice & UserMuteS
   },
 
   handleSessionMemberLeft: (event) => {
-    const payload = event.payload as { userId: UUID; username: string; leftAt: number; reason: string }
+    const payload = event.payload as {
+      userId: UUID
+      username: string
+      leftAt: number
+      reason: string
+    }
     const leftAt = payload.leftAt || event.timestamp
 
     // Remove user from every room in this session (they may be in a private room or

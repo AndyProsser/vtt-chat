@@ -76,6 +76,17 @@ vi.mock('@/services/room.service', () => ({
   getRooms: mocks.mockGetRooms,
   getSessionPresence: mocks.mockGetSessionPresence,
   joinRoom: mocks.mockJoinRoom,
+  removePresenceProjection: vi.fn(async () => undefined),
+}))
+
+vi.mock('@/services/session/disconnect-cascade.service', () => ({
+  sessionDisconnectCascadeService: {
+    cancelUserTimers: vi.fn(),
+  },
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  getSessionParticipantProfiles: vi.fn(async () => ({})),
 }))
 
 vi.mock('@/services/audio/audio-state', () => ({

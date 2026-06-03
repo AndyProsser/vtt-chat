@@ -12,15 +12,20 @@ const mocks = vi.hoisted(() => ({
   mockDeleteNote: vi.fn(),
   mockGetNoteById: vi.fn(),
   mockGetVisibleNotes: vi.fn(),
+  mockGetVisibleCampaignNotes: vi.fn(),
   mockMarkNotePublished: vi.fn(),
   mockUpdateNote: vi.fn(),
   mockResolveEffectiveSessionRole: vi.fn(),
   mockGetCampaignForUser: vi.fn(),
   mockListSessionsByCampaign: vi.fn(),
+  mockFindSessionById: vi.fn(),
   mockSendMessage: vi.fn(),
   mockAppendSessionAuditEvent: vi.fn(),
   mockCreateSessionLog: vi.fn(),
   mockLoggerInfo: vi.fn(),
+  mockGetRooms: vi.fn(),
+  mockGetRoomMemberIds: vi.fn(),
+  mockGetRoom: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -38,6 +43,7 @@ vi.mock('@/services/notes.service', () => ({
   deleteNote: mocks.mockDeleteNote,
   getNoteById: mocks.mockGetNoteById,
   getVisibleNotes: mocks.mockGetVisibleNotes,
+  getVisibleCampaignNotes: mocks.mockGetVisibleCampaignNotes,
   markNotePublished: mocks.mockMarkNotePublished,
   updateNote: mocks.mockUpdateNote,
 }))
@@ -53,6 +59,13 @@ vi.mock('@/repositories/campaign.repository', () => ({
 
 vi.mock('@/repositories/session.repository', () => ({
   listSessionsByCampaign: (...args: unknown[]) => mocks.mockListSessionsByCampaign(...args),
+  findSessionById: (...args: unknown[]) => mocks.mockFindSessionById(...args),
+}))
+
+vi.mock('@/services/room.service', () => ({
+  getRooms: (...args: unknown[]) => mocks.mockGetRooms(...args),
+  getRoomMemberIds: (...args: unknown[]) => mocks.mockGetRoomMemberIds(...args),
+  getRoom: (...args: unknown[]) => mocks.mockGetRoom(...args),
 }))
 
 vi.mock('@/services/chat.service', () => ({
@@ -70,6 +83,9 @@ vi.mock('@/repositories/session-logs.repository', () => ({
 vi.mock('@/utils/logger', () => ({
   logger: {
     info: mocks.mockLoggerInfo,
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   },
 }))
 
@@ -122,6 +138,11 @@ describe('notes routes websocket propagation', () => {
       memberRole: 'PLAYER',
     })
     mocks.mockListSessionsByCampaign.mockResolvedValue([{ id: SESSION_ID }])
+    mocks.mockFindSessionById.mockResolvedValue({ id: SESSION_ID, campaignId: CAMPAIGN_ID })
+    mocks.mockGetRooms.mockResolvedValue([])
+    mocks.mockGetRoomMemberIds.mockResolvedValue([])
+    mocks.mockGetRoom.mockResolvedValue(null)
+    mocks.mockGetVisibleCampaignNotes.mockResolvedValue([])
     mocks.mockGetSessionUsers.mockResolvedValue([
       { id: USER_ID, username: 'alice', role: 'PLAYER', createdAt: Date.now() },
       { id: DM_ID, username: 'dm-user', role: 'DM', createdAt: Date.now() },
@@ -168,8 +189,21 @@ describe('notes routes websocket propagation', () => {
   it('publishing note emits notes update, chat message, and audit log entry', async () => {
     const app = buildAppWithWs()
 
+    // Publish requires DM role
+    mocks.mockVerifyToken.mockReturnValueOnce({
+      userId: DM_ID,
+      username: 'dm-user',
+      role: 'DM',
+    })
+    mocks.mockGetCampaignForUser.mockResolvedValueOnce({
+      id: CAMPAIGN_ID,
+      currentDmId: DM_ID,
+      memberRole: 'DM',
+    })
+
     const note = {
       id: NOTE_ID,
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       authorId: USER_ID,
       authorUsername: 'alice',
@@ -183,7 +217,7 @@ describe('notes routes websocket propagation', () => {
     }
 
     mocks.mockGetNoteById.mockResolvedValue(note)
-    mocks.mockGetVisibleNotes.mockResolvedValue([note])
+    mocks.mockGetVisibleCampaignNotes.mockResolvedValue([note])
     mocks.mockUpdateNote.mockResolvedValueOnce({
       ...note,
       visibility: NoteVisibility.PLAYERS_VISIBLE,
@@ -199,8 +233,8 @@ describe('notes routes websocket propagation', () => {
     mocks.mockSendMessage.mockResolvedValue({
       id: '77777777-7777-4777-8777-777777777777',
       sessionId: SESSION_ID,
-      authorId: USER_ID,
-      authorUsername: 'alice',
+      authorId: DM_ID,
+      authorUsername: 'dm-user',
       content: '[Note] Recap: Important clues',
       type: MessageType.SYSTEM,
       isDmOnly: false,
@@ -210,7 +244,7 @@ describe('notes routes websocket propagation', () => {
     const response = await request(app)
       .post(`/api/notes/${NOTE_ID}/publish`)
       .set('Authorization', 'Bearer token')
-      .send({})
+      .send({ sessionId: SESSION_ID })
 
     expect(response.status).toBe(200)
 
@@ -228,7 +262,7 @@ describe('notes routes websocket propagation', () => {
         action: 'NOTE_PUBLISHED',
         noteId: NOTE_ID,
         sessionId: SESSION_ID,
-        actorUserId: USER_ID,
+        actorUserId: DM_ID,
       })
     )
   })

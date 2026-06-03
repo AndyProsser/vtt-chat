@@ -120,7 +120,7 @@ describe('telemetry-store', () => {
     const entries = await persistTelemetryEvents([
       {
         event: 'ROOM_SWITCH',
-        timestampMs: Date.parse('2026-05-02T10:00:00.000Z'),
+        timestampMs: Date.now(),
         userId: 'user-1',
         role: 'PLAYER',
         properties: { severity: 'WARN', roomId: 'room-1' },
@@ -197,7 +197,7 @@ describe('telemetry-store', () => {
     )
 
     const event = {
-      timestamp: '2026-05-02T10:00:00.000Z',
+      timestamp: new Date().toISOString(),
       severity: 'INFO' as const,
       source: 'api',
       message: 'Request completed',

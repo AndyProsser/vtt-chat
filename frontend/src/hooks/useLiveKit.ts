@@ -1013,7 +1013,6 @@ export function useLiveKit(
       })
     }
   }, [
-    hasUserActivation,
     sessionId,
     roomId,
     tokenChannel,

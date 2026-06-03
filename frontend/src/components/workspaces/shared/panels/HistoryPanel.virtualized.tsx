@@ -527,6 +527,7 @@ export function HistoryPanelVirtualList({
     let retryCount = 0
     const maxRetries = 8
     let lastScrollHeight = 0
+    let retryTimeoutId: ReturnType<typeof window.setTimeout> | null = null
 
     const scrollToBottom = () => {
       const container = listApi.element
@@ -538,7 +539,7 @@ export function HistoryPanelVirtualList({
         if (scrolledEnough && retryCount < maxRetries) {
           // Heights still changing; recheck in 16ms (~1 frame)
           retryCount += 1
-          window.setTimeout(scrollToBottom, 16)
+          retryTimeoutId = window.setTimeout(scrollToBottom, 16)
         } else if (container.scrollHeight > 0) {
           // Heights stable or max retries reached; scroll to bottom
           container.scrollTop = container.scrollHeight
@@ -551,6 +552,7 @@ export function HistoryPanelVirtualList({
 
     return () => {
       window.clearTimeout(timeoutId)
+      if (retryTimeoutId !== null) window.clearTimeout(retryTimeoutId)
     }
   }, [autoScrollToLastRow, listApi, rows])
 

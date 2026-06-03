@@ -641,14 +641,18 @@ describe('createSessionMembershipController', () => {
   })
 
   it('does not throw on 409 (already member)', async () => {
-    fetchWithAuthGuard.mockResolvedValueOnce({ ok: false, status: 409 })
+    fetchWithAuthGuard.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      json: () => Promise.resolve({}),
+    })
     const controller = createSessionMembershipController(ctx)
-    await expect(controller.ensureSessionMembership(SESSION_ID)).resolves.toBeUndefined()
+    await expect(controller.ensureSessionMembership(SESSION_ID)).resolves.toBeNull()
   })
 
   it('does not throw on network error', async () => {
     fetchWithAuthGuard.mockRejectedValueOnce(new Error('Network failure'))
     const controller = createSessionMembershipController(ctx)
-    await expect(controller.ensureSessionMembership(SESSION_ID)).resolves.toBeUndefined()
+    await expect(controller.ensureSessionMembership(SESSION_ID)).resolves.toBeNull()
   })
 })

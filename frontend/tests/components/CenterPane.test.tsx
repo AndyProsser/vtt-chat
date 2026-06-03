@@ -44,17 +44,15 @@ function buildProps() {
 describe('SessionWorkspaceCenterPane', () => {
   beforeEach(() => {
     // Seed the store with a MAIN room so useSessionSelectedRoomId resolves it.
-    useStore
-      .getState()
-      .replaceSessionRooms(SESSION_ID, [
-        {
-          id: ROOM_ID,
-          sessionId: SESSION_ID,
-          name: 'Main Room',
-          type: RoomType.MAIN,
-          createdAt: 1,
-        },
-      ])
+    useStore.getState().replaceSessionRooms(SESSION_ID, [
+      {
+        id: ROOM_ID,
+        sessionId: SESSION_ID,
+        name: 'Main Room',
+        type: RoomType.MAIN,
+        createdAt: 1,
+      },
+    ])
   })
 
   afterEach(() => {

@@ -95,7 +95,6 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
         const pendingCampaignId = sessionStorage.getItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
         // DEV-HELPER: log campaigns returned from server to diagnose membership issues
         try {
-          // eslint-disable-next-line no-console
           console.debug(
             'Lobby: loaded campaigns',
             nextCampaigns.map((c) => ({

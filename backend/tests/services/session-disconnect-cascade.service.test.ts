@@ -210,7 +210,8 @@ describe('session disconnect cascade service', () => {
       isSessionConnected: () => false,
     })
 
-    await vi.advanceTimersByTimeAsync(60_000)
+    // Ghost fires at 5s, TTL expiry at 50s, then re-schedules everyone-leaves at 60s = 110s total.
+    await vi.advanceTimersByTimeAsync(110_000)
 
     expect(mocks.updateSessionState).toHaveBeenCalledWith(SESSION_ID, 'COOLDOWN', DM_ID)
     expect(mocks.applySessionStateRoomTransition).toHaveBeenCalled()

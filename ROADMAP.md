@@ -1,8 +1,24 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-02
+**Last Updated**: 2026-06-03
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
+
+---
+
+## Summary
+
+| Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
+| -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
+| Phase 0: Core Reliability & Resilience |      5 |       4 |              0 |              1 | 🟡 In Progress |
+| Phase 1: UI/UX Foundation              |      4 |       2 |              1 |              1 | 🟡 In Progress |
+| Phase 2: Audio Experiences             |      5 |       0 |              2 |              3 | 🔴 Blocked     |
+| Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
+| Phase 4: Future Enhancements           |      4 |       0 |              0 |              4 | ⚪ Not Started |
+| Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
+| **Total**                              | **28** |   **6** |          **3** |         **19** |                |
+
+**MVP-blocking items remaining**: W4-Conversation-Authority (Phase 0), W4-UX-Polish (Phase 1), W-Groups-Panel + W-Audio-Voice + W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
 
 ---
 

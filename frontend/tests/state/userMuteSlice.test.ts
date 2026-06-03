@@ -70,12 +70,12 @@ describe('userMuteSlice', () => {
     expect(useStore.getState().userMuteState).toEqual({})
   })
 
-  it('handleUserMuted sets user as muted via WS event', () => {
+  it('handleMuteStateChanged sets user as muted via WS event', () => {
     const store = useStore.getState()
 
     const event = {
       id: '523e4567-e89b-12d3-a456-426614174000' as UUID,
-      type: 'AUDIO:USER_MUTED' as const,
+      type: 'AUDIO:MUTE_STATE_CHANGED' as const,
       version: 1,
       userId: TEST_USER_ID1,
       userRole: 'PLAYER' as const,
@@ -84,17 +84,17 @@ describe('userMuteSlice', () => {
       timestamp: Date.now(),
       payload: {
         userId: TEST_USER_ID1,
-        userMuted: true,
+        muted: true,
         mutedAt: Date.now(),
       },
     }
 
-    store.handleUserMuted(event as any)
+    store.handleMuteStateChanged(event as any)
 
     expect(useStore.getState().userMuteState[TEST_SESSION_ID]?.[TEST_USER_ID1]).toBe(true)
   })
 
-  it('handleUserUnmuted sets user as unmuted via WS event', () => {
+  it('handleMuteStateChanged sets user as unmuted via WS event', () => {
     const store = useStore.getState()
 
     // Set up initial state with user muted
@@ -102,7 +102,7 @@ describe('userMuteSlice', () => {
 
     const event = {
       id: '523e4567-e89b-12d3-a456-426614174000' as UUID,
-      type: 'AUDIO:USER_UNMUTED' as const,
+      type: 'AUDIO:MUTE_STATE_CHANGED' as const,
       version: 1,
       userId: TEST_USER_ID1,
       userRole: 'PLAYER' as const,
@@ -111,12 +111,12 @@ describe('userMuteSlice', () => {
       timestamp: Date.now(),
       payload: {
         userId: TEST_USER_ID1,
-        userMuted: false,
+        muted: false,
         mutedAt: Date.now(),
       },
     }
 
-    store.handleUserUnmuted(event as any)
+    store.handleMuteStateChanged(event as any)
 
     expect(useStore.getState().userMuteState[TEST_SESSION_ID]?.[TEST_USER_ID1]).toBe(false)
   })

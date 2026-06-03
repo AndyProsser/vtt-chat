@@ -60,7 +60,7 @@ describe('CampaignInformationPanel', () => {
       expect(screen.getByLabelText('Name')).toBeTruthy()
       expect(screen.getByText('Description')).toBeTruthy()
       expect(screen.getByLabelText('Save campaign information')).toBeTruthy()
-      expect(screen.getByLabelText('Undo campaign edits')).toBeTruthy()
+      expect(screen.getByLabelText('Cancel editing campaign information')).toBeTruthy()
     })
   })
 
@@ -110,7 +110,7 @@ describe('CampaignInformationPanel', () => {
     const nameInput = await screen.findByLabelText('Name')
     fireEvent.change(nameInput, { target: { value: 'Changed Campaign' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Undo campaign edits' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel editing campaign information' }))
 
     expect(onSaveCampaignInfo).not.toHaveBeenCalled()
     expect(screen.queryByDisplayValue('Changed Campaign')).toBeNull()

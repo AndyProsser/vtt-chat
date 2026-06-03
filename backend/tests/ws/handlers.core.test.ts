@@ -60,6 +60,7 @@ describe('ws handlers core', () => {
     mocks.getSession.mockResolvedValue({
       id: '33333333-3333-4333-8333-333333333333',
       dmId: '44444444-4444-4444-8444-444444444444',
+      campaignId: '55555555-5555-4555-8555-555555555555',
     })
   })
 

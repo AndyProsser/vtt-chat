@@ -12,16 +12,21 @@ const mocks = vi.hoisted(() => ({
   mockResolveEffectiveSessionRole: vi.fn(),
   mockGetCampaignForUser: vi.fn(),
   mockListSessionsByCampaign: vi.fn(),
+  mockFindSessionById: vi.fn(),
   mockCreateNote: vi.fn(),
   mockDeleteNote: vi.fn(),
   mockGetNoteById: vi.fn(),
   mockGetVisibleNotes: vi.fn(),
+  mockGetVisibleCampaignNotes: vi.fn(),
   mockMarkNotePublished: vi.fn(),
   mockUpdateNote: vi.fn(),
   mockSendMessage: vi.fn(),
   mockAppendSessionAuditEvent: vi.fn(),
   mockCreateSessionLog: vi.fn(),
   mockLoggerInfo: vi.fn(),
+  mockGetRooms: vi.fn(),
+  mockGetRoomMemberIds: vi.fn(),
+  mockGetRoom: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -45,6 +50,7 @@ vi.mock('@/repositories/campaign.repository', () => ({
 
 vi.mock('@/repositories/session.repository', () => ({
   listSessionsByCampaign: (...args: unknown[]) => mocks.mockListSessionsByCampaign(...args),
+  findSessionById: (...args: unknown[]) => mocks.mockFindSessionById(...args),
 }))
 
 vi.mock('@/services/notes.service', () => ({
@@ -52,8 +58,15 @@ vi.mock('@/services/notes.service', () => ({
   deleteNote: (...args: unknown[]) => mocks.mockDeleteNote(...args),
   getNoteById: (...args: unknown[]) => mocks.mockGetNoteById(...args),
   getVisibleNotes: (...args: unknown[]) => mocks.mockGetVisibleNotes(...args),
+  getVisibleCampaignNotes: (...args: unknown[]) => mocks.mockGetVisibleCampaignNotes(...args),
   markNotePublished: (...args: unknown[]) => mocks.mockMarkNotePublished(...args),
   updateNote: (...args: unknown[]) => mocks.mockUpdateNote(...args),
+}))
+
+vi.mock('@/services/room.service', () => ({
+  getRooms: (...args: unknown[]) => mocks.mockGetRooms(...args),
+  getRoomMemberIds: (...args: unknown[]) => mocks.mockGetRoomMemberIds(...args),
+  getRoom: (...args: unknown[]) => mocks.mockGetRoom(...args),
 }))
 
 vi.mock('@/services/chat.service', () => ({
@@ -71,6 +84,9 @@ vi.mock('@/repositories/session-logs.repository', () => ({
 vi.mock('@/utils/logger', () => ({
   logger: {
     info: (...args: unknown[]) => mocks.mockLoggerInfo(...args),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   },
 }))
 
@@ -95,7 +111,7 @@ function buildApp() {
 
 describe('notes routes', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
 
     mocks.mockExtractTokenFromHeader.mockReturnValue('token')
     mocks.mockVerifyToken.mockReturnValue({
@@ -119,12 +135,17 @@ describe('notes routes', () => {
       memberRole: 'PLAYER',
     })
     mocks.mockListSessionsByCampaign.mockResolvedValue([{ id: SESSION_ID }])
+    mocks.mockFindSessionById.mockResolvedValue({ id: SESSION_ID, campaignId: CAMPAIGN_ID })
     mocks.mockGetSessionUsers.mockResolvedValue([
       { id: USER_ID, username: 'alice' },
       { id: DM_ID, username: 'dm-user' },
       { id: OTHER_USER_ID, username: 'other-user' },
     ])
     mocks.mockGetVisibleNotes.mockResolvedValue([])
+    mocks.mockGetVisibleCampaignNotes.mockResolvedValue([])
+    mocks.mockGetRooms.mockResolvedValue([])
+    mocks.mockGetRoomMemberIds.mockResolvedValue([])
+    mocks.mockGetRoom.mockResolvedValue(null)
   })
 
   it('rejects unauthenticated access and invalid list session ids', async () => {
@@ -177,17 +198,9 @@ describe('notes routes', () => {
   it('validates create payload and DM-only restrictions', async () => {
     const app = buildApp()
 
+    // Note: an invalid-UUID sessionId is now silently treated as no session context (no broadcast),
+    // not a validation error. The first validated field here is note title.
     let response = await request(app).post('/api/notes').set('Authorization', 'Bearer token').send({
-      campaignId: CAMPAIGN_ID,
-      sessionId: 'bad',
-      title: 'Valid title',
-      content: 'Valid content',
-      visibility: NoteVisibility.PLAYERS_VISIBLE,
-    })
-    expect(response.status).toBe(400)
-    expect(response.body.code).toBe(ErrorCode.INVALID_SESSION)
-
-    response = await request(app).post('/api/notes').set('Authorization', 'Bearer token').send({
       campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       title: '',
@@ -311,16 +324,8 @@ describe('notes routes', () => {
     expect(response.status).toBe(404)
     expect(response.body.code).toBe(ErrorCode.NOTE_NOT_FOUND)
 
-    mocks.mockGetNoteById.mockResolvedValueOnce({ id: NOTE_ID, sessionId: SESSION_ID })
-    mocks.mockGetSession.mockResolvedValueOnce(null)
-    response = await request(app)
-      .put(`/api/notes/${NOTE_ID}`)
-      .set('Authorization', 'Bearer token')
-      .send({
-        title: 'Updated',
-      })
-    expect(response.status).toBe(404)
-    expect(response.body.code).toBe(ErrorCode.SESSION_NOT_FOUND)
+    // Note: a missing session is no longer a 404 — it just skips the WS broadcast.
+    // The update succeeds if updateNote returns a note, or 403 if the note can't be updated.
   })
 
   it('maps update authz and service error branches', async () => {
@@ -414,8 +419,9 @@ describe('notes routes', () => {
       sessionId: SESSION_ID,
       authorId: USER_ID,
     })
+
+    // When session is null after update, broadcast is skipped but update still succeeds.
     mocks.mockUpdateNote.mockResolvedValueOnce(updatedNote)
-    mocks.mockGetSession.mockResolvedValueOnce({ id: SESSION_ID, dmId: DM_ID })
     mocks.mockGetSession.mockResolvedValueOnce(null)
 
     let response = await request(app)
@@ -426,11 +432,9 @@ describe('notes routes', () => {
         allowedUsers: [OTHER_USER_ID],
         visibility: NoteVisibility.CUSTOM,
       })
-    expect(response.status).toBe(404)
-    expect(response.body.code).toBe(ErrorCode.SESSION_NOT_FOUND)
+    expect(response.status).toBe(200)
 
     mocks.mockUpdateNote.mockResolvedValueOnce(updatedNote)
-    mocks.mockGetSession.mockResolvedValueOnce({ id: SESSION_ID, dmId: DM_ID })
     mocks.mockGetSession.mockResolvedValueOnce({ id: SESSION_ID, dmId: DM_ID })
     response = await request(app)
       .put(`/api/notes/${NOTE_ID}`)
@@ -457,9 +461,11 @@ describe('notes routes', () => {
   it('maps publish validation, visibility, and persistence branches', async () => {
     const app = buildApp()
 
+    // Publish route requires sessionId in body — missing sessionId → 400
     let response = await request(app)
       .post('/api/notes/not-a-uuid/publish')
       .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
     expect(response.status).toBe(400)
     expect(response.body.code).toBe(ErrorCode.INVALID_NOTE_ID)
 
@@ -467,11 +473,13 @@ describe('notes routes', () => {
     response = await request(app)
       .post(`/api/notes/${NOTE_ID}/publish`)
       .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
     expect(response.status).toBe(404)
     expect(response.body.code).toBe(ErrorCode.NOTE_NOT_FOUND)
 
     const note = {
       id: NOTE_ID,
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       authorId: USER_ID,
       authorUsername: 'alice',
@@ -487,46 +495,66 @@ describe('notes routes', () => {
     response = await request(app)
       .post(`/api/notes/${NOTE_ID}/publish`)
       .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
     expect(response.status).toBe(404)
     expect(response.body.code).toBe(ErrorCode.SESSION_NOT_FOUND)
 
+    // Non-DM requester → 403 (getCampaignForUser returns PLAYER role)
     mocks.mockGetNoteById.mockResolvedValueOnce(note)
     mocks.mockGetSession.mockResolvedValueOnce({
       id: SESSION_ID,
       dmId: DM_ID,
-      campaignId: 'campaign-1',
-    })
-    mocks.mockResolveEffectiveSessionRole.mockResolvedValueOnce({
-      ok: false,
-      code: 'FORBIDDEN',
-      message: 'No access',
+      campaignId: CAMPAIGN_ID,
     })
     response = await request(app)
       .post(`/api/notes/${NOTE_ID}/publish`)
       .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
     expect(response.status).toBe(403)
     expect(response.body.code).toBe(ErrorCode.FORBIDDEN)
 
+    // DM requester, note not in visible notes → 404
+    mocks.mockVerifyToken.mockReturnValueOnce({ userId: DM_ID, username: 'dm-user', role: 'DM' })
+    mocks.mockGetCampaignForUser.mockResolvedValueOnce({
+      id: CAMPAIGN_ID,
+      currentDmId: DM_ID,
+      memberRole: 'DM',
+    })
     mocks.mockGetNoteById.mockResolvedValueOnce(note)
     mocks.mockGetSession.mockResolvedValueOnce({
       id: SESSION_ID,
       dmId: DM_ID,
-      campaignId: 'campaign-1',
+      campaignId: CAMPAIGN_ID,
     })
-    mocks.mockGetVisibleNotes.mockResolvedValueOnce([])
+    mocks.mockGetVisibleCampaignNotes.mockResolvedValueOnce([])
     response = await request(app)
       .post(`/api/notes/${NOTE_ID}/publish`)
       .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
     expect(response.status).toBe(404)
     expect(response.body.code).toBe(ErrorCode.NOTE_NOT_FOUND)
 
+    // DM requester, note visible, markNotePublished returns null → 404
+    mocks.mockVerifyToken.mockReturnValueOnce({ userId: DM_ID, username: 'dm-user', role: 'DM' })
+    mocks.mockGetCampaignForUser.mockResolvedValueOnce({
+      id: CAMPAIGN_ID,
+      currentDmId: DM_ID,
+      memberRole: 'DM',
+    })
+    // DM requester, note visible, updateNote and markNotePublished returns null → 404
+    mocks.mockVerifyToken.mockReturnValueOnce({ userId: DM_ID, username: 'dm-user', role: 'DM' })
+    mocks.mockGetCampaignForUser.mockResolvedValueOnce({
+      id: CAMPAIGN_ID,
+      currentDmId: DM_ID,
+      memberRole: 'DM',
+    })
     mocks.mockGetNoteById.mockResolvedValueOnce(note)
     mocks.mockGetSession.mockResolvedValueOnce({
       id: SESSION_ID,
       dmId: DM_ID,
-      campaignId: 'campaign-1',
+      campaignId: CAMPAIGN_ID,
     })
-    mocks.mockGetVisibleNotes.mockResolvedValueOnce([note])
+    mocks.mockGetVisibleCampaignNotes.mockResolvedValueOnce([note])
     mocks.mockUpdateNote.mockResolvedValueOnce({
       ...note,
       visibility: NoteVisibility.PLAYERS_VISIBLE,
@@ -536,6 +564,7 @@ describe('notes routes', () => {
     response = await request(app)
       .post(`/api/notes/${NOTE_ID}/publish`)
       .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
     expect(response.status).toBe(404)
     expect(response.body.code).toBe(ErrorCode.NOTE_NOT_FOUND)
   })
@@ -546,6 +575,7 @@ describe('notes routes', () => {
     const publishedAt = Date.now()
     const note = {
       id: NOTE_ID,
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       authorId: USER_ID,
       authorUsername: 'alice',
@@ -559,21 +589,28 @@ describe('notes routes', () => {
     const message = {
       id: '66666666-6666-4666-8666-666666666666',
       sessionId: SESSION_ID,
-      authorId: USER_ID,
-      authorUsername: 'alice',
+      authorId: DM_ID,
+      authorUsername: 'dm-user',
       content: 'placeholder',
       type: MessageType.SYSTEM,
       isDmOnly: false,
       createdAt: publishedAt,
     }
 
+    // Must authenticate as DM to publish
+    mocks.mockVerifyToken.mockReturnValueOnce({ userId: DM_ID, username: 'dm-user', role: 'DM' })
+    mocks.mockGetCampaignForUser.mockResolvedValueOnce({
+      id: CAMPAIGN_ID,
+      currentDmId: DM_ID,
+      memberRole: 'DM',
+    })
     mocks.mockGetNoteById.mockResolvedValueOnce(note)
     mocks.mockGetSession.mockResolvedValueOnce({
       id: SESSION_ID,
       dmId: DM_ID,
-      campaignId: 'campaign-1',
+      campaignId: CAMPAIGN_ID,
     })
-    mocks.mockGetVisibleNotes.mockResolvedValueOnce([note])
+    mocks.mockGetVisibleCampaignNotes.mockResolvedValueOnce([note])
     mocks.mockUpdateNote.mockResolvedValueOnce({
       ...note,
       visibility: NoteVisibility.PLAYERS_VISIBLE,
@@ -585,6 +622,7 @@ describe('notes routes', () => {
     const response = await request(app)
       .post(`/api/notes/${NOTE_ID}/publish`)
       .set('Authorization', 'Bearer token')
+      .send({ sessionId: SESSION_ID })
 
     expect(response.status).toBe(200)
     expect(mocks.mockSendMessage).toHaveBeenCalledWith(

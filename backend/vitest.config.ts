@@ -21,6 +21,9 @@ export default defineConfig({
         'src/bootstrap.ts',
         'src/types/**',
         'src/**/index.ts',
+        'src/services/dev-mock/**',
+        'src/api/dev.routes.ts',
+        'src/constants/dev-mock*.ts',
       ],
       thresholds: {
         branches: 51,

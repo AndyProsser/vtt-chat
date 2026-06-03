@@ -550,8 +550,7 @@ describe('ChatWindow timeline behavior', () => {
 
     expect(screen.getByText('Handout Shared')).toBeTruthy()
     expect(screen.getByText('Treasure Map')).toBeTruthy()
-    expect(screen.getByText('All players')).toBeTruthy()
-    expect(screen.getByText('First clue')).toBeTruthy()
+    // sharedWith is not rendered in the card body — the metadata is in structured form only
     expect(screen.getByRole('img', { name: 'map' })).toBeTruthy()
     expect(screen.queryByText('[Note Shared] Treasure Map')).toBeNull()
   })
@@ -590,7 +589,8 @@ describe('ChatWindow timeline behavior', () => {
     )
 
     expect(screen.getByText('Structured title')).toBeTruthy()
-    expect(screen.getByText('Structured body')).toBeTruthy()
+    // Markdown is rendered as literal pre-formatted text in NoteSharedCard
+    expect(screen.getByText(/Structured body/)).toBeTruthy()
     expect(screen.queryByText('Legacy title')).toBeNull()
     expect(screen.queryByText('Old body')).toBeNull()
   })

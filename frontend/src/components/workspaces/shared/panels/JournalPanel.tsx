@@ -910,7 +910,7 @@ function JournalBrowser({
 
   if (!effectiveSessionId || !effectiveSession) {
     return (
-      <section className="knowledge-panel knowledge-panel--compact" aria-label="Session journal">
+      <section className="knowledge-panel knowledge-panel--compact" aria-label="Session journal" data-testid="journal-panel">
         <header className="knowledge-panel-header">
           <div>
             <h3 className="knowledge-panel-title">
@@ -930,7 +930,7 @@ function JournalBrowser({
   }
 
   return (
-    <section className="knowledge-panel knowledge-panel--compact" aria-label="Session journal">
+    <section className="knowledge-panel knowledge-panel--compact" aria-label="Session journal" data-testid="journal-panel">
       <header className="knowledge-panel-header">
         <div>
           <h3 className="knowledge-panel-title">

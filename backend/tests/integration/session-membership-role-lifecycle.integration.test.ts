@@ -95,6 +95,17 @@ vi.mock('@/services/room.service', () => ({
   ensureSessionWhisperRoomForSession: vi.fn(async () => undefined),
   applySessionStateRoomTransition: vi.fn(),
   deletePrivateRoomsForEndedSession: vi.fn(),
+  removePresenceProjection: vi.fn(async () => undefined),
+}))
+
+vi.mock('@/services/session/disconnect-cascade.service', () => ({
+  sessionDisconnectCascadeService: {
+    cancelUserTimers: vi.fn(),
+  },
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  getSessionParticipantProfiles: vi.fn(async () => ({})),
 }))
 
 vi.mock('@/services/chat.service', () => ({
