@@ -1,4 +1,4 @@
-@media (max-width: 768px) {
+@media (max-width: 680px) {
   .workspaces-shell-wide {
     grid-template-columns: minmax(0, 1fr);
   }

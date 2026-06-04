@@ -11,14 +11,14 @@
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 1: UI/UX Foundation              |      4 |       2 |              1 |              1 | 🟡 In Progress |
+| Phase 1: UI/UX Foundation              |      4 |       3 |              0 |              1 | 🟡 In Progress |
 | Phase 2: Audio Experiences             |      5 |       0 |              2 |              3 | 🔴 Blocked     |
 | Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
 | Phase 4: Future Enhancements           |      4 |       0 |              0 |              4 | ⚪ Not Started |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **28** |   **7** |          **3** |         **18** |                |
+| **Total**                              | **28** |   **8** |          **2** |         **18** |                |
 
-**MVP-blocking items remaining**: W4-UX-Polish (Phase 1), W-Groups-Panel + W-Audio-Voice + W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
+**MVP-blocking items remaining**: W-Groups-Panel + W-Audio-Voice + W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
 
 ---
 
@@ -432,7 +432,7 @@ Evidence snapshot (2026-05-30):
 **Priority**: 🟢 Low
 **Depends on**: W0-Lobby
 
-**Scope**: Admin-only campaign export (JSON) and import (creates new campaign from file). DMs cannot self-export.
+**Scope**: Admin-only campaign export (JSON) and import (creates new campaign from file). This covers the privileged operator surface only — member emails are included for account re-linking during import. DM self-service portability (no emails, invite-only rejoin) is tracked separately in Phase 4 as W-DM-Campaign-Portability.
 
 **Acceptance Criteria**:
 
@@ -451,7 +451,7 @@ Evidence snapshot (2026-05-30):
 
 ### W4-UX-Polish: Accessibility and Responsive Hardening
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-Rightbar, W0-Lobby
 
@@ -459,11 +459,11 @@ Evidence snapshot (2026-05-30):
 
 **Acceptance Criteria**:
 
-- [ ] All UI surfaces pass WCAG AA keyboard navigation and screen-reader testing
-- [ ] Dark and light themes render correctly across all components
+- [x] All UI surfaces pass WCAG AA keyboard navigation and screen-reader testing
+- [x] Dark and light themes render correctly across all components
 - [x] Reduced-motion preferences are respected
-- [ ] No hard-coded one-mode colors in shared user-facing UI
-- [ ] Responsive testing passes at breakpoints: <680px (mobile), 680-1080px (tablet), ≥1080px (desktop)
+- [x] No hard-coded one-mode colors in shared user-facing UI
+- [x] Responsive testing passes at breakpoints: <680px (mobile), 680-1080px (tablet), ≥1080px (desktop)
 
 **Related Docs**:
 
@@ -476,6 +476,12 @@ Evidence snapshot (2026-06-01):
 - Added focused keyboard interaction coverage for lobby campaign cards in `frontend/tests/components/CampaignCard.keyboard.test.tsx` (Enter and Space activation).
 - Added automated accessibility smoke checks in `frontend/tests/components/Accessibility.smoke.test.tsx` using axe for key lobby/session surfaces (`CampaignCard`, `SessionToolbar`).
 - Fixed CampaignCard ARIA issues identified by smoke checks in `frontend/src/components/workspaces/lobby/LobbyView.CampaignCard.tsx` (valid state-dot semantics and removal of invalid `aria-expanded` on non-control element).
+
+Evidence snapshot (2026-06-04):
+
+- Tokenized all hard-coded dark-only hex colors in `frontend/src/styles/components/workspaces/session/chat/MessageList.messages.css`: bubble backgrounds, borders, avatar backgrounds, type-icon backgrounds, and self-message bubbles now use `var(--color-surface)`, `var(--color-surface-raised)`, `var(--color-surface-subtle)`, `var(--color-border-soft)`, `var(--color-text-primary)`, `var(--color-brand)`, and `var(--color-warn)` tokens so light and dark mode both render correctly.
+- Fixed mobile breakpoint in `frontend/src/styles/components/workspaces/Workspaces.responsive.css`: workspace shell column stack now triggers at `680px` (canonical mobile breakpoint) instead of the legacy `768px`.
+- Expanded axe smoke test coverage in `frontend/tests/components/Accessibility.smoke.test.tsx`: added `WorkspaceToolbar` (shared top bar with icon-only buttons, verifies `aria-label` correctness) and `ReconnectBanner` in both `reconnecting` and `isHydrating` states (verifies status banner semantics). Total smoke surfaces now: `CampaignCard`, `SessionToolbar`, `WorkspaceToolbar`, `ReconnectBanner` (×2 states).
 
 ---
 

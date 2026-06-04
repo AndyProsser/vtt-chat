@@ -5,6 +5,8 @@ import { SessionState } from '@shared'
 import type { CampaignSummary } from '@/types/session/campaign'
 import { CampaignCard } from '@/components/workspaces/lobby/LobbyView.CampaignCard'
 import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
+import { WorkspaceToolbar } from '@/components/workspaces/shared/toolbar/WorkspaceToolbar'
+import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import type { ToolbarActionModel } from '@/types/toolbar'
 import { TooltipProvider } from '@/components/ui'
 
@@ -94,6 +96,50 @@ describe('Accessibility smoke checks', () => {
       rules: {
         'color-contrast': { enabled: false },
       },
+    })
+
+    expect(results.violations).toHaveLength(0)
+  })
+
+  it('WorkspaceToolbar icon-only buttons have accessible labels', async () => {
+    const { container } = render(
+      <TooltipProvider>
+        <WorkspaceToolbar
+          themeMode="dark"
+          onToggleTheme={vi.fn()}
+          onOpenUserSettings={vi.fn()}
+          onExit={vi.fn()}
+          exitIcon="logout"
+          exitAriaLabel="Logoff"
+          exitTooltipLabel="Logoff"
+          connectionStatusLabel="Connected"
+          connectionStatusColorKey="GREEN"
+        />
+      </TooltipProvider>
+    )
+
+    const results = await axe(container, {
+      rules: { 'color-contrast': { enabled: false } },
+    })
+
+    expect(results.violations).toHaveLength(0)
+  })
+
+  it('ReconnectBanner has no obvious a11y violations when reconnecting', async () => {
+    const { container } = render(<ReconnectBanner wsState="reconnecting" />)
+
+    const results = await axe(container, {
+      rules: { 'color-contrast': { enabled: false } },
+    })
+
+    expect(results.violations).toHaveLength(0)
+  })
+
+  it('ReconnectBanner has no obvious a11y violations while hydrating', async () => {
+    const { container } = render(<ReconnectBanner wsState="connected" isHydrating />)
+
+    const results = await axe(container, {
+      rules: { 'color-contrast': { enabled: false } },
     })
 
     expect(results.violations).toHaveLength(0)
