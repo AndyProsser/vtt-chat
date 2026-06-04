@@ -67,6 +67,7 @@ export function useCampaignManagement() {
   const [importBusy, setImportBusy] = useState(false)
   const [exportBundleText, setExportBundleText] = useState('')
   const [importBundleText, setImportBundleText] = useState('')
+  const [importEmailMapText, setImportEmailMapText] = useState('')
   const [portabilityMessage, setPortabilityMessage] = useState<string | null>(null)
   const [recordingDraft, setRecordingDraft] = useState<RecordingDraft>(EMPTY_RECORDING_DRAFT)
 
@@ -317,17 +318,33 @@ export function useCampaignManagement() {
       return
     }
 
+    let memberEmailMap: Record<string, string> | undefined
+    if (importEmailMapText.trim()) {
+      try {
+        const parsed = JSON.parse(importEmailMapText)
+        if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
+          setError('Email map must be a JSON object: {"email@old.com": "user-uuid"}')
+          return
+        }
+        memberEmailMap = parsed as Record<string, string>
+      } catch {
+        setError('Email map must be valid JSON')
+        return
+      }
+    }
+
     setImportBusy(true)
     setError(null)
     setPortabilityMessage(null)
 
     try {
-      const response = await requestCampaignImport(bundle)
+      const response = await requestCampaignImport(bundle, memberEmailMap)
 
       await refreshCampaigns()
       setSelectedCampaignId(response.campaign.id)
       setPortabilityMessage(`${response.message} (${response.artifactId})`)
       setImportBundleText('')
+      setImportEmailMapText('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to import campaign')
     } finally {
@@ -420,6 +437,8 @@ export function useCampaignManagement() {
     exportBundleText,
     importBundleText,
     setImportBundleText,
+    importEmailMapText,
+    setImportEmailMapText,
     portabilityMessage,
     recordingDraft,
     endSession,

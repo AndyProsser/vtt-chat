@@ -40,6 +40,8 @@ export default function CampaignManagement() {
     exportBundleText,
     importBundleText,
     setImportBundleText,
+    importEmailMapText,
+    setImportEmailMapText,
     portabilityMessage,
     recordingDraft,
     endSession,
@@ -98,10 +100,12 @@ export default function CampaignManagement() {
         importBusy={importBusy}
         exportBundleText={exportBundleText}
         importBundleText={importBundleText}
+        importEmailMapText={importEmailMapText}
         recordingDraft={recordingDraft}
         onSelectedMemberChange={setSelectedMemberId}
         onTargetRoomChange={setTargetRoomId}
         onImportBundleChange={setImportBundleText}
+        onImportEmailMapChange={setImportEmailMapText}
         onRecordingDraftChange={updateRecordingDraft}
         onMovePlayer={() => void movePlayer()}
         onExportCampaign={(campaign) => void exportCampaign(campaign)}

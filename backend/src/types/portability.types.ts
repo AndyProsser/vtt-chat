@@ -25,6 +25,7 @@ export interface CampaignTransferBundle {
     userId: string
     username: string
     displayName: string
+    email: string | null
     campaignRole: Role
     userRole: Role
   }>

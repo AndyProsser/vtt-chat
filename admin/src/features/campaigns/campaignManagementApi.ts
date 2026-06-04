@@ -85,10 +85,16 @@ export async function requestCampaignExport(campaignId: string): Promise<Campaig
   })
 }
 
-export async function requestCampaignImport(bundle: unknown): Promise<CampaignImportResponse> {
+export async function requestCampaignImport(
+  bundle: unknown,
+  memberEmailMap?: Record<string, string> | null
+): Promise<CampaignImportResponse> {
   return requestJson<CampaignImportResponse>('/campaigns/import', {
     method: 'POST',
-    body: JSON.stringify({ bundle }),
+    body: JSON.stringify({
+      bundle,
+      ...(memberEmailMap && Object.keys(memberEmailMap).length > 0 ? { memberEmailMap } : {}),
+    }),
   })
 }
 

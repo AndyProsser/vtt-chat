@@ -661,6 +661,12 @@ export async function importAdminCampaignBundlePayload(params: {
 }> {
   const bundle = params.body.bundle ?? params.body
   const name = String(params.body.name || '').trim() || undefined
+  const memberEmailMap =
+    params.body.memberEmailMap &&
+    typeof params.body.memberEmailMap === 'object' &&
+    !Array.isArray(params.body.memberEmailMap)
+      ? (params.body.memberEmailMap as Record<string, string>)
+      : undefined
 
   if (!isValidTransferBundle(bundle)) {
     return {
@@ -669,7 +675,7 @@ export async function importAdminCampaignBundlePayload(params: {
     }
   }
 
-  const imported = await importCampaignBundle(params.actor.userId, bundle, name)
+  const imported = await importCampaignBundle(params.actor.userId, bundle, name, memberEmailMap)
 
   if (!imported) {
     return {

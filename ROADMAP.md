@@ -11,12 +11,12 @@
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 1: UI/UX Foundation              |      4 |       3 |              0 |              1 | 🟡 In Progress |
+| Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       0 |              2 |              3 | 🔴 Blocked     |
 | Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
-| Phase 4: Future Enhancements           |      4 |       0 |              0 |              4 | ⚪ Not Started |
+| Phase 4: Future Enhancements           |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **28** |   **8** |          **2** |         **18** |                |
+| **Total**                              | **29** |   **9** |          **2** |         **18** |                |
 
 **MVP-blocking items remaining**: W-Groups-Panel + W-Audio-Voice + W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
 
@@ -428,7 +428,7 @@ Evidence snapshot (2026-05-30):
 
 ### W0-Lobby-Admin: Campaign Export and Import
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟢 Low
 **Depends on**: W0-Lobby
 
@@ -436,16 +436,25 @@ Evidence snapshot (2026-05-30):
 
 **Acceptance Criteria**:
 
-- [ ] `GET /api/admin/campaigns/:id/export` returns campaign JSON (metadata, groups/environments, session history/chat, notes/journal, member list)
-- [ ] Export does not include passwords; member emails are included for re-linking
-- [ ] `POST /api/admin/campaigns/import` creates a new campaign with fresh IDs from the export JSON
-- [ ] Admin may optionally map member emails to existing accounts during import; unmapped members become stubs
-- [ ] Import never overwrites an existing campaign
-- [ ] Admin UI surfaces Export and Import actions in campaign management panel
+- [x] `GET /api/admin/campaigns/:id/export` returns campaign JSON (metadata, groups/environments, session history/chat, notes/journal, member list)
+- [x] Export does not include passwords; member emails are included for re-linking
+- [x] `POST /api/admin/campaigns/import` creates a new campaign with fresh IDs from the export JSON
+- [x] Admin may optionally map member emails to existing accounts during import; unmapped members become stubs
+- [x] Import never overwrites an existing campaign
+- [x] Admin UI surfaces Export and Import actions in campaign management panel
 
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Export and Import section
+
+Evidence snapshot (2026-06-04):
+
+- Export endpoint (`GET /api/admin/campaigns/:id/export`) and import endpoint (`POST /api/admin/campaigns/import`) are implemented in `backend/src/api/admin.routes.ts`, service logic in `backend/src/services/admin/admin-portability.service.ts` and `admin-campaign-operations.service.ts`.
+- Added `email` field to `CampaignTransferBundle.members[]` in `backend/src/types/portability.types.ts` and to the Prisma user select in `buildCampaignExport` so member emails are included in every export for cross-instance re-linking.
+- Import now supports optional `memberEmailMap: { "source-email": "target-user-id" }` in the request body. When provided, resolution order is: email-map lookup → ID match → stub creation. Stubs are created for any unresolved source user so content authorship is never lost.
+- Admin UI (`admin/src/features/campaigns/CampaignDetail.tsx`) surfaces Export Bundle (read-only textarea), Import Bundle (paste area), and the new optional Member Email Map textarea with placeholder and hint label. Import button submits all three together.
+- State hook (`useCampaignManagement.ts`) parses and validates the email map JSON before sending; surfaces a clear error for non-object JSON. API client (`campaignManagementApi.ts`) sends `memberEmailMap` only when it is non-empty.
+- Backend tests updated and expanded in `backend/tests/api/admin-campaign-operations.test.ts` (10 tests): export now asserts email presence in the bundle; two new import tests cover email-map acceptance and array-typed map rejection (ignored, not a crash).
 
 ---
 
@@ -881,6 +890,33 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 **Related Docs**:
 
 - (To be created when work begins)
+
+---
+
+### W-DM-Campaign-Portability: DM Self-Service Campaign Export and Import
+
+**Status**: ⚪ Not Started
+**Priority**: 🔵 Low (post-MVP)
+**Depends on**: W0-Lobby-Admin (shares export format), Core Reliability complete
+
+**Scope**: DMs can export their own campaign as a portable JSON file and import a previously exported file to create a new campaign — no admin involvement required. The DM export format omits member emails and passwords; imported campaigns start with the DM as the sole member and players rejoin via the normal invite flow.
+
+This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import. The admin route remains the privileged path (with email re-linking and full member stubs); this route is a lighter self-service backup/restore for DMs.
+
+**Acceptance Criteria**:
+
+- [ ] `GET /api/campaigns/:id/export` — DM-authenticated (campaign owner only). Returns portable JSON: campaign metadata, groups/environments, session history/chat (IC, OOC, system bookends), notes/journal. Member list includes display names and roles but no emails or passwords.
+- [ ] Export respects campaign privacy: Whisper, paused-ephemeral, and cooldown-ephemeral content excluded by default; DM may opt in to include paused/cooldown chat.
+- [ ] `POST /api/campaigns/import` — authenticated user. Creates a new campaign with fresh UUIDs from the export file; the caller becomes the new DM. Import never overwrites an existing campaign.
+- [ ] Import is idempotent for the same file: re-importing always creates a new campaign, never patches an existing one.
+- [ ] Lobby offline workspace surfaces "Export Campaign" in the campaign header actions (DM-only, not visible to players or spectators).
+- [ ] Lobby surfaces "Import Campaign" alongside the existing "Create Campaign" and "Join Campaign" actions (DM-only).
+- [ ] Export and import progress/result surfaces as a toast; errors include a human-readable reason.
+- [ ] Imported campaign appears in the DM's lobby list immediately; players must be re-invited via the normal invite flow.
+
+**Related Docs**:
+
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Export and Import section (admin variant; DM contract to be appended when implemented)
 
 ---
 

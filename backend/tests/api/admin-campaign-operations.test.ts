@@ -329,7 +329,7 @@ describe('admin campaign operations', () => {
     expect(mocks.mockAdminAuditCreate.mock.calls[0][0].data.action).toBe('ROOM_MOVE_PLAYER')
   })
 
-  it('exports campaign bundle and writes audit entry', async () => {
+  it('exports campaign bundle with member emails and writes audit entry', async () => {
     const app = buildApp()
 
     mocks.mockCampaignFindUnique.mockResolvedValue({
@@ -341,7 +341,20 @@ describe('admin campaign operations', () => {
       createdAt: new Date('2026-01-01'),
       updatedAt: new Date('2026-01-01'),
       currentDm: { id: '22222222-2222-4222-8222-222222222222', username: 'dm-user' },
-      members: [],
+      members: [
+        {
+          userId: '33333333-3333-4333-8333-333333333333',
+          role: 'PLAYER',
+          joinedAt: new Date('2026-01-02'),
+          user: {
+            id: '33333333-3333-4333-8333-333333333333',
+            username: 'player-one',
+            displayName: 'Player One',
+            email: 'player@example.com',
+            role: 'PLAYER',
+          },
+        },
+      ],
       characters: [],
       sessions: [],
       recordings: [],
@@ -354,6 +367,8 @@ describe('admin campaign operations', () => {
     expect(response.status).toBe(200)
     expect(response.body.artifactId).toBe('artifact-1')
     expect(mocks.mockAdminAuditCreate.mock.calls.at(-1)?.[0].data.action).toBe('CAMPAIGN_EXPORT')
+    // Email must appear in the member list for cross-instance re-linking.
+    expect(response.body.bundle.members[0].email).toBe('player@example.com')
   })
 
   it('imports campaign bundle and writes audit entry', async () => {
@@ -377,6 +392,56 @@ describe('admin campaign operations', () => {
     expect(response.status).toBe(201)
     expect(response.body.campaign.name).toBe('Ashfall (Imported)')
     expect(mocks.mockAdminAuditCreate.mock.calls.at(-1)?.[0].data.action).toBe('CAMPAIGN_IMPORT')
+  })
+
+  it('imports campaign bundle with memberEmailMap for account re-linking', async () => {
+    const app = buildApp()
+
+    const response = await request(app)
+      .post('/api/admin/campaigns/import')
+      .set('Authorization', 'Bearer token')
+      .send({
+        bundle: {
+          version: 1,
+          sourceCampaignId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          campaign: { name: 'Ashfall' },
+          members: [],
+          characters: [],
+          sessions: [],
+          recordings: [],
+        },
+        memberEmailMap: {
+          'player@old-instance.com': '44444444-4444-4444-8444-444444444444',
+        },
+      })
+
+    // memberEmailMap is optional — endpoint must accept and process it without error.
+    expect(response.status).toBe(201)
+    expect(response.body.campaign.name).toBe('Ashfall (Imported)')
+  })
+
+  it('rejects import when memberEmailMap is not an object', async () => {
+    const app = buildApp()
+
+    const response = await request(app)
+      .post('/api/admin/campaigns/import')
+      .set('Authorization', 'Bearer token')
+      .send({
+        bundle: {
+          version: 1,
+          sourceCampaignId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          campaign: { name: 'Ashfall' },
+          members: [],
+          characters: [],
+          sessions: [],
+          recordings: [],
+        },
+        // Array is not a valid memberEmailMap — should be silently ignored, not crash.
+        memberEmailMap: ['bad'],
+      })
+
+    // Array is not an object so it is ignored; import proceeds normally.
+    expect(response.status).toBe(201)
   })
 
   it('lists recording metadata for a campaign', async () => {

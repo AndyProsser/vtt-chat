@@ -24,10 +24,12 @@ interface CampaignDetailProps {
   importBusy: boolean
   exportBundleText: string
   importBundleText: string
+  importEmailMapText: string
   recordingDraft: RecordingDraft
   onSelectedMemberChange: (memberId: string) => void
   onTargetRoomChange: (roomId: string) => void
   onImportBundleChange: (value: string) => void
+  onImportEmailMapChange: (value: string) => void
   onRecordingDraftChange: (field: keyof RecordingDraft, value: string) => void
   onMovePlayer: () => void
   onExportCampaign: (campaign: CampaignSummary) => void
@@ -51,10 +53,12 @@ export function CampaignDetail({
   importBusy,
   exportBundleText,
   importBundleText,
+  importEmailMapText,
   recordingDraft,
   onSelectedMemberChange,
   onTargetRoomChange,
   onImportBundleChange,
+  onImportEmailMapChange,
   onRecordingDraftChange,
   onMovePlayer,
   onExportCampaign,
@@ -126,6 +130,19 @@ export function CampaignDetail({
               value={importBundleText}
               onChange={(event) => onImportBundleChange(event.target.value)}
               placeholder="Paste a previously exported campaign bundle to import it as a new campaign."
+            />
+
+            <label className="campaign-form-label" htmlFor="campaign-import-email-map">
+              Member Email Map{' '}
+              <span className="campaign-form-label-hint">(optional — re-links members by email)</span>
+            </label>
+            <textarea
+              id="campaign-import-email-map"
+              aria-label="Member email map for import"
+              className="campaign-bundle-textarea campaign-bundle-textarea--short"
+              value={importEmailMapText}
+              onChange={(event) => onImportEmailMapChange(event.target.value)}
+              placeholder={'{\n  "player@old-instance.com": "existing-user-uuid"\n}'}
             />
 
             <div className="campaign-inline-actions">
