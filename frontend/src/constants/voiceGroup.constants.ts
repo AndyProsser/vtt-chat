@@ -11,28 +11,36 @@ export const DM_FLAVOR_LINES = [
   'Steward of lore, legends, and totally fair critical hits.',
 ] as const
 
-export const CONDITION_PRESETS = ['Silenced', 'Poisoned', 'Bleeding', 'Exhausted'] as const
+import { CONDITION_PRESETS as SHARED_CONDITION_PRESETS, ENVIRONMENT_PRESETS } from '@shared'
+
+/** Condition names for context menu targets. Derived from the canonical shared catalogue. */
+export const CONDITION_PRESETS = SHARED_CONDITION_PRESETS.map((p) => p.name) as string[]
 
 export const LONG_PRESS_OPEN_MS = 420
 export const LONG_PRESS_MOVE_CANCEL_PX = 12
 
 export const DEFAULT_PLAYER_META_LINE = 'Class TBD | Level ? | Race TBD'
 
-const ENVIRONMENT_GLYPH_RULES = [
-  { icon: 'mountain_flag', keywords: ['cave'] },
-  { icon: 'forest', keywords: ['forest', 'wood'] },
-  { icon: 'local_bar', keywords: ['tavern'] },
-  { icon: 'location_city', keywords: ['city', 'street', 'market'] },
-  { icon: 'lan', keywords: ['dungeon', 'crypt'] },
-  { icon: 'bedtime', keywords: ['night', 'moon'] },
-  { icon: 'thunderstorm', keywords: ['storm', 'rain'] },
-] as const
-
+/** Resolves the Material Symbol icon for an environment by name. Uses the shared catalogue first, falls back to keyword matching. */
 export function resolveEnvironmentGlyph(environmentName?: string): string {
-  const value = (environmentName || '').toLowerCase()
-  const matchedRule = ENVIRONMENT_GLYPH_RULES.find((rule) =>
-    rule.keywords.some((keyword) => value.includes(keyword))
-  )
+  if (!environmentName) return 'graphic_eq'
 
-  return matchedRule?.icon || 'graphic_eq'
+  const match = ENVIRONMENT_PRESETS.find(
+    (p) => p.name.toLowerCase() === environmentName.toLowerCase()
+  )
+  if (match) return match.icon
+
+  // Keyword fallback for custom/unknown environment names
+  const value = environmentName.toLowerCase()
+  if (value.includes('cave')) return 'mountain_flag'
+  if (value.includes('forest') || value.includes('wood')) return 'forest'
+  if (value.includes('tavern')) return 'local_bar'
+  if (value.includes('city') || value.includes('street')) return 'location_city'
+  if (value.includes('dungeon') || value.includes('crypt')) return 'lan'
+  if (value.includes('night') || value.includes('moon')) return 'bedtime'
+  if (value.includes('storm') || value.includes('rain')) return 'thunderstorm'
+  if (value.includes('cathedral') || value.includes('church')) return 'church'
+  if (value.includes('water') || value.includes('under')) return 'water'
+
+  return 'graphic_eq'
 }

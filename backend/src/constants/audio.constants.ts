@@ -1,4 +1,13 @@
-import { VOICE_PRESETS, VOICE_PRESET_NAMES } from '@shared'
+import {
+  VOICE_PRESETS,
+  ENVIRONMENT_PRESETS,
+  DISTANCE_PRESETS,
+  CONDITION_PRESETS,
+  VOICE_PRESET_NAMES,
+  ENVIRONMENT_PRESET_NAMES,
+  DISTANCE_PRESET_NAMES,
+  CONDITION_PRESET_NAMES,
+} from '@shared'
 
 export const AUDIO_BROADCAST_OVERRIDE_TYPE = 'VOICE_OF_GOD'
 
@@ -18,14 +27,40 @@ export type AudioDMOverrideType =
  * Canonical definitions (including DSP params) live in shared/audio/voicePresets.ts.
  * Backend uses these for validation only; DSP is applied client-side.
  */
-export { VOICE_PRESETS as AUDIO_VOICE_PRESETS, VOICE_PRESET_NAMES as AUDIO_VOICE_PRESET_NAMES }
+export {
+  VOICE_PRESETS as AUDIO_VOICE_PRESETS,
+  ENVIRONMENT_PRESETS as AUDIO_ENVIRONMENT_PRESETS,
+  DISTANCE_PRESETS as AUDIO_DISTANCE_PRESETS,
+  CONDITION_PRESETS as AUDIO_CONDITION_PRESETS,
+  VOICE_PRESET_NAMES as AUDIO_VOICE_PRESET_NAMES,
+  ENVIRONMENT_PRESET_NAMES as AUDIO_ENVIRONMENT_PRESET_NAMES,
+  DISTANCE_PRESET_NAMES as AUDIO_DISTANCE_PRESET_NAMES,
+  CONDITION_PRESET_NAMES as AUDIO_CONDITION_PRESET_NAMES,
+}
 
-/** Legacy preset catalogue kept for API compatibility. Points to voice presets for VOICE category. */
-export const AUDIO_PRESETS = VOICE_PRESETS.map((p) => ({
-  id: `voice-${p.name.toLowerCase().replace(/\s+/g, '-')}`,
-  name: p.name,
-  category: 'VOICE' as const,
-}))
+/** Legacy preset catalogue for the GET /api/audio/presets endpoint. */
+export const AUDIO_PRESETS = [
+  ...VOICE_PRESETS.map((p) => ({
+    id: `voice-${p.name.toLowerCase().replace(/\s+/g, '-')}`,
+    name: p.name,
+    category: 'VOICE' as const,
+  })),
+  ...ENVIRONMENT_PRESETS.map((p) => ({
+    id: `env-${p.name.toLowerCase().replace(/\s+/g, '-')}`,
+    name: p.name,
+    category: 'ENVIRONMENT' as const,
+  })),
+  ...DISTANCE_PRESETS.map((p) => ({
+    id: `distance-${p.name.toLowerCase().replace(/\s+/g, '-')}`,
+    name: p.name,
+    category: 'DISTANCE' as const,
+  })),
+  ...CONDITION_PRESETS.map((p) => ({
+    id: `condition-${p.name.toLowerCase().replace(/\s+/g, '-')}`,
+    name: p.name,
+    category: 'CONDITION' as const,
+  })),
+]
 
 export const AUDIO_EVENT_TYPES = {
   ENVIRONMENT_SET: 'AUDIO:ENVIRONMENT_SET',
