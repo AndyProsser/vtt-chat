@@ -13,6 +13,8 @@ import {
 import { setDmVoiceMode } from '@/services/audio/effects.service'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import {
+  AUDIO_CONDITION_PRESET_NAMES,
+  AUDIO_DISTANCE_PRESET_NAMES,
   AUDIO_DM_OVERRIDE_TYPES,
   AUDIO_EVENT_TYPES,
   AUDIO_PRESETS,
@@ -263,6 +265,34 @@ async function handleApplyDmOverride(req: Request, res: Response) {
       message: 'overrideType is required',
       field: 'overrideType',
     })
+  }
+
+  // Validate preset names for typed override categories.
+  if (overrideType === 'DISTANCE') {
+    const presetName = typeof parameters?.presetName === 'string' ? parameters.presetName : null
+    if (!presetName || !AUDIO_DISTANCE_PRESET_NAMES.has(presetName)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: `Invalid distance preset "${presetName}". Valid values: ${[...AUDIO_DISTANCE_PRESET_NAMES].join(', ')}`,
+        field: 'parameters.presetName',
+      })
+    }
+  }
+
+  if (overrideType === 'CONDITION') {
+    const presetName =
+      typeof parameters?.conditionName === 'string'
+        ? parameters.conditionName
+        : typeof parameters?.presetName === 'string'
+          ? parameters.presetName
+          : null
+    if (!presetName || !AUDIO_CONDITION_PRESET_NAMES.has(presetName)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: `Invalid condition preset "${presetName}". Valid values: ${[...AUDIO_CONDITION_PRESET_NAMES].join(', ')}`,
+        field: 'parameters.presetName',
+      })
+    }
   }
 
   const authz = await validateDmControl(sessionId as UUID, user)

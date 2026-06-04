@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EventEnvelope } from '@shared'
 import type { UUID } from '@shared'
-import { SessionState } from '@shared'
+import { SessionState, findConditionPreset, findDistancePreset } from '@shared'
 import { isGreenRoomName } from '../constants/roomPresence.constants'
 import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
@@ -364,10 +364,65 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       useStore.getState().handleEnvironmentSet(event)
     })
     dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => {
-      useStore.getState().handleDMOverrideApplied(event)
+      const store = useStore.getState()
+      store.handleDMOverrideApplied(event)
+
+      // Wire condition/distance DSP for the affected player's own audio chain.
+      const payload = event.payload as {
+        targetUserId: UUID
+        overrideType: string
+        parameters?: Record<string, unknown>
+      }
+      const currentUserId = (store as any).currentUser?.id as UUID | undefined
+      if (!currentUserId || payload.targetUserId !== currentUserId) return
+
+      if (payload.overrideType === 'CONDITION') {
+        const presetName =
+          typeof payload.parameters?.conditionName === 'string'
+            ? payload.parameters.conditionName
+            : typeof payload.parameters?.presetName === 'string'
+              ? payload.parameters.presetName
+              : null
+        if (presetName) {
+          const catalogPreset = findConditionPreset(presetName)
+          if (catalogPreset) {
+            store.setCondition({
+              id: `condition-${catalogPreset.name.toLowerCase().replace(/\s+/g, '-')}` as UUID,
+              name: catalogPreset.name,
+              effects: catalogPreset.dsp as Record<string, unknown>,
+            })
+          }
+        }
+      }
+
+      if (payload.overrideType === 'DISTANCE') {
+        const presetName =
+          typeof payload.parameters?.presetName === 'string' ? payload.parameters.presetName : null
+        if (presetName && presetName !== 'Default') {
+          const catalogPreset = findDistancePreset(presetName)
+          if (catalogPreset) {
+            store.setDistance({
+              id: `distance-${catalogPreset.name.toLowerCase().replace(/\s+/g, '-')}` as UUID,
+              name: catalogPreset.name,
+              lowpassFreq: catalogPreset.dsp.lowpassFreq,
+              gainReduction: catalogPreset.dsp.gainReduction,
+              reverbSend: catalogPreset.dsp.reverbSend,
+            })
+          }
+        }
+      }
     })
     dispatcher.register('AUDIO:DM_OVERRIDE_REMOVED', (event) => {
-      useStore.getState().handleDMOverrideRemoved(event)
+      const store = useStore.getState()
+      store.handleDMOverrideRemoved(event)
+
+      // Clear condition/distance preset when DM removes the override for the current user.
+      const payload = event.payload as { targetUserId: UUID; overrideType: string }
+      const currentUserId = (store as any).currentUser?.id as UUID | undefined
+      if (!currentUserId || payload.targetUserId !== currentUserId) return
+
+      if (payload.overrideType === 'CONDITION') store.clearCondition()
+      if (payload.overrideType === 'DISTANCE') store.clearDistance()
     })
     dispatcher.register('AUDIO:BROADCAST_STATE_CHANGED', (event) => {
       useStore.getState().handleBroadcastStateChanged(event)
