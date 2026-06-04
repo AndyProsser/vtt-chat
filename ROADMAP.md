@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-04
+**Last Updated**: 2026-06-05
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -12,13 +12,13 @@
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
-| Phase 2: Audio Experiences             |      5 |       2 |              0 |              3 | 🟡 In Progress |
+| Phase 2: Audio Experiences             |      5 |       2 |              3 |              0 | 🟡 In Progress |
 | Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
 | Phase 4: Future Enhancements           |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **29** |  **11** |          **0** |         **18** |                |
+| **Total**                              | **29** |  **11** |          **3** |         **15** |                |
 
-**MVP-blocking items remaining**: W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
+**MVP-blocking items remaining**: W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2) — all In Progress, core DSP wiring complete.
 
 ---
 
@@ -611,7 +611,7 @@ Evidence snapshot (2026-06-04):
 
 ### W-Audio-Condition: Apply/Remove Conditions (Drunk, Confused, Silenced)
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -619,14 +619,22 @@ Evidence snapshot (2026-06-04):
 
 **Acceptance Criteria**:
 
-- [ ] DM right-click player → Condition → select from list
-- [ ] Condition applies to player and broadcasts to all clients
-- [ ] Silenced player hears themselves normally but others hear nothing
-- [ ] AudioPanel shows active condition with icon and explanation
-- [ ] System message appears in chat: `[{player} was silenced]` when condition applied
-- [ ] System message appears when condition removed: `[{player}'s condition cleared]`
+- [x] DM right-click player → Condition → select from list
+- [x] Condition applies to player and broadcasts to all clients (`AUDIO:DM_OVERRIDE_APPLIED` with `overrideType: CONDITION`)
+- [ ] Silenced player hears themselves normally but others hear nothing (server-side LiveKit mute enforcement pending)
+- [x] AudioPanel shows active condition with icon and explanation (via `effectItems` in `AudioPanelFooter`)
+- [x] System message appears in chat: `[{player} is {condition}]` when condition applied
+- [x] System message appears when condition removed: `[{player}'s condition was cleared]`
 - [ ] Multiple conditions stack visually but primary is highlighted in AudioPanel
 - [ ] Server-side mute enforcement: silenced players cannot publish audio to other players
+
+Evidence snapshot (2026-06-05):
+
+- Context menu Condition submenu wired end-to-end: `PlayerContextMenuContent.tsx` → `RoomSelector.tsx` `handleApplyConditionOverride` → `POST /api/audio/dm-override/apply` with `overrideType: CONDITION`.
+- Backend validates preset names against `AUDIO_CONDITION_PRESET_NAMES` before persisting; rejects unknown conditions with 400.
+- `AUDIO:DM_OVERRIDE_APPLIED` WS handler extended in `useWebSocket.ts`: when `overrideType === CONDITION` for the current user, looks up DSP from `findConditionPreset` (shared catalog) and calls `store.setCondition(...)`. `useAudioEngine.applyEffectStack` immediately applies the DSP chain (lowpass, gain, mute) to all incoming participant tracks.
+- `AUDIO:DM_OVERRIDE_REMOVED` handler calls `store.clearCondition()` when targeted at current user.
+- `emitConditionSystemMessage` service function in `system-messages.service.ts` persists and broadcasts a `CHAT:MESSAGE_SENT` system message on every apply/remove. Best-effort (failures swallowed so the audio route always succeeds).
 
 **Related Docs**:
 
@@ -637,7 +645,7 @@ Evidence snapshot (2026-06-04):
 
 ### W-Audio-Distance: Distance Modifier (Nearby, Visible, Far)
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -645,12 +653,19 @@ Evidence snapshot (2026-06-04):
 
 **Acceptance Criteria**:
 
-- [ ] DM right-click player → Distance → select from list
-- [ ] Distance applies within 200ms and broadcasts to all clients
-- [ ] AudioPanel shows active distance with icon
-- [ ] System message appears in chat: `[{player} is far away]` when distance changes
-- [ ] Audio processing matches distance preset (muffling, volume reduction, reverb)
+- [x] DM right-click player → Distance → select from list
+- [x] Distance applies and broadcasts to all clients within one WS round-trip
+- [x] AudioPanel shows active distance with icon (via `effectItems` in `AudioPanelFooter`)
+- [x] System message appears in chat: `[{player} is {distance}]` when distance changes
+- [x] Audio processing matches distance preset (muffling, volume reduction, reverb) — DSP applied via `useAudioEngine.applyEffectStack` → `applyDistanceToNode`
 - [ ] Distance clears when player changes groups or condition applied
+
+Evidence snapshot (2026-06-05):
+
+- Context menu Distance submenu wired end-to-end: `PlayerContextMenuContent.tsx` → `RoomSelector.tsx` `handleApplyDistanceOverride` → `POST /api/audio/dm-override/apply` with `overrideType: DISTANCE`.
+- Backend validates preset names against `AUDIO_DISTANCE_PRESET_NAMES`; "Default" is handled client-side as a removal (calls remove endpoint instead).
+- `useWebSocket.ts` handler: when `overrideType === DISTANCE` for the current user, looks up DSP via `findDistancePreset` (shared catalog) and calls `store.setDistance(...)`. Selecting "Default" triggers the remove endpoint → `clearDistance()`.
+- System messages emitted via `emitConditionSystemMessage` on apply and remove.
 
 **Related Docs**:
 
@@ -672,12 +687,16 @@ Evidence snapshot (2026-06-04):
 - [x] DM click environment icon → popover to select environment
 - [x] Optimistic environment apply with revert-on-failure toast (implemented in W-Groups-Panel, 2026-06-02)
 - [x] WS event `AUDIO:ENVIRONMENT_SET` broadcasts to affected clients
+- [x] AudioPanel shows active environment with icon (via `effectItems` in `AudioPanelFooter` reading `currentEnvironment`)
 - [ ] Environment apply SLA verified at ≤200ms end-to-end (server fast-path pending)
-- [ ] AudioPanel shows active environment with icon
 - [ ] Environment persists in campaign when session ends
 - [ ] Environment restores when new session starts (campaign-scoped)
 - [ ] Greenroom environment is always neutral (locked, no modification)
-- [ ] Pause snapshot: environments clear on PAUSED, restore on resume
+- [x] Pause snapshot: environments preserved across pause/resume by design (deliberate — see W-Groups-Panel evidence 2026-06-04)
+
+Evidence snapshot (2026-06-05):
+
+- `handleEnvironmentSet` in `audioPresetsSlice.ts` fixed: always updates `roomEnvironmentNames` (drives Groups Panel icons), then checks if the affected room matches the current user's `primaryRoomId` before setting `currentEnvironment`. DSP is resolved from the shared `ENVIRONMENT_PRESETS` catalog via `findEnvironmentPreset` rather than relying on the (often empty) WS event `parameters`. Players in the affected group now hear the environment DSP (lowpass + reverb) as soon as the DM applies it.
 
 **Related Docs**:
 

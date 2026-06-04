@@ -21,6 +21,7 @@ import {
   AUDIO_VOICE_PRESET_NAMES,
 } from '@/constants/audio.constants'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
+import { emitConditionSystemMessage } from '@/services/system-messages.service'
 import { logger } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 
@@ -346,6 +347,23 @@ async function handleApplyDmOverride(req: Request, res: Response) {
     actorUserId: user.userId,
   })
 
+  if (overrideType === 'CONDITION' || overrideType === 'DISTANCE') {
+    const presetName =
+      typeof persisted.parameters?.conditionName === 'string'
+        ? persisted.parameters.conditionName
+        : typeof persisted.parameters?.presetName === 'string'
+          ? persisted.parameters.presetName
+          : null
+    void emitConditionSystemMessage({
+      sessionId: sessionId as UUID,
+      targetUserId: targetUserId as UUID,
+      dmId: user.userId as UUID,
+      overrideType: overrideType as 'CONDITION' | 'DISTANCE',
+      presetName,
+      isRemoval: false,
+    })
+  }
+
   return res.status(200).json({ ok: true, eventId: event.id })
 }
 
@@ -413,6 +431,17 @@ async function handleRemoveDmOverride(req: Request, res: Response) {
     overrideType,
     actorUserId: user.userId,
   })
+
+  if (overrideType === 'CONDITION' || overrideType === 'DISTANCE') {
+    void emitConditionSystemMessage({
+      sessionId: sessionId as UUID,
+      targetUserId: targetUserId as UUID,
+      dmId: user.userId as UUID,
+      overrideType: overrideType as 'CONDITION' | 'DISTANCE',
+      presetName: null,
+      isRemoval: true,
+    })
+  }
 
   return res.status(200).json({ ok: true, eventId: event.id })
 }
