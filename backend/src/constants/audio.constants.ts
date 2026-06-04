@@ -1,3 +1,5 @@
+import { VOICE_PRESETS, VOICE_PRESET_NAMES } from '@shared'
+
 export const AUDIO_BROADCAST_OVERRIDE_TYPE = 'VOICE_OF_GOD'
 
 export const AUDIO_DM_OVERRIDE_TYPES = {
@@ -11,24 +13,19 @@ export const AUDIO_DM_OVERRIDE_TYPES = {
 export type AudioDMOverrideType =
   (typeof AUDIO_DM_OVERRIDE_TYPES)[keyof typeof AUDIO_DM_OVERRIDE_TYPES]
 
-export type AudioPresetCategory = 'VOICE' | 'DISTANCE' | 'ENVIRONMENT' | 'CONDITION' | 'IC'
+/**
+ * Voice presets available for DM mic processing.
+ * Canonical definitions (including DSP params) live in shared/audio/voicePresets.ts.
+ * Backend uses these for validation only; DSP is applied client-side.
+ */
+export { VOICE_PRESETS as AUDIO_VOICE_PRESETS, VOICE_PRESET_NAMES as AUDIO_VOICE_PRESET_NAMES }
 
-export type AudioPreset = {
-  id: string
-  name: string
-  category: AudioPresetCategory
-}
-
-export const AUDIO_PRESETS: AudioPreset[] = [
-  { id: 'voice-narrator', name: 'Narrator', category: 'VOICE' },
-  { id: 'voice-whisper', name: 'Whisper', category: 'VOICE' },
-  { id: 'distance-near', name: 'Near', category: 'DISTANCE' },
-  { id: 'distance-far', name: 'Far', category: 'DISTANCE' },
-  { id: 'env-tavern', name: 'Tavern', category: 'ENVIRONMENT' },
-  { id: 'env-cave', name: 'Cave', category: 'ENVIRONMENT' },
-  { id: 'cond-silenced', name: 'Silenced', category: 'CONDITION' },
-  { id: 'ic-goblin', name: 'Goblin', category: 'IC' },
-]
+/** Legacy preset catalogue kept for API compatibility. Points to voice presets for VOICE category. */
+export const AUDIO_PRESETS = VOICE_PRESETS.map((p) => ({
+  id: `voice-${p.name.toLowerCase().replace(/\s+/g, '-')}`,
+  name: p.name,
+  category: 'VOICE' as const,
+}))
 
 export const AUDIO_EVENT_TYPES = {
   ENVIRONMENT_SET: 'AUDIO:ENVIRONMENT_SET',

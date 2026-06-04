@@ -16,6 +16,7 @@ import { Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '@/hooks/useLiveKit'
 import { useAudioEngine } from '@/hooks/useAudioEngine'
+import { useDmVoiceProcessor } from '@/hooks/useDmVoiceProcessor'
 import { useStore } from '@/hooks/useStore'
 import {
   AUDIO_BROADCAST_TRACK_PREFIX,
@@ -98,6 +99,13 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   )
   const effectiveRole = role ?? currentUserRole ?? Role.PLAYER
   const isWhisperMode = selectedRoomType === RoomType.PRIVATE
+
+  // Apply DM voice preset to the outgoing mic track via Web Audio.
+  // Broadcast channel intentionally receives clean (unprocessed) DM voice.
+  useDmVoiceProcessor({
+    localAudioTrack: effectiveRole === Role.DM ? livekit.localAudioTrack : null,
+    localInputTrack: effectiveRole === Role.DM ? livekit.localInputTrack : null,
+  })
 
   const broadcastRoomId = broadcastRoomIdFromState || `dm-broadcast:${sessionId}`
 

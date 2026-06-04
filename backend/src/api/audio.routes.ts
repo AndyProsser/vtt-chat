@@ -16,6 +16,7 @@ import {
   AUDIO_DM_OVERRIDE_TYPES,
   AUDIO_EVENT_TYPES,
   AUDIO_PRESETS,
+  AUDIO_VOICE_PRESET_NAMES,
 } from '@/constants/audio.constants'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { logger } from '@/utils'
@@ -759,6 +760,18 @@ async function handleSetDmVoicePreset(req: Request, res: Response) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: 'presetName must be a string or null',
+      field: 'presetName',
+    })
+  }
+
+  if (
+    typeof presetName === 'string' &&
+    presetName.trim() &&
+    !AUDIO_VOICE_PRESET_NAMES.has(presetName.trim())
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Unknown voice preset: "${presetName}". Valid presets: ${[...AUDIO_VOICE_PRESET_NAMES].join(', ')}`,
       field: 'presetName',
     })
   }
