@@ -906,6 +906,46 @@ export function RoomSelector({
     [apiUrl, sessionId, syncAudioOverridesFromServer, token]
   )
 
+  /** DM remote mic/filter adjustment: GAIN or FILTER override. parameters=null removes the override. */
+  const handleApplyAudioOverride = useCallback(
+    async (
+      targetUserId: UUID,
+      overrideType: 'GAIN' | 'FILTER',
+      parameters: Record<string, unknown> | null
+    ) => {
+      setMoveError(null)
+      const removing = parameters === null
+
+      try {
+        const response = await fetch(
+          `${apiUrl}/api/audio/dm-override/${removing ? 'remove' : 'apply'}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(
+              removing
+                ? { sessionId, targetUserId, overrideType }
+                : { sessionId, targetUserId, overrideType, parameters }
+            ),
+          }
+        )
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}))
+          throw new Error(payload.message || `Failed to adjust audio (${overrideType})`)
+        }
+
+        await syncAudioOverridesFromServer()
+      } catch (error) {
+        setMoveError(error instanceof Error ? error.message : `Failed to adjust audio`)
+      }
+    },
+    [apiUrl, sessionId, syncAudioOverridesFromServer, token]
+  )
+
   const handleBroadcastToggleClick = useCallback(async () => {
     if (whisperModeLocked) {
       setMoveError('Broadcast is locked while whisper is active')
@@ -1338,6 +1378,13 @@ export function RoomSelector({
     [handleClearMemberEffects]
   )
 
+  const handleGroupCardApplyAudioOverride = useCallback(
+    (userId: UUID, overrideType: 'GAIN' | 'FILTER', parameters: Record<string, unknown> | null) => {
+      void handleApplyAudioOverride(userId, overrideType, parameters)
+    },
+    [handleApplyAudioOverride]
+  )
+
   const handleGroupCardTakeOverPlayer = useCallback(
     (userId: UUID) => {
       void handleTakeOverPlayer(userId)
@@ -1382,6 +1429,7 @@ export function RoomSelector({
       onApplyDistanceOverride={handleGroupCardApplyDistanceOverride}
       onApplyConditionOverride={handleGroupCardApplyConditionOverride}
       onApplyMuteOverride={handleGroupCardApplyMuteOverride}
+      onApplyAudioOverride={handleGroupCardApplyAudioOverride}
       onClearMemberEffects={handleGroupCardClearMemberEffects}
       onTakeOverPlayer={handleGroupCardTakeOverPlayer}
       onMemberDragStart={roomMoves.handleMemberDragStart}

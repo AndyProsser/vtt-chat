@@ -595,7 +595,7 @@ Notes visibility/publish sequencing contract:
   - Response: deleted groupId
   - Emits: `ROOM:DELETED`
 
-**Environment Application**
+#### Environment Application
 
 - `POST /api/audio/environments/apply` → Set environment for a session group
   - Request: `{ sessionId, groupId, environmentName }`
@@ -608,7 +608,7 @@ Notes visibility/publish sequencing contract:
   - Emits: `AUDIO:ENVIRONMENT_CLEARED`
   - Note: environment still persists at campaign level; this clears session-level override
 
-**Environment Lifecycle**
+#### Environment Lifecycle
 
 - Campaign groups have a `defaultEnvironmentName` that persists across sessions
 - On session start, campaign groups are carried into session; session environment defaults to campaign default
@@ -1033,7 +1033,73 @@ Guests who exit a session are routed to an upgrade screen only — they do not s
 
 ---
 
+## Groups Panel Contracts (W-Groups-Panel)
+
+### Reserved Room Names
+
+The names `MAIN`, `WHISPER`, and `GREENROOM` (case-insensitive) are reserved and cannot be used when creating DM groups. Both the API and frontend enforce this.
+
+### Group Close Contract
+
+`POST /api/rooms/:roomId/close` — DM only.
+
+Empties a group by moving all its members to MAIN. The group record is preserved and appears empty. The Delete action becomes available after Close.
+
+- Only GROUP-type rooms can be closed. MAIN and WHISPER have dedicated flows.
+- Returns `{ ok: true, closedGroupId, movedUsers: [{ userId, username, fromGroupId, toGroupId }] }`.
+- Broadcasts `ROOM:USER_LEFT` (source room) and `ROOM:USER_JOINED` (MAIN) per affected user.
+
+### Group Delete Contract
+
+`DELETE /api/rooms/:roomId` — DM only.
+
+Permanently deletes a group from both the session and the campaign (Postgres). The group will not be available in future sessions.
+
+- Only allowed on empty groups (no current members). Returns `409` if members remain.
+- MAIN, WHISPER, and GREENROOM cannot be deleted.
+- Broadcasts `ROOM:DELETED` after successful deletion.
+
+### Group Environment Contract
+
+`POST /api/audio/environments/apply` — DM only.
+
+Sets the ambient environment for a group. Affects all players currently in that group.
+
+Request body: `{ sessionId, roomId, environmentName }`.
+
+- `environmentName` must be a non-empty string. `"Default"` clears the active environment.
+- Persisted to Redis (`audio:session:{sessionId}:environments`) and Postgres for recovery.
+- Broadcasts `AUDIO:ENVIRONMENT_SET` to all session members after persistence.
+- Environments are **preserved across PAUSED ↔ ACTIVE transitions**. They are only cleared on ENDED/CLEANUP teardown.
+
+### DM Audio Override Contract
+
+`POST /api/audio/overrides/dm/apply` and `POST /api/audio/overrides/dm/remove` — DM only.
+
+Allows the DM to remotely adjust a player's local audio settings.
+
+Apply body: `{ sessionId, targetUserId, overrideType, parameters? }`.
+Remove body: `{ sessionId, targetUserId, overrideType }`.
+
+Supported override types for audio quality adjustment:
+
+| Type     | Purpose                 | Example parameters                                     |
+| -------- | ----------------------- | ------------------------------------------------------ |
+| `GAIN`   | Mic gain multiplier     | `{ factor: 0.5 }` (lower) or `{ factor: 1.5 }` (boost) |
+| `FILTER` | Background noise filter | `{ enabled: true }`                                    |
+| `GATE`   | Noise gate threshold    | `{ threshold: 0.2 }`                                   |
+
+Mute-override constraint:
+
+- A DM may apply a `MUTE` override to silence a player. Removing that override only removes the DM's mute — it does not affect the player's own self-mute (`AUDIO:MUTE_STATE_CHANGED`). A player who self-muted remains muted after a DM `MUTE` override is removed.
+- `GAIN`, `FILTER`, and `GATE` overrides are independent of mute state and can always be applied or removed.
+
+Broadcasts `AUDIO:DM_OVERRIDE_APPLIED` / `AUDIO:DM_OVERRIDE_REMOVED` to all session members after persistence.
+
+---
+
 **Document Version**: 1.1
 **Locked By**: Stage 0 Build Agent
 **Lock Date**: April 17, 2026
 **Amendment Date**: 2026-05-21 — Campaign visibility model, request-to-join, WATCH entry, guest upgrade, campaign retire/resume, admin export/import contracts added.
+**Amendment Date**: 2026-06-04 — Groups panel contracts added: reserved names, group close, group delete, environment apply, DM audio override (GAIN/FILTER/GATE).

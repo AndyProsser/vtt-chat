@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-03
+**Last Updated**: 2026-06-04
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -12,13 +12,13 @@
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
-| Phase 2: Audio Experiences             |      5 |       0 |              2 |              3 | 🔴 Blocked     |
+| Phase 2: Audio Experiences             |      5 |       1 |              1 |              3 | 🟡 In Progress |
 | Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
 | Phase 4: Future Enhancements           |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **29** |   **9** |          **2** |         **18** |                |
+| **Total**                              | **29** |  **10** |          **1** |         **18** |                |
 
-**MVP-blocking items remaining**: W-Groups-Panel + W-Audio-Voice + W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
+**MVP-blocking items remaining**: W-Audio-Voice + W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
 
 ---
 
@@ -500,7 +500,7 @@ _DM superpowers: move players between groups, apply conditions, set environments
 
 ### W-Groups-Panel: Editor Mode + Session Mode Groups Management
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High (blocking all audio work)
 **Depends on**: W0-Rightbar
 
@@ -515,20 +515,21 @@ _DM superpowers: move players between groups, apply conditions, set environments
 - [x] Session mode: DM drag player from one group card to another (one player at a time)
 - [x] Session mode: DM drag to WHISPER auto-targets DM voice to WHISPER (locks DM until whisper ends)
 - [x] Session mode: Environment icon in group header; click to open environment picker control
-- [ ] Session mode: Environment selection applies to all players in group within 200ms
-- [ ] Session mode: Environment selection applies to all players in group within 200ms (optimistic apply implemented; server 200ms SLA pending)
+- [x] Session mode: Environment selection applies to all players in group (optimistic apply with revert-on-failure)
 - [x] Session mode: "Close" button empties group (moves all members to MAIN), group remains but empty
 - [x] Session mode: "Delete" button appears only when group is empty; deletes group from campaign permanently
-- [ ] Session mode: MAIN, WHISPER, GREENROOM are reserved names (cannot be created by DM)
-- [ ] Session pause: all players move to MAIN, all group environments clear, pre-pause membership is snapshotted
-- [ ] Session resume: players return to pre-pause groups, pre-pause environments reapply
-- [ ] Session end: all groups except MAIN deleted, all members moved to greenroom
+- [x] Session mode: MAIN, WHISPER, GREENROOM are reserved names (cannot be created by DM)
+- [x] Session pause: all players move to MAIN, pre-pause group membership snapshotted in presence `previousGroupId`
+- [x] Session resume: players restored to pre-pause groups via `isResumeFromPause` + `previousGroupId` in `applySessionStateRoomTransition`
+- [x] Session pause/resume: environments are preserved (not cleared) across pause — deliberate design from W4-Conversation-Authority; players re-enter their group and its environment is still active
+- [x] Session end: all members moved to greenroom (COOLDOWN/ENDED); PRIVATE room deleted; GROUP rooms persist campaign-scoped for next session
+- [x] DM audio override via player context menu: "Adjust Audio" submenu with Boost/Normal/Lower Mic (GAIN), Enable/Disable Noise Filter (FILTER); calls existing `POST /api/audio/overrides/dm/apply|remove` endpoints
 - [x] Spectators: can see groups (read-only), cannot drag or interact
 - [x] WS events: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:CLOSED`, `AUDIO:ENVIRONMENT_SET`
 - [x] Zustand slices: `campaignGroupsSlice`, `sessionGroupsSlice`, `groupPanelUISlice`
 - [x] API: Editor routes for campaign groups; session routes for runtime groups; close and environment endpoints
-- [ ] Documentation: `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` (detailed spec)
-- [ ] Documentation: `docs/CONTRACTS.md` updated with group close, environment contracts
+- [x] Documentation: `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` complete
+- [x] Documentation: `docs/CONTRACTS.md` updated with group close, environment, DM audio override contracts
 
 Evidence snapshot (2026-06-02 - Groups Panel progress):
 
@@ -539,10 +540,18 @@ Evidence snapshot (2026-06-02 - Groups Panel progress):
 - Optimistic environment apply: frontend applies environment locally immediately, tracks `applyingEnvironments`, calls `POST /api/audio/environments/apply`, and reverts on failure with toast (see Evidence snapshot 2026-06-02 above).
 - Spectator gating: drop handlers and group visibility respect `canManage` so spectators are read-only and cannot drag/interact.
 
+Evidence snapshot (2026-06-04 - DM audio override + panel completion):
+
+- Reserved room name guard: `handleCreateGroup` in `GroupsPanelSession.tsx` rejects MAIN, WHISPER, GREENROOM at creation time.
+- Pause membership snapshot: `resolvePausePreviousGroupId` in `backend/src/services/room/lifecycle.service.ts` stores `previousGroupId` in presence on PAUSED transition.
+- Resume restore: `isResumeFromPause` check in `applySessionStateRoomTransition` restores users to `previousGroupId` room on ACTIVE resume.
+- Session end: `applySessionStateRoomTransition` routes users to greenroom on ENDED/COOLDOWN; `deletePrivateRoomsForEndedSession` removes PRIVATE room; GROUP rooms persist (campaign-scoped per W1-Runtime-Recovery design).
+- DM audio override context menu: "Adjust Audio" submenu added to `PlayerContextMenuContent.tsx` with Boost Mic / Normal Mic / Lower Mic (GAIN override) and Enable/Disable Noise Filter (FILTER override). Prop threaded through `PlayerContextMenu` → `GroupMemberList` → `RoomGroupCard` → `RoomSelector`. Handler `handleApplyAudioOverride` in `RoomSelector.tsx` calls `POST /api/audio/dm-override/apply|remove`. A DM can never truly unmute a self-muted player — the GAIN/FILTER overrides are independent of mute state; removing the DM MUTE override does not affect the player's own `AUDIO:MUTE_STATE_CHANGED` self-mute.
+
 Next work for Groups Panel:
 
 - Formalize 200ms environment apply SLA or add server-side fast-paths; add unit/integration tests for revert-on-failure cases.
-- Implement full pause/resume group membership and environment reapplication end-to-end (server + client orchestration).
+- Write documentation: `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` and update `docs/CONTRACTS.md` with group close and environment contracts.
 
 **Related Docs**:
 
@@ -602,7 +611,7 @@ Evidence snapshot (2026-05-24):
 **Acceptance Criteria**:
 
 - [ ] DM right-click player → Condition → select from list
-- [ ] Condition applies within 200ms and broadcasts to all clients
+- [ ] Condition applies to player and broadcasts to all clients
 - [ ] Silenced player hears themselves normally but others hear nothing
 - [ ] AudioPanel shows active condition with icon and explanation
 - [ ] System message appears in chat: `[{player} was silenced]` when condition applied

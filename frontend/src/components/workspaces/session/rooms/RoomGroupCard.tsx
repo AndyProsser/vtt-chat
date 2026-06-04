@@ -52,6 +52,11 @@ export interface GroupCardProps {
   onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
   onApplyConditionOverride: (userId: UUID, conditionName: string) => void
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
+  onApplyAudioOverride: (
+    userId: UUID,
+    overrideType: 'GAIN' | 'FILTER',
+    parameters: Record<string, unknown> | null
+  ) => void
   onClearMemberEffects: (userId: UUID) => void
   onTakeOverPlayer?: (userId: UUID) => void
   onMemberDragStart: (
@@ -140,6 +145,7 @@ function areGroupCardPropsEqual(previous: GroupCardProps, next: GroupCardProps):
     previous.onApplyDistanceOverride === next.onApplyDistanceOverride &&
     previous.onApplyConditionOverride === next.onApplyConditionOverride &&
     previous.onApplyMuteOverride === next.onApplyMuteOverride &&
+    previous.onApplyAudioOverride === next.onApplyAudioOverride &&
     previous.onClearMemberEffects === next.onClearMemberEffects &&
     previous.onTakeOverPlayer === next.onTakeOverPlayer &&
     previous.onMemberDragStart === next.onMemberDragStart &&
@@ -192,6 +198,7 @@ function RoomGroupCardComponent({
   onApplyDistanceOverride,
   onApplyConditionOverride,
   onApplyMuteOverride,
+  onApplyAudioOverride,
   onClearMemberEffects,
   onTakeOverPlayer,
   onMemberDragStart,
@@ -459,6 +466,7 @@ function RoomGroupCardComponent({
           onApplyDistanceOverride={onApplyDistanceOverride}
           onApplyConditionOverride={onApplyConditionOverride}
           onApplyMuteOverride={onApplyMuteOverride}
+          onApplyAudioOverride={onApplyAudioOverride}
           onClearMemberEffects={onClearMemberEffects}
           onTakeOverPlayer={onTakeOverPlayer}
           onMemberDragStart={onMemberDragStart}

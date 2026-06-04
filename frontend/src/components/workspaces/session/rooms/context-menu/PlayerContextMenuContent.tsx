@@ -15,6 +15,14 @@ interface PlayerContextMenuContentProps {
   onToggleMute?: (nextMuted: boolean) => void
   onClearEffects?: () => void
   onConditionSelect?: (conditionName: string) => void
+  /**
+   * DM remote audio adjustment: GAIN or FILTER override.
+   * parameters=null means remove the override; non-null means apply.
+   */
+  onAudioAdjust?: (
+    overrideType: 'GAIN' | 'FILTER',
+    parameters: Record<string, unknown> | null
+  ) => void
   canTakeOver?: boolean
   isTakeoverActive?: boolean
   onTakeOver?: () => void
@@ -60,6 +68,7 @@ export function PlayerContextMenuContent({
   onToggleMute,
   onClearEffects,
   onConditionSelect,
+  onAudioAdjust,
   canTakeOver = false,
   isTakeoverActive = false,
   onTakeOver,
@@ -141,6 +150,53 @@ export function PlayerContextMenuContent({
                           {conditionName}
                         </ContextMenu.Item>
                       ))}
+                    </ContextMenu.SubContent>
+                  </ContextMenu.Portal>
+                </ContextMenu.Sub>
+
+                <ContextMenu.Sub>
+                  <ContextMenu.SubTrigger className="room-context-menu__item">
+                    Adjust Audio
+                    <span aria-hidden>›</span>
+                  </ContextMenu.SubTrigger>
+                  <ContextMenu.Portal>
+                    <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('GAIN', { factor: 1.5 })}
+                      >
+                        Boost Mic
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('GAIN', null)}
+                      >
+                        Normal Mic
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('GAIN', { factor: 0.5 })}
+                      >
+                        Lower Mic
+                      </ContextMenu.Item>
+                      <ContextMenu.Separator className="room-context-menu__separator" />
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('FILTER', { enabled: true })}
+                      >
+                        Enable Noise Filter
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('FILTER', null)}
+                      >
+                        Disable Noise Filter
+                      </ContextMenu.Item>
                     </ContextMenu.SubContent>
                   </ContextMenu.Portal>
                 </ContextMenu.Sub>

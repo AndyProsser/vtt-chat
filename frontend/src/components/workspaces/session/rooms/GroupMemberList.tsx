@@ -35,6 +35,11 @@ export interface GroupMemberListProps {
   onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
   onApplyConditionOverride: (userId: UUID, conditionName: string) => void
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
+  onApplyAudioOverride: (
+    userId: UUID,
+    overrideType: 'GAIN' | 'FILTER',
+    parameters: Record<string, unknown> | null
+  ) => void
   onClearMemberEffects: (userId: UUID) => void
   onTakeOverPlayer?: (userId: UUID) => void
   onMemberDragStart: (
@@ -79,6 +84,11 @@ interface GroupMemberItemProps {
   onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
   onApplyConditionOverride: (userId: UUID, conditionName: string) => void
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
+  onApplyAudioOverride: (
+    userId: UUID,
+    overrideType: 'GAIN' | 'FILTER',
+    parameters: Record<string, unknown> | null
+  ) => void
   onClearMemberEffects: (userId: UUID) => void
   onTakeOverPlayer?: (userId: UUID) => void
   onProfilePillEnter: (userId: UUID, element: HTMLElement) => void
@@ -121,6 +131,7 @@ function areGroupMemberItemPropsEqual(
     previous.onApplyDistanceOverride === next.onApplyDistanceOverride &&
     previous.onApplyConditionOverride === next.onApplyConditionOverride &&
     previous.onApplyMuteOverride === next.onApplyMuteOverride &&
+    previous.onApplyAudioOverride === next.onApplyAudioOverride &&
     previous.onClearMemberEffects === next.onClearMemberEffects &&
     previous.onTakeOverPlayer === next.onTakeOverPlayer &&
     previous.onProfilePillEnter === next.onProfilePillEnter &&
@@ -164,6 +175,7 @@ const GroupMemberItem = memo(function GroupMemberItem({
   onApplyDistanceOverride,
   onApplyConditionOverride,
   onApplyMuteOverride,
+  onApplyAudioOverride,
   onClearMemberEffects,
   onTakeOverPlayer,
   onProfilePillEnter,
@@ -300,6 +312,9 @@ const GroupMemberItem = memo(function GroupMemberItem({
         onConditionSelect={(conditionName) =>
           onApplyConditionOverride(member.userId, conditionName)
         }
+        onAudioAdjust={(overrideType, parameters) =>
+          onApplyAudioOverride(member.userId, overrideType, parameters)
+        }
         canTakeOver={isTakeoverEligible}
         isTakeoverActive={isTakeoverActive}
         onTakeOver={() => onTakeOverPlayer?.(member.userId)}
@@ -331,6 +346,7 @@ export function GroupMemberList({
   onApplyDistanceOverride,
   onApplyConditionOverride,
   onApplyMuteOverride,
+  onApplyAudioOverride,
   onClearMemberEffects,
   onTakeOverPlayer,
   onMemberDragStart,
@@ -464,6 +480,7 @@ export function GroupMemberList({
           onApplyDistanceOverride={onApplyDistanceOverride}
           onApplyConditionOverride={onApplyConditionOverride}
           onApplyMuteOverride={onApplyMuteOverride}
+          onApplyAudioOverride={onApplyAudioOverride}
           onClearMemberEffects={onClearMemberEffects}
           onTakeOverPlayer={onTakeOverPlayer}
           onProfilePillEnter={handleProfilePillEnter}

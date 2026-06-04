@@ -16,6 +16,10 @@ interface PlayerContextMenuProps {
   onToggleMute?: (nextMuted: boolean) => void
   onClearEffects?: () => void
   onConditionSelect?: (conditionName: string) => void
+  onAudioAdjust?: (
+    overrideType: 'GAIN' | 'FILTER',
+    parameters: Record<string, unknown> | null
+  ) => void
   canTakeOver?: boolean
   isTakeoverActive?: boolean
   onTakeOver?: () => void
@@ -37,6 +41,7 @@ export function PlayerContextMenu({
   onToggleMute,
   onClearEffects,
   onConditionSelect,
+  onAudioAdjust,
   canTakeOver = false,
   isTakeoverActive = false,
   onTakeOver,
@@ -63,6 +68,7 @@ export function PlayerContextMenu({
         onToggleMute={onToggleMute}
         onClearEffects={onClearEffects}
         onConditionSelect={onConditionSelect}
+        onAudioAdjust={onAudioAdjust}
         canTakeOver={canTakeOver}
         isTakeoverActive={isTakeoverActive}
         onTakeOver={onTakeOver}
