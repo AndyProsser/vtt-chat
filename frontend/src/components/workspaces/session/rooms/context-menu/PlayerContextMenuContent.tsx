@@ -104,6 +104,55 @@ export function PlayerContextMenuContent({
 
             {!isGreenroom ? (
               <>
+                <ContextMenu.Sub>
+                  <ContextMenu.SubTrigger className="room-context-menu__item">
+                    Adjust Audio
+                    <span aria-hidden>›</span>
+                  </ContextMenu.SubTrigger>
+                  <ContextMenu.Portal>
+                    <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('GAIN', { factor: 1.5 })}
+                      >
+                        Boost Mic
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('GAIN', null)}
+                      >
+                        Normal Mic
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('GAIN', { factor: 0.5 })}
+                      >
+                        Lower Mic
+                      </ContextMenu.Item>
+                      <ContextMenu.Separator className="room-context-menu__separator" />
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('FILTER', { enabled: true })}
+                      >
+                        Enable Noise Filter
+                      </ContextMenu.Item>
+                      <ContextMenu.Item
+                        className="room-context-menu__item"
+                        disabled={!onAudioAdjust}
+                        onSelect={() => onAudioAdjust?.('FILTER', null)}
+                      >
+                        Disable Noise Filter
+                      </ContextMenu.Item>
+                    </ContextMenu.SubContent>
+                  </ContextMenu.Portal>
+                </ContextMenu.Sub>
+
+                <ContextMenu.Separator className="room-context-menu__separator" />
+
                 <ContextMenu.Item
                   className="room-context-menu__item"
                   disabled={!onClearEffects}
@@ -153,55 +202,10 @@ export function PlayerContextMenuContent({
                     </ContextMenu.SubContent>
                   </ContextMenu.Portal>
                 </ContextMenu.Sub>
-
-                <ContextMenu.Sub>
-                  <ContextMenu.SubTrigger className="room-context-menu__item">
-                    Adjust Audio
-                    <span aria-hidden>›</span>
-                  </ContextMenu.SubTrigger>
-                  <ContextMenu.Portal>
-                    <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('GAIN', { factor: 1.5 })}
-                      >
-                        Boost Mic
-                      </ContextMenu.Item>
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('GAIN', null)}
-                      >
-                        Normal Mic
-                      </ContextMenu.Item>
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('GAIN', { factor: 0.5 })}
-                      >
-                        Lower Mic
-                      </ContextMenu.Item>
-                      <ContextMenu.Separator className="room-context-menu__separator" />
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('FILTER', { enabled: true })}
-                      >
-                        Enable Noise Filter
-                      </ContextMenu.Item>
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('FILTER', null)}
-                      >
-                        Disable Noise Filter
-                      </ContextMenu.Item>
-                    </ContextMenu.SubContent>
-                  </ContextMenu.Portal>
-                </ContextMenu.Sub>
               </>
             ) : null}
+
+            <ContextMenu.Separator className="room-context-menu__separator" />
 
             <ContextMenu.Item
               className="room-context-menu__item"

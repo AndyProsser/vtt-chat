@@ -17,6 +17,7 @@ export type AudioEventType =
   | 'AUDIO:DM_OVERRIDE_APPLIED'
   | 'AUDIO:DM_OVERRIDE_REMOVED'
   | 'AUDIO:BROADCAST_STATE_CHANGED'
+  | 'AUDIO:DM_VOICE_TARGET_CHANGED'
   | 'AUDIO:DM_VOICE_MODE_CHANGED'
   | 'AUDIO:MUTE_STATE_CHANGED'
 
@@ -124,16 +125,31 @@ export interface AudioBroadcastStateChanged {
 export type AudioBroadcastStateChangedEvent = EventEnvelope<AudioBroadcastStateChanged>
 
 /**
- * AUDIO:DM_VOICE_MODE_CHANGED
- * DM changes their voice mode (target a group or broadcast to all).
+ * AUDIO:DM_VOICE_TARGET_CHANGED
+ * DM changes which room their voice targets (or clears to MAIN).
+ * Replaces the TARGET_GROUP case of the old DM_VOICE_MODE_CHANGED.
  * Visibility: All session members.
+ */
+export interface AudioDmVoiceTargetChanged {
+  dmId: UUID
+  /** The room the DM is now targeting. null means cleared (back to MAIN / default). */
+  targetGroupId: UUID | null
+  backgroundVolume: number
+  changedAt: number
+}
+
+export type AudioDmVoiceTargetChangedEvent = EventEnvelope<AudioDmVoiceTargetChanged>
+
+/**
+ * AUDIO:DM_VOICE_MODE_CHANGED
+ * DM activates or clears a voice preset that transforms their microphone output.
+ * Applies only to the DM's own mic chain; cleared on session end.
+ * Visibility: All session members (so indicators can update).
  */
 export interface AudioDmVoiceModeChanged {
   dmId: UUID
-  voiceMode: 'TARGET_GROUP' | 'BROADCAST'
-  /** Room the DM is targeting. Required when voiceMode is TARGET_GROUP. */
-  targetGroupId?: UUID
-  backgroundVolume: number
+  /** Preset name (e.g. 'Demon', 'Voice of God'). null = preset cleared, normal voice restored. */
+  presetName: string | null
   changedAt: number
 }
 
@@ -169,5 +185,6 @@ export type AudioEvent =
   | AudioDMOverrideAppliedEvent
   | AudioDMOverrideRemovedEvent
   | AudioBroadcastStateChangedEvent
+  | AudioDmVoiceTargetChangedEvent
   | AudioDmVoiceModeChangedEvent
   | AudioMuteStateChangedEvent

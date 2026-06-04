@@ -106,6 +106,8 @@ export function RoomSelector({
   })
   const activeTakeoverUserId = useStore((state) => state.mockTakeoverUserIdBySession[sessionId])
   const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
+  const dmVoiceTargetGroupId = useStore((state) => (state as any).dmVoiceTargetGroupId as UUID | undefined)
+  const dmVoicePreset = useStore((state) => (state as any).dmVoicePreset as string | null)
 
   const dmFlavorLine = useMemo(
     () => getRoomSelectorDmFlavorLine(dmUserId, sessionId),
@@ -997,18 +999,21 @@ export function RoomSelector({
       }
 
       const targetRoom = allRooms.find((room) => room.id === roomId)
-      const localParticipantCount = Math.max(
-        targetRoom?.participants.length || 0,
-        roomMoves.displayedParticipantsByRoom[roomId]?.length || 0
-      )
+      // MAIN is always a valid target (it's the default/fallback room).
+      if (targetRoom && targetRoom.type !== RoomType.MAIN) {
+        const localParticipantCount = Math.max(
+          targetRoom?.participants.length || 0,
+          roomMoves.displayedParticipantsByRoom[roomId]?.length || 0
+        )
 
-      if (targetRoom && localParticipantCount === 0) {
-        const serverMemberIds = await getRoomMemberIdsFromServer(roomId)
-        const serverParticipantCount = (serverMemberIds || []).length
+        if (localParticipantCount === 0) {
+          const serverMemberIds = await getRoomMemberIdsFromServer(roomId)
+          const serverParticipantCount = (serverMemberIds || []).length
 
-        if (serverParticipantCount === 0) {
-          setMoveError('Cannot set DM voice target to an empty room or group')
-          return
+          if (serverParticipantCount === 0) {
+            setMoveError('Cannot set DM voice target to an empty room or group')
+            return
+          }
         }
       }
 
@@ -1385,6 +1390,44 @@ export function RoomSelector({
     [handleApplyAudioOverride]
   )
 
+  const handleGroupCardSetDmVoiceRoom = useCallback(
+    (roomId: UUID) => {
+      void handleSetDmVoiceRoom(roomId)
+    },
+    [handleSetDmVoiceRoom]
+  )
+
+  const handleSetDmVoicePreset = useCallback(
+    async (presetName: string | null) => {
+      if (!canManageRooms) return
+
+      setMoveError(null)
+
+      try {
+        const response = await fetch(`${apiUrl}/api/audio/voice-preset`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ sessionId, presetName }),
+        })
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => ({}))) as { message?: string }
+          throw new Error(payload.message || 'Failed to set voice preset')
+        }
+      } catch (error) {
+        setMoveError(error instanceof Error ? error.message : 'Failed to set voice preset')
+      }
+    },
+    [apiUrl, canManageRooms, sessionId, token]
+  )
+
+  const handleGroupCardSetDmVoicePreset = useCallback(
+    (presetName: string | null) => {
+      void handleSetDmVoicePreset(presetName)
+    },
+    [handleSetDmVoicePreset]
+  )
+
   const handleGroupCardTakeOverPlayer = useCallback(
     (userId: UUID) => {
       void handleTakeOverPlayer(userId)
@@ -1477,6 +1520,7 @@ export function RoomSelector({
             token={token}
             sessionId={sessionId}
             activeTakeoverUserId={activeTakeoverUserId || null}
+            dmVoicePreset={dmVoicePreset}
             onBroadcastToggle={handleHeaderBroadcastToggle}
             onDevReset={handleHeaderDevReset}
             onReturnToUser={handleReturnToMyUser}
@@ -1484,6 +1528,7 @@ export function RoomSelector({
             onCloseCreateGroupModal={handleHeaderCloseCreateGroupModal}
             onCreateGroup={handleCreateGroup}
             onEndWhisper={handleHeaderEndWhisper}
+            onSelectVoicePreset={handleGroupCardSetDmVoicePreset}
           />
         </header>
 

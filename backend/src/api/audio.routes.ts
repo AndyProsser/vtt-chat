@@ -683,18 +683,105 @@ async function handleSetDmVoiceMode(req: Request, res: Response) {
     changedAt,
   })
 
+  const isBroadcast = voiceMode === 'BROADCAST'
   const event = createEvent({
-    type: 'AUDIO:DM_VOICE_MODE_CHANGED',
+    type: isBroadcast
+      ? AUDIO_EVENT_TYPES.BROADCAST_STATE_CHANGED
+      : AUDIO_EVENT_TYPES.DM_VOICE_TARGET_CHANGED,
     user,
     userRole: authz.role,
     sessionId: sessionId as UUID,
-    roomId: (targetGroupId as UUID | undefined) ?? null,
+    roomId: isBroadcast ? null : ((targetGroupId as UUID | undefined) ?? null),
+    payload: isBroadcast
+      ? {
+          dmId: state.dmId,
+          enabled: true,
+          broadcastRoomId: `dm-broadcast:${sessionId}`,
+          changedAt: state.changedAt,
+        }
+      : {
+          dmId: state.dmId,
+          targetGroupId: state.targetGroupId ?? null,
+          backgroundVolume: state.backgroundVolume,
+          changedAt: state.changedAt,
+        },
+  })
+
+  eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+
+  await appendSessionAuditEvent({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+    actorRole: authz.role,
+    actionType: isBroadcast ? 'AUDIO.BROADCAST_STATE_CHANGED' : 'AUDIO.DM_VOICE_TARGET_CHANGED',
+    targetType: 'USER',
+    targetId: state.dmId,
+    roomId: state.targetGroupId || undefined,
+    visibilityClass: 'PUBLIC',
+    timestamp: state.changedAt,
+    metadata: isBroadcast
+      ? { enabled: true }
+      : { targetGroupId: state.targetGroupId, backgroundVolume: state.backgroundVolume },
+  })
+
+  logger.info('audio', isBroadcast ? 'DM broadcast mode enabled' : 'DM voice target changed', {
+    sessionId,
+    dmId: user.userId,
+    targetGroupId: state.targetGroupId,
+  })
+
+  return res.status(200).json({
+    ok: true,
+    voiceMode,
+    targetGroupId: state.targetGroupId,
+    backgroundVolume: state.backgroundVolume,
+    eventId: event.id,
+  })
+}
+
+router.post('/voice-mode', requireAuth, async (req: Request, res: Response) => {
+  return handleSetDmVoiceMode(req, res)
+})
+
+async function handleSetDmVoicePreset(req: Request, res: Response) {
+  const user = getAuthUser(req)
+  const { sessionId, presetName } = req.body
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid sessionId',
+      field: 'sessionId',
+    })
+  }
+
+  if (presetName !== null && presetName !== undefined && typeof presetName !== 'string') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'presetName must be a string or null',
+      field: 'presetName',
+    })
+  }
+
+  const authz = await validateDmControl(sessionId as UUID, user)
+  if (!authz.ok) {
+    return res.status(authz.status).json({ code: authz.code, message: authz.message })
+  }
+
+  const changedAt = Date.now()
+  const resolvedPresetName =
+    typeof presetName === 'string' && presetName.trim() ? presetName.trim() : null
+
+  const event = createEvent({
+    type: AUDIO_EVENT_TYPES.DM_VOICE_MODE_CHANGED,
+    user,
+    userRole: authz.role,
+    sessionId: sessionId as UUID,
+    roomId: null,
     payload: {
-      dmId: state.dmId,
-      voiceMode: state.voiceMode,
-      targetGroupId: state.targetGroupId,
-      backgroundVolume: state.backgroundVolume,
-      changedAt: state.changedAt,
+      dmId: user.userId,
+      presetName: resolvedPresetName,
+      changedAt,
     },
   })
 
@@ -704,37 +791,25 @@ async function handleSetDmVoiceMode(req: Request, res: Response) {
     sessionId: sessionId as UUID,
     actorUserId: user.userId as UUID,
     actorRole: authz.role,
-    actionType: 'AUDIO.DM_VOICE_MODE_CHANGED',
+    actionType: 'AUDIO.DM_VOICE_PRESET_CHANGED',
     targetType: 'USER',
-    targetId: state.dmId,
-    roomId: state.targetGroupId || undefined,
+    targetId: user.userId as UUID,
     visibilityClass: 'PUBLIC',
-    timestamp: state.changedAt,
-    metadata: {
-      voiceMode: state.voiceMode,
-      targetGroupId: state.targetGroupId,
-      backgroundVolume: state.backgroundVolume,
-    },
+    timestamp: changedAt,
+    metadata: { presetName: resolvedPresetName },
   })
 
-  logger.info('audio', 'DM voice mode changed', {
+  logger.info('audio', 'DM voice preset changed', {
     sessionId,
     dmId: user.userId,
-    voiceMode,
-    backgroundVolume: state.backgroundVolume,
+    presetName: resolvedPresetName,
   })
 
-  return res.status(200).json({
-    ok: true,
-    voiceMode: state.voiceMode,
-    targetGroupId: state.targetGroupId,
-    backgroundVolume: state.backgroundVolume,
-    eventId: event.id,
-  })
+  return res.status(200).json({ ok: true, presetName: resolvedPresetName, eventId: event.id })
 }
 
-router.post('/voice-mode', requireAuth, async (req: Request, res: Response) => {
-  return handleSetDmVoiceMode(req, res)
+router.post('/voice-preset', requireAuth, async (req: Request, res: Response) => {
+  return handleSetDmVoicePreset(req, res)
 })
 
 export default router

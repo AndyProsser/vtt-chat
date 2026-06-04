@@ -1,5 +1,5 @@
 import { memo, useMemo, type ComponentProps } from 'react'
-import { type Role } from '@shared'
+import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { AudioPanel } from '@/components/workspaces/session/audio/AudioPanel'
 import { LeftRailPanel } from '@/components/workspaces/session/LeftRailPanel'
@@ -44,6 +44,9 @@ function SessionWorkspaceLeftRailComponent(props: SessionWorkspaceLeftRailProps)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
   const currentConditionName = useStore((state) => state.currentCondition?.name)
+  const dmVoiceTargetGroupId = useStore(
+    (state) => (state as any).dmVoiceTargetGroupId as UUID | undefined
+  )
   const visibleRooms = useMemo(
     () =>
       getVisibleRoomsForSessionState(Object.values(currentSessionRoomsById), props.sessionState),
@@ -96,7 +99,11 @@ function SessionWorkspaceLeftRailComponent(props: SessionWorkspaceLeftRailProps)
         >
           <AudioPanel
             sessionId={props.sessionId}
-            roomId={selectedRoomId}
+            roomId={
+              props.effectiveSessionRole === Role.DM && dmVoiceTargetGroupId
+                ? dmVoiceTargetGroupId
+                : selectedRoomId
+            }
             role={props.effectiveSessionRole}
           />
         </aside>

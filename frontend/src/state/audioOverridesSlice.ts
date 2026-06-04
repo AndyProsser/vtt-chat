@@ -21,6 +21,8 @@ export interface AudioOverridesSlice {
   dmVoiceMode: 'TARGET_GROUP' | 'BROADCAST'
   dmBackgroundVolume: number
   dmVoiceTargetGroupId?: UUID
+  /** Active DM voice preset name, or null when normal voice is active. */
+  dmVoicePreset: string | null
 
   togglePTT: (active: boolean) => void
   setPrivateRoomCleanMode: (enabled: boolean) => void
@@ -40,6 +42,9 @@ export interface AudioOverridesSlice {
   handleDMOverrideApplied: (event: EventEnvelope) => void
   handleDMOverrideRemoved: (event: EventEnvelope) => void
   handleBroadcastStateChanged: (event: EventEnvelope) => void
+  /** Handles AUDIO:DM_VOICE_TARGET_CHANGED — room targeting. */
+  handleDmVoiceTargetChanged: (event: EventEnvelope) => void
+  /** Handles AUDIO:DM_VOICE_MODE_CHANGED — voice preset (Demon, Angel, etc.). */
   handleDmVoiceModeChanged: (event: EventEnvelope) => void
 }
 
@@ -54,6 +59,7 @@ export const initialAudioOverridesState = {
   dmVoiceMode: 'TARGET_GROUP' as const,
   dmBackgroundVolume: 0.3,
   dmVoiceTargetGroupId: undefined,
+  dmVoicePreset: null as string | null,
 } as const
 
 export const createAudioOverridesSlice: StateCreator<
@@ -196,20 +202,31 @@ export const createAudioOverridesSlice: StateCreator<
     }))
   },
 
-  handleDmVoiceModeChanged: (event) => {
+  handleDmVoiceTargetChanged: (event) => {
     const payload = event.payload as {
       dmId: UUID
-      voiceMode: 'TARGET_GROUP' | 'BROADCAST'
-      targetGroupId?: UUID | null
+      targetGroupId: UUID | null
       backgroundVolume: number
       changedAt: number
     }
 
     set(() => ({
-      dmVoiceMode: payload.voiceMode,
-      dmBackgroundVolume: payload.backgroundVolume,
+      dmVoiceMode: 'TARGET_GROUP',
+      dmBackgroundVolume: payload.backgroundVolume ?? 0.3,
       dmVoiceTargetGroupId: payload.targetGroupId ?? undefined,
-      broadcastModeEnabled: payload.voiceMode === 'BROADCAST',
+      broadcastModeEnabled: false,
+    }))
+  },
+
+  handleDmVoiceModeChanged: (event) => {
+    const payload = event.payload as {
+      dmId: UUID
+      presetName: string | null
+      changedAt: number
+    }
+
+    set(() => ({
+      dmVoicePreset: payload.presetName ?? null,
     }))
   },
 })

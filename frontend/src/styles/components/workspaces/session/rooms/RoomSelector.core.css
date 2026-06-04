@@ -1055,3 +1055,109 @@
     max-height: none;
   }
 }
+
+/* ── DM Voice Target Panel ────────────────────────────────────────────── */
+
+.room-selector-header__voice-wrap {
+  position: static;
+  display: inline-flex;
+}
+
+.room-selector-header__voice-wrap .dm-voice-panel-shell {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 100;
+  min-width: 200px;
+  max-width: 260px;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.985);
+  transition:
+    opacity 140ms ease,
+    transform 160ms ease;
+  pointer-events: none;
+}
+
+.room-selector-header__voice-wrap .dm-voice-panel-shell.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.room-selector-header__voice-wrap .dm-voice-panel-shell.is-closing {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.985);
+  pointer-events: none;
+}
+
+.dm-voice-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.dm-voice-panel__title {
+  margin: 0 0 0.1rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  padding: 0 0.2rem;
+}
+
+.dm-voice-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.dm-voice-panel__preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.38rem 0.2rem;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 80%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.62rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.dm-voice-panel__preset:hover {
+  background: color-mix(in srgb, var(--color-surface-raised) 90%, transparent);
+  color: var(--color-text-primary);
+}
+
+.dm-voice-panel__preset.is-active {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-brand) 52%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 16%, transparent);
+}
+
+.dm-voice-panel__preset-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.dm-voice-panel__preset-label {
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Voice target button — active state uses brand colour (different from broadcast green) */
+.room-selector-header__broadcast-icon.voice-target-active {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-brand) 52%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
+}
