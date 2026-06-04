@@ -312,14 +312,16 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       const store = useStore.getState()
       store.handleSessionRoomTransitionApplied(event)
 
-      // Check if we should reset audio state based on next state
       const nextState = (event.payload as any)?.nextState
 
-      // Always reset audio state
-      store.resetSessionAudioState()
-      store.clearActiveEffects()
-
+      // Only reset audio state on teardown transitions (IDLE/ENDED/CLEANUP).
+      // ACTIVE, PAUSED, and COOLDOWN transitions are policy remaps — audio
+      // transport identity must be preserved so effects and environments survive
+      // pause/resume cycles. Unconditional reset would break AC3/AC4 of the
+      // W4-Conversation-Authority contract.
       if (nextState === 'IDLE' || nextState === 'ENDED' || nextState === 'CLEANUP') {
+        store.resetSessionAudioState()
+        store.clearActiveEffects()
         store.markMockSimulationExited(event.sessionId)
       }
 

@@ -60,6 +60,16 @@ Even when transport/audio remains continuous, session lifecycle remains authorit
 - Session boundary bookends (`Started`, `Paused`, `Resumed`, `Ended`) are durable and required.
 - Runtime policy during `PAUSED`/Whisper remains off-the-record unless explicitly configured otherwise.
 
+### **1.7 Audio continuity across session transitions**
+
+Session state transitions (`ACTIVE` → `PAUSED` → `ACTIVE`, `ACTIVE` → `COOLDOWN`) are **policy remaps**, not transport identity teardowns.
+
+- LiveKit and WebSocket transport connections are **not** disconnected or reset on session state changes.
+- Audio effects, environments, and presets survive `PAUSED` and `COOLDOWN` transitions and are restored on resume.
+- Frontend audio state (Zustand slices) must **not** call `resetSessionAudioState()` or `clearActiveEffects()` for `ACTIVE`, `PAUSED`, or `COOLDOWN` transitions — only for `IDLE`, `ENDED`, and `CLEANUP`.
+- `roomEnvironmentNames` is campaign-persistent and must **never** be cleared by session lifecycle cleanup (only by explicit DM action or campaign deletion).
+- Whisper/private-room audio isolation and spectator audio policies remain hard policy boundaries enforced by room routing, not transport reset.
+
 ---
 
 ## 2. Session States

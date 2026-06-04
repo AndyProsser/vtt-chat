@@ -10,15 +10,15 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Phase 0: Core Reliability & Resilience |      5 |       4 |              0 |              1 | 🟡 In Progress |
+| Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       2 |              1 |              1 | 🟡 In Progress |
 | Phase 2: Audio Experiences             |      5 |       0 |              2 |              3 | 🔴 Blocked     |
 | Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
 | Phase 4: Future Enhancements           |      4 |       0 |              0 |              4 | ⚪ Not Started |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **28** |   **6** |          **3** |         **19** |                |
+| **Total**                              | **28** |   **7** |          **3** |         **18** |                |
 
-**MVP-blocking items remaining**: W4-Conversation-Authority (Phase 0), W4-UX-Polish (Phase 1), W-Groups-Panel + W-Audio-Voice + W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
+**MVP-blocking items remaining**: W4-UX-Polish (Phase 1), W-Groups-Panel + W-Audio-Voice + W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
 
 ---
 
@@ -206,7 +206,7 @@ Evidence snapshot (2026-05-29):
 
 ### W4-Conversation-Authority: Campaign-Scoped Conversation, Session-Scoped Routing
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine, W1-Runtime-Recovery
 
@@ -214,17 +214,27 @@ Evidence snapshot (2026-05-29):
 
 **Acceptance Criteria**:
 
-- [ ] Contracts explicitly define campaign as conversation authority and session as routing/policy authority.
-- [ ] API validation order is enforced: campaign authorization → lifecycle policy → room routing.
-- [ ] Session transitions reassign rooms without implying participant transport identity teardown.
-- [ ] Audio continuity across session transitions is documented and implemented as policy remap (not reconnect/reset), while preserving whisper/spectator privacy rules.
-- [ ] Recording boundaries remain session-authoritative via persisted bookends and transcript/summary consumption rules.
+- [x] Contracts explicitly define campaign as conversation authority and session as routing/policy authority.
+- [x] API validation order is enforced: campaign authorization → lifecycle policy → room routing.
+- [x] Session transitions reassign rooms without implying participant transport identity teardown.
+- [x] Audio continuity across session transitions is documented and implemented as policy remap (not reconnect/reset), while preserving whisper/spectator privacy rules.
+- [x] Recording boundaries remain session-authoritative via persisted bookends and transcript/summary consumption rules.
 
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md)
 - [docs/architecture/SESSION-LIFECYCLE.md](docs/architecture/SESSION-LIFECYCLE.md)
 - [docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
+
+Evidence snapshot (2026-06-04):
+
+- Contracts locked in `docs/CONTRACTS.md` (Campaign Conversation Authority Contract, Session Room Assignment Contract, Audio Runtime Persistence and Session Policy Contract) and `docs/architecture/SESSION-LIFECYCLE.md` (sections 1.0 authority split, 1.6 recording boundaries, 1.7 audio continuity).
+- `backend/src/services/session/authz.service.ts` enforces campaign membership as primary gate before session membership in `resolveEffectiveSessionRole` and `resolveRoleForSessionJoin`; covered by `backend/tests/services/session-authz.service.test.ts`.
+- All conversation-surface API endpoints (chat, livekit/token, rooms join/move) go through campaign authorization before lifecycle policy before room routing.
+- Backend `applySessionStateRoomTransition` reassigns room topology on state change without disconnecting LiveKit or WebSocket transport — session members retain transport identity across PAUSED/COOLDOWN transitions.
+- Fixed frontend `ROOM:SESSION_TRANSITION_APPLIED` WS handler: `resetSessionAudioState()` and `clearActiveEffects()` are now conditional on teardown states (`IDLE`, `ENDED`, `CLEANUP`) only. ACTIVE, PAUSED, and COOLDOWN transitions no longer reset audio state, preserving effects and environments across pause/resume cycles.
+- Added 11 focused tests in `frontend/tests/state/sessionTransition.audio.test.ts` covering: non-teardown states preserve audio, teardown states clear audio, PAUSED→ACTIVE resume retains environment, COOLDOWN→ENDED clears audio, `roomEnvironmentNames` survives all transitions.
+- Recording bookends (`[Session Started]`, `[Session Paused]`, `[Session Resumed]`, `[Session Ended]`) remain session-authoritative end-to-end (persisted, broadcast, frontend-rendered, refresh-durable) from W0-State-Machine.
 
 ---
 
