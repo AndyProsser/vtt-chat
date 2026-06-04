@@ -44,9 +44,7 @@ function SessionWorkspaceLeftRailComponent(props: SessionWorkspaceLeftRailProps)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
   const currentConditionName = useStore((state) => state.currentCondition?.name)
-  const dmVoiceTargetGroupId = useStore(
-    (state) => (state as any).dmVoiceTargetGroupId as UUID | undefined
-  )
+  const dmVoiceTargetGroupId = useStore((state) => state.dmVoiceTargetGroupId)
   const visibleRooms = useMemo(
     () =>
       getVisibleRoomsForSessionState(Object.values(currentSessionRoomsById), props.sessionState),

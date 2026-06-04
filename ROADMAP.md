@@ -12,13 +12,13 @@
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
-| Phase 2: Audio Experiences             |      5 |       1 |              1 |              3 | 🟡 In Progress |
+| Phase 2: Audio Experiences             |      5 |       2 |              0 |              3 | 🟡 In Progress |
 | Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
 | Phase 4: Future Enhancements           |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **29** |  **10** |          **1** |         **18** |                |
+| **Total**                              | **29** |  **11** |          **0** |         **18** |                |
 
-**MVP-blocking items remaining**: W-Audio-Voice + W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
+**MVP-blocking items remaining**: W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2).
 
 ---
 
@@ -579,7 +579,7 @@ Evidence snapshot (2026-05-24):
 
 ### W-Audio-Voice: DM Voice Targeting and Broadcast Mode
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -587,16 +587,25 @@ Evidence snapshot (2026-05-24):
 
 **Acceptance Criteria**:
 
-- [ ] DM audio control panel shows: current target group, broadcast toggle, mute button
-- [ ] Broadcast mode routes DM voice to all groups in session
-- [ ] Targeted mode routes DM voice to selected group only
-- [ ] Broadcast toggle is unavailable (greyed out) while in Whisper group
-- [ ] WS event `AUDIO:DM_VOICE_TARGET_CHANGED` broadcasts to all clients
-- [ ] Frontend renders DM voice status with icon + tooltip
+- [x] DM audio control panel shows: current target group, broadcast toggle, mute button
+- [x] Broadcast mode routes DM voice to all groups in session
+- [x] Targeted mode routes DM voice to selected group only
+- [x] Broadcast toggle is unavailable (greyed out) while in Whisper group
+- [x] WS event `AUDIO:DM_VOICE_TARGET_CHANGED` broadcasts to all clients
+- [x] Frontend renders DM voice status with icon + tooltip
 
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) (audio section)
+
+Evidence snapshot (2026-06-04):
+
+- `AUDIO:DM_VOICE_TARGET_CHANGED` added to `shared/events/audio.ts` and emitted by backend `handleSetDmVoiceMode` (TARGET_GROUP case). Frontend registers handler in `useWebSocket.ts` → `handleDmVoiceTargetChanged` updates `dmVoiceTargetGroupId` and `broadcastModeEnabled: false` in `audioOverridesSlice`.
+- Targeted voice mode: `LeftRail.tsx` passes `dmVoiceTargetGroupId` as `roomId` to `AudioPanel`. `useLiveKit` reconnects to the target group's LiveKit room when the ID changes — players in that room hear the DM directly. No explicit presence move; the LiveKit room change is frontend-only.
+- Broadcast mode: `AudioPanel.tsx` holds a second `broadcastLivekit` instance connected to `dm-broadcast:{sessionId}` when `broadcastModeEnabled` is true. DM publishes there (`canPublish: true`); all players subscribe (`canPublish: false`). A `useEffect` in `AudioPanel` auto-publishes/unpublishes broadcast audio as `broadcastModeEnabled` changes.
+- DM voice status: `DmVoiceTargetIndicator` in `RoomSelector.tsx` (leaf component, stable ref, subscribes only to `dmVoiceTargetGroupId`) shows the current voice target group name below the DM avatar card. Broadcast button in `GroupsHeaderActions` highlights with the `active` class when broadcast is on.
+- Broadcast unavailable during Whisper: `whisperModeLocked` prop disables the broadcast button in `GroupsHeaderActions`.
+- DM voice presets (voice changer): `DmVoicePanel` in `GroupsHeaderActions` opens a 3-column preset grid (9 presets: Narrator, Voice of God, Demon, Dragon, Angel, Ghost, Robot, Ancient, Whisper). Selecting a preset calls `POST /api/audio/voice-preset` → `AUDIO:DM_VOICE_MODE_CHANGED` → `useDmVoiceProcessor` builds a Web Audio chain (EQ, distortion, reverb via synthetic impulse) and calls `LocalAudioTrack.replaceTrack()`. Tap button when active = one-click dismiss (restores raw mic, tears down AudioContext).
 
 ---
 

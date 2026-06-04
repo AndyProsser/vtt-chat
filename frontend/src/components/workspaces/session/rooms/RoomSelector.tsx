@@ -106,8 +106,8 @@ export function RoomSelector({
   })
   const activeTakeoverUserId = useStore((state) => state.mockTakeoverUserIdBySession[sessionId])
   const setMockTakeoverUserId = useStore((state) => state.setMockTakeoverUserId)
-  const dmVoiceTargetGroupId = useStore((state) => (state as any).dmVoiceTargetGroupId as UUID | undefined)
-  const dmVoicePreset = useStore((state) => (state as any).dmVoicePreset as string | null)
+  const dmVoiceTargetGroupId = useStore((state) => state.dmVoiceTargetGroupId)
+  const dmVoicePreset = useStore((state) => state.dmVoicePreset)
 
   const dmFlavorLine = useMemo(
     () => getRoomSelectorDmFlavorLine(dmUserId, sessionId),

@@ -84,7 +84,7 @@ function MessageInputComponent({
   })
   const isDmRole = String(role) === 'DM'
   const currentUserPrimaryRoomId = useStore((state) => {
-    if (!sessionId) {
+    if (!sessionId || !currentUserId) {
       return ''
     }
 

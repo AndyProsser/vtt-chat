@@ -469,7 +469,7 @@ export function WorkspaceInitialization({
     loadUserCharacters,
     selectedCampaignId,
     loadDmVoiceTargetingSetting,
-    currentUserId: user.userId,
+    currentUserId: user.id,
   })
 
   const ensureSessionMembership = useCallback(
@@ -492,6 +492,7 @@ export function WorkspaceInitialization({
     wsState,
     wsError,
     wsRetryWindowExpired,
+    suppressReconnectUi: suppressWsReconnectUi,
     sessionLifecycleActions,
     wsRetryWindowStartRef,
     wsRetryToastTimerRef,

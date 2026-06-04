@@ -50,10 +50,7 @@ function buildDistortionCurve(amount: number): Float32Array<ArrayBuffer> {
   return curve
 }
 
-function buildReverbImpulse(
-  context: AudioContext,
-  decaySeconds: number
-): AudioBuffer {
+function buildReverbImpulse(context: AudioContext, decaySeconds: number): AudioBuffer {
   const sampleRate = context.sampleRate
   const length = Math.ceil(sampleRate * Math.min(decaySeconds, 8))
   const buffer = context.createBuffer(2, length, sampleRate)
@@ -184,7 +181,7 @@ export function useDmVoiceProcessor({
   localAudioTrack,
   localInputTrack,
 }: UseDmVoiceProcessorOptions): void {
-  const dmVoicePreset = useStore((state) => (state as any).dmVoicePreset as string | null)
+  const dmVoicePreset = useStore((state) => state.dmVoicePreset)
 
   // Store the active processing graph so we can tear it down on preset change.
   const graphRef = useRef<ProcessorGraph | null>(null)

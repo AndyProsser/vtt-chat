@@ -527,7 +527,7 @@ export function HistoryPanelVirtualList({
     let retryCount = 0
     const maxRetries = 8
     let lastScrollHeight = 0
-    let retryTimeoutId: ReturnType<typeof window.setTimeout> | null = null
+    let retryTimeoutId: number | null = null
 
     const scrollToBottom = () => {
       const container = listApi.element
