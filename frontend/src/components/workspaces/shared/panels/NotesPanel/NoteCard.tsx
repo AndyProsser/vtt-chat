@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NoteVisibility, RoomType } from '@shared'
+import { NoteVisibility } from '@shared'
 import type { NoteAttachmentEntity, UUID } from '@shared'
 import type { Note } from '@/types/notes'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import { useToast } from '@/hooks/useToast'
 import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
-import type { NotesPublishRoom, NotesPublishTarget } from '@/types/notesPublish'
+import type { NotesSurfaceTarget } from '@/types/notesPublish'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
 import { getNoteShareStatus, parseNoteHashtags, serializeNoteHashtags } from '@/utils/notesPanel'
 import { HashtagAutocompleteInput } from './HashtagAutocompleteInput'
 import { NoteAttachmentsGallery } from './NoteAttachmentsGallery'
 import { NoteDeleteDialog } from './NoteDeleteDialog'
-import { NotePublishDialog } from './NotePublishDialog'
+import { NoteSurfaceDialog } from './NoteSurfaceDialog'
 import { NoteSharePopover } from './NoteSharePopover'
 import { areStringArraysEqual, areUuidArraysEqual } from './noteCard.utils'
 
@@ -52,7 +52,6 @@ interface NoteCardProps {
   isSharingDisabled: boolean
   shareUsers?: NotesShareUser[]
   shareRooms?: NotesShareRoom[]
-  publishRooms?: NotesPublishRoom[]
   roomMemberIdsByRoomId?: Record<UUID, UUID[]>
   onSave: (
     noteId: string,
@@ -61,7 +60,7 @@ interface NoteCardProps {
     >
   ) => Promise<void>
   onDelete: (noteId: string) => Promise<void>
-  onPublish: (noteId: string, target: NotesPublishTarget) => Promise<void>
+  onSurface: (noteId: string, target: NotesSurfaceTarget) => Promise<void>
 }
 
 export function NoteCard({
@@ -73,11 +72,10 @@ export function NoteCard({
   isSharingDisabled,
   shareUsers = [],
   shareRooms = [],
-  publishRooms = [],
   roomMemberIdsByRoomId = {},
   onSave,
   onDelete,
-  onPublish,
+  onSurface,
 }: NoteCardProps) {
   const noteAllowedUsers = note.allowedUsers ?? EMPTY_UUIDS
   const noteAttachments = note.attachments ?? EMPTY_ATTACHMENTS
@@ -94,7 +92,7 @@ export function NoteCard({
   const [error, setError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [sharePopoverOpen, setSharePopoverOpen] = useState(false)
-  const [publishDialogOpen, setPublishDialogOpen] = useState(false)
+  const [surfaceDialogOpen, setSurfaceDialogOpen] = useState(false)
   const [hasPublishedThisSession, setHasPublishedThisSession] = useState(Boolean(note.publishedAt))
   const showToast = useToast()
   const imageInsertActions = useMemo(() => createNotesImageInsertActions(showToast), [showToast])
@@ -222,7 +220,7 @@ export function NoteCard({
     }
   }
 
-  const handleConfirmPublish = async (target: NotesPublishTarget) => {
+  const handleConfirmSurface = async (target: NotesSurfaceTarget) => {
     if (isPublishDisabled) {
       return
     }
@@ -230,38 +228,14 @@ export function NoteCard({
     setIsSaving(true)
     setError(null)
     try {
-      await onPublish(note.id, target)
+      await onSurface(note.id, target)
       setHasPublishedThisSession(true)
-      setPublishDialogOpen(false)
+      setSurfaceDialogOpen(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to publish note')
+      setError(err instanceof Error ? err.message : 'Failed to send handout')
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const handlePublish = async () => {
-    if (isPublishDisabled) {
-      return
-    }
-
-    if (publishRooms.length === 0) {
-      await handleConfirmPublish({ audience: 'EVERYONE' })
-      return
-    }
-
-    if (publishRooms.length === 1) {
-      const onlyRoom = publishRooms[0]
-      if (onlyRoom?.type === RoomType.MAIN) {
-        await handleConfirmPublish({ audience: 'EVERYONE' })
-        return
-      }
-
-      await handleConfirmPublish({ audience: 'ROOM', roomId: onlyRoom.id })
-      return
-    }
-
-    setPublishDialogOpen(true)
   }
 
   const setAudienceVisibility = (nextVisibility: NoteVisibility) => {
@@ -296,7 +270,7 @@ export function NoteCard({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    onClick={handlePublish}
+                    onClick={() => setSurfaceDialogOpen(true)}
                     disabled={isSaving || isPublishDisabled}
                     className={`notes-note-header-action notes-note-header-action--publish${hasPublishedThisSession ? ' is-published' : ''}`}
                     aria-label="Publish handout to chat"
@@ -308,15 +282,10 @@ export function NoteCard({
                 </TooltipTrigger>
                 <TooltipContent side="top">
                   {isPublishDisabled
-                    ? 'Publish is unavailable in greenroom'
+                    ? 'Unavailable in greenroom'
                     : hasPublishedThisSession
-                      ? 'Published this session (click to publish again)'
-                      : publishRooms.length === 0 ||
-                          (publishRooms.length === 1 && publishRooms[0]?.type === RoomType.MAIN)
-                        ? 'Publish to everyone'
-                        : publishRooms.length > 1
-                          ? 'Choose a room to publish to'
-                          : 'Publish to the active room'}
+                      ? 'Sent this session (click to send again)'
+                      : 'Send handout to chat'}
                 </TooltipContent>
               </Tooltip>
             ) : null}
@@ -451,13 +420,12 @@ export function NoteCard({
         onConfirmDelete={handleDelete}
       />
 
-      <NotePublishDialog
-        open={publishDialogOpen}
+      <NoteSurfaceDialog
+        open={surfaceDialogOpen}
         isSubmitting={isSaving}
-        rooms={publishRooms}
-        roomMemberIdsByRoomId={roomMemberIdsByRoomId}
-        onOpenChange={setPublishDialogOpen}
-        onConfirmPublish={handleConfirmPublish}
+        shareUsers={shareUsers}
+        onOpenChange={setSurfaceDialogOpen}
+        onConfirmSurface={handleConfirmSurface}
       />
     </TooltipProvider>
   )

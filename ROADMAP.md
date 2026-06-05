@@ -786,11 +786,13 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - `frontend/src/utils/noteSharedMessage.ts` — parses `noteHandout` metadata (new) before legacy `noteShared` fallback.
 - `NoteSharedCard.tsx` — `isExcerpt` prop renders an "excerpt" badge when the card is from a `/surface` handout.
 
+- `NoteSurfaceDialog.tsx` — scope picker dialog replacing `NotePublishDialog`. All Players (PARTY) or Choose Players (SELECTED) with per-player checklist and optional custom excerpt field (collapsed by default). `NoteCard` now uses `onSurface` callback; `NotesPanel.handleSurface` calls `POST /api/notes/:noteId/surface`.
+
 **Remaining**:
 
-- Share UI: update `NotePublishDialog` / `NoteSharePopover` to use `/surface` endpoint with PARTY/SELECTED scope selector instead of room picker.
 - Visibility filtering in Notes tab (players see only notes shared with them).
 - PRIVATE scope enforcement (DM-only notes hidden from players in Notes panel).
+- SPECTATORS scope (requires new visibility enum value and migration).
 
 **Related Docs**:
 

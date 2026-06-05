@@ -43,7 +43,7 @@ export function DmdxBlock({ blockType, id, rawContent, parsed }: DmdxBlockProps)
     case 'map':
       return <DmdxMapBlock parsed={parsed} id={id} />
     case 'timeline':
-      return <DmdxTimelineBlock rawContent={rawContent} />
+      return <DmdxTimelineBlock parsed={parsed} />
     default:
       // Exhaustiveness guard — should never reach here
       return null

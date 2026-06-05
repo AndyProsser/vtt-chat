@@ -17,6 +17,7 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 - W-Notes-Visibility: Registered `NOTES:HANDOUT_SURFACED` handler in `useWebSocket.ts` and added `handleNoteHandoutSurfaced` to `notesSlice.ts` — marks the note as published on all connected clients.
 - W-Notes-Visibility: Updated `parseNoteSharedMessage` in `noteSharedMessage.ts` to parse `noteHandout` metadata (new path) before falling back to legacy `noteShared` and text parsing.
 - W-Notes-Visibility: `NoteSharedCard` now accepts an `isExcerpt` prop; when true, renders an "excerpt" badge on the card header so recipients know to check the Notes tab for the full handout.
+- W-Notes-Visibility: Added `NoteSurfaceDialog` component — scope picker (All Players / Choose Players) with player checklist for SELECTED mode and an optional collapsible custom-excerpt field. Replaces `NotePublishDialog` (room picker) in `NoteCard`. `NoteCard.onPublish`/`publishRooms` props replaced by `onSurface: (noteId, NotesSurfaceTarget) => Promise<void>`. `NotesPanel.handlePublish` replaced by `handleSurface` calling `POST /api/notes/:noteId/surface`.
 
 ### Changed
 

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import {
   NoteVisibility,
   Role,
-  RoomType,
   isGreenroomSessionState,
   type SessionState,
   type UUID,
@@ -11,7 +10,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
-import type { NotesPublishTarget } from '@/types/notesPublish'
+import type { NotesSurfaceTarget } from '@/types/notesPublish'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { useNotesShareContext } from '@/hooks/notes/useNotesShareContext'
 import { isJournalNote, parseNoteHashtags } from '../../../../../utils/notesPanel'
@@ -77,15 +76,6 @@ export function NotesPanel({
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const canMutateNotes = user.role === Role.DM
-  const publishRooms = useMemo(
-    () =>
-      shareRooms.filter((room) => {
-        const memberCount = roomMemberIdsByRoomId[room.id]?.length || 0
-        return memberCount > 0 && (room.type === RoomType.MAIN || room.type === RoomType.GROUP)
-      }),
-    [roomMemberIdsByRoomId, shareRooms]
-  )
-
   const displayedNotes = useMemo(() => {
     const byPublishFilter =
       publishFilter === 'SHARED'
@@ -284,8 +274,8 @@ export function NotesPanel({
     })
   }
 
-  const handlePublish = async (noteId: string, target: NotesPublishTarget) => {
-    const res = await fetch(`${apiUrl}/api/notes/${noteId}/publish`, {
+  const handleSurface = async (noteId: string, target: NotesSurfaceTarget) => {
+    const res = await fetch(`${apiUrl}/api/notes/${noteId}/surface`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -299,8 +289,7 @@ export function NotesPanel({
       throw new Error(body.message ?? `HTTP ${res.status}`)
     }
 
-    // Notes are campaign-scoped. Rehydrate after publish so share/published indicators
-    // converge immediately without requiring a page refresh.
+    // Rehydrate so published indicators converge immediately without a page refresh.
     const refreshedNotes = await fetchCampaignNotesOnce(apiUrl, campaignId, token)
     clearNotes(campaignId)
     for (const refreshedNote of refreshedNotes) {
@@ -431,7 +420,6 @@ export function NotesPanel({
                   note={selectedNote}
                   shareUsers={shareUsers}
                   shareRooms={shareRooms}
-                  publishRooms={publishRooms}
                   roomMemberIdsByRoomId={roomMemberIdsByRoomId}
                   canEdit={canMutateNotes}
                   canManageShare={canMutateNotes}
@@ -440,7 +428,7 @@ export function NotesPanel({
                   isSharingDisabled={isSharingDisabledInCurrentState}
                   onSave={handleSave}
                   onDelete={handleDelete}
-                  onPublish={handlePublish}
+                  onSurface={handleSurface}
                 />
               ) : null}
             </section>

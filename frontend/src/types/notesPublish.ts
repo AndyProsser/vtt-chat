@@ -10,3 +10,10 @@ export interface NotesPublishTarget {
   audience: 'EVERYONE' | 'ROOM'
   roomId?: UUID | null
 }
+
+/** Target for the /surface endpoint — excerpt-based, scope-based handout delivery. */
+export interface NotesSurfaceTarget {
+  scope: 'PARTY' | 'SELECTED'
+  selectedUserIds?: UUID[]
+  manualExcerpt?: string
+}
