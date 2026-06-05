@@ -30,7 +30,6 @@ export function DmdxSessionBlock({ parsed }: { parsed: DmdxParsed }) {
           <p className="dmdx-block__section-label">Players</p>
           <div className="dmdx-block__tag-row">
             {players.map((p, i) => (
-              // eslint-disable-next-line react/no-array-index-key
               <span key={i} className="dmdx-block__tag">
                 {p}
               </span>
@@ -46,7 +45,6 @@ export function DmdxSessionBlock({ parsed }: { parsed: DmdxParsed }) {
           <p className="dmdx-block__section-label">Key Events</p>
           <ul className="dmdx-block__list">
             {events.map((ev, i) => (
-              // eslint-disable-next-line react/no-array-index-key
               <li key={i}>{ev}</li>
             ))}
           </ul>

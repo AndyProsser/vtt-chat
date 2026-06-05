@@ -42,7 +42,6 @@ export function DmdxEncounterBlock({ parsed }: { parsed: DmdxParsed }) {
           <p className="dmdx-block__section-label">Creatures</p>
           <ul className="dmdx-block__list">
             {creatures.map((c, i) => (
-              // eslint-disable-next-line react/no-array-index-key
               <li key={i}>{c}</li>
             ))}
           </ul>
@@ -54,7 +53,6 @@ export function DmdxEncounterBlock({ parsed }: { parsed: DmdxParsed }) {
           <p className="dmdx-block__section-label">Objectives</p>
           <ul className="dmdx-block__list">
             {objectives.map((o, i) => (
-              // eslint-disable-next-line react/no-array-index-key
               <li key={i}>{o}</li>
             ))}
           </ul>

@@ -20,7 +20,6 @@ export function DmdxLootBlock({ parsed, id }: { parsed: DmdxParsed; id?: string 
       {items.length > 0 ? (
         <ul className="dmdx-loot__items">
           {items.map((item, index) => (
-            // eslint-disable-next-line react/no-array-index-key
             <li key={index} className="dmdx-loot__item">
               <span className="material-symbols-outlined dmdx-loot__item-icon" aria-hidden="true">
                 diamond

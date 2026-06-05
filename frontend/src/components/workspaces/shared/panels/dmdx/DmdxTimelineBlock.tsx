@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 interface DmdxTimelineBlockProps {
   rawContent: string
@@ -12,7 +12,8 @@ interface DmdxTimelineBlockProps {
 export function DmdxTimelineBlock({ rawContent }: DmdxTimelineBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [status, setStatus] = useState<'loading' | 'rendered' | 'fallback'>('loading')
-  const diagramId = useRef(`dmdx-timeline-${Math.random().toString(36).slice(2)}`)
+  const uId = useId()
+  const diagramId = `dmdx-timeline-${uId.replace(/:/g, '')}`
 
   useEffect(() => {
     let cancelled = false
@@ -26,7 +27,7 @@ export function DmdxTimelineBlock({ rawContent }: DmdxTimelineBlockProps) {
         // Wrap in a timeline/flowchart block if not already wrapped
         const diagram = content.startsWith('timeline') ? content : `flowchart LR\n${content}`
 
-        const { svg } = await mermaid.render(diagramId.current, diagram)
+        const { svg } = await mermaid.render(diagramId, diagram)
 
         if (!cancelled && containerRef.current) {
           containerRef.current.innerHTML = svg
@@ -43,7 +44,7 @@ export function DmdxTimelineBlock({ rawContent }: DmdxTimelineBlockProps) {
     return () => {
       cancelled = true
     }
-  }, [rawContent])
+  }, [rawContent, diagramId])
 
   const plainLines = rawContent.trim().split('\n').filter(Boolean)
 
@@ -61,7 +62,6 @@ export function DmdxTimelineBlock({ rawContent }: DmdxTimelineBlockProps) {
       ) : status === 'fallback' ? (
         <div ref={containerRef} className="dmdx-timeline__fallback">
           {plainLines.map((line, i) => (
-            // eslint-disable-next-line react/no-array-index-key
             <p key={i} className="dmdx-timeline__fallback-line">
               {line}
             </p>

@@ -86,7 +86,6 @@ export function DmdxMarkdownRenderer({ value, placeholder, className }: DmdxMark
           segments.map((segment, index) =>
             segment.kind === 'dmdx' ? (
               <DmdxBlock
-                // eslint-disable-next-line react/no-array-index-key
                 key={index}
                 blockType={segment.blockType}
                 id={segment.id}
@@ -95,7 +94,6 @@ export function DmdxMarkdownRenderer({ value, placeholder, className }: DmdxMark
               />
             ) : (
               <MarkdownSegmentView
-                // eslint-disable-next-line react/no-array-index-key
                 key={index}
                 text={segment.text}
                 placeholder={index === 0 ? placeholder : undefined}

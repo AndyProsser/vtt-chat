@@ -78,7 +78,6 @@ export function DmdxMonsterBlock({ parsed }: { parsed: DmdxParsed }) {
           <p className="dmdx-block__section-label">Actions</p>
           <ul className="dmdx-monster__action-list">
             {actions.map((action, index) => (
-              // eslint-disable-next-line react/no-array-index-key
               <li key={index}>{action}</li>
             ))}
           </ul>
