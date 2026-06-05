@@ -17,7 +17,10 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 - W-Notes-Visibility: Registered `NOTES:HANDOUT_SURFACED` handler in `useWebSocket.ts` and added `handleNoteHandoutSurfaced` to `notesSlice.ts` — marks the note as published on all connected clients.
 - W-Notes-Visibility: Updated `parseNoteSharedMessage` in `noteSharedMessage.ts` to parse `noteHandout` metadata (new path) before falling back to legacy `noteShared` and text parsing.
 - W-Notes-Visibility: `NoteSharedCard` now accepts an `isExcerpt` prop; when true, renders an "excerpt" badge on the card header so recipients know to check the Notes tab for the full handout.
+- W-Notes-Visibility: `NoteSharePopover` mode labels updated to match contract: None→Private, Everyone→Party, Limited→Selected.
 - W-Notes-Visibility: Added `NoteSurfaceDialog` component — scope picker (All Players / Choose Players) with player checklist for SELECTED mode and an optional collapsible custom-excerpt field. Replaces `NotePublishDialog` (room picker) in `NoteCard`. `NoteCard.onPublish`/`publishRooms` props replaced by `onSurface: (noteId, NotesSurfaceTarget) => Promise<void>`. `NotesPanel.handlePublish` replaced by `handleSurface` calling `POST /api/notes/:noteId/surface`.
+- W-Journal-and-Popouts: Added pop-out window support for Notes and Journal. `openNotePopout()` and `openJournalPopout()` helpers in `route-view.ts` store the auth token in `sessionStorage` and call `window.open` with a named target (reuses an existing window if already open). New `PopoutRouteView` component renders a minimal note or journal view from `/popout/note/:noteId` and `/popout/journal/:sessionId` routes. Backend `GET /api/notes/by-id/:noteId` endpoint added (with `canViewNote` visibility check). Pop-out buttons (`open_in_new`) added to `NoteCard` header and `JournalEditor` header.
+- W-System-Messages: Added tooltip to condition/distance system message card icons. Wraps the icon with Radix `Tooltip`; body shows `conditionPreset.description` when available. Closes the last remaining item for W-System-Messages.
 
 ### Changed
 

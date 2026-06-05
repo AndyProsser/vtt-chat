@@ -43,6 +43,7 @@ import type {
   SessionJournalStatus,
 } from '@/types/journalPanel'
 import type { Session } from '@/types/session'
+import { openJournalPopout } from '@/utils/route-view'
 import {
   appendJournalHashtagInput,
   buildContentHashtagSuggestions,
@@ -449,44 +450,61 @@ function JournalEditor({
               ) : null}
             </div>
           </div>
-          {isDm && resolvedIsEditing ? (
-            <div className="cip-inline-actions" aria-label="Journal actions">
-              <TooltipProvider delayDuration={140}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="session-icon-action session-icon-action--icon"
-                      aria-label={isSaving ? 'Saving journal' : 'Save journal'}
-                      onClick={() => void handleSave()}
-                      disabled={isSaving}
-                    >
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        {isSaving ? 'hourglass_top' : 'save'}
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Save journal</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="session-icon-action session-icon-action--icon"
-                      aria-label="Cancel editing journal"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        undo
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Cancel editing</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          ) : null}
+          <div className="cip-inline-actions" aria-label="Journal actions">
+            <TooltipProvider delayDuration={140}>
+              {isDm && resolvedIsEditing ? (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="session-icon-action session-icon-action--icon"
+                        aria-label={isSaving ? 'Saving journal' : 'Save journal'}
+                        onClick={() => void handleSave()}
+                        disabled={isSaving}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          {isSaving ? 'hourglass_top' : 'save'}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Save journal</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="session-icon-action session-icon-action--icon"
+                        aria-label="Cancel editing journal"
+                        onClick={handleCancel}
+                        disabled={isSaving}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          undo
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Cancel editing</TooltipContent>
+                  </Tooltip>
+                </>
+              ) : null}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="session-icon-action session-icon-action--icon"
+                    aria-label="Pop out journal"
+                    onClick={() => openJournalPopout(sessionId, token, apiUrl)}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      open_in_new
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Open in separate window</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </header>
       ) : null}
 

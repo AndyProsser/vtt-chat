@@ -9,6 +9,7 @@ import {
 } from 'react-window'
 import { MessageType, findConditionPreset } from '@shared'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { MessageListProps, PreparedMessage } from './MessageList'
 
 interface MessageListVirtualizedProps extends Omit<MessageListProps, 'messages'> {
@@ -314,12 +315,24 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
 
             <div className="session-message-list__message-content session-message-list__message-content--condition">
               <div className="session-message-list__message-bubble session-message-list__message-bubble--condition">
-                <span
-                  className="session-message-list__message-condition-icon material-symbols-outlined"
-                  aria-hidden="true"
-                >
-                  {iconName}
-                </span>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className="session-message-list__message-condition-icon material-symbols-outlined"
+                        aria-hidden="true"
+                        style={{ cursor: 'help' }}
+                      >
+                        {iconName}
+                      </span>
+                    </TooltipTrigger>
+                    {conditionPreset?.description ? (
+                      <TooltipContent side="top" className="max-w-xs">
+                        {conditionPreset.description}
+                      </TooltipContent>
+                    ) : null}
+                  </Tooltip>
+                </TooltipProvider>
                 <span className="session-message-list__message-bubble-text">{conditionText}</span>
               </div>
               <div className="session-message-list__message-footer">

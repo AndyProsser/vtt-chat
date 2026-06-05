@@ -37,6 +37,7 @@ import {
   parseCreateNoteRequest,
   parseUpdateNoteRequest,
 } from '@/services/notes/route-helpers.service'
+import { canViewNote } from '@/services/notes/shared'
 import { NOTE_PUBLISH_SNIPPET_MAX_LENGTH } from '@/constants/notes.constants'
 import { generateExcerpt } from '@/services/notes/excerpt.service'
 import { createSessionLog } from '@/repositories/session-logs.repository'
@@ -174,6 +175,36 @@ router.get('/campaign/:campaignId', requireAuth, async (req: Request, res: Respo
       message: 'Unable to load campaign notes',
     })
   }
+})
+
+/**
+ * GET /api/notes/by-id/:noteId
+ * Fetch a single note by its ID. Used by the pop-out note view.
+ * Must be registered before the /:sessionId catch-all.
+ */
+router.get('/by-id/:noteId', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { noteId } = req.params
+
+  if (!isValidUUID(noteId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_NOTE_ID, message: 'Invalid noteId' })
+  }
+
+  const note = await getNoteById(noteId as UUID)
+  if (!note) {
+    return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
+  }
+
+  const requesterRole = await resolveCampaignRole(note.campaignId, user.userId as UUID)
+  if (!requesterRole) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+  }
+
+  if (!canViewNote(note, user.userId as UUID, requesterRole)) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Access denied' })
+  }
+
+  return res.status(200).json({ note })
 })
 
 router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {

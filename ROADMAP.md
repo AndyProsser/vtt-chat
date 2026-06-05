@@ -760,7 +760,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Notes-Visibility: Sharing and Handout Distribution
 
-**Status**: 🟡 In Progress
+**Status**: ✅ Done (SPECTATORS scope deferred)
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Editor
 
@@ -768,31 +768,12 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Share modal allows selecting scope: Private (DM only) | Party (all players) | Selected (choose specific players) | Spectators (if enabled)
+- [x] Share modal allows selecting scope: Private (DM only) | Party (all players) | Selected (choose specific players) — `NoteSurfaceDialog` (PARTY/SELECTED). `NoteSharePopover` labels now Private/Party/Selected. SPECTATORS deferred (needs enum + migration).
 - [x] Shared notes surface as one-time recipients-only chat card via `NOTES:HANDOUT_SURFACED` WS event
 - [x] Card includes note excerpt (auto-generated or DM override) and link to full note
 - [x] Duplicate cards are not surfaced on reconnect/hydration (persisted system chat message with unique ID; HANDOUT_SURFACED is real-time only)
-- [ ] Players can always find shared notes in Notes tab (filtered by visibility)
-- [ ] Private notes only visible to DM and owner
-
-**Evidence snapshot (2026-06-05)**:
-
-- `shared/events/notes.ts` — `NOTES:HANDOUT_SURFACED` event type with `excerpt`, `excerptSource`, `scope`, `recipientIds`.
-- `shared/types/entities.ts` — `NoteHandoutMessageMetadata` + `noteHandout` field on `MessageMetadataEntity`.
-- `backend/src/services/notes/excerpt.service.ts` — deterministic excerpt generation algorithm (§3.7 checklist): sentence-first, 180-char target, 220-char hard cap, fallback chain.
-- `backend/src/api/notes.routes.ts` — `POST /api/notes/:noteId/surface`: scope-based recipient resolution, visibility update, excerpt generation, system chat message persistence, `NOTES:HANDOUT_SURFACED` broadcast to recipients only.
-- `frontend/src/hooks/useWebSocket.ts` — handler registered for `NOTES:HANDOUT_SURFACED`.
-- `frontend/src/state/notesSlice.ts` — `handleNoteHandoutSurfaced` marks note as published in local state.
-- `frontend/src/utils/noteSharedMessage.ts` — parses `noteHandout` metadata (new) before legacy `noteShared` fallback.
-- `NoteSharedCard.tsx` — `isExcerpt` prop renders an "excerpt" badge when the card is from a `/surface` handout.
-
-- `NoteSurfaceDialog.tsx` — scope picker dialog replacing `NotePublishDialog`. All Players (PARTY) or Choose Players (SELECTED) with per-player checklist and optional custom excerpt field (collapsed by default). `NoteCard` now uses `onSurface` callback; `NotesPanel.handleSurface` calls `POST /api/notes/:noteId/surface`.
-
-**Remaining**:
-
-- Visibility filtering in Notes tab (players see only notes shared with them).
-- PRIVATE scope enforcement (DM-only notes hidden from players in Notes panel).
-- SPECTATORS scope (requires new visibility enum value and migration).
+- [x] Players can always find shared notes in Notes tab (filtered by visibility) — `canViewNote` on backend enforces this; players only receive notes visible to them via API and WS.
+- [x] Private notes only visible to DM and owner — enforced by `canViewNote` in `backend/src/services/notes/shared.ts`.
 
 **Related Docs**:
 
@@ -802,7 +783,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Journal-and-Popouts: Separate Windows for Notes and Journal
 
-**Status**: ⚪ Not Started
+**Status**: ✅ Done
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Visibility
 
@@ -810,13 +791,21 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Notes detail view has "Pop Out" button to open in separate window
-- [ ] Journal detail view has "Pop Out" button to open in separate window
-- [ ] Pop-out windows are resizable and can stay open while user navigates main app
-- [ ] Journal links to session chapter name and uses same editor as Notes
-- [ ] Journal visibility: DM + players + spectators can read
-- [ ] Only DM can edit Journal (other than that, read-only for all)
-- [ ] Pop-out state persists during session (windows remain open on navigation)
+- [x] Notes detail view has "Pop Out" button (`open_in_new` icon) → `window.open('/popout/note/:noteId', ...)`
+- [x] Journal detail view has "Pop Out" button (`open_in_new` icon) → `window.open('/popout/journal/:sessionId', ...)`
+- [x] Pop-out windows are resizable (native OS window management)
+- [x] Journal links to session chapter name and uses same editor as Notes (`sessionName` prop → title)
+- [x] Journal visibility: DM + players + spectators can read — `GET /api/journals/:sessionId` enforces this
+- [x] Only DM can edit Journal — `POST /api/journals/:sessionId` requires DM role; `JournalEditor` is read-only for non-DM
+- [x] Pop-out state persists during session — browser keeps windows open; `window.open` with named target reuses existing window if already open
+
+**Evidence snapshot (2026-06-05)**:
+
+- `frontend/src/utils/route-view.ts` — `popout-note` and `popout-journal` route kinds; `openNotePopout()` / `openJournalPopout()` helpers store auth token in `sessionStorage` (same-origin; inherited by new window) and call `window.open`.
+- `frontend/src/components/routes/PopoutRouteView.tsx` — minimal layout: note pop-out fetches `GET /api/notes/by-id/:noteId` and renders `MarkdownEditor` read-only; journal pop-out renders `JournalPanel` in focused mode (DM gets editable, others get read-only).
+- `backend/src/api/notes.routes.ts` — `GET /api/notes/by-id/:noteId` endpoint added (before `:sessionId` catch-all) with `canViewNote` visibility check.
+- `frontend/src/components/workspaces/shared/panels/NotesPanel/NoteCard.tsx` — pop-out button added to note header.
+- `frontend/src/components/workspaces/shared/panels/JournalPanel.tsx` — pop-out button added to journal header alongside save/cancel.
 
 **Related Docs**:
 
@@ -826,7 +815,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-System-Messages: Condition and Distance Change Cards
 
-**Status**: 🟡 In Progress
+**Status**: ✅ Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Audio-Condition, W-Audio-Distance
 
@@ -840,7 +829,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] Cards are compact (one line) and styled consistently
 - [x] Cards appear for all viewers (DM, players, spectators)
 - [x] Cards persist in chat history for later reference and AI summary processing
-- [ ] Cards include explanation tooltip (icon present; tooltip not yet implemented)
+- [x] Cards include explanation tooltip — condition icon wrapped in Radix `Tooltip`; shows `conditionPreset.description` on hover
 
 **Evidence snapshot (2026-06-05)**:
 

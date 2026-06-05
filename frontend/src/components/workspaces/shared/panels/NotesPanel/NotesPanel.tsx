@@ -418,6 +418,8 @@ export function NotesPanel({
                 <NoteCard
                   key={selectedNote.id}
                   note={selectedNote}
+                  apiUrl={apiUrl}
+                  token={token}
                   shareUsers={shareUsers}
                   shareRooms={shareRooms}
                   roomMemberIdsByRoomId={roomMemberIdsByRoomId}

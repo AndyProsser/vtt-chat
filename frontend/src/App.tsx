@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AppMainRouteView } from './components/routes/AppMainRouteView'
 import { BrowseRouteView } from './components/routes/BrowseRouteView'
 import { JoinRouteView } from './components/routes/JoinRouteView'
+import { PopoutRouteView } from './components/routes/PopoutRouteView'
 import { WatchRouteView } from './components/routes/WatchRouteView'
 import { ToastViewport } from './components/ui/ToastViewport'
 import { TooltipProvider } from '@/components/ui'
@@ -206,6 +207,10 @@ export default function App() {
         )
       case 'browse':
         return <BrowseRouteView apiUrl={apiUrl} authToken={auth.token} />
+      case 'popout-note':
+        return <PopoutRouteView kind="popout-note" noteId={routeView.noteId} />
+      case 'popout-journal':
+        return <PopoutRouteView kind="popout-journal" sessionId={routeView.sessionId} />
       case 'app':
       default:
         return (

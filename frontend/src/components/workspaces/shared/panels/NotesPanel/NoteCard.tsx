@@ -9,6 +9,7 @@ import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 import type { NotesSurfaceTarget } from '@/types/notesPublish'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
 import { getNoteShareStatus, parseNoteHashtags, serializeNoteHashtags } from '@/utils/notesPanel'
+import { openNotePopout } from '@/utils/route-view'
 import { HashtagAutocompleteInput } from './HashtagAutocompleteInput'
 import { NoteAttachmentsGallery } from './NoteAttachmentsGallery'
 import { NoteDeleteDialog } from './NoteDeleteDialog'
@@ -45,6 +46,8 @@ function areAttachmentsEqual(a: NoteAttachmentEntity[], b: NoteAttachmentEntity[
 
 interface NoteCardProps {
   note: Note
+  apiUrl?: string
+  token?: string
   canEdit: boolean
   canManageShare: boolean
   canPublish: boolean
@@ -65,6 +68,8 @@ interface NoteCardProps {
 
 export function NoteCard({
   note,
+  apiUrl,
+  token,
   canEdit,
   canManageShare,
   canPublish,
@@ -265,6 +270,24 @@ export function NoteCard({
           </div>
 
           <div className="notes-note-header__actions">
+            {apiUrl && token ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => openNotePopout(note.id, token, apiUrl)}
+                    className="notes-note-header-action"
+                    aria-label="Pop out note"
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      open_in_new
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Open in separate window</TooltipContent>
+              </Tooltip>
+            ) : null}
+
             {canPublish && !isEditing ? (
               <Tooltip>
                 <TooltipTrigger asChild>
