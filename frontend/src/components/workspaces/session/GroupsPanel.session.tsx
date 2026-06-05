@@ -217,9 +217,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       next[resolvedDmTargetRoomId] = [resolvedDmMember, ...(next[resolvedDmTargetRoomId] || [])]
     } else if (shouldDetachDmFromRooms && canManageGroups && resolvedDmMember) {
       for (const roomId of Object.keys(next) as UUID[]) {
-        next[roomId] = next[roomId].filter(
-          (member) => member.userId !== resolvedDmMember.userId
-        )
+        next[roomId] = next[roomId].filter((member) => member.userId !== resolvedDmMember.userId)
       }
     }
 
@@ -495,9 +493,6 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
                           {detachedDmMember.playerName || detachedDmMember.username}
                         </span>
                       ) : null}
-                      <span className="session-groups-dm-detached__target">
-                        Voice target: <strong>{detachedDmVoiceTargetRoomName || 'Main'}</strong>
-                      </span>
                     </div>
                     <div className="session-groups-member-card__aside">
                       <span className="session-groups-member-card__role-pill session-groups-member-card__role-pill--dm">
@@ -505,6 +500,11 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
                       </span>
                     </div>
                   </div>
+                </div>
+                <div className="session-groups-dm-detached__footer">
+                  <span className="session-groups-dm-detached__target">
+                    Voice target: <strong>{detachedDmVoiceTargetRoomName || 'Main'}</strong>
+                  </span>
                 </div>
               </article>
             ) : null}

@@ -139,6 +139,13 @@
   color: var(--color-text-secondary);
 }
 
+.session-groups-dm-detached__footer {
+  padding-top: 0.3rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
 .session-groups-dm-detached__member {
   display: grid;
   grid-template-columns: 32px 1fr;
@@ -155,6 +162,7 @@
 .session-groups-dm-detached__target strong {
   color: var(--color-text-primary);
   font-weight: 700;
+  text-transform: uppercase;
 }
 
 .session-groups-room-card {
@@ -178,6 +186,7 @@
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--color-text-primary);
+  text-transform: uppercase;
 }
 
 .session-groups-room-card__subtitle,

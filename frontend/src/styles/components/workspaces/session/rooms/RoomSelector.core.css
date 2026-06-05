@@ -477,6 +477,7 @@
 
 .room-selector-dm__voice-target strong {
   color: var(--color-text-primary);
+  text-transform: uppercase;
   font-weight: 700;
 }
 
@@ -591,6 +592,7 @@
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--color-text-primary);
+  text-transform: uppercase;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
