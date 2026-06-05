@@ -64,6 +64,15 @@ export function NoteSharedCard({
         </div>
       </div>
 
+      {isExcerpt ? (
+        <p className="session-note-shared-card__full-note-hint">
+          <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px' }}>
+            menu_book
+          </span>
+          Full note available in the Notes tab
+        </p>
+      ) : null}
+
       {hasBody ? (
         // Lightweight renderer: convert inline image markdown with data: URLs
         // into <img> elements while keeping the rest as pre-wrapped text.

@@ -39,6 +39,31 @@
   min-width: 0;
 }
 
+.session-note-shared-card__label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.session-note-shared-card__excerpt-badge {
+  display: inline-block;
+  padding: 0.06rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #7dd3fc 30%, transparent);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, #7dd3fc 60%, var(--color-text-muted));
+}
+
+.session-note-shared-card__full-note-hint {
+  margin: 0;
+  font-size: 0.66rem;
+  color: color-mix(in srgb, #7dd3fc 55%, var(--color-text-muted));
+  font-style: italic;
+}
+
 .session-note-shared-card__label {
   display: block;
   margin-bottom: 0.08rem;

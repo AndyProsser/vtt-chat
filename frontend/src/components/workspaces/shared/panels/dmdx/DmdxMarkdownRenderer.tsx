@@ -46,7 +46,7 @@ function MarkdownSegmentView({ text, placeholder }: MarkdownSegmentViewProps) {
   }, [editor])
 
   useEffect(() => {
-    if (!editor) return
+    if (!editor || editor.isDestroyed) return
     editor.commands.setContent(text, { emitUpdate: false })
   }, [editor, text])
 

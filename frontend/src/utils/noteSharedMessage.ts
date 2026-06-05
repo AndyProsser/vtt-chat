@@ -5,6 +5,7 @@ const SHARED_WITH_PREFIX = 'Shared with:'
 const HASHTAGS_PREFIX = 'Hashtags:'
 
 export interface ParsedNoteSharedMessage {
+  noteId?: string
   title: string
   sharedWith: string | null
   hashtags: string | null
@@ -22,6 +23,7 @@ function parseNoteHandoutMessageMetadata(
   }
 
   return {
+    noteId: noteHandout.noteId,
     title: noteHandout.title.trim() || 'Untitled Handout',
     sharedWith: null,
     hashtags: null,
@@ -39,6 +41,7 @@ function parseNoteSharedMessageMetadata(
   }
 
   return {
+    noteId: noteShared.noteId,
     title: noteShared.title.trim() || 'Untitled Handout',
     sharedWith: noteShared.sharedWith?.trim() || null,
     hashtags: noteShared.hashtags?.trim() || null,
