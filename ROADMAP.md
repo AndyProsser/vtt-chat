@@ -720,13 +720,13 @@ Evidence snapshot (2026-06-05 — environment persistence + greenroom lock):
 
 ---
 
-## Phase 3: Notes & Journal Foundation ✅
+## Phase 3: Notes & Journal Foundation 🟢
 
 _DM reference and player communication. DMDX markdown editor, pop-out windows, system message cards._
 
 ### W-Notes-Editor: DMDX Markdown Editor Integration
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 In Progress
 **Priority**: 🟡 High
 **Depends on**: W0-Rightbar
 
@@ -741,8 +741,6 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] External links are blocked in toolbar and render pipeline
 - [x] Hashtag autocomplete from campaign tag history
 - [x] Notes are searchable by Name + Content + Hashtags
-- [ ] Attachments support: drag-and-drop or file picker for images and PDFs
-- [ ] PDFs render as inline cards; images render inline
 
 **Evidence snapshot (2026-06-05)**:
 
@@ -760,7 +758,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Notes-Visibility: Sharing and Handout Distribution
 
-**Status**: ✅ Done (SPECTATORS scope deferred)
+**Status**: 🟢 Done (SPECTATORS scope deferred)
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Editor
 
@@ -783,7 +781,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Journal-and-Popouts: Separate Windows for Notes and Journal
 
-**Status**: ✅ Done
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Visibility
 
@@ -815,7 +813,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-System-Messages: Condition and Distance Change Cards
 
-**Status**: ✅ Done
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Audio-Condition, W-Audio-Distance
 
@@ -845,7 +843,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-DM-Notes-to-Chat: Share Note to Chat Timeline
 
-**Status**: ✅ Done
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Notes-Visibility
 

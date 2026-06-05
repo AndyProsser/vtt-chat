@@ -12,6 +12,7 @@ import {
 import apiRouter from '@/api/index'
 import { WebSocketManager } from '@/ws'
 import { sessionCleanupJobService } from '@/services/session/cleanup-job.service'
+import { sweepStalePresenceOnStartup } from '@/services/session/startup-presence-sweep.service'
 
 export interface BootstrapResult {
   app: Express
@@ -110,6 +111,10 @@ export async function bootstrap(): Promise<BootstrapResult> {
           }
 
           sessionCleanupJobService.start()
+
+          sweepStalePresenceOnStartup(wsManager).catch((err) => {
+            logger.warn('bootstrap', 'Startup presence sweep failed (non-fatal)', err)
+          })
 
           resolve()
         })
