@@ -39,8 +39,9 @@ export type MarkdownSegment =
   | { kind: 'markdown'; text: string }
   | { kind: 'dmdx'; blockType: DmdxBlockType; id?: string; rawContent: string; parsed: DmdxParsed }
 
-/** A permissive YAML-ish parse result — keys map to string, string[], or nested objects */
-export type DmdxValue = string | string[] | Record<string, DmdxValue>
+/** A permissive YAML-ish parse result — keys map to string, string[], or one level of nested objects */
+export type DmdxLeafValue = string | string[]
+export type DmdxValue = DmdxLeafValue | Record<string, DmdxLeafValue>
 export type DmdxParsed = Record<string, DmdxValue>
 
 /** Split full markdown into segments for rendering. */
@@ -181,7 +182,7 @@ export function parseDmdxContent(raw: string): DmdxParsed {
         result[key] = listItems
         i = j
       } else if (nestedPairs.length > 0) {
-        const nested: DmdxParsed = {}
+        const nested: Record<string, string> = {}
         for (const [k, v] of nestedPairs) {
           nested[k] = v
         }
