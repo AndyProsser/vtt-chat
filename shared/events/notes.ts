@@ -15,6 +15,7 @@ export type NotesEventType =
   | 'NOTES:DELETED'
   | 'NOTES:SHARED'
   | 'NOTES:TAG_ADDED'
+  | 'NOTES:HANDOUT_SURFACED'
 
 /**
  * NOTES:CREATED
@@ -92,6 +93,25 @@ export interface NotesTagAdded {
 export type NotesTagAddedEvent = EventEnvelope<NotesTagAdded>
 
 /**
+ * NOTES:HANDOUT_SURFACED
+ * DM surfaces a note as a one-time recipients-only handout in chat.
+ * Broadcast only to the resolved recipient user IDs.
+ */
+export interface NotesHandoutSurfaced {
+  noteId: UUID
+  campaignId?: UUID
+  authorId: UUID
+  title: string
+  excerpt: string
+  excerptSource: 'AUTO' | 'MANUAL'
+  scope: 'PARTY' | 'SELECTED'
+  recipientIds: UUID[]
+  surfacedAt: number
+}
+
+export type NotesHandoutSurfacedEvent = EventEnvelope<NotesHandoutSurfaced>
+
+/**
  * Union of all notes events.
  */
 export type NotesEvent =
@@ -100,3 +120,4 @@ export type NotesEvent =
   | NotesDeletedEvent
   | NotesSharedEvent
   | NotesTagAddedEvent
+  | NotesHandoutSurfacedEvent

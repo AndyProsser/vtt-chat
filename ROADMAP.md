@@ -760,7 +760,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Notes-Visibility: Sharing and Handout Distribution
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Editor
 
@@ -769,13 +769,28 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 **Acceptance Criteria**:
 
 - [ ] Share modal allows selecting scope: Private (DM only) | Party (all players) | Selected (choose specific players) | Spectators (if enabled)
-- [ ] Shared notes surface as one-time recipients-only chat card via `NOTES:HANDOUT_SURFACED` WS event
-- [ ] Card includes note excerpt (auto-generated or DM override) and link to full note
-- [ ] Duplicate cards are not surfaced on reconnect/hydration
+- [x] Shared notes surface as one-time recipients-only chat card via `NOTES:HANDOUT_SURFACED` WS event
+- [x] Card includes note excerpt (auto-generated or DM override) and link to full note
+- [x] Duplicate cards are not surfaced on reconnect/hydration (persisted system chat message with unique ID; HANDOUT_SURFACED is real-time only)
 - [ ] Players can always find shared notes in Notes tab (filtered by visibility)
 - [ ] Private notes only visible to DM and owner
 
-**Notes**: `NoteSharePopover` and `NotePublishDialog` UI components exist. Backend `POST /api/notes/:noteId/publish` exists. Missing: `NOTES:HANDOUT_SURFACED` WS event emission and per-recipient-only broadcast.
+**Evidence snapshot (2026-06-05)**:
+
+- `shared/events/notes.ts` — `NOTES:HANDOUT_SURFACED` event type with `excerpt`, `excerptSource`, `scope`, `recipientIds`.
+- `shared/types/entities.ts` — `NoteHandoutMessageMetadata` + `noteHandout` field on `MessageMetadataEntity`.
+- `backend/src/services/notes/excerpt.service.ts` — deterministic excerpt generation algorithm (§3.7 checklist): sentence-first, 180-char target, 220-char hard cap, fallback chain.
+- `backend/src/api/notes.routes.ts` — `POST /api/notes/:noteId/surface`: scope-based recipient resolution, visibility update, excerpt generation, system chat message persistence, `NOTES:HANDOUT_SURFACED` broadcast to recipients only.
+- `frontend/src/hooks/useWebSocket.ts` — handler registered for `NOTES:HANDOUT_SURFACED`.
+- `frontend/src/state/notesSlice.ts` — `handleNoteHandoutSurfaced` marks note as published in local state.
+- `frontend/src/utils/noteSharedMessage.ts` — parses `noteHandout` metadata (new) before legacy `noteShared` fallback.
+- `NoteSharedCard.tsx` — `isExcerpt` prop renders an "excerpt" badge when the card is from a `/surface` handout.
+
+**Remaining**:
+
+- Share UI: update `NotePublishDialog` / `NoteSharePopover` to use `/surface` endpoint with PARTY/SELECTED scope selector instead of room picker.
+- Visibility filtering in Notes tab (players see only notes shared with them).
+- PRIVATE scope enforcement (DM-only notes hidden from players in Notes panel).
 
 **Related Docs**:
 

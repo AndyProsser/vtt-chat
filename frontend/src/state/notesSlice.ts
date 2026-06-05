@@ -26,6 +26,7 @@ export interface NotesSlice {
   handleNoteCreated: (event: EventEnvelope) => void
   handleNoteUpdated: (event: EventEnvelope) => void
   handleNoteDeleted: (event: EventEnvelope) => void
+  handleNoteHandoutSurfaced: (event: EventEnvelope) => void
 }
 
 export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
@@ -199,6 +200,44 @@ export const createNotesSlice: StateCreator<NotesSlice> = (set) => ({
       return {
         notes: nextNotes,
       }
+    })
+  },
+
+  handleNoteHandoutSurfaced: (event) => {
+    const payload = event.payload as {
+      noteId: UUID
+      campaignId?: UUID
+      surfacedAt: number
+    }
+
+    // Mark the note as published in local state so the UI reflects the surfaced status.
+    set((state) => {
+      const nextNotes = { ...state.notes }
+      let changed = false
+
+      const markPublished = (bucketId: UUID) => {
+        const bucket = nextNotes[bucketId]
+        const note = bucket?.[payload.noteId]
+        if (!note) return
+
+        nextNotes[bucketId] = {
+          ...bucket,
+          [payload.noteId]: { ...note, publishedAt: payload.surfacedAt },
+        }
+        changed = true
+      }
+
+      if (payload.campaignId) {
+        markPublished(payload.campaignId)
+      }
+
+      if (!changed) {
+        for (const bucketId of Object.keys(nextNotes) as UUID[]) {
+          markPublished(bucketId)
+        }
+      }
+
+      return changed ? { notes: nextNotes } : state
     })
   },
 

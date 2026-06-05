@@ -71,6 +71,14 @@ export interface NoteSharedMessageMetadata {
   hashtags: string
 }
 
+export interface NoteHandoutMessageMetadata {
+  kind: 'NOTE_HANDOUT'
+  noteId: UUID
+  title: string
+  excerpt: string
+  excerptSource: 'AUTO' | 'MANUAL'
+}
+
 export interface ConditionMessageMetadata {
   kind: 'CONDITION'
   targetUserId: UUID
@@ -80,6 +88,7 @@ export interface ConditionMessageMetadata {
 
 export interface MessageMetadataEntity {
   noteShared?: NoteSharedMessageMetadata
+  noteHandout?: NoteHandoutMessageMetadata
   conditionMessage?: ConditionMessageMetadata
 }
 

@@ -38,6 +38,7 @@ import {
   parseUpdateNoteRequest,
 } from '@/services/notes/route-helpers.service'
 import { NOTE_PUBLISH_SNIPPET_MAX_LENGTH } from '@/constants/notes.constants'
+import { generateExcerpt } from '@/services/notes/excerpt.service'
 import { createSessionLog } from '@/repositories/session-logs.repository'
 import { getRoom, getRoomMemberIds, getRooms } from '@/services/room.service'
 import { isGreenRoomName } from '@/utils'
@@ -774,6 +775,284 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
       },
     }
     wsManager.broadcastEventToSession(message.sessionId as UUID, chatEvent, publishAudienceUsers)
+  }
+
+  return res.status(200).json({ ok: true, message })
+})
+
+/**
+ * POST /api/notes/:noteId/surface
+ *
+ * Surfaces a note as a one-time recipients-only handout card in chat.
+ * Differs from /publish:
+ *  - Uses excerpt (auto-generated or DM override) instead of full content.
+ *  - Accepts a `scope` (PARTY | SELECTED) and optional `selectedUserIds`.
+ *  - Broadcasts NOTES:HANDOUT_SURFACED (in addition to CHAT:MESSAGE_SENT) to resolved recipients only.
+ *  - Updates note visibility to match scope before surfacing.
+ */
+router.post('/:noteId/surface', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { noteId } = req.params
+  const rawScope = req.body?.scope
+  const surfaceSessionId: string = req.body?.sessionId
+  const selectedUserIds: string[] = Array.isArray(req.body?.selectedUserIds)
+    ? req.body.selectedUserIds.filter((id: unknown) => isValidUUID(id as string))
+    : []
+  const manualExcerpt: string | undefined =
+    typeof req.body?.manualExcerpt === 'string' && req.body.manualExcerpt.trim().length > 0
+      ? req.body.manualExcerpt
+      : undefined
+
+  if (!isValidUUID(noteId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_NOTE_ID, message: 'Invalid noteId' })
+  }
+
+  if (!isValidUUID(surfaceSessionId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_SESSION, message: 'sessionId is required to surface a note' })
+  }
+
+  const scope = rawScope === 'PARTY' || rawScope === 'SELECTED' ? rawScope : null
+  if (!scope) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'scope must be PARTY or SELECTED' })
+  }
+
+  if (scope === 'SELECTED' && selectedUserIds.length === 0) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'selectedUserIds required for SELECTED scope' })
+  }
+
+  const note = await getNoteById(noteId as UUID)
+  if (!note) {
+    return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
+  }
+
+  const session = await getSession(surfaceSessionId as UUID)
+  if (!session) {
+    return res.status(404).json({ code: ErrorCode.SESSION_NOT_FOUND, message: 'Session not found' })
+  }
+
+  const sessionRecord = await findSessionById(surfaceSessionId)
+  const noteCampaignId = note.campaignId ?? (sessionRecord?.campaignId as UUID | null)
+  if (!noteCampaignId) {
+    return res.status(500).json({
+      code: ErrorCode.INTERNAL_ERROR,
+      message: 'Note is missing campaign context; cannot surface',
+    })
+  }
+
+  if (!sessionRecord || sessionRecord.campaignId !== noteCampaignId) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Session does not belong to the same campaign as the note',
+    })
+  }
+
+  const requesterRole = await resolveCampaignRole(noteCampaignId, user.userId as UUID)
+  if (!requesterRole) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+  }
+  if (requesterRole !== 'DM') {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Only DM may surface notes' })
+  }
+
+  // Resolve recipient player IDs from scope
+  const sessionUsers = await getSessionUsers(session.id)
+  const allPlayerIds = sessionUsers
+    .filter((u) => u.role === 'PLAYER')
+    .map((u) => u.id as UUID)
+
+  let recipientIds: UUID[]
+  if (scope === 'PARTY') {
+    recipientIds = allPlayerIds
+  } else {
+    // SELECTED: intersect with actual session players for safety
+    const playerIdSet = new Set(allPlayerIds)
+    recipientIds = selectedUserIds.filter((id) => playerIdSet.has(id as UUID)) as UUID[]
+  }
+
+  if (recipientIds.length === 0) {
+    return res.status(409).json({
+      code: ErrorCode.CONFLICT,
+      message: 'No eligible players to surface this handout to',
+    })
+  }
+
+  // Update note visibility to match scope
+  const nextVisibility =
+    scope === 'PARTY' ? NoteVisibility.PLAYERS_VISIBLE : NoteVisibility.CUSTOM
+  const nextAllowedUsers = scope === 'SELECTED' ? recipientIds : []
+
+  let noteToSurface = note
+  if (
+    note.visibility !== nextVisibility ||
+    (scope === 'SELECTED' &&
+      JSON.stringify([...recipientIds].sort()) !==
+        JSON.stringify([...(note.allowedUsers || [])].sort()))
+  ) {
+    const updated = await updateNote(noteId as UUID, user.userId as UUID, requesterRole, {
+      visibility: nextVisibility,
+      allowedUsers: nextAllowedUsers,
+    })
+    if (!updated) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Unable to update note visibility for surfacing',
+      })
+    }
+    noteToSurface = updated
+  }
+
+  const published = await markNotePublished(noteToSurface.id)
+  if (!published) {
+    return res.status(404).json({ code: ErrorCode.NOTE_NOT_FOUND, message: 'Note not found' })
+  }
+
+  // Generate excerpt
+  const { excerpt, excerptSource } = generateExcerpt(published.content, {
+    manualOverride: manualExcerpt,
+    fallbackTitle: published.title,
+  })
+
+  // visibleTo: DM + recipients (for the chat message and WS broadcasts)
+  const surfaceAudienceIds = Array.from(new Set([session.dmId, ...recipientIds]))
+
+  // Persist system chat message so the handout card survives refresh
+  const message = await sendMessage({
+    sessionId: session.id,
+    roomId: undefined,
+    authorId: user.userId as UUID,
+    authorUsername: user.username,
+    dmId: session.dmId,
+    visibleTo: surfaceAudienceIds,
+    content: `[Handout] ${published.title}\n${excerpt}`,
+    type: MessageType.SYSTEM,
+    metadata: {
+      noteHandout: {
+        kind: 'NOTE_HANDOUT',
+        noteId: published.id,
+        title: published.title,
+        excerpt,
+        excerptSource,
+      },
+    },
+  })
+
+  await createSessionLog({
+    sessionId: session.id,
+    userId: user.userId as UUID,
+    username: user.username,
+    eventType: 'STATE_CHANGED',
+    detail: `Handout surfaced | Name: ${published.title} | Scope: ${scope} | Recipients: ${recipientIds.length}`,
+  })
+
+  await appendSessionAuditEvent({
+    sessionId: session.id,
+    campaignId: noteCampaignId,
+    actorUserId: user.userId as UUID,
+    actorRole: requesterRole,
+    actionType: 'NOTES.PUBLISHED',
+    targetType: 'NOTE',
+    targetId: published.id,
+    visibilityClass: toNoteAuditVisibilityClass(published.visibility),
+    timestamp: published.publishedAt ?? Date.now(),
+    metadata: {
+      noteVisibility: published.visibility,
+      allowedUserCount: published.allowedUsers?.length ?? 0,
+      chatMessageId: message.id,
+      scope,
+      recipientCount: recipientIds.length,
+      excerptSource,
+    },
+  })
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  if (wsManager) {
+    const surfacedAt = Date.now()
+
+    const handoutEvent: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'NOTES:HANDOUT_SURFACED',
+      version: 1,
+      userId: user.userId as UUID,
+      userRole: requesterRole as any,
+      sessionId: session.id,
+      roomId: null,
+      timestamp: surfacedAt,
+      payload: {
+        noteId: published.id,
+        campaignId: noteCampaignId,
+        authorId: user.userId as UUID,
+        title: published.title,
+        excerpt,
+        excerptSource,
+        scope,
+        recipientIds,
+        surfacedAt,
+      },
+    }
+    wsManager.broadcastEventToSession(session.id, handoutEvent, surfaceAudienceIds)
+
+    const chatEvent: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'CHAT:MESSAGE_SENT',
+      sessionId: message.sessionId as UUID,
+      version: 1,
+      userId: user.userId as UUID,
+      userRole: requesterRole as any,
+      roomId: message.roomId || null,
+      timestamp: message.createdAt,
+      payload: {
+        messageId: message.id,
+        roomId: message.roomId,
+        authorId: message.authorId,
+        authorUsername: message.authorUsername,
+        content: message.content,
+        type: message.type,
+        isDmOnly: message.isDmOnly,
+        isOffTheRecord: message.isOffTheRecord,
+        visibleTo: message.visibleTo,
+        targetIds: message.targetIds,
+        metadata: message.metadata,
+      },
+    }
+    wsManager.broadcastEventToSession(message.sessionId as UUID, chatEvent, surfaceAudienceIds)
+
+    // Also broadcast NOTES:UPDATED so the notes panel reflects new visibility/publishedAt
+    const notesUpdateEvent: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'NOTES:UPDATED',
+      version: 1,
+      userId: user.userId as UUID,
+      userRole: requesterRole as any,
+      sessionId: session.id,
+      roomId: null,
+      timestamp: published.updatedAt,
+      payload: {
+        campaignId: noteCampaignId,
+        noteId: published.id,
+        title: published.title,
+        content: published.content,
+        visibility: published.visibility,
+        tags: published.tags,
+        allowedUsers: published.allowedUsers,
+        publishedAt: published.publishedAt,
+      },
+    }
+    wsManager.broadcastEventToSession(
+      session.id,
+      notesUpdateEvent,
+      noteVisibleTo({
+        authorId: published.authorId,
+        visibility: published.visibility,
+        allowedUsers: published.allowedUsers,
+        dmId: session.dmId,
+      })
+    )
   }
 
   return res.status(200).json({ ok: true, message })

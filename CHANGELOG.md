@@ -8,6 +8,16 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ## Unreleased
 
+### Added
+
+- W-Notes-Visibility: Added `NOTES:HANDOUT_SURFACED` WS event to `shared/events/notes.ts` with `excerpt`, `excerptSource` (`AUTO | MANUAL`), `scope` (`PARTY | SELECTED`), and `recipientIds` fields.
+- W-Notes-Visibility: Added `NoteHandoutMessageMetadata` to `shared/types/entities.ts` and added `noteHandout?` field to `MessageMetadataEntity` for excerpt-based handout chat cards.
+- W-Notes-Visibility: Added `backend/src/services/notes/excerpt.service.ts` implementing the deterministic excerpt algorithm (§3.7 of the checklist): strips markdown, prefers first complete sentence ≤ 180 chars, cuts at word boundary, hard cap 220, fallback to note title then "Shared handout".
+- W-Notes-Visibility: Added `POST /api/notes/:noteId/surface` endpoint. Accepts `scope` (`PARTY` | `SELECTED`), `selectedUserIds`, and optional `manualExcerpt`. Resolves recipients, updates note visibility, generates excerpt, persists a system chat message with `noteHandout` metadata, broadcasts `NOTES:HANDOUT_SURFACED` and `CHAT:MESSAGE_SENT` to recipients only, and broadcasts `NOTES:UPDATED` to note-visible audience.
+- W-Notes-Visibility: Registered `NOTES:HANDOUT_SURFACED` handler in `useWebSocket.ts` and added `handleNoteHandoutSurfaced` to `notesSlice.ts` — marks the note as published on all connected clients.
+- W-Notes-Visibility: Updated `parseNoteSharedMessage` in `noteSharedMessage.ts` to parse `noteHandout` metadata (new path) before falling back to legacy `noteShared` and text parsing.
+- W-Notes-Visibility: `NoteSharedCard` now accepts an `isExcerpt` prop; when true, renders an "excerpt" badge on the card header so recipients know to check the Notes tab for the full handout.
+
 ### Changed
 
 - W4-Conversation-Authority: Fixed frontend `ROOM:SESSION_TRANSITION_APPLIED` WS handler to only call `resetSessionAudioState()` and `clearActiveEffects()` for teardown transitions (`IDLE`, `ENDED`, `CLEANUP`). `ACTIVE`, `PAUSED`, and `COOLDOWN` transitions are policy remaps — audio transport identity (LiveKit connections, effect/environment state) is now preserved across pause/resume and cooldown cycles as specified in the W4 contract.

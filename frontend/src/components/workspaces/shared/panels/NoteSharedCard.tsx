@@ -8,6 +8,8 @@ interface NoteSharedCardProps {
   timestampLabel?: string
   timestampDateTime?: string
   className?: string
+  /** When true, an "excerpt" badge is shown and a "View in Notes" hint is displayed. */
+  isExcerpt?: boolean
 }
 
 /**
@@ -18,6 +20,7 @@ export function NoteSharedCard({
   timestampLabel,
   timestampDateTime,
   className,
+  isExcerpt,
 }: NoteSharedCardProps) {
   const rootClass = ['session-note-shared-card', className ?? ''].filter(Boolean).join(' ')
   const hasBody = note.markdown.trim().length > 0
@@ -49,7 +52,14 @@ export function NoteSharedCard({
           menu_book
         </span>
         <div className="session-note-shared-card__headline">
-          <span className="session-note-shared-card__label">Handout Shared</span>
+          <div className="session-note-shared-card__label-row">
+            <span className="session-note-shared-card__label">Handout Shared</span>
+            {isExcerpt ? (
+              <span className="session-note-shared-card__excerpt-badge" title="Excerpt — open Notes tab for the full handout">
+                excerpt
+              </span>
+            ) : null}
+          </div>
           <h3 className="session-note-shared-card__title">{note.title}</h3>
         </div>
       </div>

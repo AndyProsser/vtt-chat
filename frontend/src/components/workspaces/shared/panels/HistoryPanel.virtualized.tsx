@@ -405,6 +405,7 @@ function renderRow(row: HistoryRow) {
         note={row.note}
         timestampLabel={row.timestampLabel}
         timestampDateTime={row.timestampDateTime}
+        isExcerpt={row.note.excerptSource != null}
       />
     )
   }

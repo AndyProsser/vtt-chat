@@ -253,6 +253,7 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
         note={noteShared}
         timestampLabel={`${msg.editedAt ? 'edited · ' : ''}${relativeTime}`}
         timestampDateTime={new Date(msg.createdAt).toISOString()}
+        isExcerpt={noteShared.excerptSource != null}
       />
     )
   }

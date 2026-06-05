@@ -273,6 +273,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('NOTES:DELETED', (event) => {
       useStore.getState().handleNoteDeleted(event)
     })
+    dispatcher.register('NOTES:HANDOUT_SURFACED', (event) => {
+      useStore.getState().handleNoteHandoutSurfaced(event)
+    })
 
     // Room events
     dispatcher.register('SESSION:MEMBER_JOINED', (event) => {
