@@ -15,10 +15,11 @@ import {
   getMicrophoneControlLabel,
 } from '@/constants/audioUi.constants'
 
-interface AudioDetailItem {
+export interface AudioDetailItem {
   kind: string
   name: string
   description: string
+  isPrimary?: boolean
 }
 
 interface AudioDevicePanelProps {
@@ -225,7 +226,7 @@ export function AudioDevicePanel({
                 {effectItems.map((item) => (
                   <li
                     key={`${item.kind}-${item.name}`}
-                    className="session-audio-device-panel__quick-item"
+                    className={`session-audio-device-panel__quick-item${item.isPrimary ? ' session-audio-device-panel__quick-item--primary' : ''}`}
                   >
                     {renderItemIcon(item.kind)}
                     <span className="session-audio-device-panel__quick-main">

@@ -269,19 +269,29 @@ export async function getServerMuteEnforcementState(params: {
   }
 
   const overrides = await listAudioDMOverridesBySession(params.sessionId)
-  const latestMuteIntent = overrides.find(
-    (row) =>
-      row.targetUserId === params.userId &&
-      (row.overrideType === AUDIO_DM_OVERRIDE_TYPES.MUTE ||
-        row.overrideType === AUDIO_DM_OVERRIDE_TYPES.UNMUTE)
-  )
+  const userOverrides = overrides.filter((row) => row.targetUserId === params.userId)
 
+  const latestMuteIntent = userOverrides.find(
+    (row) =>
+      row.overrideType === AUDIO_DM_OVERRIDE_TYPES.MUTE ||
+      row.overrideType === AUDIO_DM_OVERRIDE_TYPES.UNMUTE
+  )
   const dmMuted = latestMuteIntent?.overrideType === AUDIO_DM_OVERRIDE_TYPES.MUTE
+
+  // SILENCED condition prevents publishing to the room (others cannot hear the player).
+  const conditionOverride = userOverrides.find((row) => row.overrideType === 'CONDITION')
+  const conditionName =
+    typeof (conditionOverride?.parameters as Record<string, unknown>)?.conditionName === 'string'
+      ? (conditionOverride!.parameters as Record<string, unknown>).conditionName
+      : typeof (conditionOverride?.parameters as Record<string, unknown>)?.presetName === 'string'
+        ? (conditionOverride!.parameters as Record<string, unknown>).presetName
+        : null
+  const silenced = conditionName === 'Silenced'
 
   return {
     userMuted,
     dmMuted,
-    enforcedMuted: userMuted || dmMuted,
+    enforcedMuted: userMuted || dmMuted || silenced,
   }
 }
 

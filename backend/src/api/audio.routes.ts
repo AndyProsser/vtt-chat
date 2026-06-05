@@ -4,6 +4,7 @@ import { ErrorCode, Role, type EventEnvelope, type UUID, isValidUUID } from '@sh
 import { extractTokenFromHeader, verifyToken, type TokenPayload } from '@/services/auth.service'
 import {
   applyDMOverrideState,
+  getServerMuteEnforcementState,
   getSessionAudioState,
   removeDMOverrideState,
   setBroadcastState,
@@ -23,7 +24,8 @@ import {
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { emitConditionSystemMessage } from '@/services/system-messages.service'
 import { listAudioDMOverridesBySession } from '@/repositories/audio.repository'
-import { getRoom } from '@/services/room.service'
+import { getRoom, getSessionPresence } from '@/services/room.service'
+import { enforceParticipantPublishPermission } from '@/infra/livekit/room.service'
 import { logger, isGreenRoomName } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 
@@ -411,6 +413,25 @@ async function handleApplyDmOverride(req: Request, res: Response) {
         isRemoval: true,
       })
     }
+
+    // SILENCED: server-side LiveKit mute prevents the player from publishing audio mid-session.
+    const appliedConditionName =
+      typeof persisted.parameters?.conditionName === 'string'
+        ? persisted.parameters.conditionName
+        : typeof persisted.parameters?.presetName === 'string'
+          ? persisted.parameters.presetName
+          : null
+    if (appliedConditionName === 'Silenced') {
+      const sessionPresence = await getSessionPresence(sessionId as UUID)
+      const playerPresence = sessionPresence.find((p) => p.userId === (targetUserId as string))
+      if (playerPresence?.primaryRoomId) {
+        void enforceParticipantPublishPermission({
+          livekitRoomName: playerPresence.primaryRoomId,
+          userId: targetUserId as string,
+          canPublish: false,
+        })
+      }
+    }
   }
 
   return res.status(200).json({ ok: true, eventId: event.id })
@@ -490,6 +511,25 @@ async function handleRemoveDmOverride(req: Request, res: Response) {
       presetName: null,
       isRemoval: true,
     })
+  }
+
+  // When a CONDITION is removed, restore publish permission unless the player is DM-muted.
+  if (overrideType === 'CONDITION') {
+    const muteState = await getServerMuteEnforcementState({
+      sessionId: sessionId as UUID,
+      userId: targetUserId as UUID,
+    })
+    if (!muteState.enforcedMuted) {
+      const sessionPresence = await getSessionPresence(sessionId as UUID)
+      const playerPresence = sessionPresence.find((p) => p.userId === (targetUserId as string))
+      if (playerPresence?.primaryRoomId) {
+        void enforceParticipantPublishPermission({
+          livekitRoomName: playerPresence.primaryRoomId,
+          userId: targetUserId as string,
+          canPublish: true,
+        })
+      }
+    }
   }
 
   return res.status(200).json({ ok: true, eventId: event.id })

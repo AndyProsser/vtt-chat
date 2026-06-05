@@ -7,6 +7,7 @@ import { getUserDMOverrides } from '@/utils/audioOverrides'
 import { AUDIO_EFFECT_COPY, getPushToTalkEffectDescription } from '@/constants/audioUi.constants'
 import { AUDIO_TRANSITION_CONTROL_STICKY_MS } from '@/constants/audioPanel.constants'
 import { AudioDevicePanel } from './panels/AudioDevicePanel'
+import type { AudioDetailItem } from './panels/AudioDevicePanel'
 import { AudioSettingsPanel } from './panels/AudioSettingsPanel'
 
 type AudioPanelFooterProps = {
@@ -119,7 +120,7 @@ export function AudioPanelFooter({
   }, [canonicalIsConnected, canonicalIsConnecting, controlIsVoiceConnected])
 
   const effectItems = useMemo(() => {
-    const items: Array<{ kind: string; name: string; description: string }> = []
+    const items: AudioDetailItem[] = []
     const currentUserOverrides = currentUserId ? getUserDMOverrides(dmOverrides, currentUserId) : []
 
     if (device.pttEnabled) {
@@ -146,11 +147,13 @@ export function AudioPanelFooter({
       })
     }
 
+    // CONDITION is the primary narrative effect — highlighted above other items.
     if (currentCondition) {
       items.push({
         kind: 'condition',
         name: currentCondition.name,
         description: AUDIO_EFFECT_COPY.conditionDescription,
+        isPrimary: true,
       })
     }
 
@@ -181,11 +184,14 @@ export function AudioPanelFooter({
       })
 
     for (const override of currentUserOverrides) {
-      if (override.overrideType === 'MUTE' || override.overrideType === 'UNMUTE') {
-        continue
-      }
-
-      if (override.overrideType === 'VOICE_OF_GOD') {
+      // Skip types already represented by dedicated slots above.
+      if (
+        override.overrideType === 'MUTE' ||
+        override.overrideType === 'UNMUTE' ||
+        override.overrideType === 'VOICE_OF_GOD' ||
+        override.overrideType === 'CONDITION' ||
+        override.overrideType === 'DISTANCE'
+      ) {
         continue
       }
 
@@ -196,19 +202,15 @@ export function AudioPanelFooter({
         kind: override.overrideType.toLowerCase(),
         name:
           presetName ||
-          (override.overrideType === 'CONDITION'
-            ? 'Condition'
-            : override.overrideType === 'DISTANCE'
-              ? 'Distance'
-              : override.overrideType === 'VOICE'
-                ? 'Voice Preset'
-                : override.overrideType === 'FILTER'
-                  ? 'Audio Filter'
-                  : override.overrideType === 'GAIN'
-                    ? 'Volume'
-                    : override.overrideType === 'GATE'
-                      ? 'Voice Gate'
-                      : override.overrideType),
+          (override.overrideType === 'VOICE'
+            ? 'Voice Preset'
+            : override.overrideType === 'FILTER'
+              ? 'Audio Filter'
+              : override.overrideType === 'GAIN'
+                ? 'Volume'
+                : override.overrideType === 'GATE'
+                  ? 'Voice Gate'
+                  : override.overrideType),
         description: 'Applied by the DM for this scene.',
       })
     }

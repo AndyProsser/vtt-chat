@@ -12,13 +12,13 @@
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
-| Phase 2: Audio Experiences             |      5 |       2 |              3 |              0 | 🟡 In Progress |
+| Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
 | Phase 4: Future Enhancements           |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **29** |  **11** |          **3** |         **15** |                |
+| **Total**                              | **29** |  **14** |          **0** |         **15** |                |
 
-**MVP-blocking items remaining**: W-Audio-Condition + W-Audio-Distance + W-Audio-Environment (Phase 2) — all In Progress, core DSP wiring complete.
+**MVP-blocking items remaining**: Phase 3 (Notes & Journal Foundation) — all items ⚪ Not Started.
 
 ---
 
@@ -494,7 +494,7 @@ Evidence snapshot (2026-06-04):
 
 ---
 
-## Phase 2: Audio Experiences 🔴
+## Phase 2: Audio Experiences 🟢
 
 _DM superpowers: move players between groups, apply conditions, set environments, control distance. All within 2 clicks._
 
@@ -611,7 +611,7 @@ Evidence snapshot (2026-06-04):
 
 ### W-Audio-Condition: Apply/Remove Conditions (Drunk, Confused, Silenced)
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -621,12 +621,12 @@ Evidence snapshot (2026-06-04):
 
 - [x] DM right-click player → Condition → select from list
 - [x] Condition applies to player and broadcasts to all clients (`AUDIO:DM_OVERRIDE_APPLIED` with `overrideType: CONDITION`)
-- [ ] Silenced player hears themselves normally but others hear nothing (server-side LiveKit mute enforcement pending)
+- [x] Silenced player hears themselves normally but others hear nothing (server-side LiveKit mute enforcement)
 - [x] AudioPanel shows active condition with icon and explanation (via `effectItems` in `AudioPanelFooter`)
 - [x] System message appears in chat: `[{player} is {condition}]` when condition applied
 - [x] System message appears when condition removed: `[{player}'s condition was cleared]`
-- [ ] Multiple conditions stack visually but primary is highlighted in AudioPanel
-- [ ] Server-side mute enforcement: silenced players cannot publish audio to other players
+- [x] Multiple conditions stack visually but primary is highlighted in AudioPanel
+- [x] Server-side mute enforcement: silenced players cannot publish audio to other players
 
 Evidence snapshot (2026-06-05):
 
@@ -635,6 +635,12 @@ Evidence snapshot (2026-06-05):
 - `AUDIO:DM_OVERRIDE_APPLIED` WS handler extended in `useWebSocket.ts`: when `overrideType === CONDITION` for the current user, looks up DSP from `findConditionPreset` (shared catalog) and calls `store.setCondition(...)`. `useAudioEngine.applyEffectStack` immediately applies the DSP chain (lowpass, gain, mute) to all incoming participant tracks.
 - `AUDIO:DM_OVERRIDE_REMOVED` handler calls `store.clearCondition()` when targeted at current user.
 - `emitConditionSystemMessage` service function in `system-messages.service.ts` persists and broadcasts a `CHAT:MESSAGE_SENT` system message on every apply/remove. Best-effort (failures swallowed so the audio route always succeeds).
+
+Evidence snapshot (2026-06-05 — stacking, primary highlight, SILENCED enforcement):
+
+- `AudioDetailItem` interface in `AudioDevicePanel.tsx` now exported with `isPrimary?: boolean`. CONDITION items are built with `isPrimary: true` in `AudioPanelFooter.tsx`'s `effectItems` memo. The `AudioDevicePanel` applies `--primary` CSS modifier to the list item, rendering it with a warm-tinted background and highlighted name — visually distinct from secondary effects (distance, environment, etc.).
+- Deduplication fix: CONDITION and DISTANCE override types are now skipped in the `currentUserOverrides` loop since both are already covered by dedicated `currentCondition`/`currentDistance` slots above the loop. No more duplicate entries when both a condition and a DM override record are active.
+- Server-side SILENCED enforcement: `backend/src/infra/livekit/room.service.ts` created with `enforceParticipantPublishPermission` wrapping `RoomServiceClient.updateParticipant`. When SILENCED is applied, `handleApplyDmOverride` in `audio.routes.ts` looks up the player's `primaryRoomId` from session presence and calls `updateParticipant(roomId, userId, {canPublish: false})`. When the condition is removed, `canPublish` is restored to `true` (unless the player is already DM-muted or self-muted). `getServerMuteEnforcementState` in `effects.service.ts` also reads the active CONDITION override to include SILENCED in token-based enforcement — reconnecting clients receive `canPublish: false` in the LiveKit token if silenced.
 
 **Related Docs**:
 

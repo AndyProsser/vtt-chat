@@ -308,6 +308,15 @@
   background: var(--color-surface-subtle);
 }
 
+.session-audio-device-panel__quick-item--primary {
+  background: color-mix(in srgb, var(--color-warn) 14%, var(--color-surface-subtle));
+  border: 1px solid color-mix(in srgb, var(--color-warn) 30%, transparent);
+}
+
+.session-audio-device-panel__quick-item--primary .session-audio-device-panel__quick-name {
+  color: var(--color-warn);
+}
+
 .session-audio-device-panel__detail-icon {
   font-size: 0.95rem;
   margin-top: 0.05rem;
