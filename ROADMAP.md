@@ -645,7 +645,7 @@ Evidence snapshot (2026-06-05):
 
 ### W-Audio-Distance: Distance Modifier (Nearby, Visible, Far)
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -658,7 +658,7 @@ Evidence snapshot (2026-06-05):
 - [x] AudioPanel shows active distance with icon (via `effectItems` in `AudioPanelFooter`)
 - [x] System message appears in chat: `[{player} is {distance}]` when distance changes
 - [x] Audio processing matches distance preset (muffling, volume reduction, reverb) — DSP applied via `useAudioEngine.applyEffectStack` → `applyDistanceToNode`
-- [ ] Distance clears when player changes groups or condition applied
+- [x] Distance clears when player changes groups or condition applied
 
 Evidence snapshot (2026-06-05):
 
@@ -666,6 +666,11 @@ Evidence snapshot (2026-06-05):
 - Backend validates preset names against `AUDIO_DISTANCE_PRESET_NAMES`; "Default" is handled client-side as a removal (calls remove endpoint instead).
 - `useWebSocket.ts` handler: when `overrideType === DISTANCE` for the current user, looks up DSP via `findDistancePreset` (shared catalog) and calls `store.setDistance(...)`. Selecting "Default" triggers the remove endpoint → `clearDistance()`.
 - System messages emitted via `emitConditionSystemMessage` on apply and remove.
+
+Evidence snapshot (2026-06-05 — distance auto-clear):
+
+- `moveRoomMemberHandler` in `rooms.routes.ts` now checks for an active `DISTANCE` override on the moved player after a successful group change. If found, it removes it, broadcasts `AUDIO:DM_OVERRIDE_REMOVED`, and emits the distance-cleared system message.
+- `handleApplyDmOverride` in `audio.routes.ts` does the same when `overrideType === CONDITION`: any existing `DISTANCE` override for the same player is cleared before returning.
 
 **Related Docs**:
 
@@ -675,7 +680,7 @@ Evidence snapshot (2026-06-05):
 
 ### W-Audio-Environment: Group Environment (Tavern, Cave, Forest, Underwater)
 
-**Status**: 🟡 In Progress (partial — basic apply implemented via W-Groups-Panel)
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -688,14 +693,19 @@ Evidence snapshot (2026-06-05):
 - [x] Optimistic environment apply with revert-on-failure toast (implemented in W-Groups-Panel, 2026-06-02)
 - [x] WS event `AUDIO:ENVIRONMENT_SET` broadcasts to affected clients
 - [x] AudioPanel shows active environment with icon (via `effectItems` in `AudioPanelFooter` reading `currentEnvironment`)
-- [ ] Environment persists in campaign when session ends
-- [ ] Environment restores when new session starts (campaign-scoped)
-- [ ] Greenroom environment is always neutral (locked, no modification)
+- [x] Environment persists in campaign when session ends
+- [x] Environment restores when new session starts (campaign-scoped)
+- [x] Greenroom environment is always neutral (locked, no modification)
 - [x] Pause snapshot: environments preserved across pause/resume by design (deliberate — see W-Groups-Panel evidence 2026-06-04)
 
 Evidence snapshot (2026-06-05):
 
 - `handleEnvironmentSet` in `audioPresetsSlice.ts` fixed: always updates `roomEnvironmentNames` (drives Groups Panel icons), then checks if the affected room matches the current user's `primaryRoomId` before setting `currentEnvironment`. DSP is resolved from the shared `ENVIRONMENT_PRESETS` catalog via `findEnvironmentPreset` rather than relying on the (often empty) WS event `parameters`. Players in the affected group now hear the environment DSP (lowpass + reverb) as soon as the DM applies it.
+
+Evidence snapshot (2026-06-05 — environment persistence + greenroom lock):
+
+- `restoreCampaignRoomsForSession` in `lifecycle.service.ts` fixed: previously skipped environment restoration for rooms that already existed in the new session (created in editor mode). Now restores the environment from the previous session for any pre-existing room that has no environment set, so campaign groups always start the new session with their last configured environment.
+- `handleSetEnvironment` in `audio.routes.ts` now rejects (403) any attempt to set an environment on the greenroom by name check via `isGreenRoomName`. Frontend `GroupCard.session.tsx` already guards this via `canChangeEnvironment = canManage && !isWhisper && !isGreenRoom`.
 
 **Related Docs**:
 

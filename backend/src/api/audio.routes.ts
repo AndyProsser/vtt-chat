@@ -22,7 +22,9 @@ import {
 } from '@/constants/audio.constants'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { emitConditionSystemMessage } from '@/services/system-messages.service'
-import { logger } from '@/utils'
+import { listAudioDMOverridesBySession } from '@/repositories/audio.repository'
+import { getRoom } from '@/services/room.service'
+import { logger, isGreenRoomName } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 
 const router = Router()
@@ -185,6 +187,15 @@ async function handleSetEnvironment(req: Request, res: Response) {
   const authz = await validateDmControl(sessionId as UUID, user)
   if (!authz.ok) {
     return res.status(authz.status).json({ code: authz.code, message: authz.message })
+  }
+
+  // Greenroom environment is always neutral — DM cannot set it.
+  const targetRoom = await getRoom(roomId as UUID)
+  if (targetRoom && isGreenRoomName(targetRoom.name)) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Greenroom environment cannot be modified',
+    })
   }
 
   const setAt = Date.now()
@@ -362,6 +373,44 @@ async function handleApplyDmOverride(req: Request, res: Response) {
       presetName,
       isRemoval: false,
     })
+  }
+
+  // When a CONDITION is applied, clear any active DISTANCE override for the same player.
+  if (overrideType === 'CONDITION') {
+    const sessionOverrides = await listAudioDMOverridesBySession(sessionId as string)
+    const distanceOverride = sessionOverrides.find(
+      (o) => o.targetUserId === (targetUserId as string) && o.overrideType === 'DISTANCE'
+    )
+    if (distanceOverride) {
+      await removeDMOverrideState({
+        sessionId: sessionId as UUID,
+        targetUserId: targetUserId as UUID,
+        overrideType: 'DISTANCE',
+      })
+      const distanceRemovedAt = Date.now()
+      const distanceRemovedEvent = createEvent({
+        type: AUDIO_EVENT_TYPES.DM_OVERRIDE_REMOVED,
+        user,
+        userRole: authz.role,
+        sessionId: sessionId as UUID,
+        roomId: null,
+        payload: {
+          targetUserId,
+          dmId: user.userId,
+          overrideType: 'DISTANCE',
+          removedAt: distanceRemovedAt,
+        },
+      })
+      eventBroadcaster.broadcastToSession(sessionId as UUID, distanceRemovedEvent)
+      void emitConditionSystemMessage({
+        sessionId: sessionId as UUID,
+        targetUserId: targetUserId as UUID,
+        dmId: user.userId as UUID,
+        overrideType: 'DISTANCE',
+        presetName: null,
+        isRemoval: true,
+      })
+    }
   }
 
   return res.status(200).json({ ok: true, eventId: event.id })

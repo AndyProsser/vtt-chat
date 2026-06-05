@@ -29,6 +29,9 @@ import {
 } from '@/services/room.service'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
+import { listAudioDMOverridesBySession } from '@/repositories/audio.repository'
+import { removeDMOverrideState } from '@/services/audio/audio-state'
+import { emitConditionSystemMessage } from '@/services/system-messages.service'
 import type { WebSocketManager } from '@/ws'
 import { getMockTakeoverSnapshot } from '@/services/dev-mock/takeover.service'
 import { isGreenRoomName } from '@/utils'
@@ -768,6 +771,49 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
         actorUserId: user.userId as UUID,
         actorUserRole: user.role,
       })
+    }
+
+    // Clear DISTANCE override when player moves to a different room.
+    if (previousRoomId && previousRoomId !== room.id) {
+      const sessionOverrides = await listAudioDMOverridesBySession(sessionId as string)
+      const distanceOverride = sessionOverrides.find(
+        (o) => o.targetUserId === (targetUserId as string) && o.overrideType === 'DISTANCE'
+      )
+      if (distanceOverride) {
+        await removeDMOverrideState({
+          sessionId: sessionId as UUID,
+          targetUserId: targetUserId as UUID,
+          overrideType: 'DISTANCE',
+        })
+        const removalTimestamp = Date.now()
+        if (wsManager) {
+          const distanceRemovedEvent: EventEnvelope = {
+            id: crypto.randomUUID() as UUID,
+            type: 'AUDIO:DM_OVERRIDE_REMOVED',
+            version: 1,
+            userId: user.userId as UUID,
+            userRole: user.role,
+            sessionId: sessionId as UUID,
+            roomId: null,
+            timestamp: removalTimestamp,
+            payload: {
+              targetUserId,
+              dmId: user.userId,
+              overrideType: 'DISTANCE',
+              removedAt: removalTimestamp,
+            },
+          }
+          wsManager.broadcastEventToSession(sessionId as UUID, distanceRemovedEvent)
+        }
+        void emitConditionSystemMessage({
+          sessionId: sessionId as UUID,
+          targetUserId: targetUserId as UUID,
+          dmId: user.userId as UUID,
+          overrideType: 'DISTANCE',
+          presetName: null,
+          isRemoval: true,
+        })
+      }
     }
 
     return res.status(200).json({

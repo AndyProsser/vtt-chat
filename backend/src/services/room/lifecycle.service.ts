@@ -64,10 +64,9 @@ async function restoreCampaignRoomsForSession(params: {
     return
   }
 
-  const existingNames = new Set(
-    params.existingRooms
-      .filter(isCampaignPersistentRoom)
-      .map((room) => normalizeRoomName(room.name))
+  const existingCampaignRooms = params.existingRooms.filter(isCampaignPersistentRoom)
+  const existingByName = new Map(
+    existingCampaignRooms.map((room) => [normalizeRoomName(room.name), room])
   )
 
   const campaignSessions = await listSessionsByCampaign(session.campaignId)
@@ -76,14 +75,16 @@ async function restoreCampaignRoomsForSession(params: {
     return
   }
 
-  const [previousRooms, previousEnvironmentStates] = await Promise.all([
+  const [previousRooms, previousEnvironmentStates, currentEnvironmentStates] = await Promise.all([
     getRooms(previousSession.id as UUID),
     listAudioRoomStateBySession(previousSession.id),
+    listAudioRoomStateBySession(params.sessionId),
   ])
 
   const previousEnvironmentByRoomId = new Map(
     previousEnvironmentStates.map((entry) => [entry.roomId, entry])
   )
+  const currentEnvironmentByRoomId = new Set(currentEnvironmentStates.map((entry) => entry.roomId))
 
   for (const previousRoom of previousRooms) {
     if (!isCampaignPersistentRoom(previousRoom)) {
@@ -91,7 +92,26 @@ async function restoreCampaignRoomsForSession(params: {
     }
 
     const normalizedName = normalizeRoomName(previousRoom.name)
-    if (existingNames.has(normalizedName)) {
+    const previousEnvironment = previousEnvironmentByRoomId.get(previousRoom.id)
+
+    const existingRoom = existingByName.get(normalizedName)
+    if (existingRoom) {
+      // Room already exists in the new session (created in editor mode).
+      // Restore the environment from the previous session if not already set.
+      if (previousEnvironment && !currentEnvironmentByRoomId.has(existingRoom.id)) {
+        await upsertAudioRoomStateRecord({
+          sessionId: params.sessionId,
+          roomId: existingRoom.id,
+          environmentName: previousEnvironment.environmentName,
+          environmentId: previousEnvironment.environmentId,
+          parameters:
+            previousEnvironment.parameters && typeof previousEnvironment.parameters === 'object'
+              ? (previousEnvironment.parameters as Record<string, unknown>)
+              : {},
+          setBy: previousEnvironment.setBy,
+          setAt: previousEnvironment.setAt,
+        })
+      }
       continue
     }
 
@@ -101,9 +121,8 @@ async function restoreCampaignRoomsForSession(params: {
       type: previousRoom.type,
       createdBy: params.dmId,
     })
-    existingNames.add(normalizedName)
+    existingByName.set(normalizedName, restoredRoom)
 
-    const previousEnvironment = previousEnvironmentByRoomId.get(previousRoom.id)
     if (!previousEnvironment) {
       continue
     }
