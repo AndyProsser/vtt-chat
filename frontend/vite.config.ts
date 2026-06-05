@@ -14,6 +14,31 @@ const RADIX_SHARED_PACKAGES = new Set([
 ])
 
 const TIPTAP_PACKAGES = new Set(['tiptap-markdown'])
+
+// Mermaid and its exclusive transitive deps — all only reachable via the dynamic
+// import('mermaid') in DmdxTimelineBlock. Returning undefined lets Rollup keep
+// them in the lazy mermaid chunk instead of pulling them into vendor-third-party.
+const MERMAID_PACKAGES = new Set([
+  'mermaid',
+  '@mermaid-js/parser',
+  'cytoscape',
+  'cytoscape-cose-bilkent',
+  'cytoscape-fcose',
+  'dagre-d3-es',
+  'd3',
+  'd3-sankey',
+  'roughjs',
+  'khroma',
+  '@upsetjs/venn.js',
+  'katex',
+  'es-toolkit',
+  'marked',
+  '@braintree/sanitize-url',
+  '@iconify/utils',
+  'ts-dedent',
+  'stylis',
+  'dompurify',
+])
 const LIVEKIT_CI_OVERFLOW_PACKAGES = new Map<string, string>([
   ['webrtc-adapter', 'vendor-livekit-webrtc-adapter'],
   ['mediasoup-client', 'vendor-livekit-mediasoup'],
@@ -91,8 +116,18 @@ function getVendorChunk(id: string, options: VendorChunkOptions): string | undef
     return 'vendor-tiptap'
   }
 
-  if (packageName === 'clsx' || packageName === 'tailwind-merge') {
+  if (
+    packageName === 'clsx' ||
+    packageName === 'tailwind-merge' ||
+    packageName === 'react-window'
+  ) {
     return 'vendor-utils'
+  }
+
+  // Mermaid ecosystem — only reachable via dynamic import, so return undefined to
+  // let Rollup keep them in the lazy mermaid chunk rather than the eager vendor bundle.
+  if (packageName && MERMAID_PACKAGES.has(packageName)) {
+    return undefined
   }
 
   if (id.includes('node_modules/')) {
