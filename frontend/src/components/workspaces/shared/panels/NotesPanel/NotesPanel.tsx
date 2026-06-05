@@ -396,6 +396,7 @@ export function NotesPanel({
           content={content}
           tagsText={tagsText}
           isCreating={isCreating}
+          campaignId={campaignId}
           onSubmit={handleCreate}
           onTitleChange={setTitle}
           onContentChange={setContent}

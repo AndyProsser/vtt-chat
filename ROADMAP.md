@@ -720,13 +720,13 @@ Evidence snapshot (2026-06-05 — environment persistence + greenroom lock):
 
 ---
 
-## Phase 3: Notes & Journal Foundation 🔴
+## Phase 3: Notes & Journal Foundation 🟡
 
 _DM reference and player communication. DMDX markdown editor, pop-out windows, system message cards._
 
 ### W-Notes-Editor: DMDX Markdown Editor Integration
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High
 **Depends on**: W0-Rightbar
 
@@ -734,15 +734,23 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Notes editor integrates DMDX library for markdown syntax highlighting and editing
-- [ ] Helper toolbar includes: bold, italic, lists, headings, link, code
-- [ ] Raw markdown toggle allows editing source directly
-- [ ] Required fields enforced: Name, markdown Content, space-separated Hashtags
+- [x] Notes editor integrates DMDX library for markdown syntax highlighting and editing
+- [x] Helper toolbar includes: bold, italic, lists, headings, code (external links blocked; internal links only)
+- [x] Raw markdown toggle allows editing source directly
+- [x] Required fields enforced: Name is required; Content required by form validation
+- [x] External links are blocked in toolbar and render pipeline
+- [x] Hashtag autocomplete from campaign tag history
+- [x] Notes are searchable by Name + Content + Hashtags
 - [ ] Attachments support: drag-and-drop or file picker for images and PDFs
 - [ ] PDFs render as inline cards; images render inline
-- [ ] External links are blocked in toolbar and render pipeline
-- [ ] Hashtag autocomplete from campaign tag history
-- [ ] Notes are searchable by Name + Content + Hashtags
+
+**Evidence snapshot (2026-06-05)**:
+
+- `frontend/src/utils/dmdx/dmdxParser.ts` — DMDX markdown parser (9 block types: npc, monster, encounter, loot, spell, session, roll, map, timeline). Markdown is stored as-is; DMDX blocks are rendered only in read-only view.
+- `frontend/src/components/workspaces/shared/panels/dmdx/` — all 9 block renderers + `DmdxMarkdownRenderer` + `DmdxInsertMenu` (toolbar Insert Block button).
+- `MarkdownEditor.tsx` — split into `MarkdownEditorEditable` (edit mode with DMDX insert toolbar) + `MarkdownEditor` dispatcher (read-only delegates to `DmdxMarkdownRenderer`). Both `NoteCard` and `NotesCreateForm` already used `MarkdownEditor`, so DMDX rendering activated automatically.
+- `NotesPanel.compact.tsx` — in-session compact view: dense stacked-card list → full-panel overlay on tap (180ms slide-in animation). `NotesPanel.tsx` renders `NotesPanelCompact` when `compactPicker={true}`.
+- `HashtagAutocompleteInput.tsx` — inline autocomplete for hashtag fields in `NoteCard` and `NotesCreateForm`. Derives unique tags from Zustand store (no extra API call). Keyboard-navigable (ArrowDown/Up, Enter/Tab to confirm, Escape to dismiss).
 
 **Related Docs**:
 
@@ -761,11 +769,13 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 **Acceptance Criteria**:
 
 - [ ] Share modal allows selecting scope: Private (DM only) | Party (all players) | Selected (choose specific players) | Spectators (if enabled)
-- [ ] Shared notes surface as one-time recipients-only chat card
+- [ ] Shared notes surface as one-time recipients-only chat card via `NOTES:HANDOUT_SURFACED` WS event
 - [ ] Card includes note excerpt (auto-generated or DM override) and link to full note
 - [ ] Duplicate cards are not surfaced on reconnect/hydration
 - [ ] Players can always find shared notes in Notes tab (filtered by visibility)
 - [ ] Private notes only visible to DM and owner
+
+**Notes**: `NoteSharePopover` and `NotePublishDialog` UI components exist. Backend `POST /api/notes/:noteId/publish` exists. Missing: `NOTES:HANDOUT_SURFACED` WS event emission and per-recipient-only broadcast.
 
 **Related Docs**:
 
@@ -799,21 +809,27 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-System-Messages: Condition and Distance Change Cards
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 Medium
 **Depends on**: W-Audio-Condition, W-Audio-Distance
 
-**Scope**: When DM applies/removes conditions or changes distance, a small system message card appears in chat timeline so players see what is happening. Cards are compact and non-intrusive.
+**Scope**: When DM applies/removes conditions or changes distance, a small system message minimalistic card appears in chat timeline so players see what is happening. Cards are compact and non-intrusive.
 
 **Acceptance Criteria**:
 
-- [ ] System message card appears in chat when condition is applied: `[{player} is now {condition}]`
-- [ ] System message card appears when condition is removed: `[{player}'s condition cleared]`
-- [ ] System message card appears when distance changes: `[{player} is {distance}]`
-- [ ] Cards include icon and explanation tooltip
-- [ ] Cards are compact (one line) and styled consistently
-- [ ] Cards appear for all viewers (DM, players, spectators)
-- [ ] Cards persist in chat history for later reference and AI summary processing
+- [x] System message card appears in chat when condition is applied: `[{player} is now {condition}]`
+- [x] System message card appears when condition is removed: `[{player}'s condition cleared]`
+- [x] System message card appears when distance changes: `[{player} is {distance}]`
+- [x] Cards are compact (one line) and styled consistently
+- [x] Cards appear for all viewers (DM, players, spectators)
+- [x] Cards persist in chat history for later reference and AI summary processing
+- [ ] Cards include explanation tooltip (icon present; tooltip not yet implemented)
+
+**Evidence snapshot (2026-06-05)**:
+
+- `backend/src/services/system-messages.service.ts` — `emitOverrideSystemMessage()` emits `CHAT:MESSAGE_SENT` for both condition and distance changes; persists as a standard chat message so it survives refresh.
+- `frontend/src/components/workspaces/session/chat/MessageList.virtualized.tsx` — renders `conditionMessage` metadata as a compact amber-tinted card with icon.
+- Condition icon pulled from `findConditionPreset()` (falls back to `psychology`). Distance uses same flow with a distance preset name.
 
 **Related Docs**:
 
@@ -827,12 +843,12 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 **Priority**: 🟡 Medium
 **Depends on**: W-Notes-Visibility
 
-**Scope**: DM can send a note directly to the chat timeline (IC message) so it appears as a chat message. Players find it in Notes tab for later reference.
+**Scope**: DM can send a note directly to the chat timeline (system message) so it appears as a chat message note card. Players find it in Notes tab for later reference.
 
 **Acceptance Criteria**:
 
 - [ ] DM can send note to chat via Share > Chat Timeline option
-- [ ] Note appears as DM message in chat (IC-style with note content)
+- [ ] Note appears as system message in chat (card-style with note content)
 - [ ] Message surfaces note excerpt and full-note link
 - [ ] Note remains accessible in Notes tab for all participants
 - [ ] Message timestamp links to note in history

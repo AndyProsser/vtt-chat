@@ -9,6 +9,7 @@ import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 import type { NotesPublishRoom, NotesPublishTarget } from '@/types/notesPublish'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
 import { getNoteShareStatus, parseNoteHashtags, serializeNoteHashtags } from '@/utils/notesPanel'
+import { HashtagAutocompleteInput } from './HashtagAutocompleteInput'
 import { NoteAttachmentsGallery } from './NoteAttachmentsGallery'
 import { NoteDeleteDialog } from './NoteDeleteDialog'
 import { NotePublishDialog } from './NotePublishDialog'
@@ -407,12 +408,12 @@ export function NoteCard({
                 <label className="notes-edit-label" htmlFor={`note-hashtags-${note.id}`}>
                   Hashtags
                 </label>
-                <input
+                <HashtagAutocompleteInput
                   id={`note-hashtags-${note.id}`}
                   value={tagsText}
-                  onChange={(e) => setTagsText(e.target.value)}
+                  onChange={setTagsText}
+                  campaignId={note.campaignId}
                   placeholder="#npc, #city, #quest"
-                  className="notes-edit-input"
                 />
               </div>
             </div>

@@ -1,21 +1,24 @@
 import { useMemo } from 'react'
+import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import { useToast } from '@/hooks/useToast'
 import { createNotesImageInsertActions } from '@/utils/notesImageInsertActions'
+import { HashtagAutocompleteInput } from './HashtagAutocompleteInput'
 
 interface NotesCreateFormProps {
   title: string
   content: string
   tagsText: string
   isCreating: boolean
+  campaignId?: UUID | null
   onSubmit: React.FormEventHandler<HTMLFormElement>
   onTitleChange: (value: string) => void
   onContentChange: (value: string) => void
   onTagsTextChange: (value: string) => void
 }
 
-export function NotesCreateForm(props: NotesCreateFormProps) {
+export function NotesCreateForm({ campaignId, ...props }: NotesCreateFormProps) {
   const showToast = useToast()
   const imageInsertActions = useMemo(() => createNotesImageInsertActions(showToast), [showToast])
 
@@ -69,12 +72,12 @@ export function NotesCreateForm(props: NotesCreateFormProps) {
           <label className="notes-edit-label" htmlFor="notes-create-tags">
             Hashtags
           </label>
-          <input
+          <HashtagAutocompleteInput
             id="notes-create-tags"
             value={props.tagsText}
-            onChange={(event) => props.onTagsTextChange(event.target.value)}
+            onChange={props.onTagsTextChange}
+            campaignId={campaignId}
             placeholder="#npc, #city, #clue"
-            className="notes-edit-input"
           />
         </div>
       </div>
