@@ -26,7 +26,7 @@ import Image from '@tiptap/extension-image'
 import type { Level } from '@tiptap/extension-heading'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
-import { Fragment, useEffect, useState, useCallback, useMemo } from 'react'
+import { Fragment, useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { DmdxMarkdownRenderer } from './dmdx/DmdxMarkdownRenderer'
 import { DmdxInsertMenu } from './dmdx/DmdxInsertMenu'
@@ -47,7 +47,9 @@ export interface MarkdownEditorInsertAction {
   icon: string
   label: string
   dividerBefore?: boolean
-  onSelect: (currentMarkdown: string) => string | Promise<string>
+  /** When present, the action renders as a dropdown containing these child actions. */
+  children?: MarkdownEditorInsertAction[]
+  onSelect?: (currentMarkdown: string) => string | Promise<string>
 }
 
 export interface MarkdownEditorProps {
@@ -77,6 +79,84 @@ function getEditorMarkdown(editor: unknown, fallback: string): string {
   }
 
   return fallback
+}
+
+// ---------------------------------------------------------------------------
+// InsertActionDropdown — renders a grouped insert action as a toolbar dropdown
+// ---------------------------------------------------------------------------
+
+function InsertActionDropdown({
+  action,
+  pendingId,
+  onSelect,
+}: {
+  action: MarkdownEditorInsertAction
+  pendingId: string | null
+  onSelect: (child: MarkdownEditorInsertAction) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div className="md-editor__action-group" ref={ref}>
+      <TooltipProvider delayDuration={140}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`md-editor__tool ${open ? 'is-active' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                setOpen((prev) => !prev)
+              }}
+              disabled={Boolean(pendingId)}
+              aria-label={action.label}
+              aria-haspopup="listbox"
+              aria-expanded={open}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {action.icon}
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">{action.label}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      {open && (
+        <div className="md-editor__action-group-dropdown" role="listbox">
+          {action.children!.map((child) => (
+            <button
+              key={child.id}
+              type="button"
+              role="option"
+              aria-selected={false}
+              className="md-editor__action-group-option"
+              disabled={Boolean(pendingId)}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onSelect(child)
+                setOpen(false)
+              }}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {child.icon}
+              </span>
+              {child.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -200,6 +280,7 @@ function MarkdownEditorEditable({
       setPendingInsertActionId(action.id)
 
       try {
+        if (!action.onSelect) return
         const insertedText = (await action.onSelect(mode === 'raw' ? rawValue : value)).trim()
         if (!insertedText) {
           return
@@ -246,6 +327,11 @@ function MarkdownEditorEditable({
     <div className={rootClass} data-testid="markdown-editor" onBlur={onBlur}>
       <TooltipProvider delayDuration={140}>
         <div className="md-editor__toolbar" role="toolbar" aria-label="Formatting">
+          {/* DMDX Insert Block menu — available in full variant only */}
+          {variant === 'full' && <DmdxInsertMenu onInsert={handleInsertDmdxTemplate} />}
+
+          <span className="md-editor__toolbar-sep" aria-hidden="true" />
+
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -332,27 +418,6 @@ function MarkdownEditorEditable({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className={`md-editor__tool ${isActive('code') ? 'is-active' : ''}`}
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      if (mode === 'rich') editor?.chain().focus().toggleCode().run()
-                    }}
-                    disabled={mode === 'raw'}
-                    aria-label="Inline code"
-                    aria-pressed={isActive('code')}
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      code
-                    </span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Inline code</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
                     className={`md-editor__tool ${isActive('blockquote') ? 'is-active' : ''}`}
                     onMouseDown={(e) => {
                       e.preventDefault()
@@ -374,32 +439,35 @@ function MarkdownEditorEditable({
 
           <span className="md-editor__toolbar-sep" aria-hidden="true" />
 
-          {/* DMDX Insert Block menu — available in full variant only */}
-          {variant === 'full' && <DmdxInsertMenu onInsert={handleInsertDmdxTemplate} />}
-
           {insertActions.map((action) => (
             <Fragment key={action.id}>
               {action.dividerBefore ? (
                 <span className="md-editor__toolbar-sep" aria-hidden="true" />
               ) : null}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="md-editor__tool"
-                    onClick={() => {
-                      void handleInsertAction(action)
-                    }}
-                    disabled={Boolean(pendingInsertActionId)}
-                    aria-label={action.label}
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      {pendingInsertActionId === action.id ? 'hourglass_top' : action.icon}
-                    </span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{action.label}</TooltipContent>
-              </Tooltip>
+              {action.children ? (
+                <InsertActionDropdown
+                  action={action}
+                  pendingId={pendingInsertActionId}
+                  onSelect={(child) => void handleInsertAction(child)}
+                />
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="md-editor__tool"
+                      onClick={() => void handleInsertAction(action)}
+                      disabled={Boolean(pendingInsertActionId)}
+                      aria-label={action.label}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        {pendingInsertActionId === action.id ? 'hourglass_top' : action.icon}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{action.label}</TooltipContent>
+                </Tooltip>
+              )}
             </Fragment>
           ))}
 

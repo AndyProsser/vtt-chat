@@ -321,14 +321,57 @@ export function NotesPanel({
     }
   }
 
-  // Compact (in-session) mode: dense stacked title list → full-panel overlay on tap.
+  // Compact (in-session) mode: dense stacked title list → full NoteCard overlay on tap.
   if (compactPicker) {
+    // Show the create form as a full overlay when the DM requests it.
+    if (showCreateForm) {
+      return (
+        <div className="notes-compact">
+          <div className="notes-compact__header">
+            <button
+              type="button"
+              className="notes-compact__back-btn"
+              onClick={() => setShowCreateForm(false)}
+              aria-label="Back to notes list"
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+              <span>Notes</span>
+            </button>
+          </div>
+          <div style={{ padding: '0.5rem' }}>
+            <NotesCreateForm
+              title={title}
+              content={content}
+              tagsText={tagsText}
+              isCreating={isCreating}
+              campaignId={campaignId}
+              onSubmit={handleCreate}
+              onTitleChange={setTitle}
+              onContentChange={setContent}
+              onTagsTextChange={setTagsText}
+            />
+          </div>
+        </div>
+      )
+    }
+
     return (
       <NotesPanelCompact
         notes={notes}
         isLoading={isLoading}
         canEdit={canMutateNotes}
+        canPublish={canMutateNotes}
+        isPublishDisabled={isPublishDisabledInCurrentState}
+        isSharingDisabled={isSharingDisabledInCurrentState}
+        apiUrl={apiUrl}
+        token={token}
+        shareUsers={shareUsers}
+        shareRooms={shareRooms}
+        roomMemberIdsByRoomId={roomMemberIdsByRoomId}
         onCreateRequest={handleToggleCreateForm}
+        onSave={handleSave}
+        onDelete={handleDelete}
+        onSurface={handleSurface}
       />
     )
   }

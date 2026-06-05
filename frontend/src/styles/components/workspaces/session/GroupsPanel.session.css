@@ -139,10 +139,12 @@
   color: var(--color-text-secondary);
 }
 
-.session-groups-dm-detached__name {
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
+.session-groups-dm-detached__member {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 0.4rem;
+  align-items: start;
+  margin-top: 0.18rem;
 }
 
 .session-groups-dm-detached__target {

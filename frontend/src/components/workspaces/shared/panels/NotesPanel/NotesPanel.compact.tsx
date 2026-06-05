@@ -1,9 +1,8 @@
 /**
  * NotesPanelCompact
  *
- * In-session compact notes view. Shows a dense stacked list of note titles —
- * like physical index cards with the title written on the tab. Tapping any card
- * slides in a full-panel read-only view with a back button and DMDX rendering.
+ * In-session compact notes view. Shows a dense stacked list of note titles.
+ * Tapping any card slides in a full NoteCard (edit / share / surface enabled).
  *
  * Used when the notes panel is in the session right rail (limited vertical space).
  * The lobby/editor view uses the full two-column NotesPanel instead.
@@ -11,64 +10,31 @@
 
 import { useState, useMemo } from 'react'
 import type { UUID } from '@shared'
-import { DmdxMarkdownRenderer } from '@/components/workspaces/shared/panels/dmdx/DmdxMarkdownRenderer'
 import type { Note } from '@/types/notes'
+import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
+import type { NotesSurfaceTarget } from '@/types/notesPublish'
+import { NoteCard } from './NoteCard'
 import '@/styles/components/workspaces/shared/panels/NotesPanel.compact.css'
 
 interface NotesPanelCompactProps {
   notes: Note[]
   isLoading: boolean
   canEdit: boolean
+  canPublish: boolean
+  isPublishDisabled: boolean
+  isSharingDisabled: boolean
+  apiUrl?: string
+  token?: string
+  shareUsers?: NotesShareUser[]
+  shareRooms?: NotesShareRoom[]
+  roomMemberIdsByRoomId?: Record<UUID, UUID[]>
   onCreateRequest: () => void
-}
-
-// ---------------------------------------------------------------------------
-// NoteDetailOverlay — full-panel read-only view for a single note
-// ---------------------------------------------------------------------------
-
-interface NoteDetailOverlayProps {
-  note: Note
-  onBack: () => void
-}
-
-function NoteDetailOverlay({ note, onBack }: NoteDetailOverlayProps) {
-  const displayTags = note.tags.map((t) => (t.startsWith('#') ? t : `#${t}`))
-
-  return (
-    <div className="notes-compact__overlay" aria-label={`Note: ${note.title}`}>
-      <div className="notes-compact__overlay-header">
-        <button
-          type="button"
-          className="notes-compact__back-btn"
-          onClick={onBack}
-          aria-label="Back to notes list"
-        >
-          <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
-          <span>Notes</span>
-        </button>
-
-        <div className="notes-compact__overlay-meta">
-          {displayTags.slice(0, 4).map((tag) => (
-            <span key={tag} className="knowledge-panel-chip muted">
-              {tag}
-            </span>
-          ))}
-          {displayTags.length > 4 ? (
-            <span className="knowledge-panel-chip muted">+{displayTags.length - 4}</span>
-          ) : null}
-        </div>
-      </div>
-
-      <h3 className="notes-compact__overlay-title">{note.title}</h3>
-
-      <div className="notes-compact__overlay-body">
-        <DmdxMarkdownRenderer
-          value={note.content}
-          placeholder="No content yet."
-        />
-      </div>
-    </div>
-  )
+  onSave: (
+    noteId: string,
+    updates: Partial<Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers' | 'attachments'>>
+  ) => Promise<void>
+  onDelete: (noteId: string) => Promise<void>
+  onSurface: (noteId: string, target: NotesSurfaceTarget) => Promise<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -83,8 +49,6 @@ interface NoteStackCardProps {
 }
 
 function NoteStackCard({ note, index, total, onSelect }: NoteStackCardProps) {
-  // Subtle visual stagger: cards deeper in the list get a tiny downward offset
-  // so the stack feels physical — like looking at the top edges of a card deck.
   const stackOffset = Math.min(index * 1.5, 6)
   const displayTags = note.tags
     .filter((t) => !t.startsWith('_'))
@@ -129,7 +93,18 @@ export function NotesPanelCompact({
   notes,
   isLoading,
   canEdit,
+  canPublish,
+  isPublishDisabled,
+  isSharingDisabled,
+  apiUrl,
+  token,
+  shareUsers = [],
+  shareRooms = [],
+  roomMemberIdsByRoomId = {},
   onCreateRequest,
+  onSave,
+  onDelete,
+  onSurface,
 }: NotesPanelCompactProps) {
   const [selectedId, setSelectedId] = useState<UUID | null>(null)
 
@@ -140,10 +115,42 @@ export function NotesPanelCompact({
 
   if (selectedNote) {
     return (
-      <NoteDetailOverlay
-        note={selectedNote}
-        onBack={() => setSelectedId(null)}
-      />
+      <div className="notes-compact__overlay" aria-label={`Note: ${selectedNote.title}`}>
+        <div className="notes-compact__overlay-header">
+          <button
+            type="button"
+            className="notes-compact__back-btn"
+            onClick={() => setSelectedId(null)}
+            aria-label="Back to notes list"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+            <span>Notes</span>
+          </button>
+        </div>
+
+        <div className="notes-compact__overlay-body">
+          <NoteCard
+            key={selectedNote.id}
+            note={selectedNote}
+            apiUrl={apiUrl}
+            token={token}
+            canEdit={canEdit}
+            canManageShare={canEdit}
+            canPublish={canPublish}
+            isPublishDisabled={isPublishDisabled}
+            isSharingDisabled={isSharingDisabled}
+            shareUsers={shareUsers}
+            shareRooms={shareRooms}
+            roomMemberIdsByRoomId={roomMemberIdsByRoomId}
+            onSave={onSave}
+            onDelete={async (noteId) => {
+              await onDelete(noteId)
+              setSelectedId(null)
+            }}
+            onSurface={onSurface}
+          />
+        </div>
+      </div>
     )
   }
 

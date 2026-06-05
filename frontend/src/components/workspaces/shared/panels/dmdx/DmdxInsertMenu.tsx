@@ -241,8 +241,9 @@ export function DmdxInsertMenu({ onInsert }: DmdxInsertMenuProps) {
                 {option.icon}
               </span>
               <span className="dmdx-insert-menu__option-text">
-                <span className="dmdx-insert-menu__option-label">{option.label}</span>
-                <span className="dmdx-insert-menu__option-desc">{option.description}</span>
+                <span className="dmdx-insert-menu__option-label" title={option.description}>
+                  {option.label}
+                </span>
               </span>
             </button>
           ))}

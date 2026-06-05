@@ -215,6 +215,12 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       }
 
       next[resolvedDmTargetRoomId] = [resolvedDmMember, ...(next[resolvedDmTargetRoomId] || [])]
+    } else if (shouldDetachDmFromRooms && canManageGroups && resolvedDmMember) {
+      for (const roomId of Object.keys(next) as UUID[]) {
+        next[roomId] = next[roomId].filter(
+          (member) => member.userId !== resolvedDmMember.userId
+        )
+      }
     }
 
     for (const roomId of Object.keys(next) as UUID[]) {
@@ -465,11 +471,40 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
                 data-ui-component="SessionGroupsDetachedDM"
               >
                 <div className="session-groups-dm-detached__header">Dungeon Master</div>
-                <div className="session-groups-dm-detached__name">
-                  {detachedDmMember.characterName || detachedDmMember.username}
-                </div>
-                <div className="session-groups-dm-detached__target">
-                  Voice target: <strong>{detachedDmVoiceTargetRoomName || 'Main'}</strong>
+                <div className="session-groups-dm-detached__member">
+                  <span
+                    className={`session-groups-member-card__avatar session-groups-member-card__avatar--${detachedDmMember.presenceState === PresenceState.OFFLINE || detachedDmMember.presenceState === PresenceState.IDLE ? 'offline' : 'online'}`}
+                    aria-hidden="true"
+                  >
+                    {detachedDmMember.avatarUrl ? (
+                      <img src={detachedDmMember.avatarUrl} alt="" />
+                    ) : (
+                      (detachedDmMember.characterName || detachedDmMember.username || 'D')
+                        .charAt(0)
+                        .toUpperCase()
+                    )}
+                  </span>
+                  <div className="session-groups-member-card__body">
+                    <div className="session-groups-member-card__info">
+                      <span className="session-groups-member-card__char-name">
+                        {detachedDmMember.characterName || detachedDmMember.username}
+                      </span>
+                      {(detachedDmMember.playerName || detachedDmMember.username) !==
+                      (detachedDmMember.characterName || detachedDmMember.username) ? (
+                        <span className="session-groups-member-card__player-name">
+                          {detachedDmMember.playerName || detachedDmMember.username}
+                        </span>
+                      ) : null}
+                      <span className="session-groups-dm-detached__target">
+                        Voice target: <strong>{detachedDmVoiceTargetRoomName || 'Main'}</strong>
+                      </span>
+                    </div>
+                    <div className="session-groups-member-card__aside">
+                      <span className="session-groups-member-card__role-pill session-groups-member-card__role-pill--dm">
+                        DM
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </article>
             ) : null}

@@ -384,16 +384,23 @@ function JournalEditor({
   const insertActions = useMemo<MarkdownEditorInsertAction[]>(
     () => [
       {
-        id: 'insert-dm-roast',
+        id: 'insert-roast',
         icon: 'theater_comedy',
-        label: 'Insert DM roast',
-        onSelect: handleInsertDmRoast,
-      },
-      {
-        id: 'insert-player-roast',
-        icon: 'mood',
-        label: 'Insert player roast',
-        onSelect: handleInsertPlayerRoast,
+        label: 'Insert roast',
+        children: [
+          {
+            id: 'insert-dm-roast',
+            icon: 'theater_comedy',
+            label: 'Roast DM',
+            onSelect: handleInsertDmRoast,
+          },
+          {
+            id: 'insert-player-roast',
+            icon: 'mood',
+            label: 'Roast Players',
+            onSelect: handleInsertPlayerRoast,
+          },
+        ],
       },
       {
         id: 'ask-ai',

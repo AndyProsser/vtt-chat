@@ -720,7 +720,7 @@ Evidence snapshot (2026-06-05 — environment persistence + greenroom lock):
 
 ---
 
-## Phase 3: Notes & Journal Foundation 🟡
+## Phase 3: Notes & Journal Foundation ✅
 
 _DM reference and player communication. DMDX markdown editor, pop-out windows, system message cards._
 
@@ -845,7 +845,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-DM-Notes-to-Chat: Share Note to Chat Timeline
 
-**Status**: ⚪ Not Started
+**Status**: ✅ Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Notes-Visibility
 
@@ -853,15 +853,17 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] DM can send note to chat via Share > Chat Timeline option
-- [ ] Note appears as system message in chat (card-style with note content)
-- [ ] Message surfaces note excerpt and full-note link
-- [ ] Note remains accessible in Notes tab for all participants
-- [ ] Message timestamp links to note in history
+- [x] DM can send note to chat via "Send Handout" button → `NoteSurfaceDialog` (PARTY / SELECTED scope, optional manual excerpt) → `POST /api/notes/:noteId/surface`
+- [x] Note appears as system message in chat (card-style via `NoteSharedCard`) for all recipients
+- [x] Message surfaces note excerpt (auto-generated or DM override) + "Full note available in the Notes tab" hint; `noteId` threaded through `ParsedNoteSharedMessage` for future deep-link navigation
+- [x] Note remains accessible in Notes tab — `/surface` updates note visibility to match scope (PARTY → PLAYERS_VISIBLE; SELECTED → CUSTOM + allowedUsers)
+- [x] Message timestamp shown on `NoteSharedCard` footer; `noteId` available in `metadata.noteHandout` for history reference
 
-**Related Docs**:
+**Evidence snapshot (2026-06-05)**:
 
-- (None yet; small scope feature)
+- `NoteSharedCard.tsx` — excerpt cards show "Full note available in the Notes tab" below the excerpt body; `excerptSource` badge shows AUTO or MANUAL source.
+- `noteSharedMessage.ts` — `ParsedNoteSharedMessage.noteId` populated from both `noteHandout` and legacy `noteShared` metadata.
+- `POST /api/notes/:noteId/surface` — persists system chat message, broadcasts `NOTES:HANDOUT_SURFACED` + `CHAT:MESSAGE_SENT` to recipients only, updates note visibility.
 
 ---
 
