@@ -7,7 +7,8 @@ import {
   useDynamicRowHeight,
   useListCallbackRef,
 } from 'react-window'
-import { MessageType, findConditionPreset } from '@shared'
+import { MessageType, findConditionPreset, findDistancePreset } from '@shared'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
 import type { MessageListProps, PreparedMessage } from './MessageList'
 
@@ -258,15 +259,22 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
   }
 
   if (prepared.conditionMessage) {
-    const conditionPreset = prepared.conditionMessage.presetName
-      ? findConditionPreset(prepared.conditionMessage.presetName)
+    const { presetName, isRemoval, overrideType } = prepared.conditionMessage
+    const isDistance = overrideType === 'DISTANCE'
+    const conditionPreset = presetName
+      ? isDistance
+        ? findDistancePreset(presetName)
+        : findConditionPreset(presetName)
       : undefined
-    const iconName = prepared.conditionMessage.isRemoval
+    const iconName = isRemoval
       ? 'check_circle'
-      : (conditionPreset?.icon ?? 'psychology')
-    const conditionText = prepared.conditionMessage.isRemoval
-      ? `${prepared.authorName}'s condition was cleared`
-      : `${prepared.authorName} is ${conditionPreset?.label ?? prepared.conditionMessage.presetName ?? 'affected'}`
+      : (conditionPreset?.icon ?? (isDistance ? 'social_distance' : 'psychology'))
+    const conditionText = isRemoval
+      ? `${prepared.authorName}'s ${isDistance ? 'distance' : 'condition'} was cleared`
+      : `${prepared.authorName} is ${conditionPreset?.label ?? presetName ?? 'affected'}`
+    const tooltipText = isRemoval
+      ? `${isDistance ? 'Distance' : 'Condition'} cleared — player returns to normal audio`
+      : (conditionPreset?.description ?? null)
 
     return (
       <Fragment>
@@ -312,15 +320,28 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
             </span>
 
             <div className="session-message-list__message-content session-message-list__message-content--condition">
-              <div className="session-message-list__message-bubble session-message-list__message-bubble--condition">
-                <span
-                  className="session-message-list__message-condition-icon material-symbols-outlined"
-                  aria-hidden="true"
-                >
-                  {iconName}
-                </span>
-                <span className="session-message-list__message-bubble-text">{conditionText}</span>
-              </div>
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="session-message-list__message-bubble session-message-list__message-bubble--condition">
+                      <span
+                        className="session-message-list__message-condition-icon material-symbols-outlined"
+                        aria-hidden="true"
+                      >
+                        {iconName}
+                      </span>
+                      <span className="session-message-list__message-bubble-text">
+                        {conditionText}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  {tooltipText ? (
+                    <TooltipContent side="top" align="start">
+                      {tooltipText}
+                    </TooltipContent>
+                  ) : null}
+                </Tooltip>
+              </TooltipProvider>
               <div className="session-message-list__message-footer">
                 <div className="session-message-list__message-timestamp">
                   {msg.editedAt ? 'edited · ' : ''}

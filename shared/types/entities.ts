@@ -76,6 +76,8 @@ export interface ConditionMessageMetadata {
   targetUserId: UUID
   presetName?: string
   isRemoval: boolean
+  /** Distinguishes audio condition presets from distance presets. Absent in legacy messages. */
+  overrideType?: 'CONDITION' | 'DISTANCE'
 }
 
 export interface MessageMetadataEntity {

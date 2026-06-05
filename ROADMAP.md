@@ -760,7 +760,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Notes-Visibility: Sharing and Handout Distribution
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Editor
 
@@ -768,14 +768,20 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Share modal allows selecting scope: Private (DM only) | Party (all players) | Selected (choose specific players) | Spectators (if enabled)
-- [ ] Shared notes surface as one-time recipients-only chat card via `NOTES:HANDOUT_SURFACED` WS event
-- [ ] Card includes note excerpt (auto-generated or DM override) and link to full note
-- [ ] Duplicate cards are not surfaced on reconnect/hydration
-- [ ] Players can always find shared notes in Notes tab (filtered by visibility)
-- [ ] Private notes only visible to DM and owner
+- [x] Share modal allows selecting scope: DM only | All players | Selected players by room
+- [x] Shared notes surface as recipients-only chat card (via `CHAT:MESSAGE_SENT` + `noteShared` metadata, rendered as `NoteSharedCard`)
+- [x] Card includes note excerpt and hashtag chips
+- [x] Duplicate cards are not surfaced on reconnect (messages persisted with `visibleTo` list; hydrated from history)
+- [x] Players can always find shared notes in Notes tab (filtered by visibility)
+- [x] Private notes only visible to DM and owner
+- [ ] Card includes a link/button to open the full note in the Notes panel
 
-**Notes**: `NoteSharePopover` and `NotePublishDialog` UI components exist. Backend `POST /api/notes/:noteId/publish` exists. Missing: `NOTES:HANDOUT_SURFACED` WS event emission and per-recipient-only broadcast.
+**Evidence snapshot (2026-06-05)**:
+
+- `NoteSharePopover.tsx` — audience modes: NONE (DM only), EVERYONE (all players), LIMITED (specific players/rooms). Uses `NoteVisibility.DM_ONLY`, `PLAYERS_VISIBLE`, `CUSTOM`.
+- `POST /api/notes/:noteId/publish` — updates visibility, marks `publishedAt`, persists a `SYSTEM` chat message with `metadata.noteShared`, broadcasts `NOTES:UPDATED` and `CHAT:MESSAGE_SENT` to `publishAudienceUsers` only.
+- `NoteSharedCard.tsx` — renders the handout card in chat with title, markdown excerpt (base64 images inlined), hashtag chips, and timestamp.
+- `NotePublishDialog.tsx` — room-specific publish target selector.
 
 **Related Docs**:
 
@@ -809,7 +815,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-System-Messages: Condition and Distance Change Cards
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Audio-Condition, W-Audio-Distance
 
@@ -820,16 +826,16 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] System message card appears in chat when condition is applied: `[{player} is now {condition}]`
 - [x] System message card appears when condition is removed: `[{player}'s condition cleared]`
 - [x] System message card appears when distance changes: `[{player} is {distance}]`
+- [x] Cards include icon and explanation tooltip (preset description on hover)
 - [x] Cards are compact (one line) and styled consistently
 - [x] Cards appear for all viewers (DM, players, spectators)
 - [x] Cards persist in chat history for later reference and AI summary processing
-- [ ] Cards include explanation tooltip (icon present; tooltip not yet implemented)
 
 **Evidence snapshot (2026-06-05)**:
 
-- `backend/src/services/system-messages.service.ts` — `emitOverrideSystemMessage()` emits `CHAT:MESSAGE_SENT` for both condition and distance changes; persists as a standard chat message so it survives refresh.
-- `frontend/src/components/workspaces/session/chat/MessageList.virtualized.tsx` — renders `conditionMessage` metadata as a compact amber-tinted card with icon.
-- Condition icon pulled from `findConditionPreset()` (falls back to `psychology`). Distance uses same flow with a distance preset name.
+- `backend/src/services/system-messages.service.ts` — `emitConditionSystemMessage()` emits `CHAT:MESSAGE_SENT` for both condition and distance changes; persists as a standard chat message so it survives refresh. Metadata now includes `overrideType: 'CONDITION' | 'DISTANCE'` so the frontend can distinguish them.
+- `shared/types/entities.ts` — `ConditionMessageMetadata` updated with optional `overrideType` field (backwards-compatible). Now exported from `@shared` — local duplicate in `MessageList.tsx` removed.
+- `frontend/src/components/workspaces/session/chat/MessageList.virtualized.tsx` — condition cards now wrapped in a `Tooltip` showing the preset description on hover. Distance cards use `findDistancePreset()` for icon and description; condition cards use `findConditionPreset()`.
 
 **Related Docs**:
 

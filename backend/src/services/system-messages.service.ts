@@ -282,6 +282,7 @@ export async function emitConditionSystemMessage(params: {
           targetUserId: params.targetUserId,
           presetName: params.isRemoval ? undefined : (params.presetName ?? undefined),
           isRemoval: params.isRemoval,
+          overrideType: params.overrideType,
         },
       },
     })

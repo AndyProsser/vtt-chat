@@ -6,7 +6,7 @@
 
 import { memo, useMemo, useRef } from 'react'
 import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
-import type { UUID } from '@shared'
+import type { ConditionMessageMetadata, UUID } from '@shared'
 import type { Message, SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
 import { MessageType } from '@shared'
@@ -14,12 +14,6 @@ import { parseNoteSharedMessage } from '@/utils/noteSharedMessage'
 import { useStore } from '@/hooks/useStore'
 import { MessageListVirtualized } from './MessageList.virtualized'
 
-interface ConditionMessageMetadata {
-  kind: 'CONDITION'
-  targetUserId: UUID
-  presetName?: string
-  isRemoval: boolean
-}
 export interface MessageListProps {
   sessionId: UUID
   messages: Message[]

@@ -165,6 +165,7 @@ export interface Metadata {
 }
 
 export type {
+  ConditionMessageMetadata,
   DeviceSessionEntity,
   MessageMetadataEntity,
   UserEntity,
