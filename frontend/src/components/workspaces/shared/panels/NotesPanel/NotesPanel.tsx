@@ -18,6 +18,7 @@ import { isJournalNote, parseNoteHashtags } from '../../../../../utils/notesPane
 import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
 import { NotesListWidget } from './NotesListWidget'
+import { NotesPanelCompact } from './NotesPanel.compact'
 import { NotesPanelToolbar, type NotesPublishFilter } from './NotesPanelToolbar'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 
@@ -331,10 +332,20 @@ export function NotesPanel({
     }
   }
 
+  // Compact (in-session) mode: dense stacked title list → full-panel overlay on tap.
+  if (compactPicker) {
+    return (
+      <NotesPanelCompact
+        notes={notes}
+        isLoading={isLoading}
+        canEdit={canMutateNotes}
+        onCreateRequest={handleToggleCreateForm}
+      />
+    )
+  }
+
   return (
-    <section
-      className={`knowledge-panel knowledge-panel--compact notes-workspace${compactPicker ? ' notes-workspace--compact-picker' : ''}`}
-    >
+    <section className="knowledge-panel knowledge-panel--compact notes-workspace">
       <header className="knowledge-panel-header notes-workspace-header">
         <div className="notes-workspace-header__title-row">
           <h3 className="notes-workspace-header__title">
