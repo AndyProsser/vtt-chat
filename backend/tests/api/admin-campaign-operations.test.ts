@@ -159,7 +159,7 @@ describe('admin campaign operations', () => {
     mocks.mockRoomFindUnique.mockResolvedValue({
       id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
-      name: 'Main Room',
+      name: 'Main',
     })
     mocks.mockRoomFindFirst.mockResolvedValue({
       id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
@@ -190,7 +190,7 @@ describe('admin campaign operations', () => {
         journalSummary: 'Summary',
         metadata: { source: 'admin-console' },
         session: { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', name: 'Session One' },
-        room: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Main Room' },
+        room: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Main' },
         createdAt: new Date('2026-01-01T01:10:00Z'),
         updatedAt: new Date('2026-01-01T01:15:00Z'),
       },
@@ -209,7 +209,7 @@ describe('admin campaign operations', () => {
       journalSummary: 'Second summary',
       metadata: { source: 'admin-console' },
       session: { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', name: 'Session One' },
-      room: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Main Room' },
+      room: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Main' },
       createdAt: new Date('2026-01-02T00:31:00Z'),
       updatedAt: new Date('2026-01-02T00:31:00Z'),
     })

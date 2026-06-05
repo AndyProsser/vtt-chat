@@ -214,7 +214,7 @@ describe('session membership lifecycle authz', () => {
     mocks.getRoom.mockResolvedValue({
       id: ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
     })
 
@@ -234,7 +234,7 @@ describe('session membership lifecycle authz', () => {
       {
         id: ROOM_ID,
         sessionId: SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: 'MAIN',
         createdBy: DM_ID,
         createdAt: Date.now(),
@@ -364,7 +364,7 @@ describe('session membership lifecycle authz', () => {
       {
         id: ROOM_ID,
         sessionId: SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: 'MAIN',
         createdBy: DM_ID,
         createdAt: Date.now(),

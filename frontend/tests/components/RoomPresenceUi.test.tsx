@@ -147,7 +147,7 @@ describe('RoomSelector', () => {
 
     expect(screen.getAllByRole('button', { name: /Change group environment/i }).length).toBe(1)
     expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
-    // DmVoiceTargetIndicator shows "Main Group" as the default voice target
+    // DmVoiceTargetIndicator shows "Main" as the default voice target
     expect(screen.getByText('Morgan')).toBeTruthy()
     expect(screen.getByText('Tara')).toBeTruthy()
     expect(screen.getByText('Rogue | Halfling | Level 5')).toBeTruthy()

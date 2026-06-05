@@ -43,12 +43,12 @@ function buildProps() {
 
 describe('SessionWorkspaceCenterPane', () => {
   beforeEach(() => {
-    // Seed the store with a MAIN room so useSessionSelectedRoomId resolves it.
+    // Seed the store with a MAIN so useSessionSelectedRoomId resolves it.
     useStore.getState().replaceSessionRooms(SESSION_ID, [
       {
         id: ROOM_ID,
         sessionId: SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: RoomType.MAIN,
         createdAt: 1,
       },
@@ -80,7 +80,7 @@ describe('SessionWorkspaceCenterPane', () => {
     // Seed a "Green Room" room and override selection to it so the component
     // derives isGreenroomChatMode = true from the store.
     useStore.getState().replaceSessionRooms(SESSION_ID, [
-      { id: ROOM_ID, sessionId: SESSION_ID, name: 'Main Room', type: RoomType.MAIN, createdAt: 1 },
+      { id: ROOM_ID, sessionId: SESSION_ID, name: 'Main', type: RoomType.MAIN, createdAt: 1 },
       {
         id: GREENROOM_ID,
         sessionId: SESSION_ID,

@@ -105,7 +105,7 @@ describe('chat routes', () => {
     mocks.getRoom.mockResolvedValue({
       id: ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
     })
 

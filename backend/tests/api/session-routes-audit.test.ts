@@ -214,7 +214,7 @@ describe('session routes audit appends', () => {
       {
         id: MAIN_ROOM_ID,
         sessionId: SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: 'MAIN',
       },
     ])
@@ -241,11 +241,11 @@ describe('session routes audit appends', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: '55555555-5555-4555-8555-555555555555',
       greenRoomName: 'Green Room',
       targetRoomId: MAIN_ROOM_ID,
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       targetState: 'ACTIVE',
       movedUsers: 0,
     })
@@ -421,11 +421,11 @@ describe('session routes audit appends', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: '55555555-5555-4555-8555-555555555555',
       greenRoomName: 'Green Room',
       targetRoomId: MAIN_ROOM_ID,
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       targetState: 'PAUSED',
       movedUsers: 2,
       users: [
@@ -472,11 +472,11 @@ describe('session routes audit appends', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: '55555555-5555-4555-8555-555555555555',
       greenRoomName: 'Green Room',
       targetRoomId: MAIN_ROOM_ID,
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       targetState: 'PAUSED',
       movedUsers: 1,
       users: [
@@ -535,7 +535,7 @@ describe('session routes audit appends', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: '55555555-5555-4555-8555-555555555555',
       greenRoomName: 'Green Room',
       targetRoomId: '55555555-5555-4555-8555-555555555555',

@@ -29,7 +29,7 @@ export function NotePublishDialog(props: NotePublishDialogProps) {
           <div className="mt-4 flex flex-col gap-2">
             {props.rooms.map((room) => {
               const memberCount = props.roomMemberIdsByRoomId[room.id]?.length || 0
-              const roomLabel = room.type === RoomType.MAIN ? 'Main room' : 'Group'
+              const roomLabel = room.type === RoomType.MAIN ? 'Main' : 'Group'
 
               return (
                 <button

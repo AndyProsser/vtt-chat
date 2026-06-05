@@ -4,7 +4,7 @@ import { DEFAULT_PLAYER_META_LINE } from '@/constants/voiceGroup.constants'
 import type { GroupPanelGroupWithParticipants, GroupParticipantStatus } from '@/types/groupPanel'
 
 export function getDisplayGroupName(group: GroupPanelGroupWithParticipants): string {
-  if (group.type === RoomType.MAIN && group.name.trim().toLowerCase() === 'main room') {
+  if (group.type === RoomType.MAIN) {
     return 'Main'
   }
 

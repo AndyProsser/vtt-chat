@@ -1066,7 +1066,7 @@ async function deleteRoomHandler(req: Request, res: Response) {
     if (room.type === RoomType.MAIN) {
       return res
         .status(400)
-        .json({ code: ErrorCode.INVALID_INPUT, message: 'Main room cannot be deleted' })
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Main Group cannot be deleted' })
     }
 
     if (room.type === RoomType.PRIVATE) {
@@ -1277,7 +1277,7 @@ async function closeRoomHandler(req: Request, res: Response) {
     if (room.type === RoomType.MAIN) {
       return res
         .status(400)
-        .json({ code: ErrorCode.INVALID_INPUT, message: 'Main room cannot be closed' })
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Main Group cannot be closed' })
     }
 
     if (room.type === RoomType.PRIVATE) {

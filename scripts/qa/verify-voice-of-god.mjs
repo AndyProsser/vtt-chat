@@ -216,7 +216,7 @@ async function runVerification() {
   await api(`/api/session/${session.id}/join`, { method: 'POST', token: users.p2.token })
 
   const roomsResponse = await api(`/api/rooms/${session.id}`, { token: users.dm.token })
-  const mainRoom = roomsResponse.rooms.find((room) => room.name === 'Main Room')
+  const mainRoom = roomsResponse.rooms.find((room) => room.name === 'Main')
   const greenRoom = roomsResponse.rooms.find((room) => room.name === 'Green Room')
 
   if (!mainRoom || !greenRoom) {

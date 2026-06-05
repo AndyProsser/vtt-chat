@@ -179,11 +179,11 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
       mainRoomId: '44444444-4444-4444-8444-444444444444',
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: '55555555-5555-4555-8555-555555555555',
       greenRoomName: 'Green Room',
       targetRoomId: '44444444-4444-4444-8444-444444444444',
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       movedUsers: 2,
       targetState: 'ONLINE',
       users: [
@@ -271,7 +271,7 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: GREEN_ROOM_ID,
       greenRoomName: 'Green Room',
       targetRoomId: GREEN_ROOM_ID,
@@ -369,11 +369,11 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: GREEN_ROOM_ID,
       greenRoomName: 'Green Room',
       targetRoomId: MAIN_ROOM_ID,
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       movedUsers: 2,
       targetState: 'ONLINE',
       users: [
@@ -450,15 +450,15 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: '55555555-5555-4555-8555-555555555555',
       greenRoomName: 'Green Room',
       targetRoomId: MAIN_ROOM_ID,
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       movedUsers: 2,
       targetState: 'ONLINE',
       users: [
-        { id: DM_ID, username: 'dm-user', roomId: MAIN_ROOM_ID, roomName: 'Main Room' },
+        { id: DM_ID, username: 'dm-user', roomId: MAIN_ROOM_ID, roomName: 'Main' },
         {
           id: PLAYER_ID,
           username: 'alice',
@@ -482,7 +482,7 @@ describe('session state room orchestration', () => {
         userId: DM_ID,
         username: 'dm-user',
         roomId: MAIN_ROOM_ID,
-        roomName: 'Main Room',
+        roomName: 'Main',
         previousGroupId: null,
       },
       {
@@ -547,7 +547,7 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
       mainRoomId: '44444444-4444-4444-8444-444444444444',
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: GREEN_ROOM_ID,
       greenRoomName: 'Green Room',
       targetRoomId: GREEN_ROOM_ID,
@@ -574,7 +574,7 @@ describe('session state room orchestration', () => {
     })
   })
 
-  it('resets overrides and clears Main Room environment on PAUSED transition', async () => {
+  it('resets overrides and clears Main environment on PAUSED transition', async () => {
     const app = buildApp()
     const MAIN_ROOM_ID = '44444444-4444-4444-8444-444444444444'
     const GREEN_ROOM_ID = '55555555-5555-4555-8555-555555555555'
@@ -590,11 +590,11 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: GREEN_ROOM_ID,
       greenRoomName: 'Green Room',
       targetRoomId: MAIN_ROOM_ID,
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       movedUsers: 2,
       targetState: 'ONLINE',
       users: [
@@ -645,11 +645,11 @@ describe('session state room orchestration', () => {
 
       mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
         mainRoomId: MAIN_ROOM_ID,
-        mainRoomName: 'Main Room',
+        mainRoomName: 'Main',
         greenRoomId: GREEN_ROOM_ID,
         greenRoomName: 'Green Room',
         targetRoomId: testCase.targetRoomId,
-        targetRoomName: testCase.targetRoomId === GREEN_ROOM_ID ? 'Green Room' : 'Main Room',
+        targetRoomName: testCase.targetRoomId === GREEN_ROOM_ID ? 'Green Room' : 'Main',
         movedUsers: 2,
         targetState: testCase.targetRoomId === GREEN_ROOM_ID ? 'IDLE' : 'ONLINE',
         users: [

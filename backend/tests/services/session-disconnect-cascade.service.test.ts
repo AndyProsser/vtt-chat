@@ -122,7 +122,7 @@ describe('session disconnect cascade service', () => {
 
     mocks.applySessionStateRoomTransition.mockResolvedValue({
       mainRoomId: ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: ROOM_ID,
       greenRoomName: 'Green Room',
       targetRoomId: ROOM_ID,

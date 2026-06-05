@@ -265,7 +265,7 @@ describe('knowledge panels', () => {
                 roomId: ROOM_ID,
                 userId: PLAYER_ID,
                 authorUsername: 'Tara',
-                content: 'Tara joined main room',
+                content: 'Tara joined Main',
                 type: MessageType.OOC,
                 createdAt: '2026-04-23T11:00:00.000Z',
               },
@@ -287,7 +287,7 @@ describe('knowledge panels', () => {
     )
 
     expect(await screen.findByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
-    expect(screen.getByText('Tara joined main room')).toBeTruthy()
+    expect(screen.getByText('Tara joined Main')).toBeTruthy()
     expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
 
     firstRender.unmount()
@@ -305,7 +305,7 @@ describe('knowledge panels', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Session state changed from IDLE to ACTIVE')).toBeTruthy()
-      expect(screen.getByText('Tara joined main room')).toBeTruthy()
+      expect(screen.getByText('Tara joined Main')).toBeTruthy()
     })
 
     secondRender.unmount()
@@ -321,7 +321,7 @@ describe('knowledge panels', () => {
       />
     )
 
-    expect(await screen.findByText('Tara joined main room')).toBeTruthy()
+    expect(await screen.findByText('Tara joined Main')).toBeTruthy()
   })
 
   it('renders shared handouts in history as dedicated cards with markdown content', async () => {
@@ -460,7 +460,7 @@ describe('knowledge panels', () => {
               userId: PLAYER_ID,
               authorUsername: 'Tara',
               authorCharacterName: 'Seraphina Vale',
-              content: 'Tara joined main room',
+              content: 'Tara joined Main',
               type: MessageType.OOC,
               createdAt: '2026-05-24T19:05:00.000Z',
             },
@@ -482,10 +482,10 @@ describe('knowledge panels', () => {
       />
     )
 
-    expect(await screen.findByText('Tara joined main room')).toBeTruthy()
+    expect(await screen.findByText('Tara joined Main')).toBeTruthy()
     expect(screen.getByText('Seraphina Vale')).toBeTruthy()
     expect(screen.queryByText(/^Tara$/)).toBeNull()
-    expect(screen.getByText('Tara joined main room')).toBeTruthy()
+    expect(screen.getByText('Tara joined Main')).toBeTruthy()
     expect(screen.queryByText('[Session Started] The Emerald Crown #2')).toBeNull()
     expect(screen.queryByText('STARTED')).toBeNull()
   })

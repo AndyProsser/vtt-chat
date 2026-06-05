@@ -87,7 +87,7 @@ function createBaseStoreState() {
       {
         id: MAIN_ROOM_ID,
         sessionId: CURRENT_SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: RoomType.MAIN,
         createdAt: 1,
         createdBy: DM_ID,
@@ -189,7 +189,7 @@ function createDefaultFetchMock(options: {
             {
               id: MAIN_ROOM_ID,
               sessionId: CURRENT_SESSION_ID,
-              name: 'Main Room',
+              name: 'Main',
               type: RoomType.MAIN,
               createdBy: DM_ID,
               createdAt: 1,
@@ -271,7 +271,7 @@ function createDefaultFetchMock(options: {
             {
               id: NEXT_MAIN_ROOM_ID,
               sessionId: NEXT_SESSION_ID,
-              name: 'Main Room',
+              name: 'Main',
               type: RoomType.MAIN,
               createdBy: DM_ID,
               createdAt: 1,
@@ -586,7 +586,7 @@ describe('Session bookend integration', { timeout: 20000 }, () => {
               {
                 id: MAIN_ROOM_ID,
                 sessionId: CURRENT_SESSION_ID,
-                name: 'Main Room',
+                name: 'Main',
                 type: RoomType.MAIN,
                 createdBy: DM_ID,
                 createdAt: 1,

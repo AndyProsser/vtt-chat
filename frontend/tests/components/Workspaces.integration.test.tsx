@@ -202,7 +202,7 @@ describe('Workspaces integration', () => {
               {
                 id: ROOM_ONE_ID,
                 sessionId: SESSION_ID,
-                name: 'Main Room',
+                name: 'Main',
                 type: RoomType.MAIN,
                 createdAt: 1,
                 createdBy: DM_ID,
@@ -374,7 +374,7 @@ describe('Workspaces integration', () => {
               {
                 id: ROOM_ONE_ID,
                 sessionId: SESSION_ID,
-                name: 'Main Room',
+                name: 'Main',
                 type: RoomType.MAIN,
                 createdAt: 1,
                 createdBy: DM_ID,
@@ -764,7 +764,7 @@ describe('Workspaces integration', () => {
           {
             id: ROOM_ONE_ID,
             sessionId: SESSION_ID,
-            name: 'Main Room',
+            name: 'Main',
             type: RoomType.MAIN,
             createdAt: 1,
             createdBy: DM_ID,
@@ -861,7 +861,7 @@ describe('Workspaces integration', () => {
               {
                 id: ROOM_ONE_ID,
                 sessionId: SESSION_ID,
-                name: 'Main Room',
+                name: 'Main',
                 type: RoomType.MAIN,
                 createdBy: DM_ID,
                 createdAt: 1,
@@ -1068,7 +1068,7 @@ describe('Workspaces integration', () => {
           {
             id: ROOM_ONE_ID,
             sessionId: SESSION_ID,
-            name: 'Main Room',
+            name: 'Main',
             type: RoomType.MAIN,
             createdAt: 1,
             createdBy: DM_ID,
@@ -1168,7 +1168,7 @@ describe('Workspaces integration', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Launch campaign' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Select group Main Room/i })).toBeTruthy()
+      expect(screen.getByRole('button', { name: /Select group Main/i })).toBeTruthy()
       expect(screen.queryByRole('button', { name: /Select group Scout Team/i })).toBeNull()
       expect(screen.queryByRole('button', { name: /Select group Archive Cellar/i })).toBeNull()
     })
@@ -1707,7 +1707,7 @@ describe('Workspaces integration', () => {
                 userId: PLAYER_ID,
                 username: 'Tara',
                 eventType: 'USER_JOINED',
-                detail: 'Tara joined main room',
+                detail: 'Tara joined Main',
                 createdAt: '2026-04-23T11:00:00.000Z',
               },
             ],
@@ -2811,7 +2811,7 @@ describe('Workspaces integration', () => {
               {
                 id: ROOM_ONE_ID,
                 sessionId: SESSION_ID,
-                name: 'Main Room',
+                name: 'Main',
                 type: RoomType.MAIN,
                 createdBy: DM_ID,
                 createdAt: 1,

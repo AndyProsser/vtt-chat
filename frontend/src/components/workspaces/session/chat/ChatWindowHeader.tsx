@@ -100,7 +100,7 @@ export const ChatWindowHeader = memo(function ChatWindowHeader({
   isLoading,
   visibleMessageCount,
 }: ChatWindowHeaderProps) {
-  const headerTitle = isGreenroomMode ? 'Greenroom (OOC)' : 'Main Room'
+  const headerTitle = isGreenroomMode ? 'Greenroom (OOC)' : 'Main'
   const resolvedRoomName =
     roomName?.trim() || (isGreenroomMode ? ROOM_NAMES.greenRoom : ROOM_NAMES.mainRoom)
   const headerSubtitle = `${headerTitle} • ${resolvedRoomName}`

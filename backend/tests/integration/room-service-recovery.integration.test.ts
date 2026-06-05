@@ -165,7 +165,7 @@ describe('room service recovery integration', () => {
     seedRoom({
       id: MAIN_ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdBy: DM_ID,
     })
@@ -275,7 +275,7 @@ describe('room service recovery integration', () => {
     seedRoom({
       id: MAIN_ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdBy: DM_ID,
     })
@@ -327,7 +327,7 @@ describe('room service recovery integration', () => {
     seedRoom({
       id: MAIN_ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdBy: DM_ID,
     })
@@ -372,7 +372,7 @@ describe('room service recovery integration', () => {
     seedRoom({
       id: MAIN_ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdBy: DM_ID,
     })
@@ -448,7 +448,7 @@ describe('room service recovery integration', () => {
     seedRoom({
       id: MAIN_ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdBy: DM_ID,
     })

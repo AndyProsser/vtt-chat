@@ -45,7 +45,7 @@ describe('ChatWindow timeline behavior', () => {
         {
           id: MAIN_ROOM_ID,
           sessionId: SESSION_ID,
-          name: 'Main Room',
+          name: 'Main',
           type: RoomType.MAIN,
           createdAt: 1,
           createdBy: USER_ID,
@@ -458,7 +458,7 @@ describe('ChatWindow timeline behavior', () => {
             roomId: MAIN_ROOM_ID,
             authorId: USER_ID,
             authorUsername: 'Morgan',
-            content: 'Main room action',
+            content: 'Main action',
             type: MessageType.IC,
             isDmOnly: false,
             createdAt: 300,
@@ -475,7 +475,7 @@ describe('ChatWindow timeline behavior', () => {
         token="token"
         sessionId={SESSION_ID}
         roomId={MAIN_ROOM_ID}
-        roomName="Main Room"
+        roomName="Main"
         user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
       />
     )
@@ -487,7 +487,7 @@ describe('ChatWindow timeline behavior', () => {
       )
     })
 
-    expect(screen.getByText('Main room action')).toBeTruthy()
+    expect(screen.getByText('Main action')).toBeTruthy()
     expect(screen.getByText('STARTED')).toBeTruthy()
     expect(screen.queryByText('Greenroom aside')).toBeNull()
     expect(screen.queryByText('[Session Paused] Session Alpha')).toBeNull()
