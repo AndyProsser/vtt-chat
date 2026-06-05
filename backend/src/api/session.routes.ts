@@ -379,7 +379,7 @@ async function ensureJoinedMemberPresence(params: {
   const rooms = await getRooms(params.session.id)
   const mainRoom =
     rooms.find((room) => room.type === RoomType.MAIN) ||
-    rooms.find((room) => normalizeRoomName(room.name) === 'main room')
+    rooms.find((room) => normalizeRoomName(room.name) === 'main')
   const greenRoom =
     rooms.find((room) => normalizeRoomName(room.name) === 'green room') ||
     rooms.find((room) => normalizeRoomName(room.name) === 'green-room')
