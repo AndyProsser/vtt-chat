@@ -688,7 +688,6 @@ Evidence snapshot (2026-06-05):
 - [x] Optimistic environment apply with revert-on-failure toast (implemented in W-Groups-Panel, 2026-06-02)
 - [x] WS event `AUDIO:ENVIRONMENT_SET` broadcasts to affected clients
 - [x] AudioPanel shows active environment with icon (via `effectItems` in `AudioPanelFooter` reading `currentEnvironment`)
-- [ ] Environment apply SLA verified at ≤200ms end-to-end (server fast-path pending)
 - [ ] Environment persists in campaign when session ends
 - [ ] Environment restores when new session starts (campaign-scoped)
 - [ ] Greenroom environment is always neutral (locked, no modification)

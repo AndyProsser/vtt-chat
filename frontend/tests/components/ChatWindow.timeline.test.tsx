@@ -595,6 +595,40 @@ describe('ChatWindow timeline behavior', () => {
     expect(screen.queryByText('Old body')).toBeNull()
   })
 
+  it('renders condition messages inline with a small avatar and condition icon', () => {
+    renderWithTooltip(
+      <MessageList
+        currentUserId={String(USER_ID)}
+        activeRoomId={MAIN_ROOM_ID}
+        messages={
+          [
+            {
+              id: 'c1d0ffee-0000-4aba-8aba-abababababab' as UUID,
+              roomId: MAIN_ROOM_ID,
+              authorId: USER_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Elysia is Confused]',
+              type: MessageType.SYSTEM,
+              isDmOnly: false,
+              metadata: {
+                conditionMessage: {
+                  kind: 'CONDITION',
+                  targetUserId: USER_ID,
+                  presetName: 'Confused',
+                  isRemoval: false,
+                },
+              },
+              createdAt: Date.now(),
+            },
+          ] as any
+        }
+      />
+    )
+
+    expect(screen.getByText('E')).toBeTruthy()
+    expect(screen.getByText('Elysia is Confused')).toBeTruthy()
+  })
+
   it('renders day separators for editorial timeline grouping', () => {
     const yesterday = Date.now() - 24 * 60 * 60 * 1000
 

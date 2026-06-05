@@ -13,6 +13,13 @@ import { MessageType } from '@shared'
 import { parseNoteSharedMessage } from '@/utils/noteSharedMessage'
 import { useStore } from '@/hooks/useStore'
 import { MessageListVirtualized } from './MessageList.virtualized'
+
+interface ConditionMessageMetadata {
+  kind: 'CONDITION'
+  targetUserId: UUID
+  presetName?: string
+  isRemoval: boolean
+}
 export interface MessageListProps {
   sessionId: UUID
   messages: Message[]
@@ -39,6 +46,7 @@ export interface PreparedMessage {
   sessionBookendState: SessionBookendState | null
   isSessionNote: boolean
   noteShared: ParsedNoteSharedMessage | null
+  conditionMessage: ConditionMessageMetadata | null
   recapPrefix: string
   isSessionRecap: boolean
   isSessionSummary: boolean
@@ -357,6 +365,10 @@ function MessageListComponent({
         const noteShared = isSystem
           ? parseNoteSharedMessage({ content: msg.content, metadata: msg.metadata })
           : null
+        const conditionMessage =
+          isSystem && msg.metadata?.conditionMessage?.kind === 'CONDITION'
+            ? msg.metadata.conditionMessage
+            : null
         const recapPrefix = msg.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
           ? CAMPAIGN_BRIEF_PREFIX
           : SESSION_RECAP_PREFIX
@@ -366,10 +378,32 @@ function MessageListComponent({
         const isSelf = !isSystem && msg.authorId === currentUserId
         const roomName = msg.roomId ? roomDirectory?.[msg.roomId]?.name : undefined
         const authorProfile = participantDirectory?.[msg.authorId]
-        const authorName = isSystem
-          ? 'SYSTEM'
-          : authorProfile?.displayName || msg.authorUsername || 'Unknown'
-        const authorAvatarUrl = isSystem ? null : (authorProfile?.avatarUrl ?? null)
+        const conditionTargetProfile = conditionMessage
+          ? participantDirectory?.[conditionMessage.targetUserId]
+          : undefined
+
+        const parseFallbackConditionTargetName = (content: string): string | null => {
+          const stripped = content.replace(/^[\[]|[\]]$/g, '').trim()
+          const removalMatch = stripped.match(/^(.+?)'s condition was cleared$/)
+          if (removalMatch) return removalMatch[1]
+          const applyMatch = stripped.match(/^(.+?) is /)
+          return applyMatch?.[1] ?? null
+        }
+
+        const conditionTargetName = conditionMessage
+          ? (conditionTargetProfile?.displayName ?? parseFallbackConditionTargetName(msg.content))
+          : null
+
+        const authorName = conditionMessage
+          ? (conditionTargetName ?? 'Unknown')
+          : isSystem
+            ? 'SYSTEM'
+            : authorProfile?.displayName || msg.authorUsername || 'Unknown'
+        const authorAvatarUrl = conditionMessage
+          ? (conditionTargetProfile?.avatarUrl ?? null)
+          : isSystem
+            ? null
+            : (authorProfile?.avatarUrl ?? null)
         const whisperTargetNames =
           (msg.type === MessageType.WHISPER || msg.type === MessageType.DM) &&
           Array.isArray(msg.targetIds) &&
@@ -428,6 +462,7 @@ function MessageListComponent({
           sessionBookendState,
           isSessionNote,
           noteShared,
+          conditionMessage,
           recapPrefix,
           isSessionRecap,
           isSessionSummary,

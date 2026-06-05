@@ -71,8 +71,16 @@ export interface NoteSharedMessageMetadata {
   hashtags: string
 }
 
+export interface ConditionMessageMetadata {
+  kind: 'CONDITION'
+  targetUserId: UUID
+  presetName?: string
+  isRemoval: boolean
+}
+
 export interface MessageMetadataEntity {
   noteShared?: NoteSharedMessageMetadata
+  conditionMessage?: ConditionMessageMetadata
 }
 
 export interface MessageEntity {

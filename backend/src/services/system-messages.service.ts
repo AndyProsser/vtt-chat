@@ -276,6 +276,14 @@ export async function emitConditionSystemMessage(params: {
       dmId: params.dmId,
       content,
       type: MessageType.SYSTEM,
+      metadata: {
+        conditionMessage: {
+          kind: 'CONDITION',
+          targetUserId: params.targetUserId,
+          presetName: params.isRemoval ? undefined : (params.presetName ?? undefined),
+          isRemoval: params.isRemoval,
+        },
+      },
     })
 
     if (stored.sessionId) {

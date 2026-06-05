@@ -7,7 +7,7 @@ import {
   useDynamicRowHeight,
   useListCallbackRef,
 } from 'react-window'
-import { MessageType } from '@shared'
+import { MessageType, findConditionPreset } from '@shared'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
 import type { MessageListProps, PreparedMessage } from './MessageList'
 
@@ -254,6 +254,83 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
         timestampLabel={`${msg.editedAt ? 'edited · ' : ''}${relativeTime}`}
         timestampDateTime={new Date(msg.createdAt).toISOString()}
       />
+    )
+  }
+
+  if (prepared.conditionMessage) {
+    const conditionPreset = prepared.conditionMessage.presetName
+      ? findConditionPreset(prepared.conditionMessage.presetName)
+      : undefined
+    const iconName = prepared.conditionMessage.isRemoval
+      ? 'check_circle'
+      : (conditionPreset?.icon ?? 'psychology')
+    const conditionText = prepared.conditionMessage.isRemoval
+      ? `${prepared.authorName}'s condition was cleared`
+      : `${prepared.authorName} is ${conditionPreset?.label ?? prepared.conditionMessage.presetName ?? 'affected'}`
+
+    return (
+      <Fragment>
+        {showDaySeparator ? (
+          <div
+            className="session-message-list__day-separator"
+            aria-label={`Messages from ${dayLabel}`}
+          >
+            <span className="session-message-list__day-separator-line" aria-hidden="true" />
+            <span className="session-message-list__day-separator-pill">{dayLabel}</span>
+            <span className="session-message-list__day-separator-line" aria-hidden="true" />
+          </div>
+        ) : null}
+
+        {showRoomShift ? (
+          <div
+            className="session-message-list__room-shift"
+            aria-label={`Room shift to ${roomName}`}
+          >
+            <span className="session-message-list__room-shift-line" aria-hidden="true" />
+            <span
+              className={`session-message-list__room-shift-pill ${msg.roomId === data.activeRoomId ? 'session-message-list__room-shift-pill--active' : ''}`}
+            >
+              {msg.roomId === data.activeRoomId ? 'In ' : 'From '}
+              {roomName}
+            </span>
+          </div>
+        ) : null}
+
+        <article
+          className={`session-message-list__message ${msg.type === MessageType.WHISPER ? 'session-message-list__message--whisper' : ''} ${isSelf ? 'session-message-list__message--self' : ''} ${isGroupedWithPrevious ? 'session-message-list__message--grouped' : ''}`}
+        >
+          <div className="session-message-list__message-row">
+            <span
+              className={`session-message-list__message-avatar ${isSystem ? 'session-message-list__message-avatar--system' : ''}`}
+              aria-hidden="true"
+            >
+              {authorAvatarUrl ? (
+                <img src={authorAvatarUrl} alt="" />
+              ) : (
+                getAuthorInitial(authorName)
+              )}
+            </span>
+
+            <div className="session-message-list__message-content session-message-list__message-content--condition">
+              <div className="session-message-list__message-bubble session-message-list__message-bubble--condition">
+                <span
+                  className="session-message-list__message-condition-icon material-symbols-outlined"
+                  aria-hidden="true"
+                >
+                  {iconName}
+                </span>
+                <span className="session-message-list__message-bubble-text">{conditionText}</span>
+              </div>
+              <div className="session-message-list__message-footer">
+                <div className="session-message-list__message-timestamp">
+                  {msg.editedAt ? 'edited · ' : ''}
+                  {relativeTime}
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </Fragment>
     )
   }
 
