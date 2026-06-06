@@ -31,7 +31,12 @@ export function DmdxMonsterBlock({ parsed }: { parsed: DmdxParsed }) {
     <div className="dmdx-block dmdx-block--monster">
       <div className="dmdx-block__header">
         <div className="dmdx-block__header-text">
-          <span className="dmdx-block__type-label">Monster</span>
+          <span className="dmdx-block__type-label">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              pets
+            </span>
+            Monster
+          </span>
           <h4 className="dmdx-block__title">{name}</h4>
           {subtitle ? <p className="dmdx-block__meta">{subtitle}</p> : null}
         </div>

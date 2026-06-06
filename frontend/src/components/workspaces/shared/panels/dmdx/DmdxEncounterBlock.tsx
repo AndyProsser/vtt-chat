@@ -24,7 +24,12 @@ export function DmdxEncounterBlock({ parsed }: { parsed: DmdxParsed }) {
     <div className="dmdx-block dmdx-block--encounter">
       <div className="dmdx-block__header">
         <div className="dmdx-block__header-text">
-          <span className="dmdx-block__type-label">Encounter</span>
+          <span className="dmdx-block__type-label">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              mystery
+            </span>
+            Encounter
+          </span>
           <h4 className="dmdx-block__title">{name}</h4>
           <div className="dmdx-block__tag-row">
             {difficulty ? (

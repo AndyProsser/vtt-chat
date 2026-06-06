@@ -1,16 +1,19 @@
 /* DMDX Block Styles
- * Shared visual language for all 9 DMDX block types.
+ * D&D-style card/handout visual language for all 9 block types.
  * Each block type gets an accent color via --dmdx-accent.
  */
 
 .dmdx-block {
   --dmdx-accent: var(--color-info-text, #60a5fa);
-  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 28%, var(--color-border-soft));
-  border-left: 3px solid var(--dmdx-accent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--dmdx-accent) 5%, var(--color-surface));
-  padding: 0.65rem 0.8rem;
-  margin: 0.5rem 0;
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 40%, var(--color-border-soft));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dmdx-accent) 4%, var(--color-surface));
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 color-mix(in srgb, var(--dmdx-accent) 12%, transparent);
+  /* No top padding — header banner sits flush at top */
+  padding: 0 0.85rem 0.75rem;
+  margin: 0.6rem 0;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -33,12 +36,23 @@
 .dmdx-block--map       { --dmdx-accent: #38bdf8; } /* sky */
 .dmdx-block--timeline  { --dmdx-accent: #a3e635; } /* lime */
 
-/* ── Header ─────────────────────────────────────────── */
+/* ── Header banner ───────────────────────────────────────── */
+/* Negative horizontal margins break the header out to the card
+   edges, forming a full-width title band like a D&D stat block. */
 
 .dmdx-block__header {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
+  margin: 0 -0.85rem;
+  padding: 0.6rem 0.85rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--dmdx-accent) 24%, rgba(0, 0, 0, 0.1)),
+    color-mix(in srgb, var(--dmdx-accent) 14%, rgba(0, 0, 0, 0.25))
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--dmdx-accent) 45%, transparent);
+  border-radius: 7px 7px 0 0;
 }
 
 .dmdx-block__header-text {
@@ -52,20 +66,21 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--dmdx-accent);
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--dmdx-accent) 90%, white);
+  opacity: 0.8;
 }
 
 .dmdx-block__type-label .material-symbols-outlined {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
 .dmdx-block__title {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1.25;
@@ -73,34 +88,52 @@
 
 .dmdx-block__meta {
   margin: 0;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
+  font-size: 0.74rem;
+  color: color-mix(in srgb, var(--color-text-secondary) 85%, var(--dmdx-accent));
 }
 
 .dmdx-block__tag-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  margin-top: 0.15rem;
+  margin-top: 0.2rem;
+}
+
+/* Used by NPC block for tags in the card body */
+.dmdx-block__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 
 .dmdx-block__tag {
   display: inline-block;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--dmdx-accent) 15%, var(--color-surface));
-  color: var(--color-text-secondary);
-  font-size: 0.72rem;
-  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 25%, transparent);
+  background: color-mix(in srgb, var(--dmdx-accent) 16%, rgba(0, 0, 0, 0.2));
+  color: color-mix(in srgb, var(--color-text-secondary) 80%, var(--dmdx-accent));
+  font-size: 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 28%, transparent);
 }
 
+/* Section label with extending rule — like a D&D chapter heading */
 .dmdx-block__section-label {
-  margin: 0 0 0.25rem;
-  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.2rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-secondary);
+  letter-spacing: 0.09em;
+  color: var(--dmdx-accent);
+}
+
+.dmdx-block__section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--dmdx-accent) 28%, transparent);
 }
 
 .dmdx-block__list {
@@ -142,10 +175,11 @@
 /* ── NPC ─────────────────────────────────────────────── */
 
 .dmdx-npc__portrait-placeholder {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--dmdx-accent) 20%, var(--color-surface));
+  background: color-mix(in srgb, var(--dmdx-accent) 22%, rgba(0, 0, 0, 0.3));
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 40%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,10 +193,15 @@
 
 /* ── Monster ─────────────────────────────────────────── */
 
+/* Stat row styled as a structured panel, like the 5e stat block */
 .dmdx-monster__stats {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1rem;
+  gap: 0.4rem 1rem;
+  padding: 0.4rem 0.55rem;
+  background: color-mix(in srgb, var(--dmdx-accent) 6%, rgba(0, 0, 0, 0.2));
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 18%, transparent);
 }
 
 .dmdx-monster__stat {
@@ -175,9 +214,10 @@
   margin-right: 0.2rem;
 }
 
+/* Ability score hexes — mimic the iconic 5e stat block grid */
 .dmdx-monster__abilities {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.3rem;
   flex-wrap: wrap;
 }
 
@@ -185,10 +225,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 0.3rem 0.4rem;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--dmdx-accent) 8%, var(--color-surface));
+  padding: 0.35rem 0.4rem;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--dmdx-accent) 8%, rgba(0, 0, 0, 0.2));
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 22%, transparent);
   min-width: 44px;
+  flex: 1;
 }
 
 .dmdx-monster__ability-label {
@@ -200,7 +242,7 @@
 }
 
 .dmdx-monster__ability-score {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--color-text-primary);
 }
@@ -231,6 +273,10 @@
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  padding: 0.35rem 0.5rem;
+  background: color-mix(in srgb, var(--dmdx-accent) 5%, rgba(0, 0, 0, 0.12));
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 16%, transparent);
 }
 
 .dmdx-encounter__difficulty {
@@ -251,7 +297,7 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
 }
 
 .dmdx-loot__item {
@@ -259,6 +305,12 @@
   align-items: baseline;
   gap: 0.35rem;
   color: var(--color-text-primary);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+}
+
+.dmdx-loot__item:nth-child(odd) {
+  background: color-mix(in srgb, var(--dmdx-accent) 5%, rgba(0, 0, 0, 0.1));
 }
 
 .dmdx-loot__item-icon {
@@ -272,17 +324,23 @@
 /* ── Spell ───────────────────────────────────────────── */
 
 .dmdx-spell__school-icon {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   color: var(--dmdx-accent);
   flex-shrink: 0;
-  margin-top: 0.1rem;
+  margin-top: 0.05rem;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--dmdx-accent) 50%, transparent));
 }
 
+/* Spell stat table styled as a compact info panel */
 .dmdx-spell__stats {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.1rem 0.75rem;
+  gap: 0.12rem 0.75rem;
   margin: 0;
+  padding: 0.4rem 0.55rem;
+  background: color-mix(in srgb, var(--dmdx-accent) 5%, rgba(0, 0, 0, 0.15));
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 16%, transparent);
 }
 
 .dmdx-spell__stat-row {
@@ -292,7 +350,7 @@
 .dmdx-spell__stat-row dt {
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: var(--dmdx-accent);
   white-space: nowrap;
 }
 
@@ -316,17 +374,21 @@
 }
 
 /* ── Roll ────────────────────────────────────────────── */
+/* Roll block uses a row layout with no __header, so
+   restore full padding and keep as a compact inline card. */
 
 .dmdx-block--roll {
   flex-direction: row;
   align-items: center;
   gap: 0.6rem;
+  padding: 0.65rem 0.85rem;
 }
 
 .dmdx-roll__icon {
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   color: var(--dmdx-accent);
   flex-shrink: 0;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--dmdx-accent) 45%, transparent));
 }
 
 .dmdx-roll__body {
@@ -355,9 +417,10 @@
 }
 
 .dmdx-roll__avg {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--dmdx-accent);
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--dmdx-accent) 40%, transparent));
 }
 
 .dmdx-roll__range {
@@ -379,7 +442,8 @@
   gap: 0.5rem;
   padding: 0.5rem 0.6rem;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--dmdx-accent) 8%, var(--color-surface));
+  background: color-mix(in srgb, var(--dmdx-accent) 7%, rgba(0, 0, 0, 0.18));
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 18%, transparent);
   color: var(--color-text-secondary);
 }
 
@@ -433,7 +497,7 @@
   background: var(--dmdx-accent);
   flex-shrink: 0;
   margin-top: 3px;
-  box-shadow: 0 0 4px color-mix(in srgb, var(--dmdx-accent) 50%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--dmdx-accent) 60%, transparent);
 }
 
 .dmdx-timeline__event-body {
