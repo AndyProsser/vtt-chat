@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
   List,
@@ -51,6 +51,16 @@ type HistoryRow =
       timestampDateTime: string
     }
   | {
+      kind: 'condition-marker'
+      key: string
+      isRemoval: boolean
+      overrideType: 'CONDITION' | 'DISTANCE'
+      presetName?: string
+      targetName: string
+      timestampLabel: string
+      timestampISO: string
+    }
+  | {
       kind: 'message'
       key: string
       message: SessionHistoryMessage
@@ -85,6 +95,35 @@ function isHistoryDmWhisper(message: SessionHistoryMessage, sessionDmId?: UUID):
       Boolean(sessionDmId) &&
       message.authorId === sessionDmId)
   )
+}
+
+function parseHistoryConditionMessage(
+  content: string
+): { isRemoval: boolean; overrideType: 'CONDITION' | 'DISTANCE'; presetName?: string } | null {
+  if (!content.startsWith('[') || !content.endsWith(']')) return null
+  const stripped = content.slice(1, -1).trim()
+  if (stripped.match(/^.+? has returned to the party$/)) {
+    return { isRemoval: true, overrideType: 'DISTANCE' }
+  }
+  if (stripped.match(/^.+?'s condition was cleared$/)) {
+    return { isRemoval: true, overrideType: 'CONDITION' }
+  }
+  const applyMatch = stripped.match(/^.+? is (.+)$/)
+  if (applyMatch) {
+    const presetName = applyMatch[1]
+    return { isRemoval: false, presetName, overrideType: findDistancePreset(presetName) ? 'DISTANCE' : 'CONDITION' }
+  }
+  return null
+}
+
+function parseConditionTargetName(content: string): string | null {
+  const stripped = content.replace(/^\[|\]$/g, '').trim()
+  const removalCondition = stripped.match(/^(.+?)'s condition was cleared$/)
+  if (removalCondition) return removalCondition[1]
+  const removalDistance = stripped.match(/^(.+?) has returned to the party$/)
+  if (removalDistance) return removalDistance[1]
+  const apply = stripped.match(/^(.+?) is /)
+  return apply?.[1] ?? null
 }
 
 /**
@@ -164,6 +203,21 @@ export function flattenHistoryGroupsToRows(
         continue
       }
 
+      const conditionMarker = isSystem ? parseHistoryConditionMessage(message.content) : null
+
+      if (conditionMarker) {
+        rows.push({
+          kind: 'condition-marker',
+          key: `condition:${group.sessionId}:${message.id}`,
+          ...conditionMarker,
+          targetName: parseConditionTargetName(message.content) ?? 'Unknown',
+          timestampLabel: new Date(message.createdAt).toLocaleTimeString(),
+          timestampISO: new Date(message.createdAt).toISOString(),
+        })
+        previousMessage = message
+        continue
+      }
+
       const isGroupedWithPrevious = Boolean(
         previousMessage &&
         previousMessage.authorId === message.authorId &&
@@ -208,6 +262,9 @@ function estimateRowHeight(row: HistoryRow): number {
   }
   if (row.kind === 'note-shared') {
     return 160
+  }
+  if (row.kind === 'condition-marker') {
+    return 28
   }
   const length = row.message.content.length
   return Math.min(360, 64 + Math.ceil(length / 60) * 22)
@@ -392,6 +449,60 @@ function HistoryMessageRow({
   )
 }
 
+function HistoryConditionMarkerRow({
+  isRemoval,
+  overrideType,
+  presetName,
+  targetName,
+  timestampLabel,
+  timestampISO,
+}: {
+  isRemoval: boolean
+  overrideType: 'CONDITION' | 'DISTANCE'
+  presetName?: string
+  targetName: string
+  timestampLabel: string
+  timestampISO: string
+}) {
+  const isDistance = overrideType === 'DISTANCE'
+  const conditionPreset = !isDistance && presetName ? findConditionPreset(presetName) : undefined
+  const distancePreset = isDistance && presetName ? findDistancePreset(presetName) : undefined
+  const preset = conditionPreset ?? distancePreset
+  const label = preset?.label ?? presetName ?? (isDistance ? 'distant' : 'affected')
+
+  let iconName: string
+  let markerContent: React.ReactElement
+
+  if (isRemoval) {
+    iconName = isDistance ? 'person' : 'check_circle'
+    markerContent = isDistance
+      ? <><strong>{targetName}</strong> has returned to the party</>
+      : <><strong>{targetName}</strong>{`'s condition was cleared`}</>
+  } else {
+    iconName = preset?.icon ?? (isDistance ? 'social_distance' : 'psychology')
+    markerContent = <>{targetName} is <strong>{label}</strong></>
+  }
+
+  return (
+    <article
+      className={`session-message-list__condition-marker ${isDistance ? 'session-message-list__condition-marker--distance' : 'session-message-list__condition-marker--condition'} ${isRemoval ? 'session-message-list__condition-marker--removal' : ''}`}
+      role="status"
+    >
+      <span
+        className="session-message-list__condition-marker-icon material-symbols-outlined"
+        aria-hidden="true"
+      >
+        {iconName}
+      </span>
+      <span className="session-message-list__condition-marker-text">{markerContent}</span>
+      <span className="session-message-list__condition-marker-line" aria-hidden="true" />
+      <time className="session-message-list__condition-marker-time" dateTime={timestampISO}>
+        {timestampLabel}
+      </time>
+    </article>
+  )
+}
+
 function renderRow(row: HistoryRow) {
   if (row.kind === 'boundary') {
     return <HistoryBoundaryRow sessionName={row.sessionName} startedAtLabel={row.startedAtLabel} />
@@ -406,6 +517,18 @@ function renderRow(row: HistoryRow) {
         timestampLabel={row.timestampLabel}
         timestampDateTime={row.timestampDateTime}
         isExcerpt={row.note.excerptSource != null}
+      />
+    )
+  }
+  if (row.kind === 'condition-marker') {
+    return (
+      <HistoryConditionMarkerRow
+        isRemoval={row.isRemoval}
+        overrideType={row.overrideType}
+        presetName={row.presetName}
+        targetName={row.targetName}
+        timestampLabel={row.timestampLabel}
+        timestampISO={row.timestampISO}
       />
     )
   }
