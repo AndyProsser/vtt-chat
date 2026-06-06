@@ -30,7 +30,7 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ---
 
-## Phase 0: Core Reliability & Resilience 🟡
+## Phase 0: Core Reliability & Resilience 🟢
 
 _Prerequisite for all runtime work. State machine must be solid or the rest cascades with failures._
 
@@ -238,7 +238,7 @@ Evidence snapshot (2026-06-04):
 
 ---
 
-## Phase 1: UI/UX Foundation 🟡
+## Phase 1: UI/UX Foundation 🟢
 
 _Unblock user experience. DMs need clean, responsive controls. Players/spectators need clarity on state._
 
@@ -720,7 +720,7 @@ Evidence snapshot (2026-06-05 — environment persistence + greenroom lock):
 
 ---
 
-## Phase 3: Notes & Journal Foundation ✅
+## Phase 3: Notes & Journal Foundation 🟢
 
 _DM reference and player communication. DMDX markdown editor, pop-out windows, system message cards._
 
@@ -760,7 +760,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Notes-Visibility: Sharing and Handout Distribution
 
-**Status**: ✅ Done (SPECTATORS scope deferred)
+**Status**: 🟢 Done (SPECTATORS scope deferred)
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Editor
 
@@ -783,7 +783,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Journal-and-Popouts: Separate Windows for Notes and Journal
 
-**Status**: ✅ Done
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Visibility
 
@@ -815,7 +815,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-System-Messages: Condition and Distance Change Cards
 
-**Status**: ✅ Done
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Audio-Condition, W-Audio-Distance
 
@@ -845,7 +845,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-DM-Notes-to-Chat: Share Note to Chat Timeline
 
-**Status**: ✅ Done
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Notes-Visibility
 
