@@ -652,6 +652,20 @@ export function RoomSelector({
   )
 
   const displayedParticipantsByRoom = roomMoves.displayedParticipantsByRoom
+  const visibleNonDmParticipantsByRoom = useMemo(() => {
+    const next: Record<UUID, GroupParticipantWithGroupId[]> = {}
+
+    for (const [roomId, participants] of Object.entries(displayedParticipantsByRoom) as Array<
+      [UUID, GroupParticipantWithGroupId[]]
+    >) {
+      next[roomId] = participants.filter(
+        (participant) =>
+          participant.userId !== dmUserId && participant.roleLabel !== ROOM_ROLE_LABELS.dm
+      )
+    }
+
+    return next
+  }, [displayedParticipantsByRoom, dmUserId])
 
   const dmVoiceTargetRoom = useMemo(() => {
     const targetRoomId = canManageRooms ? selectedRoomId : dmParticipant?.roomId
@@ -717,24 +731,16 @@ export function RoomSelector({
       return mainRooms
     }
 
-    return mainRooms.filter((room) =>
-      (displayedParticipantsByRoom[room.id] || []).some(
-        (participant) => participant.userId !== dmUserId
-      )
-    )
-  }, [canManageRooms, displayedParticipantsByRoom, dmUserId, mainRooms])
+    return mainRooms.filter((room) => (visibleNonDmParticipantsByRoom[room.id] || []).length > 0)
+  }, [canManageRooms, mainRooms, visibleNonDmParticipantsByRoom])
 
   const visibleOtherRooms = useMemo(() => {
     if (canManageRooms) {
       return otherRooms
     }
 
-    return otherRooms.filter((room) =>
-      (displayedParticipantsByRoom[room.id] || []).some(
-        (participant) => participant.userId !== dmUserId
-      )
-    )
-  }, [canManageRooms, displayedParticipantsByRoom, dmUserId, otherRooms])
+    return otherRooms.filter((room) => (visibleNonDmParticipantsByRoom[room.id] || []).length > 0)
+  }, [canManageRooms, otherRooms, visibleNonDmParticipantsByRoom])
 
   const handleApplyEnvironment = useCallback(
     async (roomId: UUID, environmentName: string) => {
@@ -1321,9 +1327,7 @@ export function RoomSelector({
       return
     }
 
-    const targetedPlayers = (roomMoves.displayedParticipantsByRoom[selectedRoomId] || []).filter(
-      (participant) => participant.userId !== dmUserId
-    )
+    const targetedPlayers = visibleNonDmParticipantsByRoom[selectedRoomId] || []
     if (targetedPlayers.length > 0) {
       return
     }
@@ -1339,7 +1343,7 @@ export function RoomSelector({
     canManageRooms,
     dmUserId,
     onSelectRoom,
-    roomMoves.displayedParticipantsByRoom,
+    visibleNonDmParticipantsByRoom,
     selectedRoomId,
   ])
 
@@ -1440,7 +1444,7 @@ export function RoomSelector({
       key={room.id}
       room={room}
       selected={room.id === selectedRoomId}
-      participants={displayedParticipantsByRoom[room.id] || []}
+      participants={visibleNonDmParticipantsByRoom[room.id] || []}
       sessionId={sessionId}
       currentUserId={currentUser?.id ?? ('' as UUID)}
       canManageRooms={canManageRooms}

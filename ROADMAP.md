@@ -30,7 +30,7 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ---
 
-## Phase 0: Core Reliability & Resilience 🟡
+## Phase 0: Core Reliability & Resilience 🟢
 
 _Prerequisite for all runtime work. State machine must be solid or the rest cascades with failures._
 
@@ -238,7 +238,7 @@ Evidence snapshot (2026-06-04):
 
 ---
 
-## Phase 1: UI/UX Foundation 🟡
+## Phase 1: UI/UX Foundation 🟢
 
 _Unblock user experience. DMs need clean, responsive controls. Players/spectators need clarity on state._
 

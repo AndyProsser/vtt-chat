@@ -7,8 +7,9 @@ export interface NotesPublishRoom {
 }
 
 export interface NotesPublishTarget {
-  audience: 'EVERYONE' | 'ROOM'
+  audience: 'EVERYONE' | 'ROOM' | 'ALL_ROOMS'
   roomId?: UUID | null
+  roomIds?: UUID[] // For ALL_ROOMS: list of all room IDs to publish to
 }
 
 /** Target for the /surface endpoint — excerpt-based, scope-based handout delivery. */
