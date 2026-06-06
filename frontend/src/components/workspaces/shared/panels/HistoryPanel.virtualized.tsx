@@ -111,7 +111,11 @@ function parseHistoryConditionMessage(
   const applyMatch = stripped.match(/^.+? is (.+)$/)
   if (applyMatch) {
     const presetName = applyMatch[1]
-    return { isRemoval: false, presetName, overrideType: findDistancePreset(presetName) ? 'DISTANCE' : 'CONDITION' }
+    return {
+      isRemoval: false,
+      presetName,
+      overrideType: findDistancePreset(presetName) ? 'DISTANCE' : 'CONDITION',
+    }
   }
   return null
 }
@@ -475,12 +479,23 @@ function HistoryConditionMarkerRow({
 
   if (isRemoval) {
     iconName = isDistance ? 'person' : 'check_circle'
-    markerContent = isDistance
-      ? <><strong>{targetName}</strong> has returned to the party</>
-      : <><strong>{targetName}</strong>{`'s condition was cleared`}</>
+    markerContent = isDistance ? (
+      <>
+        <strong>{targetName}</strong> has returned to the party
+      </>
+    ) : (
+      <>
+        <strong>{targetName}</strong>
+        {`'s condition was cleared`}
+      </>
+    )
   } else {
     iconName = preset?.icon ?? (isDistance ? 'social_distance' : 'psychology')
-    markerContent = <>{targetName} is <strong>{label}</strong></>
+    markerContent = (
+      <>
+        {targetName} is <strong>{label}</strong>
+      </>
+    )
   }
 
   return (

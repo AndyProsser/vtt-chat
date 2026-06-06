@@ -271,13 +271,24 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
 
     if (isRemoval) {
       iconName = isDistance ? 'person' : 'check_circle'
-      markerText = isDistance
-        ? <><strong>{prepared.authorName}</strong> has returned to the party</>
-        : <><strong>{prepared.authorName}</strong>{`'s condition was cleared`}</>
+      markerText = isDistance ? (
+        <>
+          <strong>{prepared.authorName}</strong> has returned to the party
+        </>
+      ) : (
+        <>
+          <strong>{prepared.authorName}</strong>
+          {`'s condition was cleared`}
+        </>
+      )
     } else {
       iconName = preset?.icon ?? (isDistance ? 'social_distance' : 'psychology')
       const label = preset?.label ?? presetName ?? (isDistance ? 'distant' : 'affected')
-      markerText = <>{prepared.authorName} is <strong>{label}</strong></>
+      markerText = (
+        <>
+          {prepared.authorName} is <strong>{label}</strong>
+        </>
+      )
     }
 
     return (

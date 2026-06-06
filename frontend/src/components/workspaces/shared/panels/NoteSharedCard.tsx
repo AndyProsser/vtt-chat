@@ -55,7 +55,10 @@ export function NoteSharedCard({
           <div className="session-note-shared-card__label-row">
             <span className="session-note-shared-card__label">Handout Shared</span>
             {isExcerpt ? (
-              <span className="session-note-shared-card__excerpt-badge" title="Excerpt — open Notes tab for the full handout">
+              <span
+                className="session-note-shared-card__excerpt-badge"
+                title="Excerpt — open Notes tab for the full handout"
+              >
                 excerpt
               </span>
             ) : null}
@@ -66,7 +69,11 @@ export function NoteSharedCard({
 
       {isExcerpt ? (
         <p className="session-note-shared-card__full-note-hint">
-          <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px' }}>
+          <span
+            className="material-symbols-outlined"
+            aria-hidden="true"
+            style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px' }}
+          >
             menu_book
           </span>
           Full note available in the Notes tab
