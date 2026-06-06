@@ -84,6 +84,7 @@ export interface ConditionMessageMetadata {
   targetUserId: UUID
   presetName?: string
   isRemoval: boolean
+  overrideType?: 'CONDITION' | 'DISTANCE'
 }
 
 export interface MessageMetadataEntity {

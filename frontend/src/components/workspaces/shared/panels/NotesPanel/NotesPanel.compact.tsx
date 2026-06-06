@@ -31,7 +31,9 @@ interface NotesPanelCompactProps {
   onCreateRequest: () => void
   onSave: (
     noteId: string,
-    updates: Partial<Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers' | 'attachments'>>
+    updates: Partial<
+      Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers' | 'attachments'>
+    >
   ) => Promise<void>
   onDelete: (noteId: string) => Promise<void>
   onSurface: (noteId: string, target: NotesSurfaceTarget) => Promise<void>
@@ -123,7 +125,9 @@ export function NotesPanelCompact({
             onClick={() => setSelectedId(null)}
             aria-label="Back to notes list"
           >
-            <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              arrow_back
+            </span>
             <span>Notes</span>
           </button>
         </div>
@@ -158,7 +162,9 @@ export function NotesPanelCompact({
     <div className="notes-compact">
       <div className="notes-compact__header">
         <h3 className="notes-compact__heading">
-          <span className="material-symbols-outlined" aria-hidden="true">notes</span>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            notes
+          </span>
           Handouts
         </h3>
         {canEdit ? (
@@ -168,7 +174,9 @@ export function NotesPanelCompact({
             onClick={onCreateRequest}
             aria-label="Create handout"
           >
-            <span className="material-symbols-outlined" aria-hidden="true">note_add</span>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              note_add
+            </span>
           </button>
         ) : null}
       </div>
@@ -178,7 +186,9 @@ export function NotesPanelCompact({
           <p className="notes-compact__empty">Loading handouts…</p>
         ) : notes.length === 0 ? (
           <div className="ui-empty-panel" role="status">
-            <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+            <span className="material-symbols-outlined" aria-hidden="true">
+              auto_awesome
+            </span>
             <span>No handouts yet.</span>
           </div>
         ) : (

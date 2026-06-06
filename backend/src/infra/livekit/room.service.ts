@@ -12,8 +12,9 @@ let client: RoomServiceClient | null = null
 
 function getLiveKitRoomServiceClient(): RoomServiceClient {
   if (!client) {
-    const httpUrl = config.livekit.url
-      .replace(/^wss?:\/\//, (m) => (m.startsWith('wss') ? 'https://' : 'http://'))
+    const httpUrl = config.livekit.url.replace(/^wss?:\/\//, (m) =>
+      m.startsWith('wss') ? 'https://' : 'http://'
+    )
     client = new RoomServiceClient(httpUrl, config.livekit.apiKey, config.livekit.apiSecret)
   }
   return client
@@ -36,7 +37,10 @@ export async function enforceParticipantPublishPermission(params: {
       canPublishData: true,
       canSubscribe: true,
     })
-    logger.info('livekit', `Set canPublish=${params.canPublish} for ${params.userId} in room ${params.livekitRoomName}`)
+    logger.info(
+      'livekit',
+      `Set canPublish=${params.canPublish} for ${params.userId} in room ${params.livekitRoomName}`
+    )
   } catch (err) {
     logger.warn('livekit', 'Failed to update participant publish permission', {
       livekitRoomName: params.livekitRoomName,

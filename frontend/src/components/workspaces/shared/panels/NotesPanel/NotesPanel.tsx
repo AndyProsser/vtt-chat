@@ -334,7 +334,9 @@ export function NotesPanel({
               onClick={() => setShowCreateForm(false)}
               aria-label="Back to notes list"
             >
-              <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+              <span className="material-symbols-outlined" aria-hidden="true">
+                arrow_back
+              </span>
               <span>Notes</span>
             </button>
           </div>

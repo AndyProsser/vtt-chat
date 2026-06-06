@@ -2032,10 +2032,13 @@ describe('RoomSelector', () => {
           })
         }
         if (url.endsWith('/api/presence/session-1')) {
-          return new Response(JSON.stringify({ presence: [{ userId: 'user-2', primaryRoomId: 'room-scouts' }] }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          })
+          return new Response(
+            JSON.stringify({ presence: [{ userId: 'user-2', primaryRoomId: 'room-scouts' }] }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }
+          )
         }
         return new Response(JSON.stringify({ message: 'Unexpected request' }), { status: 500 })
       })

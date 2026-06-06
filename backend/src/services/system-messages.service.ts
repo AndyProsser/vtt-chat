@@ -1,6 +1,6 @@
 import { getPlayerPerspectiveJournalRoast, MessageType } from '@shared'
 import type { Role } from '@shared'
-import type { EventEnvelope, UUID } from '@shared'
+import type { EventEnvelope, UUID, MessageMetadataEntity } from '@shared'
 import type { SessionBoundaryType } from '@/types/session-boundary.types'
 import type { WebSocketManager } from '@/ws'
 import { sendMessage } from './chat.service'
@@ -163,7 +163,7 @@ function buildSystemChatEvent(message: {
   type: MessageType
   isDmOnly: boolean
   createdAt: number
-  metadata?: Record<string, unknown>
+  metadata?: MessageMetadataEntity
 }): EventEnvelope {
   return {
     id: crypto.randomUUID() as UUID,

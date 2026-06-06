@@ -140,7 +140,9 @@ export function NoteSurfaceDialog({
                   <label
                     key={player.id}
                     className={`flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm transition ${
-                      checked ? 'bg-brand/10 text-ui-primary' : 'text-ui-secondary hover:bg-ui-surface-hover'
+                      checked
+                        ? 'bg-brand/10 text-ui-primary'
+                        : 'text-ui-secondary hover:bg-ui-surface-hover'
                     }`}
                   >
                     <input

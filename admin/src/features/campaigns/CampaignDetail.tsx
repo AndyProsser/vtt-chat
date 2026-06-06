@@ -134,7 +134,9 @@ export function CampaignDetail({
 
             <label className="campaign-form-label" htmlFor="campaign-import-email-map">
               Member Email Map{' '}
-              <span className="campaign-form-label-hint">(optional — re-links members by email)</span>
+              <span className="campaign-form-label-hint">
+                (optional — re-links members by email)
+              </span>
             </label>
             <textarea
               id="campaign-import-email-map"

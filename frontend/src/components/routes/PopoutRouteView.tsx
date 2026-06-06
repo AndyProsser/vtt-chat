@@ -9,7 +9,7 @@
  *   /popout/journal/:sessionId — full-featured journal editor (DM) or read-only (player)
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
@@ -126,11 +126,13 @@ interface PopoutRouteViewProps {
  * Reads auth from sessionStorage (set by opener) and renders the appropriate pop-out view.
  */
 export function PopoutRouteView({ kind, noteId, sessionId }: PopoutRouteViewProps) {
-  const token = sessionStorage.getItem(POPOUT_STORAGE_TOKEN_KEY) ?? ''
-  const apiUrl = sessionStorage.getItem(POPOUT_STORAGE_API_URL_KEY) ?? ''
+  // Read popout auth from sessionStorage via lazy state initializers
+  // (avoids calling sessionStorage directly during render)
+  const [token] = useState<string>(() => sessionStorage.getItem(POPOUT_STORAGE_TOKEN_KEY) ?? '')
+  const [apiUrl] = useState<string>(() => sessionStorage.getItem(POPOUT_STORAGE_API_URL_KEY) ?? '')
 
   // Derive role from JWT (best-effort; token is not verified here — that's the server's job).
-  const role: Role = (() => {
+  const role: Role = useMemo(() => {
     try {
       const payload = JSON.parse(atob(token.split('.')[1] ?? '')) as { role?: string }
       const r = payload.role
@@ -139,7 +141,7 @@ export function PopoutRouteView({ kind, noteId, sessionId }: PopoutRouteViewProp
       // fall through
     }
     return Role.PLAYER
-  })()
+  }, [token])
 
   if (!token || !apiUrl) {
     return (

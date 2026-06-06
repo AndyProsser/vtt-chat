@@ -101,10 +101,7 @@ describe('audio ws handlers', () => {
       },
     })
 
-    expect(mocks.loggerInfo).toHaveBeenCalledWith(
-      'audio',
-      expect.stringContaining('muted')
-    )
+    expect(mocks.loggerInfo).toHaveBeenCalledWith('audio', expect.stringContaining('muted'))
   })
 
   it('logs errors from mute state handler failures', async () => {

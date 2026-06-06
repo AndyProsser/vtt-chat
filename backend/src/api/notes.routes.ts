@@ -852,9 +852,10 @@ router.post('/:noteId/surface', requireAuth, async (req: Request, res: Response)
   }
 
   if (scope === 'SELECTED' && selectedUserIds.length === 0) {
-    return res
-      .status(400)
-      .json({ code: ErrorCode.INVALID_INPUT, message: 'selectedUserIds required for SELECTED scope' })
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'selectedUserIds required for SELECTED scope',
+    })
   }
 
   const note = await getNoteById(noteId as UUID)
@@ -893,9 +894,7 @@ router.post('/:noteId/surface', requireAuth, async (req: Request, res: Response)
 
   // Resolve recipient player IDs from scope
   const sessionUsers = await getSessionUsers(session.id)
-  const allPlayerIds = sessionUsers
-    .filter((u) => u.role === 'PLAYER')
-    .map((u) => u.id as UUID)
+  const allPlayerIds = sessionUsers.filter((u) => u.role === 'PLAYER').map((u) => u.id as UUID)
 
   let recipientIds: UUID[]
   if (scope === 'PARTY') {
@@ -914,8 +913,7 @@ router.post('/:noteId/surface', requireAuth, async (req: Request, res: Response)
   }
 
   // Update note visibility to match scope
-  const nextVisibility =
-    scope === 'PARTY' ? NoteVisibility.PLAYERS_VISIBLE : NoteVisibility.CUSTOM
+  const nextVisibility = scope === 'PARTY' ? NoteVisibility.PLAYERS_VISIBLE : NoteVisibility.CUSTOM
   const nextAllowedUsers = scope === 'SELECTED' ? recipientIds : []
 
   let noteToSurface = note

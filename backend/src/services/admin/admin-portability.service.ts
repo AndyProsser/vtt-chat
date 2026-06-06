@@ -219,7 +219,9 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
       currentDm: { select: { id: true, username: true } },
       members: {
         include: {
-          user: { select: { id: true, username: true, displayName: true, email: true, role: true } },
+          user: {
+            select: { id: true, username: true, displayName: true, email: true, role: true },
+          },
         },
         orderBy: { joinedAt: 'asc' },
       },

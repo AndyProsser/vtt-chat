@@ -71,7 +71,9 @@ export function RoomSelector({
   const [touchFeedbackUserId, setTouchFeedbackUserId] = useState<UUID | null>(null)
   const [isDevResettingMocks, setIsDevResettingMocks] = useState(false)
   // Component-owned optimistic rooms state; synced from the actions hook each render.
-  const [optimisticRooms, setOptimisticRooms] = useState<Array<{ room: GroupPanelGroupWithParticipants; createdAt: number }>>([])
+  const [optimisticRooms, setOptimisticRooms] = useState<
+    Array<{ room: GroupPanelGroupWithParticipants; createdAt: number }>
+  >([])
   const createGroupWrapRef = useRef<HTMLDivElement | null>(null)
   const roomListRef = useRef<HTMLDivElement | null>(null)
   const environmentPickerLayerRef = useRef<HTMLDivElement | null>(null)
@@ -122,7 +124,10 @@ export function RoomSelector({
     () => (isGreenroom ? baseParticipants : baseParticipants.filter((p) => p.userId !== dmUserId)),
     [baseParticipants, dmUserId, isGreenroom]
   )
-  const baseWhisperRoom = useMemo(() => allRooms.find((r) => r.type === RoomType.PRIVATE), [allRooms])
+  const baseWhisperRoom = useMemo(
+    () => allRooms.find((r) => r.type === RoomType.PRIVATE),
+    [allRooms]
+  )
   const baseWhisperPlayerCount = useMemo(
     () => (baseWhisperRoom?.participants || []).filter((p) => p.userId !== dmUserId).length,
     [baseWhisperRoom, dmUserId]
@@ -132,13 +137,23 @@ export function RoomSelector({
 
   // Refs break circular deps: roomMoves is initialized before whisperFlow, but needs its callbacks.
   const noteWhisperEntryRef = useRef<(userId: UUID, fromRoomId: UUID) => void>(() => undefined)
-  const lastWhisperPlayerMovedOutRef = useRef<(mainRoomId: UUID) => Promise<void>>(async () => undefined)
+  const lastWhisperPlayerMovedOutRef = useRef<(mainRoomId: UUID) => Promise<void>>(
+    async () => undefined
+  )
   // setMoveErrorRef is wired after actions is initialized; whisperFlow calls it via the ref.
   const setMoveErrorRef = useRef<(err: string | null) => void>(() => undefined)
 
   const roomMoves = useRoomMoves({
-    apiUrl, token, sessionId, dmUserId, allRooms, visibleParticipants,
-    dmAutoTargetOnFirstPlayerJoin, broadcastModeEnabled, onToggleBroadcastMode, onSelectRoom,
+    apiUrl,
+    token,
+    sessionId,
+    dmUserId,
+    allRooms,
+    visibleParticipants,
+    dmAutoTargetOnFirstPlayerJoin,
+    broadcastModeEnabled,
+    onToggleBroadcastMode,
+    onSelectRoom,
     whisperRoomId: baseWhisperRoom?.id,
     whisperDisplayedPlayerCount: baseWhisperPlayerCount,
     onWhisperEntry: (userId, fromRoomId) => noteWhisperEntryRef.current(userId, fromRoomId),
@@ -147,28 +162,52 @@ export function RoomSelector({
   })
 
   const whisperFlow = useWhisperFlow({
-    apiUrl, token, sessionId, sessionState, dmUserId, allRooms,
+    apiUrl,
+    token,
+    sessionId,
+    sessionState,
+    dmUserId,
+    allRooms,
     displayedParticipantsByRoom: roomMoves.displayedParticipantsByRoom,
     pendingRoomMoves: roomMoves.pendingRoomMoves,
-    selectedRoomId, broadcastModeEnabled, canManageRooms,
-    onToggleBroadcastMode, onSelectRoom,
+    selectedRoomId,
+    broadcastModeEnabled,
+    canManageRooms,
+    onToggleBroadcastMode,
+    onSelectRoom,
     setMoveError: (err) => setMoveErrorRef.current(err),
     syncSessionTopologyFromServer: sync.syncSessionTopologyFromServer,
     getRoomMemberIdsFromServer: sync.getRoomMemberIdsFromServer,
   })
 
   const {
-    whisperRoom, whisperRooms, whisperActive, whisperModeLocked,
-    whisperEndBlockedByPendingMoves, noteWhisperEntry,
-    handleEndWhisper, rememberDmVoiceRoom, getRememberedDmVoiceRoom, setWhisperExitVoiceRoom,
+    whisperRoom,
+    whisperRooms,
+    whisperActive,
+    whisperModeLocked,
+    whisperEndBlockedByPendingMoves,
+    noteWhisperEntry,
+    handleEndWhisper,
+    rememberDmVoiceRoom,
+    getRememberedDmVoiceRoom,
+    setWhisperExitVoiceRoom,
   } = whisperFlow
 
   const actions = useRoomSelectorActions({
-    apiUrl, token, sessionId, dmUserId, canManageRooms, broadcastModeEnabled,
+    apiUrl,
+    token,
+    sessionId,
+    dmUserId,
+    canManageRooms,
+    broadcastModeEnabled,
     // GroupsPanelProps uses `'' | undefined`; actions hook expects `null | undefined`.
     selectedRoomId: selectedRoomId || null,
-    allRooms, onSelectRoom, onToggleBroadcastMode,
-    whisperModeLocked, whisperRoom, handleEndWhisper,
+    allRooms,
+    onSelectRoom,
+    onToggleBroadcastMode,
+    whisperModeLocked,
+    whisperRoom,
+    handleEndWhisper,
     rememberDmVoiceRoom,
     // useWhisperFlow returns `UUID | ''`; actions hook expects `UUID | null`.
     getRememberedDmVoiceRoom: () => getRememberedDmVoiceRoom() || null,
@@ -202,7 +241,9 @@ export function RoomSelector({
     if (optimisticRooms.length === 0) return
     const prune = () => {
       const now = Date.now()
-      setOptimisticRooms((state) => state.filter((e) => now - e.createdAt < OPTIMISTIC_ROOM_MAX_AGE_MS))
+      setOptimisticRooms((state) =>
+        state.filter((e) => now - e.createdAt < OPTIMISTIC_ROOM_MAX_AGE_MS)
+      )
     }
     prune()
     const id = window.setInterval(prune, 1000)
@@ -294,21 +335,26 @@ export function RoomSelector({
     if (!actions.moveError) return
     const timeout = window.setTimeout(() => actions.setMoveError(null), 5000)
     return () => window.clearTimeout(timeout)
-  }, [actions.moveError, actions.setMoveError])
+  }, [actions, actions.moveError, actions.setMoveError])
 
   useEffect(() => {
     if (!showCreateGroupModal && !environmentPickerRoomId) return
     const handleMouseDown = (event: MouseEvent) => {
       const target = event.target
       if (!(target instanceof Element)) return
-      if (showCreateGroupModal && createGroupWrapRef.current && !createGroupWrapRef.current.contains(target)) {
+      if (
+        showCreateGroupModal &&
+        createGroupWrapRef.current &&
+        !createGroupWrapRef.current.contains(target)
+      ) {
         setShowCreateGroupModal(false)
       }
       if (!environmentPickerRoomId) return
       const currentTrigger = target.closest('[data-room-env-trigger]')
       const triggerRoomId = currentTrigger?.getAttribute('data-room-env-trigger') as UUID | null
       const isInsideOpenPicker = environmentPickerLayerRef.current?.contains(target) ?? false
-      if (triggerRoomId !== environmentPickerRoomId && !isInsideOpenPicker) setEnvironmentPickerRoomId(null)
+      if (triggerRoomId !== environmentPickerRoomId && !isInsideOpenPicker)
+        setEnvironmentPickerRoomId(null)
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
@@ -325,7 +371,9 @@ export function RoomSelector({
 
   useEffect(() => {
     if (!selectedRoomId || !roomListRef.current) return
-    const node = roomListRef.current.querySelector<HTMLElement>(`[data-room-id="${selectedRoomId}"]`)
+    const node = roomListRef.current.querySelector<HTMLElement>(
+      `[data-room-id="${selectedRoomId}"]`
+    )
     if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'nearest' })
   }, [selectedRoomId])
 
@@ -338,7 +386,10 @@ export function RoomSelector({
       const listRect = listEl.getBoundingClientRect()
       const pickerRect = pickerEl.getBoundingClientRect()
       const bottomOverflow = pickerRect.bottom - (listRect.bottom - 8)
-      if (bottomOverflow > 0) { listEl.scrollBy({ top: bottomOverflow + 12, behavior: 'smooth' }); return }
+      if (bottomOverflow > 0) {
+        listEl.scrollBy({ top: bottomOverflow + 12, behavior: 'smooth' })
+        return
+      }
       const topOverflow = listRect.top + 8 - pickerRect.top
       if (topOverflow > 0) listEl.scrollBy({ top: -(topOverflow + 12), behavior: 'smooth' })
     })
@@ -346,18 +397,26 @@ export function RoomSelector({
   }, [environmentPickerRoomId])
 
   const displayedParticipantsByRoom = roomMoves.displayedParticipantsByRoom
-  const isDenseRoomLayout = canManageRooms && !isGreenroom && (visibleParticipants.length >= 10 || allRooms.length >= 4)
+  const isDenseRoomLayout =
+    canManageRooms && !isGreenroom && (visibleParticipants.length >= 10 || allRooms.length >= 4)
   const activeEnvironmentPickerRoomId = isGreenroom ? null : environmentPickerRoomId
 
   const visibleNonDmParticipantsByRoom = useMemo(() => {
     const next: Record<UUID, GroupParticipantWithGroupId[]> = {}
-    for (const [roomId, participants] of Object.entries(displayedParticipantsByRoom) as Array<[UUID, GroupParticipantWithGroupId[]]>) {
-      next[roomId] = participants.filter((p) => p.userId !== dmUserId && p.roleLabel !== ROOM_ROLE_LABELS.dm)
+    for (const [roomId, participants] of Object.entries(displayedParticipantsByRoom) as Array<
+      [UUID, GroupParticipantWithGroupId[]]
+    >) {
+      next[roomId] = participants.filter(
+        (p) => p.userId !== dmUserId && p.roleLabel !== ROOM_ROLE_LABELS.dm
+      )
     }
     return next
   }, [displayedParticipantsByRoom, dmUserId])
 
-  const dmParticipant = useMemo(() => baseParticipants.find((p) => p.userId === dmUserId), [baseParticipants, dmUserId])
+  const dmParticipant = useMemo(
+    () => baseParticipants.find((p) => p.userId === dmUserId),
+    [baseParticipants, dmUserId]
+  )
 
   const dmVoiceTargetRoom = useMemo(() => {
     const targetId = canManageRooms ? selectedRoomId : dmParticipant?.roomId
@@ -372,7 +431,8 @@ export function RoomSelector({
     if (dmParticipant) return { ...dmParticipant, roomId: resolvedRoomId }
     if (!currentUser) return null
     return {
-      userId: currentUser.id, username: currentUser.username,
+      userId: currentUser.id,
+      username: currentUser.username,
       avatarUrl: dmSelfPresence?.avatarUrl || null,
       characterName: currentUser.displayName || currentUser.username,
       playerName: currentUser.username,
@@ -392,22 +452,30 @@ export function RoomSelector({
   )
 
   const mainRooms = useMemo(
-    () => allRooms.filter((r) => r.type === RoomType.MAIN || (isGreenroom && isGreenRoomName(r.name))),
+    () =>
+      allRooms.filter((r) => r.type === RoomType.MAIN || (isGreenroom && isGreenRoomName(r.name))),
     [allRooms, isGreenroom]
   )
   const otherRooms = useMemo(
-    () => allRooms
-      .filter((r) => r.type !== RoomType.MAIN && !isGreenRoomName(r.name) && !isWhisperGroup(r))
-      .sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      allRooms
+        .filter((r) => r.type !== RoomType.MAIN && !isGreenRoomName(r.name) && !isWhisperGroup(r))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [allRooms]
   )
 
   const visibleMainRooms = useMemo(
-    () => canManageRooms ? mainRooms : mainRooms.filter((r) => (visibleNonDmParticipantsByRoom[r.id] || []).length > 0),
+    () =>
+      canManageRooms
+        ? mainRooms
+        : mainRooms.filter((r) => (visibleNonDmParticipantsByRoom[r.id] || []).length > 0),
     [canManageRooms, mainRooms, visibleNonDmParticipantsByRoom]
   )
   const visibleOtherRooms = useMemo(
-    () => canManageRooms ? otherRooms : otherRooms.filter((r) => (visibleNonDmParticipantsByRoom[r.id] || []).length > 0),
+    () =>
+      canManageRooms
+        ? otherRooms
+        : otherRooms.filter((r) => (visibleNonDmParticipantsByRoom[r.id] || []).length > 0),
     [canManageRooms, otherRooms, visibleNonDmParticipantsByRoom]
   )
 
@@ -456,8 +524,12 @@ export function RoomSelector({
         setEnvironmentPickerRoomId((cur) => (cur === roomId ? null : roomId))
       }}
       onSelectRoom={onSelectRoom}
-      onSetDmVoiceRoom={(roomId) => { void actions.handleSetDmVoiceRoom(roomId) }}
-      onDeleteGroup={(r) => { void actions.handleDeleteGroup(r, roomMoves) }}
+      onSetDmVoiceRoom={(roomId) => {
+        void actions.handleSetDmVoiceRoom(roomId)
+      }}
+      onDeleteGroup={(r) => {
+        void actions.handleDeleteGroup(r, roomMoves)
+      }}
       onRoomDragOver={roomMoves.handleRoomDragOver}
       onRoomDrop={roomMoves.handleRoomDrop}
       distanceTargets={GROUP_CARD_DISTANCE_TARGETS}
@@ -468,7 +540,9 @@ export function RoomSelector({
       onApplyMuteOverride={(userId, m) => actions.handleApplyMuteOverride(userId, m)}
       onApplyAudioOverride={(userId, ot, p) => actions.handleApplyAudioOverride(userId, ot, p)}
       onClearMemberEffects={(userId) => actions.handleClearMemberEffects(userId)}
-      onTakeOverPlayer={(userId) => { void handleTakeOverPlayer(userId) }}
+      onTakeOverPlayer={(userId) => {
+        void handleTakeOverPlayer(userId)
+      }}
       onMemberDragStart={roomMoves.handleMemberDragStart}
       onMemberDragEnd={roomMoves.handleMemberDragEnd}
       getDisplayRoomName={getDisplayGroupName}
@@ -485,8 +559,14 @@ export function RoomSelector({
           <h4>
             <Icon name="rooms" /> Groups
             {activeTakeoverUserId ? (
-              <span className="room-selector-header__takeover-pill" role="status" aria-live="polite">
-                <span className="material-symbols-outlined" aria-hidden="true">swap_horiz</span>
+              <span
+                className="room-selector-header__takeover-pill"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  swap_horiz
+                </span>
                 Takeover Active
               </span>
             ) : null}
@@ -509,8 +589,12 @@ export function RoomSelector({
             sessionId={sessionId}
             activeTakeoverUserId={activeTakeoverUserId || null}
             dmVoicePreset={dmVoicePreset}
-            onBroadcastToggle={() => { void actions.handleBroadcastToggleClick() }}
-            onDevReset={() => { void handleDevResetMocks() }}
+            onBroadcastToggle={() => {
+              void actions.handleBroadcastToggleClick()
+            }}
+            onDevReset={() => {
+              void handleDevResetMocks()
+            }}
             onReturnToUser={handleReturnToMyUser}
             onToggleCreateGroupModal={() => {
               setEnvironmentPickerRoomId(null)
@@ -518,8 +602,12 @@ export function RoomSelector({
             }}
             onCloseCreateGroupModal={() => setShowCreateGroupModal(false)}
             onCreateGroup={actions.handleCreateGroup}
-            onEndWhisper={() => { void handleEndWhisper() }}
-            onSelectVoicePreset={(preset) => { void actions.handleSetDmVoicePreset(preset) }}
+            onEndWhisper={() => {
+              void handleEndWhisper()
+            }}
+            onSelectVoicePreset={(preset) => {
+              void actions.handleSetDmVoicePreset(preset)
+            }}
           />
         </header>
 
@@ -570,12 +658,20 @@ export function RoomSelector({
               </section>
             ) : null}
 
-            <div className="room-selector-list" role="list" aria-label="Session groups" ref={roomListRef}>
+            <div
+              className="room-selector-list"
+              role="list"
+              aria-label="Session groups"
+              ref={roomListRef}
+            >
               {visibleMainRooms.length === 0 && visibleOtherRooms.length === 0 ? (
                 <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
               ) : (
                 <>
-                  <section className="room-selector-group-section" aria-label={ROOM_PRESENCE_COPY.mainGroup}>
+                  <section
+                    className="room-selector-group-section"
+                    aria-label={ROOM_PRESENCE_COPY.mainGroup}
+                  >
                     {visibleMainRooms.map(renderRoomCard)}
                   </section>
                   {visibleOtherRooms.length > 0 ? (
