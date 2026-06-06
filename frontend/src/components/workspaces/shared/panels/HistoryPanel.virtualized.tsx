@@ -6,7 +6,7 @@ import {
   type RowComponentProps,
   useDynamicRowHeight,
 } from 'react-window'
-import { MessageType, type UUID } from '@shared'
+import { MessageType, type UUID, findConditionPreset, findDistancePreset } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
 import type { SessionHistoryMessage } from '@/types/history'

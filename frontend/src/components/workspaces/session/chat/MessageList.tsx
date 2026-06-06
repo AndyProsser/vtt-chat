@@ -9,7 +9,7 @@ import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import type { UUID } from '@shared'
 import type { Message, SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
-import { MessageType } from '@shared'
+import { MessageType, findDistancePreset } from '@shared'
 import { parseNoteSharedMessage } from '@/utils/noteSharedMessage'
 import { useStore } from '@/hooks/useStore'
 import { MessageListVirtualized } from './MessageList.virtualized'
@@ -141,6 +141,32 @@ function parseSessionSummary(content: string): SessionSummaryStats | null {
   } catch {
     return null
   }
+}
+
+/**
+ * Content-based fallback for condition/distance messages that predate the
+ * metadata field being populated in WS events (history messages from DB).
+ * Returns a synthetic ConditionMessageMetadata when the content matches a
+ * known condition/distance pattern; null otherwise.
+ */
+function parseConditionMessageFallback(
+  content: string
+): Omit<ConditionMessageMetadata, 'kind' | 'targetUserId'> | null {
+  if (!content.startsWith('[') || !content.endsWith(']')) return null
+  const stripped = content.slice(1, -1).trim()
+  if (stripped.match(/^.+? has returned to the party$/)) {
+    return { isRemoval: true, overrideType: 'DISTANCE' }
+  }
+  if (stripped.match(/^.+?'s condition was cleared$/)) {
+    return { isRemoval: true, overrideType: 'CONDITION' }
+  }
+  const applyMatch = stripped.match(/^.+? is (.+)$/)
+  if (applyMatch) {
+    const presetName = applyMatch[1]
+    const overrideType = findDistancePreset(presetName) ? 'DISTANCE' : 'CONDITION'
+    return { isRemoval: false, presetName, overrideType }
+  }
+  return null
 }
 
 function formatDuration(ms: number): string {
@@ -366,10 +392,23 @@ function MessageListComponent({
         const noteShared = isSystem
           ? parseNoteSharedMessage({ content: msg.content, metadata: msg.metadata })
           : null
-        const conditionMessage =
-          isSystem && msg.metadata?.conditionMessage?.kind === 'CONDITION'
-            ? msg.metadata.conditionMessage
-            : null
+        const conditionMessage: ConditionMessageMetadata | null = (() => {
+          if (!isSystem) return null
+          if (msg.metadata?.conditionMessage?.kind === 'CONDITION') {
+            return msg.metadata.conditionMessage as ConditionMessageMetadata
+          }
+          if (isSessionBookend || isSessionNote || noteShared) return null
+          const c = msg.content
+          if (
+            c.startsWith(SESSION_RECAP_PREFIX) ||
+            c.startsWith(CAMPAIGN_BRIEF_PREFIX) ||
+            c.startsWith(SESSION_SUMMARY_PREFIX)
+          )
+            return null
+          const parsed = parseConditionMessageFallback(c)
+          if (!parsed) return null
+          return { kind: 'CONDITION', targetUserId: '' as UUID, ...parsed }
+        })()
         const recapPrefix = msg.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
           ? CAMPAIGN_BRIEF_PREFIX
           : SESSION_RECAP_PREFIX
