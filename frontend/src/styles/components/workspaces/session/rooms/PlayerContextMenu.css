@@ -1,5 +1,5 @@
 .room-context-menu {
-  min-width: 12rem;
+  min-width: 8rem;
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 72%, transparent);
   border-radius: 0.6rem;
   background: color-mix(in srgb, var(--color-surface) 96%, transparent);
@@ -12,7 +12,7 @@
 }
 
 .room-context-menu--sub {
-  min-width: 10.5rem;
+  min-width: 7.5rem;
 }
 
 .room-context-menu__item {
@@ -75,4 +75,3 @@
     background-color 120ms ease,
     border-color 120ms ease;
 }
-
