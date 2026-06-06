@@ -1,26 +1,21 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
-import {
-  getWorkspacePanelIcon,
-  getWorkspacePanelLabel,
-  getWorkspacePanelTabsForRole,
-} from '@/utils/workspacePanelPolicy'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui'
+import { getWorkspacePanelTabsForRole } from '@/utils/workspacePanelPolicy'
+import { Tabs, TabsContent, TooltipProvider } from '@/components/ui'
 import type { CenterPaneView, RightRailTab } from '@/types/ui'
-import { Icon } from '@/components/ui/Icon'
 import { telemetryClient } from '@/utils/telemetry'
 import type { ToolbarActionModel, ToolbarPlaceholderAction } from '@/types/toolbar'
+import { WorkspaceDock } from './WorkspaceDock'
+import {
+  CenterPaneSlot,
+  LeftRailSlot,
+  ToolbarSlot,
+  formatIndicatorCount,
+  normalizeIndicatorCount,
+} from './WorkspaceFrame.slots'
 import '@/styles/components/workspaces/session/SessionWorkspaceFrame.css'
 
 export type { CenterPaneView, RightRailTab } from '@/types/ui'
@@ -45,58 +40,6 @@ interface SessionWorkspaceFrameProps {
   chatIndicatorCount?: number
   forcedRightRailTab?: RightRailTab | null
   onForcedRightRailTabApplied?: () => void
-}
-
-type ToolbarSlotProps = {
-  renderToolbar: SessionWorkspaceFrameProps['renderToolbar']
-  toolbarModel: ToolbarActionModel
-}
-
-const ToolbarSlot = memo(
-  function ToolbarSlot({ renderToolbar, toolbarModel }: ToolbarSlotProps) {
-    return <>{renderToolbar(toolbarModel)}</>
-  },
-  (previous, next) =>
-    previous.renderToolbar === next.renderToolbar && previous.toolbarModel === next.toolbarModel
-)
-
-type LeftRailSlotProps = {
-  renderLeftRail: SessionWorkspaceFrameProps['renderLeftRail']
-  leftRailActions: {
-    openRightRailTab: (tab: RightRailTab) => void
-    openInformationPanel: () => void
-  }
-}
-
-const LeftRailSlot = memo(
-  function LeftRailSlot({ renderLeftRail, leftRailActions }: LeftRailSlotProps) {
-    return <>{renderLeftRail(leftRailActions)}</>
-  },
-  (previous, next) =>
-    previous.renderLeftRail === next.renderLeftRail &&
-    previous.leftRailActions === next.leftRailActions
-)
-
-type CenterPaneSlotProps = {
-  renderCenterPane: SessionWorkspaceFrameProps['renderCenterPane']
-  view: CenterPaneView
-}
-
-const CenterPaneSlot = memo(
-  function CenterPaneSlot({ renderCenterPane, view }: CenterPaneSlotProps) {
-    return <>{renderCenterPane(view)}</>
-  },
-  (previous, next) =>
-    previous.renderCenterPane === next.renderCenterPane && previous.view === next.view
-)
-
-function normalizeIndicatorCount(rawCount: number | undefined): number {
-  if (!Number.isFinite(rawCount)) return 0
-  return Math.max(0, Math.floor(rawCount ?? 0))
-}
-
-function formatIndicatorCount(count: number): string {
-  return count > 99 ? '99+' : String(count)
 }
 
 export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
@@ -460,130 +403,19 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
           )}
         </div>
 
-        <aside
-          className="knowledge-panels__right-rail-dock"
-          aria-label="Tools"
-          data-ui-component="SessionWorkspaceDock"
-        >
-          {tooltipLabelsEnabled ? (
-            <TooltipProvider delayDuration={140}>
-              <Tabs value={activeRightRailTab}>
-                <TabsList className="knowledge-panels__right-rail-toolbar" aria-label="Tool panels">
-                  {isDockLayout ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label="Open chat"
-                          aria-pressed={isChatDockOpen}
-                          className="knowledge-panels__right-rail-trigger"
-                          data-state={isChatDockOpen ? 'active' : 'inactive'}
-                          onClick={(event) => {
-                            handleChatDockClick(event.timeStamp)
-                          }}
-                        >
-                          <Icon name="chat" />
-                          {chatBadgeCount > 0 ? (
-                            <span
-                              className="knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--chat"
-                              aria-hidden="true"
-                            >
-                              {formatIndicatorCount(chatBadgeCount)}
-                            </span>
-                          ) : null}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="left">Chat</TooltipContent>
-                    </Tooltip>
-                  ) : null}
-                  {tabs.map((tab) => {
-                    const label = getWorkspacePanelLabel(tab)
-                    const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
-
-                    return (
-                      <Tooltip key={tab}>
-                        <TooltipTrigger asChild>
-                          <TabsTrigger
-                            value={tab}
-                            aria-label={`Tool ${label}`}
-                            className="knowledge-panels__right-rail-trigger"
-                            onClick={(event) => {
-                              handleRightRailTabClick(tab, event.timeStamp)
-                            }}
-                          >
-                            <Icon name={getWorkspacePanelIcon(tab)} />
-                            {indicatorCount > 0 ? (
-                              <span
-                                className={`knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--${tab}`}
-                                aria-hidden="true"
-                              >
-                                {formatIndicatorCount(indicatorCount)}
-                              </span>
-                            ) : null}
-                          </TabsTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">{label}</TooltipContent>
-                      </Tooltip>
-                    )
-                  })}
-                </TabsList>
-              </Tabs>
-            </TooltipProvider>
-          ) : (
-            <Tabs value={activeRightRailTab}>
-              <TabsList className="knowledge-panels__right-rail-toolbar" aria-label="Tool panels">
-                {isDockLayout ? (
-                  <button
-                    type="button"
-                    aria-label="Open chat"
-                    aria-pressed={isChatDockOpen}
-                    className="knowledge-panels__right-rail-trigger"
-                    data-state={isChatDockOpen ? 'active' : 'inactive'}
-                    onClick={(event) => {
-                      handleChatDockClick(event.timeStamp)
-                    }}
-                  >
-                    <Icon name="chat" />
-                    {chatBadgeCount > 0 ? (
-                      <span
-                        className="knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--chat"
-                        aria-hidden="true"
-                      >
-                        {formatIndicatorCount(chatBadgeCount)}
-                      </span>
-                    ) : null}
-                  </button>
-                ) : null}
-                {tabs.map((tab) => {
-                  const label = getWorkspacePanelLabel(tab)
-                  const indicatorCount = normalizeIndicatorCount(rightRailIndicators[tab])
-
-                  return (
-                    <TabsTrigger
-                      key={tab}
-                      value={tab}
-                      aria-label={`Tool ${label}`}
-                      className="knowledge-panels__right-rail-trigger"
-                      onClick={(event) => {
-                        handleRightRailTabClick(tab, event.timeStamp)
-                      }}
-                    >
-                      <Icon name={getWorkspacePanelIcon(tab)} />
-                      {indicatorCount > 0 ? (
-                        <span
-                          className={`knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--${tab}`}
-                          aria-hidden="true"
-                        >
-                          {formatIndicatorCount(indicatorCount)}
-                        </span>
-                      ) : null}
-                    </TabsTrigger>
-                  )
-                })}
-              </TabsList>
-            </Tabs>
-          )}
-        </aside>
+        <WorkspaceDock
+          tabs={tabs}
+          activeRightRailTab={activeRightRailTab}
+          isDockLayout={isDockLayout}
+          isChatDockOpen={isChatDockOpen}
+          chatBadgeCount={chatBadgeCount}
+          rightRailIndicators={rightRailIndicators}
+          tooltipLabelsEnabled={tooltipLabelsEnabled}
+          onChatDockClick={handleChatDockClick}
+          onTabClick={handleRightRailTabClick}
+          formatIndicatorCount={formatIndicatorCount}
+          normalizeIndicatorCount={normalizeIndicatorCount}
+        />
       </div>
     </section>
   )

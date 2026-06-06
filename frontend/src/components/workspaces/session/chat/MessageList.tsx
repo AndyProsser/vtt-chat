@@ -7,20 +7,36 @@
 import { memo, useMemo, useRef } from 'react'
 import type { RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import type { UUID } from '@shared'
-import type { Message, SessionBookendState, SessionSummaryStats } from '@/types/chat'
-import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
-import { MessageType, findDistancePreset } from '@shared'
+import type { Message } from '@/types/chat'
+import { MessageType } from '@shared'
 import { parseNoteSharedMessage } from '@/utils/noteSharedMessage'
 import { useStore } from '@/hooks/useStore'
 import { MessageListVirtualized } from './MessageList.virtualized'
+import type { ConditionMessageMetadata, PreparedMessage } from './MessageList.types'
+import {
+  DEFAULT_GROUPING_WINDOW_MS,
+  EMPTY_PARTICIPANT_DIRECTORY,
+  EMPTY_SESSION_PRESENCE,
+  SYSTEM_USER_ID,
+  SESSION_BOOKEND_PREFIXES,
+  SESSION_NOTE_PREFIX,
+  SESSION_RECAP_PREFIX,
+  CAMPAIGN_BRIEF_PREFIX,
+  SESSION_SUMMARY_PREFIX,
+  TYPE_VARIANTS,
+  TYPE_ICON_BY_VARIANT,
+  countOwnKeys,
+  parseSessionSummary,
+  parseConditionMessageFallback,
+  getSessionBookendState,
+  formatBookendTimestamp,
+  formatRelativeTime,
+  dayKey,
+  formatDayLabel,
+} from './MessageList.helpers'
 
-interface ConditionMessageMetadata {
-  kind: 'CONDITION'
-  targetUserId: UUID
-  presetName?: string
-  isRemoval: boolean
-  overrideType?: 'CONDITION' | 'DISTANCE'
-}
+export type { ConditionMessageMetadata, PreparedMessage }
+
 export interface MessageListProps {
   sessionId: UUID
   messages: Message[]
@@ -37,220 +53,6 @@ export interface MessageListProps {
   activeRoomId?: string
   hideIntermissionMarkers?: boolean
   emptyDayLabel?: string
-}
-
-export interface PreparedMessage {
-  msg: Message
-  variant: 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'
-  isSystem: boolean
-  isSessionBookend: boolean
-  sessionBookendState: SessionBookendState | null
-  isSessionNote: boolean
-  noteShared: ParsedNoteSharedMessage | null
-  conditionMessage: ConditionMessageMetadata | null
-  recapPrefix: string
-  isSessionRecap: boolean
-  isSessionSummary: boolean
-  summaryStats: SessionSummaryStats | null
-  isSelf: boolean
-  roomName?: string
-  authorName: string
-  authorAvatarUrl: string | null
-  whisperRouteEntries: string[]
-  hasWhisperRoute: boolean
-  isDmWhisper: boolean
-  bubbleWhisperClass: string
-  typeIconClass: string
-  typeIcon: string
-  isGroupedWithPrevious: boolean
-  showRoomShift: boolean
-  showDaySeparator: boolean
-  dayLabel: string | null
-  relativeTime: string
-  bookendTime: string | null
-}
-
-const DEFAULT_GROUPING_WINDOW_MS = 5 * 60 * 1000
-const EMPTY_PARTICIPANT_DIRECTORY: Record<
-  UUID,
-  {
-    displayName: string
-    avatarUrl?: string | null
-  }
-> = {}
-const EMPTY_SESSION_PRESENCE: Record<
-  UUID,
-  {
-    username: string
-    avatarUrl?: string | null
-    characterName?: string | null
-  }
-> = {}
-
-function countOwnKeys(record: Record<string, unknown>): number {
-  let total = 0
-  for (const _key in record) {
-    total += 1
-  }
-  return total
-}
-
-const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'> = {
-  [MessageType.IC]: 'ic',
-  [MessageType.OOC]: 'ooc',
-  [MessageType.WHISPER]: 'whisper',
-  [MessageType.DM]: 'dm',
-  [MessageType.SYSTEM]: 'system',
-}
-
-const TYPE_ICON_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system', string> = {
-  ic: 'swords',
-  ooc: 'chat_bubble',
-  whisper: 'visibility_off',
-  dm: 'mail',
-  system: 'info',
-}
-
-const TYPE_LABEL_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system', string> = {
-  ic: 'In Character',
-  ooc: 'Out of Character',
-  whisper: 'Whisper',
-  dm: 'DM',
-  system: 'System',
-}
-
-const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000'
-const SESSION_BOOKEND_PREFIXES = [
-  'Session Start:',
-  'Session End:',
-  '[Session Started]',
-  '[Session Ended]',
-  '[Session Paused]',
-  '[Session Resumed]',
-  '[Session Cooldown]',
-]
-const SESSION_NOTE_PREFIX = 'Session Note:'
-const SESSION_RECAP_PREFIX = '[Last Session]'
-const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
-const SESSION_SUMMARY_PREFIX = '[Session Summary]'
-
-function parseSessionSummary(content: string): SessionSummaryStats | null {
-  try {
-    const json = content.slice(SESSION_SUMMARY_PREFIX.length).trim()
-    return JSON.parse(json) as SessionSummaryStats
-  } catch {
-    return null
-  }
-}
-
-/**
- * Content-based fallback for condition/distance messages that predate the
- * metadata field being populated in WS events (history messages from DB).
- * Returns a synthetic ConditionMessageMetadata when the content matches a
- * known condition/distance pattern; null otherwise.
- */
-function parseConditionMessageFallback(
-  content: string
-): Omit<ConditionMessageMetadata, 'kind' | 'targetUserId'> | null {
-  if (!content.startsWith('[') || !content.endsWith(']')) return null
-  const stripped = content.slice(1, -1).trim()
-  if (stripped.match(/^.+? has returned to the party$/)) {
-    return { isRemoval: true, overrideType: 'DISTANCE' }
-  }
-  if (stripped.match(/^.+?'s condition was cleared$/)) {
-    return { isRemoval: true, overrideType: 'CONDITION' }
-  }
-  const applyMatch = stripped.match(/^.+? is (.+)$/)
-  if (applyMatch) {
-    const presetName = applyMatch[1]
-    const overrideType = findDistancePreset(presetName) ? 'DISTANCE' : 'CONDITION'
-    return { isRemoval: false, presetName, overrideType }
-  }
-  return null
-}
-
-function getSessionBookendState(content: string): SessionBookendState | null {
-  if (content.startsWith('[Session Started]') || content.startsWith('Session Start:')) {
-    return 'started'
-  }
-  if (content.startsWith('[Session Ended]') || content.startsWith('Session End:')) {
-    return 'ended'
-  }
-  if (content.startsWith('[Session Paused]')) {
-    return 'paused'
-  }
-  if (content.startsWith('[Session Resumed]')) {
-    return 'resumed'
-  }
-  if (content.startsWith('[Session Cooldown]')) {
-    return 'cooldown'
-  }
-
-  return null
-}
-
-function formatBookendTimestamp(ts: number): string {
-  return new Date(ts).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
-function formatRelativeTime(ts: number): string {
-  const diffMs = Date.now() - ts
-  const seconds = Math.max(1, Math.floor(diffMs / 1000))
-
-  if (seconds < 60) {
-    return `${seconds} second${seconds === 1 ? '' : 's'} ago`
-  }
-
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) {
-    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`
-  }
-
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) {
-    return `${hours} hour${hours === 1 ? '' : 's'} ago`
-  }
-
-  const days = Math.floor(hours / 24)
-  return `${days} day${days === 1 ? '' : 's'} ago`
-}
-
-function dayKey(ts: number): string {
-  const date = new Date(ts)
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-}
-
-function formatDayLabel(ts: number): string {
-  const targetDate = new Date(ts)
-  const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const startOfTarget = new Date(
-    targetDate.getFullYear(),
-    targetDate.getMonth(),
-    targetDate.getDate()
-  )
-  const deltaDays = Math.round(
-    (startOfTarget.getTime() - startOfToday.getTime()) / (24 * 60 * 60 * 1000)
-  )
-
-  if (deltaDays === 0) {
-    return 'Today'
-  }
-
-  if (deltaDays === -1) {
-    return 'Yesterday'
-  }
-
-  return targetDate.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
 }
 
 function areMessageListPropsEqual(previous: MessageListProps, next: MessageListProps): boolean {
@@ -321,15 +123,10 @@ function MessageListComponent({
         hasChanged = true
       }
 
-      nextDirectory[participantUserId] = {
-        displayName: nextDisplayName,
-        avatarUrl: nextAvatarUrl,
-      }
+      nextDirectory[participantUserId] = { displayName: nextDisplayName, avatarUrl: nextAvatarUrl }
     }
 
-    if (!hasChanged) {
-      return previousDirectory
-    }
+    if (!hasChanged) return previousDirectory
 
     participantDirectoryRef.current = nextDirectory
     return nextDirectory
@@ -378,7 +175,7 @@ function MessageListComponent({
           ? participantDirectory?.[conditionMessage.targetUserId]
           : undefined
 
-        const parseFallbackConditionTargetName = (content: string): string | null => {
+        const parseFallbackTargetName = (content: string): string | null => {
           const stripped = content.replace(/^[\[]|[\]]$/g, '').trim()
           const removalMatch = stripped.match(/^(.+?)'s condition was cleared$/)
           if (removalMatch) return removalMatch[1]
@@ -389,9 +186,8 @@ function MessageListComponent({
         }
 
         const conditionTargetName = conditionMessage
-          ? (conditionTargetProfile?.displayName ?? parseFallbackConditionTargetName(msg.content))
+          ? (conditionTargetProfile?.displayName ?? parseFallbackTargetName(msg.content))
           : null
-
         const authorName = conditionMessage
           ? (conditionTargetName ?? 'Unknown')
           : isSystem
@@ -485,6 +281,7 @@ function MessageListComponent({
       }),
     [currentUserId, groupingWindowMs, messages, participantDirectory, roomDirectory, sessionDmId]
   )
+
   return (
     <MessageListVirtualized
       sessionId={sessionId}

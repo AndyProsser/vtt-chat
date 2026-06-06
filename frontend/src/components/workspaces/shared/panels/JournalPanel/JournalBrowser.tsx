@@ -5,10 +5,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Icon } from '@/components/ui/Icon'
 import { TruncatedTextWithTooltip } from '@/components/ui/TruncatedTextWithTooltip'
 import { useStore } from '@/hooks/useStore'
-import type { OptimisticSessionSelection, SessionJournalStatus } from '@/types/journalPanel'
+import type { OptimisticSessionSelection } from '@/types/journalPanel'
 import type { Session } from '@/types/session'
 import { buildMissingRecapCopy, normalizeCardHashtag } from '@/utils/journalPanel'
 import { JournalEditor } from './JournalEditor'
+import { useJournalStatuses } from './useJournalStatuses'
 
 interface JournalBrowserProps {
   apiUrl: string
@@ -31,9 +32,6 @@ export function JournalBrowser({
 }: JournalBrowserProps) {
   const isDm = role === 'DM'
   const currentSessionId = useStore((state) => state.currentSessionId)
-  const [journalStatusBySession, setJournalStatusBySession] = useState<
-    Record<string, SessionJournalStatus>
-  >({})
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
   const [editingSessionId, setEditingSessionId] = useState<UUID | null>(null)
   const [saveRequestVersionBySession, setSaveRequestVersionBySession] = useState<
@@ -42,13 +40,6 @@ export function JournalBrowser({
   // Track every session whose editor has been mounted; keep it mounted (hidden) thereafter
   // so re-expanding a card doesn't trigger a second fetch.
   const [mountedEditorIds, setMountedEditorIds] = useState<Set<string>>(new Set())
-
-  const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
-    setJournalStatusBySession((current) => ({
-      ...current,
-      [sessionId]: nextStatus,
-    }))
-  }, [])
 
   const eligibleSessions = useMemo(
     () =>
@@ -90,6 +81,14 @@ export function JournalBrowser({
         .join('|'),
     [recentSessions]
   )
+
+  const { journalStatusBySession, updateJournalStatus } = useJournalStatuses({
+    apiUrl,
+    token,
+    campaignId,
+    recentSessions,
+    recentSessionsStatusKey,
+  })
 
   // When a session is selected, register its editor for keep-alive mounting.
   useEffect(() => {
@@ -141,177 +140,6 @@ export function JournalBrowser({
   const handleCancelEditSelected = useCallback(() => {
     setEditingSessionId(null)
   }, [])
-
-  useEffect(() => {
-    let cancelled = false
-
-    if (recentSessions.length === 0) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    const loadStatuses = async () => {
-      try {
-        const res = await fetch(`${apiUrl}/api/journals/status`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            campaignId,
-            sessionIds: recentSessions.map((s) => s.id),
-          }),
-        })
-
-        if (!res.ok) {
-          return
-        }
-
-        const data = (await res.json()) as {
-          statuses?: Record<
-            string,
-            {
-              hasJournal: boolean
-              hasContent: boolean
-              hashtags: string[]
-              journalTitle?: string
-              journalUpdatedAt?: number
-              needsRecap?: boolean
-            }
-          >
-          statusList?: Array<{
-            sessionId?: string
-            hasJournal?: boolean
-            hasContent?: boolean
-            hashtags?: string[]
-            tags?: string[]
-            journalTitle?: string
-            title?: string
-            journalUpdatedAt?: number
-            updatedAt?: number
-            needsRecap?: boolean
-          }>
-          journals?: Record<
-            string,
-            {
-              hasJournal?: boolean
-              hasContent?: boolean
-              hashtags?: string[]
-              tags?: string[]
-              journalTitle?: string
-              title?: string
-              journalUpdatedAt?: number
-              updatedAt?: number
-              needsRecap?: boolean
-            }
-          >
-        }
-
-        if (!cancelled) {
-          const incomingStatuses = data.statuses ?? data.journals ?? {}
-          const statusListMap = (data.statusList ?? []).reduce<
-            Record<
-              string,
-              {
-                hasJournal?: boolean
-                hasContent?: boolean
-                hashtags?: string[]
-                tags?: string[]
-                journalTitle?: string
-                title?: string
-                journalUpdatedAt?: number
-                updatedAt?: number
-                needsRecap?: boolean
-              }
-            >
-          >((accumulator, entry) => {
-            const sessionId = entry.sessionId
-            if (!sessionId) {
-              return accumulator
-            }
-
-            accumulator[sessionId] = entry
-            return accumulator
-          }, {})
-
-          const resolvedIncoming = {
-            ...incomingStatuses,
-            ...statusListMap,
-          }
-
-          const normalizeStatus = (rawStatus?: {
-            hasJournal?: boolean
-            hasContent?: boolean
-            hashtags?: string[]
-            tags?: string[]
-            journalTitle?: string
-            title?: string
-            journalUpdatedAt?: number
-            updatedAt?: number
-            needsRecap?: boolean
-          }): SessionJournalStatus => {
-            if (!rawStatus) {
-              return {
-                hasJournal: false,
-                hasContent: false,
-                hashtags: [],
-                journalTitle: undefined,
-                journalUpdatedAt: undefined,
-                needsRecap: true,
-              }
-            }
-
-            const hashtags = Array.isArray(rawStatus.hashtags)
-              ? rawStatus.hashtags
-              : Array.isArray(rawStatus.tags)
-                ? rawStatus.tags
-                : []
-            const hasContent = Boolean(rawStatus.hasContent)
-            const hasJournal =
-              typeof rawStatus.hasJournal === 'boolean'
-                ? rawStatus.hasJournal
-                : hasContent || hashtags.length > 0
-
-            return {
-              hasJournal,
-              hasContent,
-              hashtags,
-              journalTitle: rawStatus.journalTitle ?? rawStatus.title,
-              journalUpdatedAt: rawStatus.journalUpdatedAt ?? rawStatus.updatedAt,
-              needsRecap:
-                typeof rawStatus.needsRecap === 'boolean' ? rawStatus.needsRecap : !hasContent,
-            }
-          }
-
-          // Rebuild status entries for current sessions so stale values cannot linger.
-          setJournalStatusBySession((prev) => {
-            const merged = { ...prev }
-
-            for (const session of recentSessions) {
-              const direct = resolvedIncoming[session.id]
-              const lower = resolvedIncoming[session.id.toLowerCase()]
-              const upper = resolvedIncoming[session.id.toUpperCase()]
-              merged[session.id] = normalizeStatus(direct ?? lower ?? upper)
-            }
-
-            return merged
-          })
-        }
-      } catch {
-        // Non-critical: cards degrade to unknown recap status
-      }
-    }
-
-    if (campaignId && recentSessions.length > 0) {
-      void loadStatuses()
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [apiUrl, campaignId, recentSessions, recentSessionsStatusKey, token])
 
   const recapSummary = useMemo(() => {
     const statuses = recentSessions.map((session) => journalStatusBySession[session.id])

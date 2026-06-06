@@ -4,14 +4,17 @@
  * Spectators are restricted to OOC only.
  */
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageType, RoomType, SessionState } from '@shared'
 import type { Role, UUID } from '@shared'
-import { TYPING_IDLE_TIMEOUT_MS } from '@/constants/chatPresence.constants'
 import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/hooks/useStore'
 import type { WhisperRecipientOption } from '@/types/chat'
 import { MessageTypeSelector } from './MessageTypeSelector'
+import { MessageInputWhisperPicker } from './MessageInputWhisperPicker'
+import { useWhisperRecipients } from './useWhisperRecipients'
+import { useTypingEmitter } from './useTypingEmitter'
+import { MESSAGE_TYPE_ORDER, ROLE_ALLOWED_TYPES, type ComposerMode } from './MessageInput.constants'
 
 interface MessageInputProps {
   onSend: (content: string, type: MessageType, recipientId?: string) => Promise<void>
@@ -27,33 +30,6 @@ interface MessageInputProps {
   roomType?: RoomType
 }
 
-const EMPTY_SESSION_PRESENCE: Record<
-  UUID,
-  {
-    username: string
-    avatarUrl?: string | null
-    characterName?: string | null
-    role?: Role | string
-    primaryRoomId?: UUID
-  }
-> = {}
-const EMPTY_WHISPER_RECIPIENTS: WhisperRecipientOption[] = []
-
-const MESSAGE_TYPE_ORDER: MessageType[] = [
-  MessageType.IC,
-  MessageType.OOC,
-  MessageType.WHISPER,
-  MessageType.DM,
-]
-
-const ROLE_ALLOWED_TYPES: Record<string, MessageType[]> = {
-  DM: [MessageType.IC, MessageType.OOC, MessageType.WHISPER],
-  PLAYER: [MessageType.IC, MessageType.OOC, MessageType.WHISPER, MessageType.DM],
-  SPECTATOR: [MessageType.OOC],
-}
-
-type ComposerMode = 'greenroom' | 'active' | 'active-whisper' | 'paused' | 'cooldown'
-
 function MessageInputComponent({
   onSend,
   onTypingStarted,
@@ -67,54 +43,35 @@ function MessageInputComponent({
   whisperRecipients = [],
   roomType,
 }: MessageInputProps) {
-  const whisperRecipientsCacheRef = useRef<WhisperRecipientOption[]>(EMPTY_WHISPER_RECIPIENTS)
   const sessionDmId = useStore((state) => {
-    if (!sessionId) {
-      return undefined
-    }
-
+    if (!sessionId) return undefined
     return ((state.sessions as any)[sessionId] as { dmId?: UUID } | undefined)?.dmId
   })
   const sessionState = useStore((state) => {
-    if (!sessionId) {
-      return undefined
-    }
-
+    if (!sessionId) return undefined
     return ((state.sessions as any)[sessionId] as { state?: SessionState } | undefined)?.state
   })
   const isDmRole = String(role) === 'DM'
   const currentUserPrimaryRoomId = useStore((state) => {
-    if (!sessionId || !currentUserId) {
-      return ''
-    }
-
+    if (!sessionId || !currentUserId) return ''
     return state.sessionPresence[sessionId]?.[currentUserId]?.primaryRoomId ?? ''
   })
   const currentUserPrimaryRoomType = useStore((state) => {
-    if (!sessionId || !currentUserPrimaryRoomId) {
-      return null
-    }
-
+    if (!sessionId || !currentUserPrimaryRoomId) return null
     return state.rooms[sessionId]?.[currentUserPrimaryRoomId]?.type ?? null
   })
   const isWhisperGroupMode =
     currentUserPrimaryRoomType === RoomType.PRIVATE ||
     (!currentUserPrimaryRoomType && roomType === RoomType.PRIVATE)
+
   const composerMode = useMemo<ComposerMode>(() => {
-    if (sessionState === SessionState.PAUSED) {
-      return 'paused'
-    }
-
-    if (sessionState === SessionState.COOLDOWN) {
-      return 'cooldown'
-    }
-
-    if (sessionState === SessionState.ACTIVE) {
+    if (sessionState === SessionState.PAUSED) return 'paused'
+    if (sessionState === SessionState.COOLDOWN) return 'cooldown'
+    if (sessionState === SessionState.ACTIVE)
       return isWhisperGroupMode ? 'active-whisper' : 'active'
-    }
-
     return 'greenroom'
   }, [isWhisperGroupMode, sessionState])
+
   const roleAllowedTypes = useMemo(
     () => ROLE_ALLOWED_TYPES[role as string] ?? [MessageType.OOC],
     [role]
@@ -123,14 +80,8 @@ function MessageInputComponent({
   const selectableTypes = useMemo(
     () =>
       MESSAGE_TYPE_ORDER.filter((messageType) => {
-        if (!roleAllowedTypes.includes(messageType)) {
-          return false
-        }
-
-        if (messageType === MessageType.DM) {
-          return canShowPlayerDmType
-        }
-
+        if (!roleAllowedTypes.includes(messageType)) return false
+        if (messageType === MessageType.DM) return canShowPlayerDmType
         return true
       }),
     [canShowPlayerDmType, roleAllowedTypes]
@@ -148,6 +99,7 @@ function MessageInputComponent({
         return forceMessageType ? [forceMessageType] : roleAllowedTypes
     }
   }, [composerMode, forceMessageType, roleAllowedTypes])
+
   const [selectedType, setSelectedType] = useState<MessageType>(
     forceMessageType ?? (isWhisperGroupMode ? MessageType.WHISPER : MessageType.OOC)
   )
@@ -156,83 +108,22 @@ function MessageInputComponent({
   const [isSending, setIsSending] = useState(false)
   const [isWhisperPickerOpen, setIsWhisperPickerOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isTypingRef = useRef(false)
   const previousComposerModeRef = useRef<ComposerMode | null>(null)
-  const effectiveWhisperRecipients = useStore((state) => {
-    if (!sessionId || !currentUserId) {
-      whisperRecipientsCacheRef.current = whisperRecipients
-      return whisperRecipients
-    }
 
-    const sessionPresence =
-      ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
-      EMPTY_SESSION_PRESENCE
-    const participants = Object.entries(sessionPresence) as Array<
-      [
-        UUID,
-        {
-          username: string
-          characterName?: string | null
-          avatarUrl?: string | null
-          role?: Role | string
-          primaryRoomId?: UUID
-        },
-      ]
-    >
-
-    if (participants.length === 0) {
-      if (whisperRecipientsCacheRef.current !== EMPTY_WHISPER_RECIPIENTS) {
-        whisperRecipientsCacheRef.current = EMPTY_WHISPER_RECIPIENTS
-      }
-      return EMPTY_WHISPER_RECIPIENTS
-    }
-
-    const nextRecipients = participants
-      .filter(([participantUserId, participant]) => {
-        if (participantUserId === currentUserId) {
-          return false
-        }
-
-        if (isDmRole) {
-          return true
-        }
-
-        if (participantUserId === sessionDmId) {
-          return false
-        }
-
-        return participant.primaryRoomId === currentRoomId
-      })
-      .map(([participantUserId, participant]) => ({
-        id: participantUserId,
-        label:
-          participant.characterName && participant.characterName.trim().length > 0
-            ? participant.characterName
-            : participant.username,
-        avatarUrl: participant.avatarUrl,
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label))
-
-    const previousRecipients = whisperRecipientsCacheRef.current
-    const isUnchanged =
-      previousRecipients.length === nextRecipients.length &&
-      previousRecipients.every((recipient, index) => {
-        const nextRecipient = nextRecipients[index]
-        return (
-          recipient.id === nextRecipient.id &&
-          recipient.label === nextRecipient.label &&
-          recipient.avatarUrl === nextRecipient.avatarUrl
-        )
-      })
-
-    if (isUnchanged) {
-      return previousRecipients
-    }
-
-    whisperRecipientsCacheRef.current = nextRecipients
-    return nextRecipients
+  const effectiveWhisperRecipients = useWhisperRecipients({
+    sessionId,
+    currentUserId,
+    currentRoomId,
+    isDmRole,
+    sessionDmId,
+    whisperRecipients,
   })
+
+  const { emitTypingStarted, emitTypingStopped, scheduleTypingStop } = useTypingEmitter({
+    onTypingStarted,
+    onTypingStopped,
+  })
+
   const type =
     composerMode === 'active-whisper'
       ? MessageType.WHISPER
@@ -266,13 +157,11 @@ function MessageInputComponent({
         MESSAGE_TYPE_ORDER.filter((messageType) => messageType !== MessageType.OOC)
       )
     }
-
     if (composerMode === 'active-whisper') {
       return new Set<MessageType>(
         MESSAGE_TYPE_ORDER.filter((messageType) => messageType !== MessageType.WHISPER)
       )
     }
-
     return new Set<MessageType>()
   }, [composerMode])
   const canShowWhisperPicker =
@@ -292,29 +181,15 @@ function MessageInputComponent({
 
   const inputPlaceholder = useMemo(() => {
     if (type === MessageType.WHISPER) {
-      if (isWhisperGroupMode) {
-        return 'Whisper to this private group... (Enter to send)'
-      }
-
-      if (selectedRecipient?.label) {
+      if (isWhisperGroupMode) return 'Whisper to this private group... (Enter to send)'
+      if (selectedRecipient?.label)
         return `Whisper to ${selectedRecipient.label}... (Enter to send)`
-      }
-
       return 'Whisper to a player... (Select target, then Enter to send)'
     }
-
-    if (type === MessageType.IC) {
-      return 'In character... (Enter to send, Shift+Enter for newline)'
-    }
-
-    if (type === MessageType.OOC) {
+    if (type === MessageType.IC) return 'In character... (Enter to send, Shift+Enter for newline)'
+    if (type === MessageType.OOC)
       return 'Out of character... (Enter to send, Shift+Enter for newline)'
-    }
-
-    if (type === MessageType.DM) {
-      return 'Message the DM privately... (Enter to send)'
-    }
-
+    if (type === MessageType.DM) return 'Message the DM privately... (Enter to send)'
     return 'Message... (Enter to send, Shift+Enter for newline)'
   }, [isWhisperGroupMode, selectedRecipient, type])
 
@@ -334,12 +209,8 @@ function MessageInputComponent({
           : (forceMessageType ?? null)
 
     if (forcedType) {
-      if (selectedType !== forcedType) {
-        setSelectedType(forcedType)
-      }
-      if (isWhisperPickerOpen) {
-        setIsWhisperPickerOpen(false)
-      }
+      if (selectedType !== forcedType) setSelectedType(forcedType)
+      if (isWhisperPickerOpen) setIsWhisperPickerOpen(false)
       previousComposerModeRef.current = composerMode
       return
     }
@@ -350,48 +221,9 @@ function MessageInputComponent({
       return
     }
 
-    if (!allowedTypes.includes(selectedType)) {
-      setSelectedType(MessageType.OOC)
-    }
+    if (!allowedTypes.includes(selectedType)) setSelectedType(MessageType.OOC)
     previousComposerModeRef.current = composerMode
   }, [allowedTypes, composerMode, forceMessageType, isWhisperPickerOpen, selectedType])
-
-  const emitTypingStarted = useCallback(() => {
-    if (isTypingRef.current) {
-      return
-    }
-
-    isTypingRef.current = true
-    onTypingStarted?.()
-  }, [onTypingStarted])
-
-  const emitTypingStopped = useCallback(() => {
-    if (!isTypingRef.current) {
-      return
-    }
-
-    isTypingRef.current = false
-    onTypingStopped?.()
-  }, [onTypingStopped])
-
-  const scheduleTypingStop = () => {
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current)
-    }
-
-    typingTimeoutRef.current = setTimeout(() => {
-      emitTypingStopped()
-    }, TYPING_IDLE_TIMEOUT_MS)
-  }
-
-  useEffect(() => {
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-      }
-      emitTypingStopped()
-    }
-  }, [emitTypingStopped])
 
   const handleSend = async () => {
     const trimmed = content.trim()
@@ -427,13 +259,9 @@ function MessageInputComponent({
         <div
           className="session-message-input__type-stack"
           onMouseEnter={() => {
-            if (canShowWhisperPicker) {
-              setIsWhisperPickerOpen(true)
-            }
+            if (canShowWhisperPicker) setIsWhisperPickerOpen(true)
           }}
-          onMouseLeave={() => {
-            setIsWhisperPickerOpen(false)
-          }}
+          onMouseLeave={() => setIsWhisperPickerOpen(false)}
         >
           <MessageTypeSelector
             visibleTypes={visibleTypes}
@@ -445,75 +273,30 @@ function MessageInputComponent({
             selectedRecipientLabel={selectedRecipient?.label ?? null}
             onSelect={(messageType) => {
               setSelectedType(messageType)
-              if (messageType !== MessageType.WHISPER) {
-                setIsWhisperPickerOpen(false)
-              }
-              if (messageType === MessageType.WHISPER && !isWhisperGroupMode) {
+              if (messageType !== MessageType.WHISPER) setIsWhisperPickerOpen(false)
+              if (messageType === MessageType.WHISPER && !isWhisperGroupMode)
                 setIsWhisperPickerOpen(true)
-              }
             }}
           />
 
           {canShowWhisperPicker && isWhisperPickerOpen ? (
-            <div
-              className={`session-message-input__whisper-picker ${isDmRole ? 'session-message-input__whisper-picker--dm' : ''}`.trim()}
+            <MessageInputWhisperPicker
+              isDmRole={isDmRole}
+              selectedRecipient={selectedRecipient}
+              recipients={effectiveWhisperRecipients}
+              validRecipientId={validRecipientId}
+              disabled={disabled}
+              isSending={isSending}
+              onSelect={(id) => {
+                setRecipientId(id)
+                setIsWhisperPickerOpen(false)
+              }}
               onMouseEnter={() => setIsWhisperPickerOpen(true)}
-            >
-              <div className="session-message-input__whisper-picker-header">
-                <span className="session-message-input__whisper-picker-title">Whisper to</span>
-                <span className="session-message-input__whisper-picker-current">
-                  {selectedRecipient?.label ?? 'Select a player'}
-                </span>
-              </div>
-              <div
-                className="session-message-input__whisper-picker-list"
-                role="listbox"
-                aria-label="Whisper recipients"
-              >
-                {effectiveWhisperRecipients.length > 0 ? (
-                  effectiveWhisperRecipients.map((option) => {
-                    const isSelected = option.id === validRecipientId
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        disabled={disabled || isSending}
-                        onClick={() => {
-                          setRecipientId(option.id)
-                          setIsWhisperPickerOpen(false)
-                        }}
-                        className={`session-message-input__whisper-recipient ${isSelected ? 'session-message-input__whisper-recipient--selected' : ''}`}
-                      >
-                        <span
-                          className="session-message-input__whisper-recipient-avatar"
-                          aria-hidden="true"
-                        >
-                          {option.avatarUrl ? (
-                            <img src={option.avatarUrl} alt="" />
-                          ) : (
-                            (option.label.trim()[0] || '?').toUpperCase()
-                          )}
-                        </span>
-                        <span className="session-message-input__whisper-recipient-name">
-                          {option.label}
-                        </span>
-                      </button>
-                    )
-                  })
-                ) : (
-                  <div className="session-message-input__whisper-empty">
-                    No visible players to whisper to.
-                  </div>
-                )}
-              </div>
-            </div>
+            />
           ) : null}
         </div>
       ) : null}
 
-      {/* Input row */}
       <div className="session-message-input__composer">
         <textarea
           ref={textareaRef}
@@ -521,15 +304,10 @@ function MessageInputComponent({
           onChange={(e) => {
             const nextValue = e.target.value
             setContent(nextValue)
-
             if (!nextValue.trim()) {
-              if (typingTimeoutRef.current) {
-                clearTimeout(typingTimeoutRef.current)
-              }
               emitTypingStopped()
               return
             }
-
             emitTypingStarted()
             scheduleTypingStop()
           }}

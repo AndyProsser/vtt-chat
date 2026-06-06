@@ -16,7 +16,6 @@ import {
   isGreenroomSessionState,
   type UUID,
 } from '@shared'
-import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/state/store'
 import { useToast } from '@/hooks/useToast'
 import { logger } from '@/utils/logger'
@@ -33,31 +32,9 @@ import { optimisticMoveMember, optimisticApplyEnvironment } from '@/services/gro
 import { isGreenRoomName } from '@/constants/roomPresence.constants'
 import '@/styles/components/workspaces/session/GroupsPanel.session.css'
 import SessionGroupCard from './GroupCard.session'
-
-const EMPTY_ROOM_MEMBERS: RoomUser[] = []
-
-function compareMembers(left: RoomUser, right: RoomUser): number {
-  if (left.role === Role.DM && right.role !== Role.DM) return -1
-  if (right.role === Role.DM && left.role !== Role.DM) return 1
-  return (left.characterName || left.playerName || left.username).localeCompare(
-    right.characterName || right.playerName || right.username
-  )
-}
-
-function sortMembersIfNeeded(members: RoomUser[]): RoomUser[] {
-  if (members.length < 2) {
-    return members
-  }
-
-  const sorted = [...members].sort(compareMembers)
-  for (let index = 0; index < sorted.length; index += 1) {
-    if (sorted[index] !== members[index]) {
-      return sorted
-    }
-  }
-
-  return members
-}
+import { DetachedDmCard } from './GroupsPanel.session.DetachedDmCard'
+import { GroupsPanelSessionHeader } from './GroupsPanel.session.Header'
+import { EMPTY_ROOM_MEMBERS, sortMembersIfNeeded } from './GroupsPanel.session.helpers'
 
 interface GroupsPanelSessionProps {
   sessionId: UUID
@@ -201,7 +178,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       next[room.id] = roomMembers[room.id] || EMPTY_ROOM_MEMBERS
     }
 
-    if (canManageGroups && resolvedDmMember) {
+    if (canManageGroups && resolvedDmMember && resolvedDmTargetRoomId) {
       for (const roomId of Object.keys(next) as UUID[]) {
         const members = next[roomId]
         if (!members.some((member) => member.userId === resolvedDmMember.userId)) {
@@ -423,38 +400,15 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
 
   return (
     <section className="session-groups-panel" aria-label="Groups panel">
-      <header className="session-groups-panel__header">
-        <div className="session-groups-panel__header-info">
-          <h3 className="session-groups-panel__title">
-            <Icon name="rooms" />
-            Groups
-          </h3>
-        </div>
-        {canCreateGroups ? (
-          <div className="session-groups-panel__create-row">
-            <input
-              type="text"
-              value={newGroupName}
-              onChange={(event) => setNewGroupName(event.target.value)}
-              placeholder="New group name"
-              className="session-groups-panel__create-input"
-              disabled={isCreating}
-            />
-            <button
-              type="button"
-              className="session-groups-panel__create-button"
-              onClick={() => {
-                void handleCreateGroup()
-              }}
-              disabled={isCreating || !newGroupName.trim()}
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                group_add
-              </span>
-            </button>
-          </div>
-        ) : null}
-      </header>
+      <GroupsPanelSessionHeader
+        canCreate={canCreateGroups}
+        isCreating={isCreating}
+        newGroupName={newGroupName}
+        onNameChange={setNewGroupName}
+        onCreateGroup={() => {
+          void handleCreateGroup()
+        }}
+      />
 
       <div className="session-groups-panel__body">
         {visibleRooms.length === 0 ? (
@@ -462,49 +416,10 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
         ) : (
           <div className="session-groups-panel__list">
             {detachedDmMember ? (
-              <article
-                className="session-groups-dm-detached"
-                data-ui-component="SessionGroupsDetachedDM"
-              >
-                <div className="session-groups-dm-detached__header">Dungeon Master</div>
-                <div className="session-groups-dm-detached__member">
-                  <span
-                    className={`session-groups-member-card__avatar session-groups-member-card__avatar--${detachedDmMember.presenceState === PresenceState.OFFLINE || detachedDmMember.presenceState === PresenceState.IDLE ? 'offline' : 'online'}`}
-                    aria-hidden="true"
-                  >
-                    {detachedDmMember.avatarUrl ? (
-                      <img src={detachedDmMember.avatarUrl} alt="" />
-                    ) : (
-                      (detachedDmMember.characterName || detachedDmMember.username || 'D')
-                        .charAt(0)
-                        .toUpperCase()
-                    )}
-                  </span>
-                  <div className="session-groups-member-card__body">
-                    <div className="session-groups-member-card__info">
-                      <span className="session-groups-member-card__char-name">
-                        {detachedDmMember.characterName || detachedDmMember.username}
-                      </span>
-                      {(detachedDmMember.playerName || detachedDmMember.username) !==
-                      (detachedDmMember.characterName || detachedDmMember.username) ? (
-                        <span className="session-groups-member-card__player-name">
-                          {detachedDmMember.playerName || detachedDmMember.username}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="session-groups-member-card__aside">
-                      <span className="session-groups-member-card__role-pill session-groups-member-card__role-pill--dm">
-                        DM
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="session-groups-dm-detached__footer">
-                  <span className="session-groups-dm-detached__target">
-                    Voice target: <strong>{detachedDmVoiceTargetRoomName || 'Main'}</strong>
-                  </span>
-                </div>
-              </article>
+              <DetachedDmCard
+                member={detachedDmMember}
+                voiceTargetRoomName={detachedDmVoiceTargetRoomName}
+              />
             ) : null}
             {visibleRooms.map((room) => {
               const members = membersByRoomId[room.id] || []

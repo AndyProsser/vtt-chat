@@ -17,14 +17,12 @@ import type { UUID } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '@/hooks/useLiveKit'
 import { useAudioEngine } from '@/hooks/useAudioEngine'
 import { useDmVoiceProcessor } from '@/hooks/useDmVoiceProcessor'
+import { useMicLevelMeter } from '@/hooks/useMicLevelMeter'
+import { useLocalSpeakingDetection } from '@/hooks/useLocalSpeakingDetection'
 import { useStore } from '@/hooks/useStore'
 import {
   AUDIO_BROADCAST_TRACK_PREFIX,
   AUDIO_ROOM_TRACK_PREFIX,
-  LOCAL_SPEAKING_EVALUATION_INTERVAL_MS,
-  LOCAL_SPEAKING_HOLD_MS,
-  LOCAL_SPEAKING_RELEASE_LEVEL,
-  LOCAL_SPEAKING_TRIGGER_LEVEL,
 } from '@/constants/audioPanel.constants'
 import { AudioPanelFooter } from './AudioPanelFooter'
 import '@/styles/components/workspaces/session/audio/AudioPanel.css'
@@ -38,14 +36,7 @@ interface AudioPanelProps {
 export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const audioEngine = useAudioEngine()
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // Mic transmit level is updated at audio-frame rate (~60Hz). It is held in a
-  // ref (never React state) so neither AudioPanel nor its tooltip-heavy
-  // children re-render on every analyser frame. The meter UI subscribes to
-  // this ref via the MicLevelMeter leaf.
-  const localTransmitLevelRef = useRef(0)
   const trackParticipantByTrackIdRef = useRef(new Map<string, UUID>())
-  const localSpeakingRef = useRef(false)
-  const localSpeakingHoldUntilRef = useRef(0)
 
   const handleTrackSubscribed = useCallback(
     (trackSid: string, mediaStream: MediaStream, meta: { participantIdentity: string }) => {
@@ -241,145 +232,15 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     }
   }, [device.enabled, device.microphoneOn, initializeAudio])
 
-  useEffect(() => {
-    const localTrack = livekit.localAudioTrack
-    const localInputTrack = livekit.localInputTrack
-    const localPublications = Array.from(
-      livekit.room?.localParticipant.audioTrackPublications?.values?.() ?? []
-    )
-    const publicationFallback = localPublications.find((publication) => publication.track)
-    const fallbackTrack = publicationFallback?.track
-    const mediaStreamTrack =
-      localInputTrack ??
-      localTrack?.mediaStreamTrack ??
-      (fallbackTrack && 'mediaStreamTrack' in fallbackTrack
-        ? (fallbackTrack.mediaStreamTrack as MediaStreamTrack)
-        : undefined)
-
-    const startMeterFromTrack = (track: MediaStreamTrack) => {
-      const audioContext = new (
-        window.AudioContext ||
-        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      )()
-      const source = audioContext.createMediaStreamSource(new MediaStream([track]))
-      const analyser = audioContext.createAnalyser()
-      analyser.fftSize = 512
-      analyser.smoothingTimeConstant = 0.78
-      source.connect(analyser)
-
-      void audioContext.resume().catch(() => undefined)
-
-      const waveform = new Uint8Array(analyser.fftSize)
-      const spectrum = new Uint8Array(analyser.frequencyBinCount)
-      let rafId = 0
-      let smoothed = 0
-
-      const sampleLevel = () => {
-        analyser.getByteTimeDomainData(waveform)
-        analyser.getByteFrequencyData(spectrum)
-
-        let sumSquares = 0
-        for (let i = 0; i < waveform.length; i += 1) {
-          const normalized = (waveform[i] - 128) / 128
-          sumSquares += normalized * normalized
-        }
-
-        let peakBand = 0
-        for (let i = 0; i < spectrum.length; i += 1) {
-          if (spectrum[i] > peakBand) peakBand = spectrum[i]
-        }
-
-        const rms = Math.sqrt(sumSquares / waveform.length)
-        const spectral = peakBand / 255
-        const spectralAssist = rms > 0.02 ? spectral * 0.2 : 0
-        const combined = rms * 6.4 + spectralAssist
-        const noiseFloor =
-          device.noiseFilterLevel === 'high'
-            ? 0.09
-            : device.noiseFilterLevel === 'medium'
-              ? 0.065
-              : device.noiseFilterLevel === 'low'
-                ? 0.03
-                : 0.055
-        const autoGainBias = device.autoGainEnabled ? 0.01 : 0
-        const adjustedFloor = Math.min(0.2, noiseFloor + autoGainBias)
-        const calibrated = Math.max(
-          0,
-          Math.min(1, (combined - adjustedFloor) / (1 - adjustedFloor))
-        )
-        smoothed = smoothed * 0.65 + calibrated * 0.35
-        localTransmitLevelRef.current = smoothed
-
-        rafId = window.requestAnimationFrame(sampleLevel)
-      }
-
-      rafId = window.requestAnimationFrame(sampleLevel)
-
-      return () => {
-        window.cancelAnimationFrame(rafId)
-        localTransmitLevelRef.current = 0
-        source.disconnect()
-        analyser.disconnect()
-        void audioContext.close()
-      }
-    }
-
-    if (!mediaStreamTrack) {
-      const shouldPreviewWhileMuted = settingsOpen && !device.microphoneOn
-      if (device.microphoneOn || shouldPreviewWhileMuted) {
-        let cancelled = false
-        let cleanupMeter: () => void = () => {}
-        let fallbackStream: MediaStream | null = null
-
-        void navigator.mediaDevices
-          .getUserMedia({
-            audio: {
-              deviceId:
-                device.selectedMicDeviceId && device.selectedMicDeviceId !== 'default'
-                  ? { exact: device.selectedMicDeviceId }
-                  : undefined,
-              channelCount: 1,
-              echoCancellation: device.noiseFilterLevel !== 'low',
-              noiseSuppression: device.noiseFilterLevel !== 'low',
-              autoGainControl: device.autoGainEnabled,
-            },
-          })
-          .then((stream) => {
-            if (cancelled) {
-              stream.getTracks().forEach((track) => track.stop())
-              return
-            }
-            fallbackStream = stream
-            const fallbackInputTrack = stream.getAudioTracks()[0]
-            cleanupMeter = startMeterFromTrack(fallbackInputTrack)
-          })
-          .catch(() => {
-            // Ignore capture failures; meter remains at zero.
-          })
-
-        return () => {
-          cancelled = true
-          cleanupMeter()
-          fallbackStream?.getTracks().forEach((track) => track.stop())
-        }
-      }
-      return
-    }
-    return startMeterFromTrack(mediaStreamTrack)
-  }, [
-    livekit.localAudioTrack,
-    livekit.localInputTrack,
-    livekit.room,
+  const { localTransmitLevelRef } = useMicLevelMeter({
+    localAudioTrack: livekit.localAudioTrack,
+    localInputTrack: livekit.localInputTrack,
+    room: livekit.room,
     roomId,
-    device.microphoneOn,
-    device.selectedMicDeviceId,
-    device.pttEnabled,
+    device,
     pttActive,
-    device.autoGainEnabled,
-    device.noiseFilterLevel,
-    device.micGain,
     settingsOpen,
-  ])
+  })
 
   const livekitRoomState = String(livekit.room?.state ?? '').toLowerCase()
   const sharedConnectionState = sharedLiveKitState?.connectionState
@@ -470,74 +331,7 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
 
   const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
 
-  /**
-   * Local speaking detection.
-   *
-   * Runs as a low-frequency interval (LOCAL_SPEAKING_EVALUATION_INTERVAL_MS)
-   * polling the mic-level ref. This intentionally does NOT depend on the
-   * transmit level itself — keeping the level out of React state is what stops
-   * AudioPanel + its tooltip subtree from re-rendering at audio frame rate
-   * (the previous setup caused 900+ AudioDevicePanel renders per soak window
-   * and the unmute-induced CPU/memory spike).
-   */
-  useEffect(() => {
-    const setSpeakingIfChanged = (nextValue: boolean) => {
-      if (localSpeakingRef.current === nextValue) {
-        return
-      }
-
-      localSpeakingRef.current = nextValue
-      setDevice({ isSpeaking: nextValue })
-    }
-
-    if (!isTransmittingNow) {
-      localSpeakingHoldUntilRef.current = 0
-      setSpeakingIfChanged(false)
-      return
-    }
-
-    const evaluate = () => {
-      const now = performance.now()
-      const transmittedMicLevel = localTransmitLevelRef.current
-
-      // Use transmitted level with a start threshold + release hold window to avoid
-      // false positives from clicks/typing and preserve natural speech gaps.
-      if (transmittedMicLevel >= LOCAL_SPEAKING_TRIGGER_LEVEL) {
-        localSpeakingHoldUntilRef.current = now + LOCAL_SPEAKING_HOLD_MS
-        setSpeakingIfChanged(true)
-        return
-      }
-
-      if (!localSpeakingRef.current) {
-        return
-      }
-
-      if (transmittedMicLevel >= LOCAL_SPEAKING_RELEASE_LEVEL) {
-        localSpeakingHoldUntilRef.current = now + LOCAL_SPEAKING_HOLD_MS
-        return
-      }
-
-      if (now > localSpeakingHoldUntilRef.current) {
-        setSpeakingIfChanged(false)
-      }
-    }
-
-    evaluate()
-    const intervalId = window.setInterval(evaluate, LOCAL_SPEAKING_EVALUATION_INTERVAL_MS)
-
-    return () => {
-      window.clearInterval(intervalId)
-    }
-  }, [isTransmittingNow, setDevice])
-
-  useEffect(
-    () => () => {
-      localSpeakingRef.current = false
-      localSpeakingHoldUntilRef.current = 0
-      setDevice({ isSpeaking: false })
-    },
-    [setDevice]
-  )
+  useLocalSpeakingDetection({ isTransmittingNow, localTransmitLevelRef, setDevice })
 
   useEffect(() => {
     if (!settingsOpen) {

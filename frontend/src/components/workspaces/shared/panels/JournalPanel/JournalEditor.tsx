@@ -15,19 +15,11 @@ import {
 } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import type { JournalEntry, JournalSavedPayload, RawNote } from '@/types/journalPanel'
 import { openJournalPopout } from '@/utils/route-view'
-import {
-  appendJournalHashtagInput,
-  buildContentHashtagSuggestions,
-  buildHashtagFallbackSeed,
-  buildHashtagSuggestions,
-  collectJournalHashtags,
-  getPendingJournalHashtag,
-  noteToEntry,
-  parseJournalHashtags,
-  serializeJournalHashtags,
-} from '@/utils/journalPanel'
+import { noteToEntry, serializeJournalHashtags } from '@/utils/journalPanel'
 import { useStore } from '@/hooks/useStore'
 import { useToast } from '@/hooks/useToast'
+import { useJournalHashtags } from './useJournalHashtags'
+import { JournalHashtagEditor } from './JournalHashtagEditor'
 
 export interface JournalEditorProps {
   apiUrl: string
@@ -66,7 +58,6 @@ export function JournalEditor({
 
   const [entry, setEntry] = useState<JournalEntry | null>(null)
   const [draft, setDraft] = useState('')
-  const [draftHashtagsInput, setDraftHashtagsInput] = useState('')
   const [isEditing, setIsEditing] = useState(() => isDm && autoEdit)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -76,12 +67,18 @@ export function JournalEditor({
     isDm && (typeof isEditingOverride === 'boolean' ? isEditingOverride : isEditing)
 
   const addNote = useStore((state) => state.addNote)
-  const hashtagFallbackSeed = useMemo(() => buildHashtagFallbackSeed(sessionId), [sessionId])
-  const hashtagSuggestions = useMemo(
-    () => buildHashtagSuggestions(sessionName, sessionId),
-    [sessionId, sessionName]
-  )
-  const contentHashtagSuggestions = useMemo(() => buildContentHashtagSuggestions(draft), [draft])
+
+  const {
+    draftHashtagsInput,
+    setDraftHashtagsInput,
+    normalizedDraftHashtags,
+    normalizedDraftHashtagsValue,
+    contentHashtagSuggestions,
+    autocompleteHashtagSuggestions,
+    applyJournalHashtag,
+    handleApplyTagHelp,
+    handleHashtagInputKeyDown,
+  } = useJournalHashtags({ sessionId, sessionName, draft })
   useEffect(() => {
     let cancelled = false
 
@@ -126,11 +123,9 @@ export function JournalEditor({
     return () => {
       cancelled = true
     }
-  }, [apiUrl, token, sessionId, sessionName, resolvedJournalTitle])
+  }, [apiUrl, token, sessionId, sessionName, resolvedJournalTitle, setDraftHashtagsInput])
 
-  const normalizedDraftHashtags = parseJournalHashtags(draftHashtagsInput, hashtagFallbackSeed)
   const hasDraftContent = draft.trim().length > 0
-  const normalizedDraftHashtagsValue = serializeJournalHashtags(normalizedDraftHashtags)
   const hasUnsavedChanges = entry
     ? draft !== entry.markdown ||
       normalizedDraftHashtagsValue !== serializeJournalHashtags(entry.hashtags)
@@ -251,7 +246,7 @@ export function JournalEditor({
 
     setIsEditing(false)
     setSaveError(null)
-  }, [entry])
+  }, [entry, setDraftHashtagsInput])
 
   const showToast = useToast()
 
@@ -266,85 +261,6 @@ export function JournalEditor({
   const handleInsertPlayerRoast = useCallback(async () => {
     return `> ${getSeededJournalPlayerRoast(`${sessionId}:${draft}`, sessionName)}`
   }, [draft, sessionId, sessionName])
-
-  const handleApplyTagHelp = useCallback(() => {
-    const existingTags = collectJournalHashtags(draftHashtagsInput, hashtagFallbackSeed)
-    const nextTags = [...contentHashtagSuggestions, ...hashtagSuggestions]
-      .filter((tag, index, tags) => tags.indexOf(tag) === index)
-      .filter((tag) => !existingTags.includes(tag))
-      .slice(0, 4)
-
-    if (nextTags.length === 0) {
-      return
-    }
-
-    const mergedTags = nextTags.reduce(
-      (currentValue, tag) => appendJournalHashtagInput(currentValue, tag, hashtagFallbackSeed),
-      draftHashtagsInput
-    )
-
-    setDraftHashtagsInput(mergedTags)
-  }, [contentHashtagSuggestions, draftHashtagsInput, hashtagFallbackSeed, hashtagSuggestions])
-
-  const mergedHashtagSuggestions = useMemo(
-    () =>
-      [...contentHashtagSuggestions, ...hashtagSuggestions].filter(
-        (tag, index, tags) => tags.indexOf(tag) === index
-      ),
-    [contentHashtagSuggestions, hashtagSuggestions]
-  )
-  const pendingHashtag = useMemo(
-    () => getPendingJournalHashtag(draftHashtagsInput),
-    [draftHashtagsInput]
-  )
-  const pendingHashtagQuery = useMemo(
-    () => pendingHashtag.trim().replace(/^#+/, '').toLowerCase(),
-    [pendingHashtag]
-  )
-  const autocompleteHashtagSuggestions = useMemo(() => {
-    const committedTags = collectJournalHashtags(
-      /\s$/.test(draftHashtagsInput)
-        ? draftHashtagsInput.trim()
-        : draftHashtagsInput.trimEnd().replace(/\S+$/, '').trim(),
-      hashtagFallbackSeed
-    )
-
-    return mergedHashtagSuggestions
-      .filter((tag) => !committedTags.includes(tag))
-      .filter((tag) => {
-        if (!pendingHashtagQuery) {
-          return true
-        }
-
-        return tag.slice(1).includes(pendingHashtagQuery)
-      })
-      .slice(0, 6)
-  }, [draftHashtagsInput, hashtagFallbackSeed, mergedHashtagSuggestions, pendingHashtagQuery])
-
-  const applyJournalHashtag = useCallback(
-    (rawTag: string) => {
-      const nextValue = appendJournalHashtagInput(draftHashtagsInput, rawTag, hashtagFallbackSeed)
-      setDraftHashtagsInput(nextValue)
-    },
-    [draftHashtagsInput, hashtagFallbackSeed]
-  )
-
-  const handleHashtagInputKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key !== 'Enter') {
-        return
-      }
-
-      const rawTag = pendingHashtag.trim()
-      if (!rawTag) {
-        return
-      }
-
-      event.preventDefault()
-      applyJournalHashtag(rawTag)
-    },
-    [applyJournalHashtag, pendingHashtag]
-  )
 
   const insertActions = useMemo<MarkdownEditorInsertAction[]>(
     () => [
@@ -497,73 +413,17 @@ export function JournalEditor({
         insertActions={isDm && resolvedIsEditing ? insertActions : []}
       />
 
-      <div className="knowledge-panel__journal-meta">
-        {resolvedIsEditing ? (
-          <>
-            <div className="knowledge-panel__journal-tag-row-wrap">
-              <input
-                className="knowledge-panel__journal-tag-input knowledge-panel__journal-tag-input--wide"
-                value={draftHashtagsInput}
-                onChange={(event) => setDraftHashtagsInput(event.target.value)}
-                onKeyDown={handleHashtagInputKeyDown}
-                placeholder="#recap #loot #npc"
-                maxLength={160}
-                aria-label="Journal hashtags"
-              />
-              <TooltipProvider delayDuration={140}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="knowledge-panel__journal-tag-help-btn"
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={handleApplyTagHelp}
-                      aria-label="Insert Recommended Tags"
-                    >
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        sell
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Insert Recommended Tags</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <div className="knowledge-panel__journal-tag-row">
-              {autocompleteHashtagSuggestions.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  className="knowledge-panel-chip muted"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyJournalHashtag(tag)}
-                >
-                  {tag}
-                </button>
-              ))}
-              {contentHashtagSuggestions.slice(0, 4).map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  className="knowledge-panel-chip muted"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyJournalHashtag(tag)}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="knowledge-panel-chip-row">
-            {displayHashtags.map((tag) => (
-              <span key={tag} className="knowledge-panel-chip muted">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      <JournalHashtagEditor
+        isEditing={resolvedIsEditing}
+        draftHashtagsInput={draftHashtagsInput}
+        displayHashtags={displayHashtags}
+        autocompleteHashtagSuggestions={autocompleteHashtagSuggestions}
+        contentHashtagSuggestions={contentHashtagSuggestions}
+        onInputChange={setDraftHashtagsInput}
+        onInputKeyDown={handleHashtagInputKeyDown}
+        onTagHelp={handleApplyTagHelp}
+        onApplyHashtag={applyJournalHashtag}
+      />
 
       {!isDm && !entry ? <p className="knowledge-panel-copy">{playerFacingRoast}</p> : null}
     </section>
