@@ -102,6 +102,14 @@ export async function bootstrap(): Promise<BootstrapResult> {
             nodeVersion: process.version,
           })
 
+          // Sweep must complete before mock players are seeded — otherwise the sweep
+          // would race against freshly-created mock presence entries and remove them.
+          try {
+            await sweepStalePresenceOnStartup(wsManager)
+          } catch (err) {
+            logger.warn('bootstrap', 'Startup presence sweep failed (non-fatal)', err)
+          }
+
           if (config.isDevelopment) {
             try {
               await seedMockPlayers()
@@ -111,10 +119,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
           }
 
           sessionCleanupJobService.start()
-
-          sweepStalePresenceOnStartup(wsManager).catch((err) => {
-            logger.warn('bootstrap', 'Startup presence sweep failed (non-fatal)', err)
-          })
 
           resolve()
         })
