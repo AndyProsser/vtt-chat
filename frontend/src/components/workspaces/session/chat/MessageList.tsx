@@ -169,46 +169,6 @@ function parseConditionMessageFallback(
   return null
 }
 
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  }
-  return `${minutes}m`
-}
-const BOOKEND_META: Record<
-  SessionBookendState,
-  { label: string; icon: string; className: string }
-> = {
-  started: {
-    label: 'STARTED',
-    icon: 'play_circle',
-    className: 'session-message-list__session-marker--started',
-  },
-  ended: {
-    label: 'ENDED',
-    icon: 'stop_circle',
-    className: 'session-message-list__session-marker--ended',
-  },
-  paused: {
-    label: 'PAUSED',
-    icon: 'pause_circle',
-    className: 'session-message-list__session-marker--paused',
-  },
-  resumed: {
-    label: 'RESUMED',
-    icon: 'play_circle',
-    className: 'session-message-list__session-marker--resumed',
-  },
-  cooldown: {
-    label: 'CLOSED',
-    icon: 'theaters',
-    className: 'session-message-list__session-marker--cooldown',
-  },
-}
-
 function getSessionBookendState(content: string): SessionBookendState | null {
   if (content.startsWith('[Session Started]') || content.startsWith('Session Start:')) {
     return 'started'
@@ -236,10 +196,6 @@ function formatBookendTimestamp(ts: number): string {
     hour: 'numeric',
     minute: '2-digit',
   })
-}
-
-function getAuthorInitial(username: string): string {
-  return username.trim().charAt(0).toUpperCase() || '?'
 }
 
 function formatRelativeTime(ts: number): string {

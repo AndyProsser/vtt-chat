@@ -1,4 +1,4 @@
-import type { MessageMetadataEntity } from '@shared'
+import type { MessageMetadataEntity, UUID } from '@shared'
 
 export interface SessionHistoryMessage {
   id: string
@@ -27,6 +27,15 @@ export interface SessionHistoryThread {
 }
 
 export type SessionLogEntry = SessionHistoryMessage
+
+export interface HistoryGroup {
+  label: string
+  sessionId: UUID
+  sessionDmId?: UUID
+  sessionName: string
+  startedAtLabel: string
+  items: SessionHistoryMessage[]
+}
 
 export type HistoryGroupBy = 'session' | 'day'
 export type HistorySortOrder = 'newest' | 'oldest'
