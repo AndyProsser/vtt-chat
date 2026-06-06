@@ -406,12 +406,20 @@ export function RoomSelector({
     for (const [roomId, participants] of Object.entries(displayedParticipantsByRoom) as Array<
       [UUID, GroupParticipantWithGroupId[]]
     >) {
-      next[roomId] = participants.filter(
+      const nonDm = participants.filter(
         (p) => p.userId !== dmUserId && p.roleLabel !== ROOM_ROLE_LABELS.dm
       )
+      if (isGreenroom) {
+        const dm = participants.find(
+          (p) => p.userId === dmUserId || p.roleLabel === ROOM_ROLE_LABELS.dm
+        )
+        next[roomId] = dm ? [dm, ...nonDm] : nonDm
+      } else {
+        next[roomId] = nonDm
+      }
     }
     return next
-  }, [displayedParticipantsByRoom, dmUserId])
+  }, [displayedParticipantsByRoom, dmUserId, isGreenroom])
 
   const dmParticipant = useMemo(
     () => baseParticipants.find((p) => p.userId === dmUserId),
