@@ -103,16 +103,84 @@ router.get('/:sessionId', requireAuth, async (req: Request, res: Response) => {
       wsManager?.getSessionDeviceSessionsSnapshot(sessionId as UUID) || {}
 
     return res.status(200).json({
-      presence: scopedPresence.map((entry) => ({
-        ...entry,
-        role: sessionRoleByUserId.get(entry.userId),
-        deviceSessions: deviceSessionsByUser[entry.userId] || [],
-        ...(profiles[entry.userId] || {}),
-      })),
+      presence: scopedPresence.map((entry) => {
+        const deviceSessions = deviceSessionsByUser[entry.userId] || []
+        const hasActiveUnmuted = deviceSessions.some((d: any) => d.isActive && d.isMuted === false)
+        const computedUserMuted =
+          entry.userMuted !== undefined ? entry.userMuted : !hasActiveUnmuted
+        return {
+          ...entry,
+          role: sessionRoleByUserId.get(entry.userId),
+          deviceSessions,
+          userMuted: computedUserMuted,
+          ...(profiles[entry.userId] || {}),
+        }
+      }),
       stats,
       identity,
     })
   } catch {
+    return internalErrorResponse(res)
+  }
+})
+
+// Get presence for a single user within a session (enriched like the
+// session-level presence endpoint). Useful for client-side enrichment when
+// a single participant joins and we only need that user's full presence.
+router.get('/:sessionId/user/:userId', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { sessionId, userId } = req.params
+
+  if (!isValidUUID(sessionId) || !isValidUUID(userId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid id' })
+  }
+
+  try {
+    const allowed = await canAccessSessionPresence(sessionId as UUID, user)
+    if (!allowed) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a session member' })
+    }
+
+    const currentSession = await getSession(sessionId as UUID)
+    if (!currentSession) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
+    }
+
+    await ensureMockSimulationRunning(sessionId as UUID)
+
+    const presence = await getSessionPresence(sessionId as UUID)
+    const sessionUsers = await getSessionUsers(sessionId as UUID)
+    const sessionRoleByUserId = new Map(sessionUsers.map((entry) => [entry.id as UUID, entry.role]))
+    const sessionUserIds = new Set(sessionUsers.map((entry) => entry.id as UUID))
+    const scopedPresence = presence.filter((entry) => sessionUserIds.has(entry.userId))
+    const profiles = await getSessionParticipantProfiles(sessionId as UUID)
+    const stats = await getSessionStatsSnapshot(sessionId as UUID)
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    const deviceSessionsByUser =
+      wsManager?.getSessionDeviceSessionsSnapshot(sessionId as UUID) || {}
+
+    const found = scopedPresence.find((p) => p.userId === (userId as UUID))
+    if (!found) {
+      return res
+        .status(404)
+        .json({ code: ErrorCode.NOT_FOUND, message: 'User presence not found in session' })
+    }
+
+    const deviceSessions = deviceSessionsByUser[found.userId] || []
+    const hasActiveUnmuted = deviceSessions.some((d: any) => d.isActive && d.isMuted === false)
+    const computedUserMuted = found.userMuted !== undefined ? found.userMuted : !hasActiveUnmuted
+
+    return res.status(200).json({
+      presence: {
+        ...found,
+        role: sessionRoleByUserId.get(found.userId),
+        deviceSessions,
+        userMuted: computedUserMuted,
+        ...(profiles[found.userId] || {}),
+      },
+      stats,
+    })
+  } catch (err) {
     return internalErrorResponse(res)
   }
 })

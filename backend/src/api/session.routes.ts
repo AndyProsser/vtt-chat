@@ -63,6 +63,8 @@ import {
   listSessionLogsForRequester,
   listSessionUsersForRequester,
 } from '@/services/session/access.service'
+import { getSessionParticipantProfiles } from '@/repositories/session.repository'
+import { sessionDisconnectCascadeService } from '@/services/session/disconnect-cascade.service'
 import { resolveRoleForSessionJoin } from '@/services/session/authz.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
@@ -82,6 +84,11 @@ import { clearSessionRecoveryState } from '@/ws/state-recovery'
 
 const router = Router()
 const prisma = getPrismaClient()
+
+type CampaignLateJoinSettings = {
+  lateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  lateJoinGraceMinutes: number
+}
 
 async function getEffectiveCooldownDurationMs(sessionId: UUID): Promise<number> {
   let result: { campaign: { postSessionChatDurationMs: number } | null } | null = null
@@ -120,6 +127,66 @@ async function getEffectiveCooldownDurationMs(sessionId: UUID): Promise<number> 
   return clamped
 }
 
+async function getCampaignLateJoinSettings(
+  sessionId: UUID,
+  session?: {
+    campaign?: { lateJoinPolicy?: string | null; lateJoinGraceMinutes?: number | null } | null
+  }
+): Promise<CampaignLateJoinSettings | null> {
+  if (session?.campaign) {
+    return {
+      lateJoinPolicy: (session.campaign.lateJoinPolicy ??
+        'OPEN') as CampaignLateJoinSettings['lateJoinPolicy'],
+      lateJoinGraceMinutes: session.campaign.lateJoinGraceMinutes ?? 30,
+    }
+  }
+
+  try {
+    const sessionModel = (
+      prisma as typeof prisma & {
+        session?: {
+          findUnique?: (...args: any[]) => Promise<any>
+        }
+      }
+    ).session
+
+    if (!sessionModel?.findUnique) {
+      return null
+    }
+
+    const result = await sessionModel.findUnique({
+      where: { id: sessionId },
+      select: {
+        campaign: {
+          select: {
+            lateJoinPolicy: true,
+            lateJoinGraceMinutes: true,
+          },
+        },
+      },
+    })
+
+    if (!result?.campaign) {
+      return null
+    }
+
+    return {
+      lateJoinPolicy: result.campaign.lateJoinPolicy ?? 'OPEN',
+      lateJoinGraceMinutes: result.campaign.lateJoinGraceMinutes ?? 30,
+    }
+  } catch {
+    return null
+  }
+}
+
+function getLateJoinRestrictionMessage(settings: CampaignLateJoinSettings): string {
+  if (settings.lateJoinPolicy === 'SCREENED') {
+    return `Late joins now require DM screening. Ask the DM to review your join after the first ${settings.lateJoinGraceMinutes} minutes.`
+  }
+
+  return `Late joins are blocked after the first ${settings.lateJoinGraceMinutes} minutes of an active session.`
+}
+
 function computeCooldownExpiresAt(params: {
   state: string
   endedAt?: number | null
@@ -135,6 +202,41 @@ function computeCooldownExpiresAt(params: {
   }
 
   return endedAtMs + params.cooldownDurationMs
+}
+
+async function hasConnectedTableMembers(sessionId: UUID): Promise<boolean> {
+  const [members, presence] = await Promise.all([
+    getSessionUsers(sessionId),
+    getSessionPresence(sessionId),
+  ])
+
+  const tableMemberIds = new Set(
+    members
+      .filter((member) => member.role === Role.DM || member.role === Role.PLAYER)
+      .map((member) => member.id)
+  )
+
+  if (tableMemberIds.size === 0) {
+    return false
+  }
+
+  return presence.some(
+    (entry) => tableMemberIds.has(entry.userId) && entry.state !== PresenceState.OFFLINE
+  )
+}
+
+async function maybeTriggerEndedCleanupOnExplicitExit(sessionId: UUID): Promise<void> {
+  const session = await getSession(sessionId)
+  if (!session || session.state !== SessionStateEnum.ENDED) {
+    return
+  }
+
+  const hasConnectedTable = await hasConnectedTableMembers(sessionId)
+  if (hasConnectedTable) {
+    return
+  }
+
+  sessionCleanupJobService.notifyExplicitSessionExit(sessionId)
 }
 
 async function broadcastCampaignListInvalidatedForSession(params: {
@@ -245,7 +347,11 @@ function getBoundaryRoomIds(params: {
   mainRoomId: UUID
   greenRoomId: UUID
 }): UUID[] {
-  if (params.boundaryType === 'SESSION_STARTED' || params.boundaryType === 'SESSION_ENDED') {
+  if (
+    params.boundaryType === 'SESSION_STARTED' ||
+    params.boundaryType === 'SESSION_COOLDOWN' ||
+    params.boundaryType === 'SESSION_ENDED'
+  ) {
     return Array.from(new Set([params.mainRoomId, params.greenRoomId]))
   }
 
@@ -273,7 +379,7 @@ async function ensureJoinedMemberPresence(params: {
   const rooms = await getRooms(params.session.id)
   const mainRoom =
     rooms.find((room) => room.type === RoomType.MAIN) ||
-    rooms.find((room) => normalizeRoomName(room.name) === 'main room')
+    rooms.find((room) => normalizeRoomName(room.name) === 'main')
   const greenRoom =
     rooms.find((room) => normalizeRoomName(room.name) === 'green room') ||
     rooms.find((room) => normalizeRoomName(room.name) === 'green-room')
@@ -293,12 +399,9 @@ async function ensureJoinedMemberPresence(params: {
     rooms.some((room) => room.id === currentPresence.primaryRoomId)
   )
 
-  const targetState =
-    params.session.state === 'ENDED'
-      ? PresenceState.OFFLINE
-      : shouldUseMain
-        ? PresenceState.ONLINE
-        : PresenceState.IDLE
+  // ENDED/CLEANUP/IDLE remain online-staged in-room; OFFLINE is reserved for
+  // explicit disconnect/leave paths.
+  const targetState = PresenceState.ONLINE
 
   if (hasValidExistingRoom && currentPresence?.primaryRoomId) {
     if (currentPresence.state === targetState) {
@@ -408,6 +511,52 @@ async function listSessionMembersHandler(req: Request, res: Response) {
   }
 }
 
+/**
+ * Emits SESSION:MEMBER_JOINED carrying the full character/presence profile for a user.
+ * Must be called BEFORE ROOM:USER_JOINED so that presence is populated when room handlers run.
+ */
+async function broadcastMemberJoined(params: {
+  wsManager: WebSocketManager
+  sessionId: UUID
+  userId: UUID
+  userRole: Role
+  username: string
+  primaryRoomId: UUID | null
+  state: PresenceState
+}): Promise<void> {
+  const profiles = await getSessionParticipantProfiles(params.sessionId)
+  const profile = profiles[params.userId] || {}
+  const timestamp = Date.now()
+
+  params.wsManager.broadcastEventToSession(params.sessionId, {
+    id: crypto.randomUUID() as UUID,
+    type: 'SESSION:MEMBER_JOINED',
+    version: 1,
+    userId: params.userId,
+    userRole: params.userRole,
+    sessionId: params.sessionId,
+    roomId: params.primaryRoomId,
+    timestamp,
+    payload: {
+      userId: params.userId,
+      username: params.username,
+      role: params.userRole,
+      playerName: (profile as any).playerName ?? null,
+      avatarUrl: (profile as any).avatarUrl ?? null,
+      characterName: (profile as any).characterName ?? null,
+      characterClass: (profile as any).characterClass ?? null,
+      characterSubclass: (profile as any).characterSubclass ?? null,
+      characterRace: (profile as any).characterRace ?? null,
+      level: (profile as any).level ?? null,
+      characterStats: (profile as any).characterStats ?? null,
+      primaryRoomId: params.primaryRoomId,
+      state: params.state,
+      ghost: false,
+      joinedAt: timestamp,
+    },
+  })
+}
+
 async function joinSessionHandler(req: Request, res: Response) {
   const user = (req as any).user
   const { id } = req.params
@@ -451,6 +600,17 @@ async function joinSessionHandler(req: Request, res: Response) {
 
       if (wsManager && ensured.changed && ensured.roomId && ensured.state) {
         const timestamp = Date.now()
+
+        await broadcastMemberJoined({
+          wsManager,
+          sessionId: id as UUID,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          username: user.username,
+          primaryRoomId: ensured.roomId,
+          state: ensured.state,
+        })
+
         wsManager.broadcastEventToSession(id as UUID, {
           id: crypto.randomUUID() as UUID,
           type: 'ROOM:USER_JOINED',
@@ -526,6 +686,30 @@ async function joinSessionHandler(req: Request, res: Response) {
       })
     }
 
+    if (joinRole.role === Role.PLAYER && isSessionActiveOrPaused(session.state)) {
+      const lateJoinSettings = await getCampaignLateJoinSettings(id as UUID, session as any)
+      const sessionStartedAt = session.startedAt ?? session.createdAt
+      const sessionStartedAtMs = sessionStartedAt
+        ? new Date(sessionStartedAt).getTime()
+        : Number.NaN
+
+      if (
+        lateJoinSettings &&
+        lateJoinSettings.lateJoinPolicy !== 'OPEN' &&
+        Number.isFinite(sessionStartedAtMs)
+      ) {
+        const graceWindowMs = lateJoinSettings.lateJoinGraceMinutes * 60_000
+        const withinGraceWindow = Date.now() - sessionStartedAtMs <= graceWindowMs
+
+        if (!withinGraceWindow) {
+          return res.status(403).json({
+            code: ErrorCode.FORBIDDEN,
+            message: getLateJoinRestrictionMessage(lateJoinSettings),
+          })
+        }
+      }
+    }
+
     const success = await addUserToSession(id as UUID, {
       id: user.userId as UUID,
       username: user.username,
@@ -565,6 +749,17 @@ async function joinSessionHandler(req: Request, res: Response) {
     if (wsManager) {
       if (ensured.changed && ensured.roomId && ensured.state) {
         const timestamp = Date.now()
+
+        await broadcastMemberJoined({
+          wsManager,
+          sessionId: id as UUID,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          username: user.username,
+          primaryRoomId: ensured.roomId,
+          state: ensured.state,
+        })
+
         wsManager.broadcastEventToSession(id as UUID, {
           id: crypto.randomUUID() as UUID,
           type: 'ROOM:USER_JOINED',
@@ -701,25 +896,24 @@ async function leaveSessionHandler(req: Request, res: Response) {
           },
         })
 
-        if (previousPresence?.primaryRoomId) {
-          wsManager.broadcastEventToSession(id as UUID, {
-            id: crypto.randomUUID() as UUID,
-            type: 'ROOM:USER_LEFT',
-            version: 1,
+        wsManager.broadcastEventToSession(id as UUID, {
+          id: crypto.randomUUID() as UUID,
+          type: 'SESSION:MEMBER_LEFT',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: id as UUID,
+          roomId: previousPresence?.primaryRoomId || null,
+          timestamp: Date.now(),
+          payload: {
             userId: user.userId as UUID,
-            userRole: user.role,
-            sessionId: id as UUID,
-            roomId: previousPresence.primaryRoomId,
-            timestamp: Date.now(),
-            payload: {
-              roomId: previousPresence.primaryRoomId,
-              userId: user.userId as UUID,
-              username: user.username,
-              leftAt: Date.now(),
-              reason: 'EXIT_SESSION',
-            },
-          })
-        }
+            username: user.username,
+            leftAt: Date.now(),
+            reason: 'VOLUNTARY',
+          },
+        })
+
+        sessionDisconnectCascadeService.cancelUserTimers(id as UUID, user.userId as UUID)
 
         await broadcastSessionStatsSnapshot({
           wsManager,
@@ -749,6 +943,7 @@ async function leaveSessionHandler(req: Request, res: Response) {
         reason: 'EXPLICIT_EXIT',
       })
       await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+      await maybeTriggerEndedCleanupOnExplicitExit(id as UUID)
 
       const users = await getSessionUsers(id as UUID)
       return res.status(200).json({
@@ -770,6 +965,10 @@ async function leaveSessionHandler(req: Request, res: Response) {
       })
     }
 
+    const previousPresence = (await getSessionPresence(id as UUID)).find(
+      (entry) => entry.userId === (user.userId as UUID)
+    )
+
     const removal = await removeUserFromSession(id as UUID, user.userId as UUID)
 
     if (!removal.removed) {
@@ -778,6 +977,10 @@ async function leaveSessionHandler(req: Request, res: Response) {
         message: 'Failed to remove user from session',
       })
     }
+
+    // Clear presence projection and cancel any pending ghost/TTL timers immediately.
+    await removePresenceProjection({ sessionId: id as UUID, userId: user.userId as UUID })
+    sessionDisconnectCascadeService.cancelUserTimers(id as UUID, user.userId as UUID)
 
     await logSessionLeave(id as UUID, user.userId as UUID, user.username)
 
@@ -796,6 +999,23 @@ async function leaveSessionHandler(req: Request, res: Response) {
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager) {
+      wsManager.broadcastEventToSession(id as UUID, {
+        id: crypto.randomUUID() as UUID,
+        type: 'SESSION:MEMBER_LEFT',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: id as UUID,
+        roomId: previousPresence?.primaryRoomId || null,
+        timestamp: Date.now(),
+        payload: {
+          userId: user.userId as UUID,
+          username: user.username,
+          leftAt: Date.now(),
+          reason: 'VOLUNTARY',
+        },
+      })
+
       wsManager.broadcastEventToSession(id as UUID, {
         id: crypto.randomUUID() as UUID,
         type: 'CHAT:MESSAGE_CREATED',
@@ -854,6 +1074,7 @@ async function leaveSessionHandler(req: Request, res: Response) {
       reason: 'EXPLICIT_EXIT',
     })
     await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+    await maybeTriggerEndedCleanupOnExplicitExit(id as UUID)
 
     return res.status(200).json({
       session,
@@ -1097,6 +1318,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     const transition = await applySessionStateRoomTransition({
       sessionId: session.id,
       dmId: session.dmId,
+      previousState: previousSession?.state || null,
       nextState: requestedState,
       users: users.map((member) => ({
         id: member.id,
@@ -1242,6 +1464,9 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           users: transition.users.map((member) => ({
             userId: member.id,
             username: member.username,
+            roomId: member.roomId,
+            roomName: member.roomName,
+            previousGroupId: member.previousGroupId || null,
           })),
         },
       })
@@ -1328,6 +1553,24 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
           },
         })
       }
+
+      // Broadcast SESSION:STATE_CHANGED so all clients update their session state
+      // without needing a page refresh. This must fire after all other transition
+      // events so clients can derive the final state from the authoritative value.
+      wsManager.broadcastEventToSession(session.id, {
+        id: crypto.randomUUID() as UUID,
+        type: 'SESSION:STATE_CHANGED',
+        version: 1,
+        userId: user.userId as UUID,
+        userRole: user.role,
+        sessionId: session.id,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          state: session.state,
+          previousState: previousSession?.state || null,
+        },
+      })
     }
 
     const cooldownDurationMs = await getEffectiveCooldownDurationMs(session.id)
@@ -1506,6 +1749,183 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
 })
 
 /**
+ * POST /api/session/:id/reset
+ * Explicit DM reset preparation for ENDED sessions.
+ * Transitions ENDED -> CLEANUP so the DM can intentionally start a fresh IDLE session.
+ */
+router.post('/:id/reset', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { id } = req.params
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_SESSION,
+      message: 'Invalid session ID',
+      field: 'id',
+    })
+  }
+
+  try {
+    const previousSession = await getSession(id as UUID)
+    if (!previousSession) {
+      return res.status(404).json({
+        code: ErrorCode.SESSION_NOT_FOUND,
+        message: 'Session not found',
+      })
+    }
+
+    if (previousSession.dmId !== (user.userId as UUID)) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only DM can reset session',
+      })
+    }
+
+    if (
+      previousSession.state !== SessionStateEnum.ENDED &&
+      previousSession.state !== SessionStateEnum.CLEANUP
+    ) {
+      return res.status(409).json({
+        code: ErrorCode.INVALID_STATE_TRANSITION,
+        message: 'Reset is only available for ENDED or CLEANUP sessions',
+      })
+    }
+
+    let session = previousSession
+    let transition: Awaited<ReturnType<typeof applySessionStateRoomTransition>> | null = null
+
+    if (previousSession.state === SessionStateEnum.ENDED) {
+      const updated = await updateSessionState(
+        id as UUID,
+        SessionStateEnum.CLEANUP,
+        user.userId as UUID
+      )
+
+      if (!updated) {
+        return res.status(404).json({
+          code: ErrorCode.SESSION_NOT_FOUND,
+          message: 'Session not found',
+        })
+      }
+
+      session = updated
+      await disableMockSimulationForSessionExit(session.id)
+
+      const users = await getSessionUsers(id as UUID)
+      transition = await applySessionStateRoomTransition({
+        sessionId: session.id,
+        dmId: session.dmId,
+        previousState: previousSession.state,
+        nextState: SessionStateEnum.CLEANUP,
+        users: users.map((member) => ({
+          id: member.id,
+          username: member.username,
+        })),
+      })
+
+      await appendSessionAuditEvent({
+        sessionId: session.id,
+        actorUserId: user.userId as UUID,
+        actorRole: user.role,
+        actionType: 'SESSION_STATE_CHANGED',
+        targetType: 'SESSION',
+        targetId: session.id,
+        roomId: transition.targetRoomId,
+        visibilityClass: 'SYSTEM',
+        metadata: {
+          previousState: previousSession.state,
+          nextState: session.state,
+          reason: 'SESSION_RESET',
+        },
+      })
+
+      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+      if (wsManager) {
+        wsManager.broadcastEventToSession(session.id, {
+          id: crypto.randomUUID() as UUID,
+          type: 'ROOM:SESSION_TRANSITION_APPLIED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: session.id,
+          roomId: transition.targetRoomId,
+          timestamp: Date.now(),
+          payload: {
+            previousState: previousSession.state,
+            nextState: session.state,
+            movedUsers: transition.movedUsers,
+            targetState: transition.targetState,
+            mainRoom: {
+              id: transition.mainRoomId,
+              name: transition.mainRoomName,
+              roomType: RoomType.MAIN,
+            },
+            greenRoom: {
+              id: transition.greenRoomId,
+              name: transition.greenRoomName,
+              roomType: RoomType.GROUP,
+            },
+            targetRoomId: transition.targetRoomId,
+            targetRoomName: transition.targetRoomName,
+            users: transition.users.map((member) => ({
+              userId: member.id,
+              username: member.username,
+              roomId: member.roomId,
+              roomName: member.roomName,
+              previousGroupId: member.previousGroupId || null,
+            })),
+          },
+        })
+
+        wsManager.broadcastEventToSession(session.id, {
+          id: crypto.randomUUID() as UUID,
+          type: 'SESSION:STATE_CHANGED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: user.role,
+          sessionId: session.id,
+          roomId: null,
+          timestamp: Date.now(),
+          payload: {
+            state: session.state,
+          },
+        })
+
+        await broadcastSessionStatsSnapshot({
+          wsManager,
+          sessionId: session.id,
+          actorUserId: user.userId as UUID,
+          actorUserRole: user.role,
+        })
+      }
+
+      clearSessionRecoveryState(session.id)
+    }
+
+    await broadcastLobbyStatsUpdated(user.userId as UUID, user.role as Role)
+    await broadcastCampaignListInvalidatedForSession({
+      sessionId: session.id,
+      actorUserId: user.userId as UUID,
+      actorUserRole: user.role as Role,
+      reason: 'SESSION_STATE_CHANGED',
+    })
+
+    return res.status(200).json({
+      session,
+      transitionApplied: Boolean(transition),
+    })
+  } catch (err: any) {
+    if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
+      return res.status(409).json(err)
+    }
+    if (err.code === ErrorCode.FORBIDDEN) {
+      return res.status(403).json(err)
+    }
+    return internalErrorResponse(res)
+  }
+})
+
+/**
  * POST /sessions/:id/cooldown/end
  * DM ends the post-session cooldown window early.
  * Immediately transitions session state from COOLDOWN to ENDED.
@@ -1596,6 +2016,9 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
           users: transition.users.map((member) => ({
             userId: member.id,
             username: member.username,
+            roomId: member.roomId,
+            roomName: member.roomName,
+            previousGroupId: member.previousGroupId || null,
           })),
         },
       })
@@ -1782,7 +2205,7 @@ router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
 /**
  * POST /api/session/:id/join
  * Add a user to a session
- * Players can join at any time, including after session has started.
+ * New player joins are gated by the campaign late-join policy once the grace window expires.
  */
 router.post('/:id/join', requireAuth, joinSessionHandler)
 router.post('/:id/members/join', requireAuth, joinSessionHandler)

@@ -76,6 +76,7 @@ function hasDuplicateSessionBookend(
 function isSameMessage(existing: Message, next: Message): boolean {
   return (
     existing.id === next.id &&
+    existing.sessionId === next.sessionId &&
     existing.roomId === next.roomId &&
     existing.authorId === next.authorId &&
     existing.authorUsername === next.authorUsername &&
@@ -85,6 +86,7 @@ function isSameMessage(existing: Message, next: Message): boolean {
     existing.isOffTheRecord === next.isOffTheRecord &&
     existing.createdAt === next.createdAt &&
     existing.editedAt === next.editedAt &&
+    existing.metadata === next.metadata &&
     existing.visibleTo === next.visibleTo &&
     existing.targetIds === next.targetIds
   )
@@ -473,6 +475,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
 
     const message: Message = {
       id: payload.messageId,
+      sessionId: event.sessionId,
       roomId: payload.roomId || (event.roomId as UUID),
       authorId: payload.authorId,
       authorUsername: payload.authorUsername,
@@ -482,6 +485,7 @@ export const createChatSlice: StateCreator<ChatSlice> = (set) => ({
       isOffTheRecord: payload.isOffTheRecord,
       visibleTo: payload.visibleTo,
       targetIds: payload.targetIds,
+      metadata: (payload as { metadata?: Message['metadata'] }).metadata,
       createdAt: event.timestamp,
     }
 

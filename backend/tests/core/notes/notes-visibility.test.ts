@@ -3,7 +3,8 @@ import { NoteVisibility } from '@shared'
 
 type NoteRow = {
   id: string
-  sessionId: string
+  campaignId: string
+  sessionId: string | null
   authorId: string
   authorUsername: string
   title: string
@@ -22,7 +23,8 @@ vi.mock('@/repositories/notes.repository', () => ({
   createNoteRecord: vi.fn(async (params: any) => {
     notes.set(params.id, {
       id: params.id,
-      sessionId: params.sessionId,
+      campaignId: params.campaignId,
+      sessionId: params.sessionId ?? null,
       authorId: params.authorId,
       authorUsername: params.authorUsername,
       title: params.title,
@@ -63,6 +65,7 @@ vi.mock('@/repositories/notes.repository', () => ({
 import { createNote, getVisibleNotes, updateNote } from '@/services/notes.service'
 
 const SESSION_ID = '11111111-1111-4111-8111-111111111111' as any
+const CAMPAIGN_ID = '00000000-0000-4000-8000-000000000000' as any
 const DM_ID = '22222222-2222-4222-8222-222222222222' as any
 const PLAYER_A = '33333333-3333-4333-8333-333333333333' as any
 const PLAYER_B = '44444444-4444-4444-8444-444444444444' as any
@@ -75,6 +78,7 @@ describe('notes visibility transition rules', () => {
 
   it('blocks player from downgrading PLAYERS_VISIBLE note to CUSTOM', async () => {
     const note = await createNote({
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       authorId: PLAYER_A,
       authorUsername: 'alice',
@@ -93,6 +97,7 @@ describe('notes visibility transition rules', () => {
 
   it('blocks player from removing users from CUSTOM allowedUsers', async () => {
     const note = await createNote({
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       authorId: PLAYER_A,
       authorUsername: 'alice',
@@ -112,6 +117,7 @@ describe('notes visibility transition rules', () => {
 
   it('allows player to add users to CUSTOM allowedUsers', async () => {
     const note = await createNote({
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       authorId: PLAYER_A,
       authorUsername: 'alice',
@@ -135,6 +141,7 @@ describe('notes visibility transition rules', () => {
 
   it('allows DM to reduce visibility and allowed users', async () => {
     const note = await createNote({
+      campaignId: CAMPAIGN_ID,
       sessionId: SESSION_ID,
       authorId: PLAYER_A,
       authorUsername: 'alice',

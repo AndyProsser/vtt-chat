@@ -366,10 +366,16 @@ export const createSessionMembershipController = (ctx: SessionControllerContext)
       )
 
       if (!response.ok && response.status !== 409) {
-        return
+        return null
       }
+
+      // Both 200 (new join) and 409 (already a member) are success paths.
+      // Read the body in both cases — the server may return the session record
+      // for either status so callers can bind to server-authoritative state.
+      const payload = await response.json().catch(() => ({}))
+      return (payload as { session?: SessionRecord }).session ?? null
     } catch {
-      return
+      return null
     }
   },
 })

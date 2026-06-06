@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MessageType, Role, RoomType } from '@shared'
+import { MessageType, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { TooltipProvider } from '../../src/components/ui'
 import { ChatWindow } from '../../src/components/workspaces/session/chat/ChatWindow'
@@ -28,13 +28,24 @@ describe('ChatWindow timeline behavior', () => {
     store.clearMessages()
     store.clearRooms()
     store.reset()
+    store.replaceSessions([
+      {
+        id: SESSION_ID,
+        name: 'Session Alpha',
+        dmId: USER_ID,
+        state: SessionState.IDLE,
+        cumulativePauseMs: 0,
+        pauseCount: 0,
+        createdAt: Date.now(),
+      },
+    ])
     store.replaceSessionTopology(
       SESSION_ID,
       [
         {
           id: MAIN_ROOM_ID,
           sessionId: SESSION_ID,
-          name: 'Main Room',
+          name: 'Main',
           type: RoomType.MAIN,
           createdAt: 1,
           createdBy: USER_ID,
@@ -60,7 +71,83 @@ describe('ChatWindow timeline behavior', () => {
     )
   })
 
+  it('rehydrates greenroom history when the session ends after chat cache clear', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: 'deadbeef-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              authorId: USER_ID,
+              authorUsername: 'Morgan',
+              content: 'Greenroom message that should come back',
+              type: MessageType.OOC,
+              isDmOnly: false,
+              createdAt: Date.now() - 1_000,
+            },
+          ],
+          hasMore: false,
+          hasEarlier: false,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          messages: [
+            {
+              id: 'deadbeef-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+              authorId: USER_ID,
+              authorUsername: 'Morgan',
+              content: 'Greenroom message that should come back',
+              type: MessageType.OOC,
+              isDmOnly: false,
+              createdAt: Date.now() - 1_000,
+            },
+          ],
+          hasMore: false,
+          hasEarlier: false,
+        }),
+      })
+
+    vi.stubGlobal('fetch', fetchMock)
+    act(() => {
+      useStore.getState().updateSession(SESSION_ID, { state: SessionState.ACTIVE })
+    })
+
+    renderWithTooltip(
+      <ChatWindow
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_ID}
+        roomId={GREEN_ROOM_ID}
+        roomName="Green Room"
+        campaignId={'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID}
+        user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
+        forceMessageType={MessageType.OOC}
+      />
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+    expect(screen.getByText('Greenroom message that should come back')).toBeTruthy()
+
+    act(() => {
+      useStore.getState().updateSession(SESSION_ID, { state: SessionState.ENDED })
+      useStore.getState().clearMessages(SESSION_ID)
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    expect(screen.getByText('Greenroom message that should come back')).toBeTruthy()
+  })
+
   it('shows only greenroom messages while in greenroom mode', async () => {
+    const now = Date.now()
     const fetchMock = vi.fn(async () => ({
       ok: true,
       json: async () => ({
@@ -73,7 +160,7 @@ describe('ChatWindow timeline behavior', () => {
             content: '[Session Started] Session Alpha',
             type: MessageType.SYSTEM,
             isDmOnly: false,
-            createdAt: 100,
+            createdAt: now - 400,
           },
           {
             id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -83,7 +170,7 @@ describe('ChatWindow timeline behavior', () => {
             content: '[Session Paused] Session Alpha',
             type: MessageType.SYSTEM,
             isDmOnly: false,
-            createdAt: 200,
+            createdAt: now - 300,
           },
           {
             id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
@@ -93,7 +180,17 @@ describe('ChatWindow timeline behavior', () => {
             content: '[Session Resumed] Session Alpha',
             type: MessageType.SYSTEM,
             isDmOnly: false,
-            createdAt: 300,
+            createdAt: now - 200,
+          },
+          {
+            id: 'edededed-eeee-4eee-8eee-eeeeeeeeeeee',
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Cooldown] Session Alpha',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: now - 100,
           },
           {
             id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -103,7 +200,7 @@ describe('ChatWindow timeline behavior', () => {
             content: 'Greenroom table talk',
             type: MessageType.OOC,
             isDmOnly: false,
-            createdAt: 400,
+            createdAt: now,
           },
         ],
       }),
@@ -132,6 +229,7 @@ describe('ChatWindow timeline behavior', () => {
     })
 
     expect(screen.getByText('Greenroom table talk')).toBeTruthy()
+    expect(screen.getByText('CLOSED')).toBeTruthy()
     expect(screen.queryByText('[Session Started] Session Alpha')).toBeNull()
     expect(screen.queryByText('[Session Paused] Session Alpha')).toBeNull()
     expect(screen.queryByText('[Session Resumed] Session Alpha')).toBeNull()
@@ -208,6 +306,98 @@ describe('ChatWindow timeline behavior', () => {
     expect(screen.getByText('Earlier greenroom planning')).toBeTruthy()
   })
 
+  it('keeps historical greenroom chat but hides historical session bookends from other sessions', async () => {
+    const previousSessionId = '99999999-9999-4999-8999-999999999999' as UUID
+    const now = Date.now()
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        messages: [
+          {
+            id: '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            sessionId: previousSessionId,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Started] Session Previous',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: now - 500,
+          },
+          {
+            id: '22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            sessionId: previousSessionId,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'Morgan',
+            content: 'Old greenroom planning survives',
+            type: MessageType.OOC,
+            isDmOnly: false,
+            createdAt: now - 400,
+          },
+          {
+            id: '33333333-cccc-4ccc-8ccc-cccccccccccc',
+            sessionId: previousSessionId,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Cooldown] Session Previous',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: now - 300,
+          },
+          {
+            id: '44444444-dddd-4ddd-8ddd-dddddddddddd',
+            sessionId: SESSION_ID,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'SYSTEM',
+            content: '[Session Started] Session Current',
+            type: MessageType.SYSTEM,
+            isDmOnly: false,
+            createdAt: now - 200,
+          },
+          {
+            id: '55555555-eeee-4eee-8eee-eeeeeeeeeeee',
+            sessionId: SESSION_ID,
+            roomId: GREEN_ROOM_ID,
+            authorId: USER_ID,
+            authorUsername: 'Morgan',
+            content: 'Current greenroom thread',
+            type: MessageType.OOC,
+            isDmOnly: false,
+            createdAt: now - 100,
+          },
+        ],
+      }),
+    }))
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderWithTooltip(
+      <ChatWindow
+        apiUrl="http://localhost:3000"
+        token="token"
+        sessionId={SESSION_ID}
+        roomId={GREEN_ROOM_ID}
+        roomName="Green Room"
+        campaignId={'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID}
+        user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
+        forceMessageType={MessageType.OOC}
+      />
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    expect(screen.getByText('Old greenroom planning survives')).toBeTruthy()
+    expect(screen.getByText('Current greenroom thread')).toBeTruthy()
+    expect(screen.queryByText('[Session Started] Session Previous')).toBeNull()
+    expect(screen.queryByText('[Session Cooldown] Session Previous')).toBeNull()
+    expect(screen.getByText('STARTED')).toBeTruthy()
+  })
+
   it('shows session-start marker but hides ended/intermission markers and greenroom messages in active main-room mode', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
@@ -268,7 +458,7 @@ describe('ChatWindow timeline behavior', () => {
             roomId: MAIN_ROOM_ID,
             authorId: USER_ID,
             authorUsername: 'Morgan',
-            content: 'Main room action',
+            content: 'Main action',
             type: MessageType.IC,
             isDmOnly: false,
             createdAt: 300,
@@ -285,7 +475,7 @@ describe('ChatWindow timeline behavior', () => {
         token="token"
         sessionId={SESSION_ID}
         roomId={MAIN_ROOM_ID}
-        roomName="Main Room"
+        roomName="Main"
         user={{ id: USER_ID, username: 'Morgan', role: Role.DM }}
       />
     )
@@ -297,7 +487,7 @@ describe('ChatWindow timeline behavior', () => {
       )
     })
 
-    expect(screen.getByText('Main room action')).toBeTruthy()
+    expect(screen.getByText('Main action')).toBeTruthy()
     expect(screen.getByText('STARTED')).toBeTruthy()
     expect(screen.queryByText('Greenroom aside')).toBeNull()
     expect(screen.queryByText('[Session Paused] Session Alpha')).toBeNull()
@@ -360,8 +550,7 @@ describe('ChatWindow timeline behavior', () => {
 
     expect(screen.getByText('Handout Shared')).toBeTruthy()
     expect(screen.getByText('Treasure Map')).toBeTruthy()
-    expect(screen.getByText('All players')).toBeTruthy()
-    expect(screen.getByText('First clue')).toBeTruthy()
+    // sharedWith is not rendered in the card body — the metadata is in structured form only
     expect(screen.getByRole('img', { name: 'map' })).toBeTruthy()
     expect(screen.queryByText('[Note Shared] Treasure Map')).toBeNull()
   })
@@ -400,9 +589,44 @@ describe('ChatWindow timeline behavior', () => {
     )
 
     expect(screen.getByText('Structured title')).toBeTruthy()
-    expect(screen.getByText('Structured body')).toBeTruthy()
+    // Markdown is rendered as literal pre-formatted text in NoteSharedCard
+    expect(screen.getByText(/Structured body/)).toBeTruthy()
     expect(screen.queryByText('Legacy title')).toBeNull()
     expect(screen.queryByText('Old body')).toBeNull()
+  })
+
+  it('renders condition messages inline with a small avatar and condition icon', () => {
+    renderWithTooltip(
+      <MessageList
+        currentUserId={String(USER_ID)}
+        activeRoomId={MAIN_ROOM_ID}
+        messages={
+          [
+            {
+              id: 'c1d0ffee-0000-4aba-8aba-abababababab' as UUID,
+              roomId: MAIN_ROOM_ID,
+              authorId: USER_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Elysia is Confused]',
+              type: MessageType.SYSTEM,
+              isDmOnly: false,
+              metadata: {
+                conditionMessage: {
+                  kind: 'CONDITION',
+                  targetUserId: USER_ID,
+                  presetName: 'Confused',
+                  isRemoval: false,
+                },
+              },
+              createdAt: Date.now(),
+            },
+          ] as any
+        }
+      />
+    )
+
+    expect(screen.getByText('E')).toBeTruthy()
+    expect(screen.getByText('Elysia is Confused')).toBeTruthy()
   })
 
   it('renders day separators for editorial timeline grouping', () => {
@@ -445,10 +669,13 @@ describe('ChatWindow timeline behavior', () => {
   })
 
   it('renders the connected message-type bar and whisper picker for players', async () => {
+    useStore.getState().updateSession(SESSION_ID, { state: SessionState.ACTIVE })
+
     renderWithTooltip(
       <MessageInput
         onSend={vi.fn().mockResolvedValue(undefined)}
         role={Role.PLAYER}
+        sessionId={SESSION_ID}
         whisperRecipients={[
           {
             id: '99999999-9999-4999-8999-999999999999',
@@ -471,7 +698,15 @@ describe('ChatWindow timeline behavior', () => {
   })
 
   it('hides the DM type button for the DM', () => {
-    renderWithTooltip(<MessageInput onSend={vi.fn().mockResolvedValue(undefined)} role={Role.DM} />)
+    useStore.getState().updateSession(SESSION_ID, { state: SessionState.ACTIVE })
+
+    renderWithTooltip(
+      <MessageInput
+        onSend={vi.fn().mockResolvedValue(undefined)}
+        role={Role.DM}
+        sessionId={SESSION_ID}
+      />
+    )
 
     expect(screen.getByRole('radio', { name: 'IC' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'OOC' })).toBeTruthy()

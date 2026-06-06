@@ -10,6 +10,12 @@ export const TYPING_RENEW_MIN_EXTENSION_MS = 1200
 // material presence fields changed.
 export const PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS = 1200
 
+// Keep disconnected users briefly for UX continuity, then prune to prevent
+// unbounded sessionPresence growth during long-running disconnect churn.
+export const PRESENCE_OFFLINE_RETENTION_MS = 15 * 60 * 1000
+export const PRESENCE_SESSION_MAX_ENTRIES = 400
+export const PRESENCE_SESSION_RETAIN_ENTRIES = 320
+
 // Bound in-memory chat cache for long-running sessions. Keep recent messages in
 // memory while older history remains available through paged history endpoints.
 // 10-20 messages are visible at once; 300 is a generous but bounded window.

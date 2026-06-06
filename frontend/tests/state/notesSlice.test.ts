@@ -9,6 +9,7 @@ const SESSION_B = '22222222-2222-4222-8222-222222222222' as UUID
 const NOTE_ID_1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as UUID
 const NOTE_ID_2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' as UUID
 const OWNER_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc' as UUID
+const ATTACHMENT_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' as UUID
 const NOW = 1700000000000
 
 function makeEvent(
@@ -37,6 +38,16 @@ const SAMPLE_NOTE: Note = {
   content: 'Some content',
   visibility: 'PRIVATE' as any,
   tags: ['lore'],
+  attachments: [
+    {
+      id: ATTACHMENT_ID,
+      campaignId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee' as UUID,
+      mime: 'image/jpeg',
+      name: 'clue',
+      uri: 'data:image/jpeg;base64,AAAA',
+      createdAt: NOW,
+    },
+  ],
   createdAt: NOW,
   updatedAt: NOW,
 }
@@ -122,6 +133,7 @@ describe('notesSlice', () => {
       expect(note).toBeDefined()
       expect(note!.title).toBe('From event')
       expect(note!.createdAt).toBe(NOW)
+      expect(note!.attachments).toEqual([])
     })
   })
 
@@ -132,11 +144,13 @@ describe('notesSlice', () => {
         noteId: NOTE_ID_1,
         title: 'Updated via event',
         content: 'New body',
+        attachments: [],
       })
       useStore.getState().handleNoteUpdated(event)
       const note = useStore.getState().notes[SESSION_A]![NOTE_ID_1]
       expect(note!.title).toBe('Updated via event')
       expect(note!.content).toBe('New body')
+      expect(note!.attachments).toEqual([])
     })
 
     it('is a no-op when the note is not in store', () => {

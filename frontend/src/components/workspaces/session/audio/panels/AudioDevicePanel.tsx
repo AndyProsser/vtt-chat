@@ -1,23 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import type { UUID } from '@shared'
 import type { AudioDeviceState } from '@/types/audio'
+import { ConnectionStatusIndicator } from '../indicators/ConnectionStatusIndicator'
+import { ModeStatusPill } from '../indicators/ModeStatusPill'
+import { MicLevelMeter } from '../indicators/MicLevelMeter'
 import {
-  AUDIO_CONNECTION_STATUS_TITLES,
   AUDIO_CONTROL_COPY,
   AUDIO_SETTINGS_COPY,
   type AudioConnectionStatusState,
-  getAudioModeLabel,
   getAudioQuickPanelAriaLabel,
   getAudioQuickPanelCountLabel,
-  getLiveKitBadgeLabel,
   getMicrophoneControlLabel,
 } from '@/constants/audioUi.constants'
 
-interface AudioDetailItem {
+export interface AudioDetailItem {
   kind: string
   name: string
   description: string
+  isPrimary?: boolean
 }
 
 interface AudioDevicePanelProps {
@@ -27,9 +29,17 @@ interface AudioDevicePanelProps {
   hasLocalPublication: boolean
   pttActive: boolean
   activeEffectsCount: number
-  transmittedMicLevel: number
+  /**
+   * Ref holding the live 0..1 mic transmit level. Read imperatively at ~60Hz
+   * by the MicLevelMeter leaf so this panel does NOT re-render at audio frame
+   * rate (the previous number prop drove 900+ renders per soak window and
+   * caused the unmute-induced CPU/memory spike).
+   */
+  transmittedMicLevelRef: RefObject<number>
   effectItems: AudioDetailItem[]
   settingsOpen: boolean
+  sessionId: UUID
+  userId: UUID
   onGoLive: () => void
   onMute: () => void
   onPTTChange: (active: boolean) => void
@@ -43,42 +53,21 @@ export function AudioDevicePanel({
   hasLocalPublication,
   pttActive,
   activeEffectsCount,
-  transmittedMicLevel,
+  transmittedMicLevelRef,
   effectItems,
   settingsOpen,
+  sessionId,
+  userId,
   onGoLive,
   onMute,
   onPTTChange,
   onToggleSettings,
 }: AudioDevicePanelProps) {
-  const [effectsHovered, setEffectsHovered] = useState(false)
-  const txMeterFillRef = useRef<HTMLSpanElement | null>(null)
-  const transmittedMicLevelPercent = Math.round(Math.max(0, Math.min(1, transmittedMicLevel)) * 100)
-
-  useEffect(() => {
-    txMeterFillRef.current?.style.setProperty(
-      '--audio-tx-level-height',
-      `${transmittedMicLevelPercent}%`
-    )
-  }, [transmittedMicLevelPercent])
-
   const micTitle = getMicrophoneControlLabel({
     microphoneOn: device.microphoneOn,
     isVoiceConnected,
   })
 
-  const isMuted = device.pttEnabled ? !pttActive : !device.microphoneOn
-  const mutedLabel = getAudioModeLabel(isMuted)
-
-  const effectsOpen = effectsHovered
-  const lkBadgeState =
-    statusState === 'disconnected'
-      ? 'disconnected'
-      : statusState === 'connecting'
-        ? 'connecting'
-        : hasLocalPublication
-          ? 'connected-publishing'
-          : 'connected-idle'
   const primaryControlClass = device.pttEnabled
     ? `session-audio-device-panel__control session-audio-device-panel__control--ptt ${pttActive ? 'is-active' : ''}`
     : `session-audio-device-panel__control ${device.microphoneOn ? 'is-danger' : isVoiceConnected ? 'is-success' : ''}`
@@ -144,25 +133,11 @@ export function AudioDevicePanel({
     return <Icon name="status" className="session-audio-device-panel__detail-icon" />
   }
 
-  const liveKitBadgeLabel = getLiveKitBadgeLabel({
-    statusState,
-    hasLocalPublication,
-  })
-
   return (
     <TooltipProvider delayDuration={140}>
       <footer className="session-audio-device-panel__controls">
-        {/* Connection status indicator */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className="session-audio-device-panel__status-dot"
-              data-state={statusState}
-              aria-label={AUDIO_CONNECTION_STATUS_TITLES[statusState]}
-            />
-          </TooltipTrigger>
-          <TooltipContent side="top">{AUDIO_CONNECTION_STATUS_TITLES[statusState]}</TooltipContent>
-        </Tooltip>
+        {/* Connection status indicator — leaf component prevents parent re-render on status changes */}
+        <ConnectionStatusIndicator statusState={statusState} />
 
         {/* Mic toggle: go live / mute / unmute */}
         <Tooltip>
@@ -203,42 +178,28 @@ export function AudioDevicePanel({
           </TooltipContent>
         </Tooltip>
 
-        <span
-          className="session-audio-device-panel__tx-meter"
-          aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
-        >
-          <span ref={txMeterFillRef} className="session-audio-device-panel__tx-meter-fill" />
-        </span>
+        <MicLevelMeter
+          levelRef={transmittedMicLevelRef}
+          wrapperClassName="session-audio-device-panel__tx-meter"
+          fillClassName="session-audio-device-panel__tx-meter-fill"
+          cssVariable="--audio-tx-level-height"
+          ariaLabel={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
+        />
 
-        <span
-          className={`session-audio-device-panel__mode-pill ${isMuted ? 'is-muted' : 'is-live'}`}
-        >
-          {mutedLabel}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                className="session-audio-device-panel__mode-pill-badge"
-                data-state={lkBadgeState}
-                aria-label={liveKitBadgeLabel}
-              />
-            </TooltipTrigger>
-            <TooltipContent side="top">{liveKitBadgeLabel}</TooltipContent>
-          </Tooltip>
-        </span>
+        {/* Mode status pill — leaf component subscribed only to mute state */}
+        <div className="session-audio-device-panel__mode-pill-wrapper">
+          <ModeStatusPill sessionId={sessionId} userId={userId} />
+        </div>
 
         {/* Spacer pushes right-side controls to the edge */}
         <span className="session-audio-device-panel__controls-spacer" aria-hidden="true" />
 
         {/* Effects indicator */}
-        <div
-          className="session-audio-device-panel__control-group"
-          onMouseEnter={() => setEffectsHovered(true)}
-          onMouseLeave={() => setEffectsHovered(false)}
-        >
+        <div className="session-audio-device-panel__control-group">
           <button
             className={`session-audio-device-panel__control session-audio-device-panel__control--icon ${activeEffectsCount > 0 ? 'is-active' : ''}`}
             aria-label={getAudioQuickPanelAriaLabel(activeEffectsCount)}
-            aria-expanded={effectsOpen}
+            aria-haspopup="dialog"
             type="button"
           >
             <Icon name="effects" />
@@ -248,39 +209,37 @@ export function AudioDevicePanel({
               </span>
             ) : null}
           </button>
-          {effectsOpen && (
-            <div
-              className="session-audio-device-panel__quick-panel"
-              role="dialog"
-              aria-label={AUDIO_CONTROL_COPY.activeAudioEffects}
-            >
-              <p className="session-audio-device-panel__quick-title">
-                {AUDIO_CONTROL_COPY.audioEffects}
+          <div
+            className="session-audio-device-panel__quick-panel"
+            role="dialog"
+            aria-label={AUDIO_CONTROL_COPY.activeAudioEffects}
+          >
+            <p className="session-audio-device-panel__quick-title">
+              {AUDIO_CONTROL_COPY.audioEffects}
+            </p>
+            {effectItems.length === 0 ? (
+              <p className="session-audio-device-panel__quick-empty">
+                {AUDIO_CONTROL_COPY.noActiveProcessing}
               </p>
-              {effectItems.length === 0 ? (
-                <p className="session-audio-device-panel__quick-empty">
-                  {AUDIO_CONTROL_COPY.noActiveProcessing}
-                </p>
-              ) : (
-                <ul className="session-audio-device-panel__quick-list">
-                  {effectItems.map((item) => (
-                    <li
-                      key={`${item.kind}-${item.name}`}
-                      className="session-audio-device-panel__quick-item"
-                    >
-                      {renderItemIcon(item.kind)}
-                      <span className="session-audio-device-panel__quick-main">
-                        <span className="session-audio-device-panel__quick-name">{item.name}</span>
-                        <span className="session-audio-device-panel__quick-desc">
-                          {item.description}
-                        </span>
+            ) : (
+              <ul className="session-audio-device-panel__quick-list">
+                {effectItems.map((item) => (
+                  <li
+                    key={`${item.kind}-${item.name}`}
+                    className={`session-audio-device-panel__quick-item${item.isPrimary ? ' session-audio-device-panel__quick-item--primary' : ''}`}
+                  >
+                    {renderItemIcon(item.kind)}
+                    <span className="session-audio-device-panel__quick-main">
+                      <span className="session-audio-device-panel__quick-name">{item.name}</span>
+                      <span className="session-audio-device-panel__quick-desc">
+                        {item.description}
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         {/* Audio settings */}

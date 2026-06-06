@@ -72,7 +72,7 @@ describe('dev-mock-players service', () => {
     mocks.mockGetRooms.mockResolvedValue([
       {
         id: MAIN_ROOM_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: 'MAIN',
       },
     ])

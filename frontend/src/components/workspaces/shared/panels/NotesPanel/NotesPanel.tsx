@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type SubmitEventHandler } from 'react'
 import {
   NoteVisibility,
   Role,
-  RoomType,
   isGreenroomSessionState,
   type SessionState,
   type UUID,
@@ -11,13 +10,14 @@ import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/hooks/useStore'
 import type { Note } from '@/types/notes'
-import type { NotesPublishTarget } from '@/types/notesPublish'
+import type { NotesSurfaceTarget } from '@/types/notesPublish'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { useNotesShareContext } from '@/hooks/notes/useNotesShareContext'
 import { isJournalNote, parseNoteHashtags } from '../../../../../utils/notesPanel'
 import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
 import { NotesListWidget } from './NotesListWidget'
+import { NotesPanelCompact } from './NotesPanel.compact'
 import { NotesPanelToolbar, type NotesPublishFilter } from './NotesPanelToolbar'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 
@@ -52,7 +52,6 @@ export function NotesPanel({
   const addNote = useStore((state) => state.addNote)
   const clearNotes = useStore((state) => state.clearNotes)
   const updateNote = useStore((state) => state.updateNote)
-  const deleteNote = useStore((state) => state.deleteNote)
   const notes = useMemo(
     () =>
       Object.values(notesByCampaign || {})
@@ -65,16 +64,11 @@ export function NotesPanel({
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [visibility, setVisibility] = useState<NoteVisibility>(NoteVisibility.DM_ONLY)
   const [tagsText, setTagsText] = useState('')
   const { shareUsers, shareRooms, roomMemberIdsByRoomId } = useNotesShareContext({
-    apiUrl,
-    token,
-    campaignId,
     sessionId,
     currentUserId: user.id,
   })
-  const [allowedUsers, setAllowedUsers] = useState<UUID[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [publishFilter, setPublishFilter] = useState<NotesPublishFilter>('ALL')
@@ -82,15 +76,6 @@ export function NotesPanel({
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const canMutateNotes = user.role === Role.DM
-  const publishRooms = useMemo(
-    () =>
-      shareRooms.filter((room) => {
-        const memberCount = roomMemberIdsByRoomId[room.id]?.length || 0
-        return memberCount > 0 && (room.type === RoomType.MAIN || room.type === RoomType.GROUP)
-      }),
-    [roomMemberIdsByRoomId, shareRooms]
-  )
-
   const displayedNotes = useMemo(() => {
     const byPublishFilter =
       publishFilter === 'SHARED'
@@ -132,14 +117,16 @@ export function NotesPanel({
   const isPublishDisabledInCurrentState =
     !currentSessionState || isGreenroomSessionState(currentSessionState)
 
+  const isSharingDisabledInCurrentState =
+    !currentSessionState || isGreenroomSessionState(currentSessionState)
+
   const handleToggleCreateForm = () => {
     if (!canMutateNotes) {
       return
     }
 
     if (!showCreateForm) {
-      setVisibility(NoteVisibility.DM_ONLY)
-      setAllowedUsers([])
+      // New notes always start DM-only and become shared only after an explicit save.
     }
 
     setShowCreateForm((current) => !current)
@@ -200,9 +187,10 @@ export function NotesPanel({
           campaignId,
           title,
           content,
-          visibility,
+          visibility: NoteVisibility.DM_ONLY,
           tags,
-          allowedUsers: visibility === NoteVisibility.CUSTOM ? allowedUsers : [],
+          allowedUsers: [],
+          attachments: [],
         }),
       })
 
@@ -223,6 +211,7 @@ export function NotesPanel({
         visibility: note.visibility,
         tags: note.tags || [],
         allowedUsers: note.allowedUsers || [],
+        attachments: note.attachments || [],
         publishedAt: note.publishedAt,
         createdAt: note.createdAt,
         updatedAt: note.updatedAt,
@@ -233,8 +222,6 @@ export function NotesPanel({
       setTitle('')
       setContent('')
       setTagsText('')
-      setVisibility(NoteVisibility.DM_ONLY)
-      setAllowedUsers([])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create note')
     } finally {
@@ -244,7 +231,9 @@ export function NotesPanel({
 
   const handleSave = async (
     noteId: string,
-    updates: Partial<Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers'>>
+    updates: Partial<
+      Pick<Note, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers' | 'attachments'>
+    >
   ) => {
     const requestUpdates = {
       ...updates,
@@ -260,7 +249,10 @@ export function NotesPanel({
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(requestUpdates),
+      body: JSON.stringify({
+        campaignId,
+        ...requestUpdates,
+      }),
     })
 
     if (!res.ok) {
@@ -276,24 +268,32 @@ export function NotesPanel({
       visibility: note.visibility,
       tags: note.tags || [],
       allowedUsers: note.allowedUsers || [],
+      attachments: note.attachments || [],
       publishedAt: note.publishedAt,
       updatedAt: note.updatedAt,
     })
   }
 
-  const handlePublish = async (noteId: string, target: NotesPublishTarget) => {
-    const res = await fetch(`${apiUrl}/api/notes/${noteId}/publish`, {
+  const handleSurface = async (noteId: string, target: NotesSurfaceTarget) => {
+    const res = await fetch(`${apiUrl}/api/notes/${noteId}/surface`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(target),
+      body: JSON.stringify({ ...target, sessionId: sessionId ?? undefined }),
     })
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       throw new Error(body.message ?? `HTTP ${res.status}`)
+    }
+
+    // Rehydrate so published indicators converge immediately without a page refresh.
+    const refreshedNotes = await fetchCampaignNotesOnce(apiUrl, campaignId, token)
+    clearNotes(campaignId)
+    for (const refreshedNote of refreshedNotes) {
+      addNote(campaignId, refreshedNote)
     }
   }
 
@@ -308,16 +308,76 @@ export function NotesPanel({
       throw new Error(body.message ?? `HTTP ${res.status}`)
     }
 
-    deleteNote(campaignId, noteId as UUID)
-    if (selectedNoteId === (noteId as UUID)) {
+    const refreshedNotes = await fetchCampaignNotesOnce(apiUrl, campaignId, token)
+    clearNotes(campaignId)
+    for (const refreshedNote of refreshedNotes) {
+      addNote(campaignId, refreshedNote)
+    }
+
+    if (selectedNoteId === (noteId as UUID) && refreshedNotes.length > 0) {
+      setSelectedNoteId(refreshedNotes[0]?.id ?? null)
+    } else if (selectedNoteId === (noteId as UUID)) {
       setSelectedNoteId(null)
     }
   }
 
+  // Compact (in-session) mode: dense stacked title list → full NoteCard overlay on tap.
+  if (compactPicker) {
+    // Show the create form as a full overlay when the DM requests it.
+    if (showCreateForm) {
+      return (
+        <div className="notes-compact">
+          <div className="notes-compact__header">
+            <button
+              type="button"
+              className="notes-compact__back-btn"
+              onClick={() => setShowCreateForm(false)}
+              aria-label="Back to notes list"
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+              <span>Notes</span>
+            </button>
+          </div>
+          <div style={{ padding: '0.5rem' }}>
+            <NotesCreateForm
+              title={title}
+              content={content}
+              tagsText={tagsText}
+              isCreating={isCreating}
+              campaignId={campaignId}
+              onSubmit={handleCreate}
+              onTitleChange={setTitle}
+              onContentChange={setContent}
+              onTagsTextChange={setTagsText}
+            />
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <NotesPanelCompact
+        notes={notes}
+        isLoading={isLoading}
+        canEdit={canMutateNotes}
+        canPublish={canMutateNotes}
+        isPublishDisabled={isPublishDisabledInCurrentState}
+        isSharingDisabled={isSharingDisabledInCurrentState}
+        apiUrl={apiUrl}
+        token={token}
+        shareUsers={shareUsers}
+        shareRooms={shareRooms}
+        roomMemberIdsByRoomId={roomMemberIdsByRoomId}
+        onCreateRequest={handleToggleCreateForm}
+        onSave={handleSave}
+        onDelete={handleDelete}
+        onSurface={handleSurface}
+      />
+    )
+  }
+
   return (
-    <section
-      className={`knowledge-panel knowledge-panel--compact notes-workspace${compactPicker ? ' notes-workspace--compact-picker' : ''}`}
-    >
+    <section className="knowledge-panel knowledge-panel--compact notes-workspace">
       <header className="knowledge-panel-header notes-workspace-header">
         <div className="notes-workspace-header__title-row">
           <h3 className="notes-workspace-header__title">
@@ -330,7 +390,7 @@ export function NotesPanel({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="notes-toolbar-segment notes-toolbar-segment--icon"
+                    className="session-icon-action session-icon-action--icon"
                     onClick={handleToggleCreateForm}
                     aria-label={showCreateForm ? 'Hide handout creator' : 'Create handout'}
                   >
@@ -366,23 +426,17 @@ export function NotesPanel({
         <NotesCreateForm
           title={title}
           content={content}
-          visibility={visibility}
-          allowedUsers={allowedUsers}
           tagsText={tagsText}
-          shareUsers={shareUsers}
-          shareRooms={shareRooms}
-          roomMemberIdsByRoomId={roomMemberIdsByRoomId}
           isCreating={isCreating}
+          campaignId={campaignId}
           onSubmit={handleCreate}
           onTitleChange={setTitle}
           onContentChange={setContent}
-          onVisibilityChange={setVisibility}
-          onAllowedUsersChange={setAllowedUsers}
           onTagsTextChange={setTagsText}
         />
       ) : null}
 
-      <div className="notes-workspace-content workspace-panel-scroll-region">
+      <div className="notes-workspace-content knowledge-panel-results--scroll">
         {isLoading ? (
           <p className="text-sm text-ui-secondary">Loading handouts...</p>
         ) : displayedNotes.length === 0 ? (
@@ -407,17 +461,19 @@ export function NotesPanel({
                 <NoteCard
                   key={selectedNote.id}
                   note={selectedNote}
+                  apiUrl={apiUrl}
+                  token={token}
                   shareUsers={shareUsers}
                   shareRooms={shareRooms}
-                  publishRooms={publishRooms}
                   roomMemberIdsByRoomId={roomMemberIdsByRoomId}
                   canEdit={canMutateNotes}
                   canManageShare={canMutateNotes}
                   canPublish={canMutateNotes}
                   isPublishDisabled={isPublishDisabledInCurrentState}
+                  isSharingDisabled={isSharingDisabledInCurrentState}
                   onSave={handleSave}
                   onDelete={handleDelete}
-                  onPublish={handlePublish}
+                  onSurface={handleSurface}
                 />
               ) : null}
             </section>

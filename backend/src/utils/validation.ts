@@ -1,3 +1,4 @@
+import { isValidUsername } from '@shared'
 import { ValidationError } from '@/types'
 
 // ============================================================================
@@ -6,7 +7,7 @@ import { ValidationError } from '@/types'
 
 export const Validators = {
   isValidUsername(username: string): boolean {
-    return /^[a-zA-Z0-9_-]{3,32}$/.test(username)
+    return isValidUsername(username)
   },
 
   isValidPassword(password: string): boolean {
@@ -44,7 +45,9 @@ export const validateUsername = (username: string): void => {
     throw new ValidationError('Username is required')
   }
   if (!Validators.isValidUsername(username)) {
-    throw new ValidationError('Username must be 3-32 characters (alphanumeric, dash, underscore)')
+    throw new ValidationError(
+      'Username must be 3-32 characters, start and end with a letter or digit, and may contain _ or -'
+    )
   }
 }
 

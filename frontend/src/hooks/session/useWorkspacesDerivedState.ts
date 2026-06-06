@@ -1,21 +1,15 @@
 import { useMemo } from 'react'
 import { PresenceState, Role, SessionState, type UUID } from '@shared'
-import { useConnectionStatus } from '@/hooks/useConnectionStatus'
 import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
 import { resolveMembershipRole, type CampaignSummary } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
-import type {
-  SessionPresence as PresenceRecord,
-  Room as RoomRecord,
-  RoomUser as RoomMember,
-} from '@/types/room'
+import type { SessionPresence as PresenceRecord, Room as RoomRecord } from '@/types/room'
 import type { ApiSessionStats } from '@/types/session/workspaces'
 import { isGreenRoom, toValidPostSessionDurationMinutes } from '@/utils/session/workspaces'
 
 type UseWorkspacesDerivedStateParams = {
   wsState: 'connected' | 'connecting' | 'disconnected' | 'reconnecting'
   currentSession: SessionRecord | null
-  selectedRoomId: UUID | ''
   campaigns: CampaignSummary[]
   selectedCampaignId: UUID | ''
   settingsCampaignSessions: SessionRecord[]
@@ -24,7 +18,6 @@ type UseWorkspacesDerivedStateParams = {
   currentPresence: PresenceRecord[]
   isGreenroom: boolean
   currentRooms: RoomRecord[]
-  typedRoomMembers: Record<UUID, RoomMember[]>
   activeTakeoverUserId: UUID | null
   takeoverPresence: PresenceRecord | null
   user: {
@@ -43,9 +36,7 @@ type UseWorkspacesDerivedStateParams = {
  */
 export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParams) {
   const {
-    wsState,
     currentSession,
-    selectedRoomId,
     campaigns,
     selectedCampaignId,
     settingsCampaignSessions,
@@ -54,7 +45,6 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
     currentPresence,
     isGreenroom,
     currentRooms,
-    typedRoomMembers,
     activeTakeoverUserId,
     takeoverPresence,
     user,
@@ -63,11 +53,6 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
   } = params
 
   const hasSessionSelected = currentSession !== null
-  const connectionStatus = useConnectionStatus({
-    wsState,
-    sessionId: currentSession?.id ?? null,
-    roomId: selectedRoomId || null,
-  })
 
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
   const settingsReferenceSession = settingsCampaignSessions.find(
@@ -99,17 +84,17 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
       return undefined
     }
 
-    const members = typedRoomMembers[greenroom.id] || []
     const uniqueUserIds = new Set<UUID>()
-    for (const member of members) {
-      if (member.role === Role.SYSTEM) {
+    for (const presence of currentPresence) {
+      if (presence.primaryRoomId !== greenroom.id || presence.role === Role.SYSTEM) {
         continue
       }
-      uniqueUserIds.add(member.userId)
+
+      uniqueUserIds.add(presence.userId)
     }
 
     return uniqueUserIds.size
-  }, [currentRooms, currentSession, isGreenroom, typedRoomMembers])
+  }, [currentPresence, currentRooms, currentSession, isGreenroom])
 
   const liveConnectedPresenceCount = currentPresence.filter(
     (presence) => presence.state !== PresenceState.OFFLINE
@@ -196,26 +181,40 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
   const takeoverDisplayName =
     takeoverPresence?.characterName || takeoverPresence?.username || user.username
 
-  const effectiveSessionUser =
-    effectiveSessionRole === user.role && !activeTakeoverUserId
-      ? {
-          ...user,
-          campaignMembershipRole: selectedCampaign?.memberRole as
-            | 'DM'
-            | 'PLAYER'
-            | 'SPECTATOR'
-            | undefined,
-        }
-      : {
-          ...user,
-          id: (activeTakeoverUserId || user.id) as UUID,
-          username: takeoverDisplayName,
-          role: effectiveSessionRole,
-          campaignMembershipRole: effectiveSessionRole as unknown as 'DM' | 'PLAYER' | 'SPECTATOR',
-        }
+  const effectiveSessionUser = useMemo(
+    () =>
+      effectiveSessionRole === user.role && !activeTakeoverUserId
+        ? {
+            ...user,
+            campaignMembershipRole: selectedCampaign?.memberRole as
+              | 'DM'
+              | 'PLAYER'
+              | 'SPECTATOR'
+              | undefined,
+          }
+        : {
+            ...user,
+            id: (activeTakeoverUserId || user.id) as UUID,
+            username: takeoverDisplayName,
+            role: effectiveSessionRole,
+            campaignMembershipRole: effectiveSessionRole as unknown as
+              | 'DM'
+              | 'PLAYER'
+              | 'SPECTATOR',
+          },
+    [
+      activeTakeoverUserId,
+      effectiveSessionRole,
+      selectedCampaign?.memberRole,
+      takeoverDisplayName,
+      user,
+    ]
+  )
 
   const canStartFromGreenroom =
-    !activeTakeoverUserId && currentSession?.dmId === user.id && isGreenroom
+    !activeTakeoverUserId &&
+    currentSession?.dmId === user.id &&
+    (currentSession?.state === SessionState.IDLE || currentSession?.state === SessionState.ENDED)
   const canPauseFromActive =
     !activeTakeoverUserId &&
     currentSession?.dmId === user.id &&
@@ -230,10 +229,13 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
     currentSession?.state === SessionState.IDLE ||
     currentSession?.state === SessionState.ACTIVE ||
     currentSession?.state === SessionState.PAUSED
+  const canEditEndedSessionName =
+    !activeTakeoverUserId &&
+    currentSession?.dmId === user.id &&
+    currentSession?.state === SessionState.ENDED
 
   return {
     hasSessionSelected,
-    connectionStatus,
     selectedCampaign,
     settingsReferenceSession,
     settingsCampaignTotalDurationMs,
@@ -254,5 +256,6 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
     canStopFromActive,
     leaveSessionWarning,
     canEditSessionSettings,
+    canEditEndedSessionName,
   }
 }

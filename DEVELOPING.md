@@ -7,6 +7,17 @@ It assumes you're using:
 
 - **Ubuntu 22.04+** (or any modern Debian‑based distro)
 - **WSL 2** (if on Windows — see [Windows Setup](#-windows--wsl-setup) section below)
+
+Frontend beta/runtime debug knobs in `frontend/.env`:
+
+- `VITE_MEMORY_PRESSURE_THRESHOLD_MB` or `VITE_MEMORY_PRESSURE_THRESHOLD_BYTES`: memory-pressure threshold before the workspace recovery toast appears
+- `VITE_MEMORY_PRESSURE_POLL_MS`: how often the browser memory guard samples memory APIs
+- `VITE_MEMORY_PRESSURE_RELOAD_GRACE_MS`: delay between warning toast and guarded auto-refresh
+- `VITE_MEMORY_PRESSURE_RELOAD_COOLDOWN_MS`: minimum gap between automatic recovery refreshes
+- `VITE_DEBUG_MEMORY_PRESSURE=off|warn|reload`: dev-only simulator for the memory-pressure fallback path
+
+The memory-pressure guard is intended as a beta safety valve while long-session leaks are still being chased. In normal development, leave the defaults alone unless you are tuning or testing the recovery path.
+
 - Docker‑based local development
 - VS Code as the primary editor
 

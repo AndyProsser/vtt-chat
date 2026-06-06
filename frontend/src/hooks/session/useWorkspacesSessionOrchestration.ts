@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { SessionState, isGreenroomSessionState, type UUID } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
@@ -24,7 +24,7 @@ export type UseWorkspacesSessionOrchestrationParams = {
   setCooldownExtensionCount: (sessionId: UUID, count: number) => void
   setIsGreenroom: (isGreenroom: boolean) => void
   resetToolbarActionsState: () => void
-  setSelectedRoomIdOverride: Dispatch<SetStateAction<UUID | ''>>
+  setSelectedRoomIdOverride: (sessionId: UUID, roomId: UUID | '') => void
   setCurrentSession: (sessionId: UUID | null) => void
   clearPersistedActiveSessionContext: () => void
   forceLogoutToAuthScreen: () => void
@@ -36,6 +36,7 @@ export type UseWorkspacesSessionOrchestrationParams = {
   setExitUpgradePassword: Dispatch<SetStateAction<string>>
   setExitUpgradeLoading: Dispatch<SetStateAction<boolean>>
   setError: Dispatch<SetStateAction<string | null>>
+  onIntentionalResetReconnect?: () => void
 }
 
 /**
@@ -69,11 +70,29 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
     setExitUpgradePassword,
     setExitUpgradeLoading,
     setError,
+    onIntentionalResetReconnect,
   } = params
+  const pendingTransitionBySessionIdRef = useRef<Map<UUID, SessionState>>(new Map())
+  const queuedTransitionBySessionIdRef = useRef<Map<UUID, SessionState>>(new Map())
+  const [activeTransitionSessionId, setActiveTransitionSessionId] = useState<UUID | null>(null)
 
   const handleTransitionSession = useCallback(
-    async (sessionId: UUID, state: SessionState) => {
+    async function runTransition(sessionId: UUID, state: SessionState): Promise<boolean> {
+      const pendingState = pendingTransitionBySessionIdRef.current.get(sessionId)
+      if (pendingState) {
+        if (pendingState !== state) {
+          queuedTransitionBySessionIdRef.current.set(sessionId, state)
+        }
+        return false
+      }
+
       setError(null)
+      pendingTransitionBySessionIdRef.current.set(sessionId, state)
+      queuedTransitionBySessionIdRef.current.delete(sessionId)
+      setActiveTransitionSessionId(sessionId)
+
+      let transitionSucceeded = false
+      let completedState = state
 
       try {
         const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${sessionId}/state`, {
@@ -113,16 +132,32 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
           ...updatedSession,
           ...localTransitionFallbacks,
         })
+        transitionSucceeded = true
+        completedState = updatedSession.state
 
         if (isGreenroomSessionState(state)) {
-          setSelectedRoomIdOverride('')
+          if (currentSession?.id) {
+            setSelectedRoomIdOverride(currentSession.id, '')
+          }
           resetToolbarActionsState()
         }
 
         setIsGreenroom(isGreenroomSessionState(state))
+        return true
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
         setError(message)
+        return false
+      } finally {
+        pendingTransitionBySessionIdRef.current.delete(sessionId)
+        setActiveTransitionSessionId((current) => (current === sessionId ? null : current))
+
+        const queuedState = queuedTransitionBySessionIdRef.current.get(sessionId)
+        queuedTransitionBySessionIdRef.current.delete(sessionId)
+
+        if (transitionSucceeded && queuedState && queuedState !== completedState) {
+          await runTransition(sessionId, queuedState)
+        }
       }
     },
     [
@@ -150,10 +185,31 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
           return
         }
 
-        const nextSessionId = await startCampaignSession(selectedCampaignId, sessionList)
-        if (nextSessionId) {
-          await handleTransitionSession(nextSessionId, SessionState.ACTIVE)
+        if (currentSession.state === SessionState.ENDED) {
+          const resetResponse = await fetchWithAuthGuard(
+            `${apiUrl}/api/session/${sessionId}/reset`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({}),
+            }
+          )
+
+          if (!resetResponse.ok) {
+            const payload = (await resetResponse.json().catch(() => ({}))) as {
+              message?: string
+            }
+            setError(payload.message || 'Failed to reset ended session')
+            return
+          }
+
+          onIntentionalResetReconnect?.()
         }
+
+        await startCampaignSession(selectedCampaignId, sessionList)
         return
       }
 
@@ -164,8 +220,12 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
       handleTransitionSession,
       selectedCampaignId,
       sessionList,
+      fetchWithAuthGuard,
+      apiUrl,
+      token,
       setError,
       startCampaignSession,
+      onIntentionalResetReconnect,
     ]
   )
 
@@ -320,7 +380,9 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
     }
 
     setCurrentSession(null)
-    setSelectedRoomIdOverride('')
+    if (currentSession?.id) {
+      setSelectedRoomIdOverride(currentSession.id, '')
+    }
     clearPersistedActiveSessionContext()
   }, [
     apiUrl,
@@ -455,6 +517,7 @@ export function useWorkspacesSessionOrchestration(params: UseWorkspacesSessionOr
   )
 
   return {
+    activeTransitionSessionId,
     handleToggleBroadcastMode,
     handleStartSession,
     handlePauseSession,

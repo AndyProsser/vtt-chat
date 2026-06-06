@@ -11,7 +11,9 @@ export async function updateNote(
   noteId: UUID,
   requesterId: UUID,
   requesterRole: string,
-  updates: Partial<Pick<StoredNote, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers'>>
+  updates: Partial<
+    Pick<StoredNote, 'title' | 'content' | 'visibility' | 'tags' | 'allowedUsers' | 'attachments'>
+  >
 ): Promise<StoredNote | null> {
   const row = await findNoteRecordById(noteId)
   if (!row) return null
@@ -68,6 +70,7 @@ export async function updateNote(
     visibility: updates.visibility ?? note.visibility,
     tags: updates.tags ?? note.tags,
     allowedUsers: updates.allowedUsers ?? note.allowedUsers,
+    attachments: updates.attachments ?? note.attachments,
     updatedAt: Date.now(),
   }
 
@@ -78,6 +81,7 @@ export async function updateNote(
     visibility: next.visibility,
     tags: next.tags,
     allowedUsers: next.allowedUsers || [],
+    attachments: (next.attachments || []) as any,
     updatedAt: new Date(next.updatedAt),
     publishedAt: next.publishedAt ? new Date(next.publishedAt) : null,
   })
@@ -104,6 +108,7 @@ export async function markNotePublished(noteId: UUID): Promise<StoredNote | null
     visibility: next.visibility,
     tags: next.tags,
     allowedUsers: next.allowedUsers || [],
+    attachments: (next.attachments || []) as any,
     updatedAt: new Date(now),
     publishedAt: new Date(now),
   })

@@ -16,6 +16,15 @@ The lifecycle is intentionally simple, predictable, and resilient to reconnectio
 
 ## 1. Core Principles
 
+### **1.0 Authority split: campaign vs session**
+
+Lifecycle behavior follows an explicit authority split:
+
+- Campaign membership + role determine whether a user can participate in conversation surfaces.
+- Session state determines room assignment, lifecycle policy gates, and recording boundaries.
+- Session transitions may move users between rooms but do not, by themselves, grant conversation authority.
+- Audio transport continuity may survive session transitions; policy overlays still enforce whisper/spectator/privacy constraints.
+
 ### **1.1 Sessions are state machines**
 
 A session always exists in exactly one state.
@@ -43,6 +52,23 @@ Clients can reconnect at any time and reconstruct the current session state.
 ### **1.5 State is visible to all**
 
 All participants can see the current session state, regardless of role.
+
+### **1.6 Recording boundaries remain session-authoritative**
+
+Even when transport/audio remains continuous, session lifecycle remains authoritative for recording and transcript boundaries.
+
+- Session boundary bookends (`Started`, `Paused`, `Resumed`, `Ended`) are durable and required.
+- Runtime policy during `PAUSED`/Whisper remains off-the-record unless explicitly configured otherwise.
+
+### **1.7 Audio continuity across session transitions**
+
+Session state transitions (`ACTIVE` → `PAUSED` → `ACTIVE`, `ACTIVE` → `COOLDOWN`) are **policy remaps**, not transport identity teardowns.
+
+- LiveKit and WebSocket transport connections are **not** disconnected or reset on session state changes.
+- Audio effects, environments, and presets survive `PAUSED` and `COOLDOWN` transitions and are restored on resume.
+- Frontend audio state (Zustand slices) must **not** call `resetSessionAudioState()` or `clearActiveEffects()` for `ACTIVE`, `PAUSED`, or `COOLDOWN` transitions — only for `IDLE`, `ENDED`, and `CLEANUP`.
+- `roomEnvironmentNames` is campaign-persistent and must **never** be cleared by session lifecycle cleanup (only by explicit DM action or campaign deletion).
+- Whisper/private-room audio isolation and spectator audio policies remain hard policy boundaries enforced by room routing, not transport reset.
 
 ---
 

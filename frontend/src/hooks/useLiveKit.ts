@@ -3,6 +3,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { UUID } from '@shared'
 import {
   AudioPresets,
   ConnectionState,
@@ -101,7 +102,20 @@ export function useLiveKit(
   roomId: string,
   options: UseLiveKitOptions = {}
 ): UseLiveKitReturn {
+  const roomListenerDiagEnabled = import.meta.env.DEV
   const { onTrackSubscribed, onTrackUnsubscribed, tokenChannel = 'room' } = options
+  const dualRoomHandoffEnabled =
+    tokenChannel === 'room' && import.meta.env.VITE_LIVEKIT_DUAL_ROOM_HANDOFF === '1'
+  const dualRoomHandoffMaxOverlapMs = Math.max(
+    500,
+    Number.parseInt(import.meta.env.VITE_LIVEKIT_DUAL_ROOM_HANDOFF_MAX_MS ?? '2500', 10) || 2500
+  )
+  const dualRoomMirrorPublishEnabled =
+    dualRoomHandoffEnabled && import.meta.env.VITE_LIVEKIT_DUAL_ROOM_MIRROR_PUBLISH === '1'
+  const dualRoomMirrorPublishMaxMs = Math.max(
+    250,
+    Number.parseInt(import.meta.env.VITE_LIVEKIT_DUAL_ROOM_MIRROR_MAX_MS ?? '900', 10) || 900
+  )
   const connectionKey = buildLiveKitConnectionKey(sessionId, roomId, tokenChannel)
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     ConnectionState.Disconnected
@@ -115,6 +129,13 @@ export function useLiveKit(
   const [remoteParticipants, setRemoteParticipants] = useState<Map<string, RemoteParticipant>>(
     () => new Map()
   )
+  const [hasUserActivation, setHasUserActivation] = useState(() => {
+    if (typeof navigator === 'undefined') {
+      return true
+    }
+
+    return Boolean(navigator.userActivation?.hasBeenActive)
+  })
 
   const roomRef = useRef<Room | null>(null)
   const localAudioRef = useRef<LocalAudioTrack | null>(null)
@@ -125,13 +146,19 @@ export function useLiveKit(
   const connectionAttemptRef = useRef(0)
   const connectionKeyRef = useRef<string | null>(null)
   const hasLocalPublicationRef = useRef(false)
+  const publishAudioInFlightRef = useRef<Promise<void> | null>(null)
+  const publishGenerationRef = useRef(0)
   const trackSubscriptionsRef = useRef<TrackSubscription[]>([])
+  const teardownRoomListenersRef = useRef<(() => void) | null>(null)
+  const roomListenerCountsRef = useRef<Record<string, number>>({})
   const remoteAudioElementsRef = useRef(new Map<string, HTMLMediaElement>())
   const onTrackSubscribedRef = useRef(onTrackSubscribed)
   const onTrackUnsubscribedRef = useRef(onTrackUnsubscribed)
   const upsertLiveKitConnection = useStore((state) => state.upsertLiveKitConnection)
   const setLiveKitLocalInputTrack = useStore((state) => state.setLiveKitLocalInputTrack)
   const clearLiveKitConnection = useStore((state) => state.clearLiveKitConnection)
+  const setUserMute = useStore((state) => state.setUserMute)
+  const currentUserId = useStore((state) => state.currentUser?.id)
   const setLiveKitLocalInputTrackRef = useRef(setLiveKitLocalInputTrack)
   const cleanupConnectionKeyRef = useRef(connectionKey)
   const sharedLiveKitState = useStore((state) => state.livekitConnections?.[connectionKey] ?? null)
@@ -139,6 +166,7 @@ export function useLiveKit(
     (state) => state.livekitLocalInputTracks?.[connectionKey] ?? null
   )
   const device = useStore((state) => state.device)
+  const pttActive = useStore((state) => state.pttActive)
   const selectedMicDeviceId = device?.selectedMicDeviceId ?? 'default'
   const noiseFilterLevel = device?.noiseFilterLevel ?? 'medium'
   const autoGainEnabled = device?.autoGainEnabled ?? true
@@ -204,6 +232,71 @@ export function useLiveKit(
     }
   }, [])
 
+  const startRoomAudioAfterGesture = useCallback(async (targetRoom: Room | null) => {
+    if (!targetRoom) {
+      return
+    }
+
+    const roomWithStartAudio = targetRoom as Room & {
+      startAudio?: () => Promise<void>
+    }
+
+    if (typeof roomWithStartAudio.startAudio !== 'function') {
+      return
+    }
+
+    try {
+      await roomWithStartAudio.startAudio()
+    } catch (err) {
+      logger.info(
+        'useLiveKit',
+        `Audio playback resume deferred: ${err instanceof Error ? err.message : String(err)}`
+      )
+    }
+  }, [])
+
+  const syncBackendMuteState = useCallback(
+    async (muted: boolean) => {
+      try {
+        const token = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null
+        if (!token) return
+
+        await fetch(muted ? '/api/audio/mute' : '/api/audio/unmute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sessionId, muted }),
+        })
+      } catch (err) {
+        logger.info('useLiveKit', `Failed to sync mute state to backend: ${String(err)}`)
+      }
+    },
+    [sessionId]
+  )
+
+  useEffect(() => {
+    if (hasUserActivation || typeof window === 'undefined') {
+      return
+    }
+
+    const markActivated = () => {
+      logger.info('useLiveKit', 'User activation detected (pointer/keydown)')
+      setHasUserActivation(true)
+      // Attempt to start audio as early as possible.
+      void startRoomAudioAfterGesture(roomRef.current)
+    }
+
+    window.addEventListener('pointerdown', markActivated, { once: true, passive: true })
+    window.addEventListener('keydown', markActivated, { once: true })
+
+    return () => {
+      window.removeEventListener('pointerdown', markActivated)
+      window.removeEventListener('keydown', markActivated)
+    }
+  }, [hasUserActivation, startRoomAudioAfterGesture])
+
   const setLocalAudioTrackState = useCallback((nextTrack: LocalAudioTrack | null) => {
     localAudioRef.current = nextTrack
     if (isMountedRef.current) {
@@ -223,6 +316,137 @@ export function useLiveKit(
     remoteAudioElementsRef.current.clear()
   }, [])
 
+  const incrementRoomListenerCount = useCallback(
+    (event: RoomEvent) => {
+      if (!roomListenerDiagEnabled) {
+        return
+      }
+
+      const key = String(event)
+      const next = roomListenerCountsRef.current[key] || 0
+      roomListenerCountsRef.current[key] = next + 1
+    },
+    [roomListenerDiagEnabled]
+  )
+
+  const decrementRoomListenerCount = useCallback(
+    (event: RoomEvent) => {
+      if (!roomListenerDiagEnabled) {
+        return
+      }
+
+      const key = String(event)
+      const current = roomListenerCountsRef.current[key] || 0
+      const next = Math.max(0, current - 1)
+      if (next === 0) {
+        delete roomListenerCountsRef.current[key]
+      } else {
+        roomListenerCountsRef.current[key] = next
+      }
+    },
+    [roomListenerDiagEnabled]
+  )
+
+  const logRoomListenerSnapshot = useCallback(
+    (phase: 'register' | 'teardown') => {
+      if (!roomListenerDiagEnabled) {
+        return
+      }
+
+      const counts = roomListenerCountsRef.current
+      const total = Object.values(counts).reduce((sum, count) => sum + count, 0)
+      logger.debug('useLiveKit', 'Room listener counters', {
+        phase,
+        sessionId,
+        roomId,
+        tokenChannel,
+        total,
+        counts,
+      })
+    },
+    [roomId, roomListenerDiagEnabled, sessionId, tokenChannel]
+  )
+
+  const logConnectionStartDiag = useCallback(
+    (reason: string, extra?: Record<string, unknown>) => {
+      if (!roomListenerDiagEnabled) {
+        return
+      }
+
+      logger.debug('useLiveKit', 'Connection start diagnostic', {
+        reason,
+        sessionId,
+        roomId,
+        tokenChannel,
+        hasUserActivation,
+        hasActiveRoom: Boolean(roomRef.current),
+        isConnecting: isConnectingRef.current,
+        hasLocalAudioTrack: Boolean(localAudioRef.current),
+        connectingTarget: connectingTargetRef.current,
+        activeConnectionKey: connectionKeyRef.current,
+        ...extra,
+      })
+    },
+    [hasUserActivation, roomId, roomListenerDiagEnabled, sessionId, tokenChannel]
+  )
+
+  const teardownRoomListeners = useCallback(() => {
+    if (teardownRoomListenersRef.current) {
+      teardownRoomListenersRef.current()
+      teardownRoomListenersRef.current = null
+    }
+  }, [])
+
+  const invalidatePendingPublish = useCallback(() => {
+    publishGenerationRef.current += 1
+    publishAudioInFlightRef.current = null
+  }, [])
+
+  const isPublishSuperseded = useCallback(
+    (params: {
+      targetRoom?: Room | null
+      targetConnectionKey: string
+      publishGeneration: number
+      attemptId?: number
+    }): boolean => {
+      if (!isMountedRef.current) {
+        return true
+      }
+
+      if (publishGenerationRef.current !== params.publishGeneration) {
+        return true
+      }
+
+      if (
+        typeof params.attemptId === 'number' &&
+        connectionAttemptRef.current !== params.attemptId
+      ) {
+        return true
+      }
+
+      if (params.targetRoom && roomRef.current !== params.targetRoom) {
+        return true
+      }
+
+      const activeConnectionKey = connectionKeyRef.current
+      if (activeConnectionKey && activeConnectionKey !== params.targetConnectionKey) {
+        return true
+      }
+
+      const connectingTargetKey = connectingTargetRef.current
+      if (
+        !activeConnectionKey &&
+        connectingTargetKey &&
+        connectingTargetKey !== params.targetConnectionKey
+      ) {
+        return true
+      }
+
+      return false
+    },
+    []
+  )
+
   useEffect(() => {
     // StrictMode runs effect cleanup probes in dev; reset mounted flag on each setup.
     isMountedRef.current = true
@@ -232,6 +456,7 @@ export function useLiveKit(
       connectionAttemptRef.current += 1
       isConnectingRef.current = false
       connectingTargetRef.current = null
+      invalidatePendingPublish()
 
       const activeAudioTrack = localAudioRef.current
       if (activeAudioTrack) {
@@ -242,9 +467,18 @@ export function useLiveKit(
       roomRef.current = null
       connectionKeyRef.current = null
 
+      teardownRoomListeners()
+
       if (activeRoom) {
         void activeRoom.disconnect()
       }
+
+      // Post-disconnect parity: run teardown again in case transport-level callbacks
+      // registered late and populated the teardown ref while disconnect was in flight.
+      teardownRoomListeners()
+
+      trackSubscriptionsRef.current = []
+      clearRemoteAudioElements()
 
       const clearLocalInputTrack = setLiveKitLocalInputTrackRef.current
       if (typeof clearLocalInputTrack === 'function') {
@@ -253,7 +487,7 @@ export function useLiveKit(
 
       isMountedRef.current = false
     }
-  }, [])
+  }, [clearRemoteAudioElements, invalidatePendingPublish, teardownRoomListeners])
 
   // Keep callback refs up to date without triggering reconnects
   useEffect(() => {
@@ -359,7 +593,10 @@ export function useLiveKit(
    * Connect to LiveKit room
    */
   const connect = useCallback(async () => {
+    // Connect immediately; do not defer waiting for a user gesture.
+
     if (isConnectingRef.current || roomRef.current) {
+      logConnectionStartDiag('connect_skipped_already_active')
       return
     }
 
@@ -375,6 +612,8 @@ export function useLiveKit(
       setIsConnecting(true)
       setError(null)
     }
+    logConnectionStartDiag('connect_start', { targetConnectionKey, attemptId })
+
     publishConnectionSnapshot({
       connectionState: ConnectionState.Connecting,
       isConnected: false,
@@ -418,8 +657,10 @@ export function useLiveKit(
       roomRef.current = nextRoom
       setRoomState(nextRoom)
 
-      // Event handlers
-      nextRoom.on(RoomEvent.Connected, () => {
+      // Remove any stale listener set before attaching handlers for this room.
+      teardownRoomListeners()
+
+      const handleConnected = () => {
         if (roomRef.current !== nextRoom || connectionAttemptRef.current !== attemptId) {
           return
         }
@@ -431,9 +672,9 @@ export function useLiveKit(
         }
         isConnectingRef.current = false
         connectingTargetRef.current = null
-      })
+      }
 
-      const syncConnectionFlags = () => {
+      const handleConnectionFlags = () => {
         const activeRoom = roomRef.current
         if (!activeRoom || activeRoom !== nextRoom || connectionAttemptRef.current !== attemptId) {
           return
@@ -464,12 +705,7 @@ export function useLiveKit(
         })
       }
 
-      nextRoom.on(RoomEvent.ConnectionStateChanged, syncConnectionFlags)
-      nextRoom.on(RoomEvent.Reconnecting, syncConnectionFlags)
-      nextRoom.on(RoomEvent.SignalReconnecting, syncConnectionFlags)
-      nextRoom.on(RoomEvent.Reconnected, syncConnectionFlags)
-
-      nextRoom.on(RoomEvent.Disconnected, () => {
+      const handleDisconnected = () => {
         if (roomRef.current !== nextRoom) {
           return
         }
@@ -489,9 +725,9 @@ export function useLiveKit(
           hasLocalPublication: false,
           error: null,
         })
-      })
+      }
 
-      nextRoom.on(RoomEvent.LocalTrackPublished, () => {
+      const handleLocalTrackPublished = () => {
         const activeRoom = roomRef.current ?? nextRoom
         if (!activeRoom) {
           return
@@ -508,9 +744,22 @@ export function useLiveKit(
           hasLocalPublication: getHasLocalPublication(activeRoom),
           error: null,
         })
-      })
+        // If we now have a local publication, ensure backend/user mute state is cleared
+        try {
+          const hasLocal = getHasLocalPublication(activeRoom)
+          if (hasLocal && currentUserId) {
+            // clear local UI mute
+            try {
+              setUserMute?.(sessionId as unknown as UUID, currentUserId as unknown as UUID, false)
+            } catch {}
+            void syncBackendMuteState(false)
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
 
-      nextRoom.on(RoomEvent.LocalTrackUnpublished, () => {
+      const handleLocalTrackUnpublished = () => {
         const activeRoom = roomRef.current ?? nextRoom
         if (!activeRoom) {
           return
@@ -527,18 +776,18 @@ export function useLiveKit(
           hasLocalPublication: getHasLocalPublication(activeRoom),
           error: null,
         })
-      })
+      }
 
-      nextRoom.on(RoomEvent.ParticipantConnected, (participant) => {
+      const handleParticipantConnected = (participant: RemoteParticipant) => {
         if (roomRef.current !== nextRoom || !isMountedRef.current) {
           return
         }
 
         logger.info('useLiveKit', `Participant connected: ${participant.identity}`)
         setRemoteParticipants((prev) => new Map(prev).set(participant.sid, participant))
-      })
+      }
 
-      nextRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
+      const handleParticipantDisconnected = (participant: RemoteParticipant) => {
         if (roomRef.current !== nextRoom || !isMountedRef.current) {
           return
         }
@@ -549,9 +798,13 @@ export function useLiveKit(
           updated.delete(participant.sid)
           return updated
         })
-      })
+      }
 
-      nextRoom.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      const handleTrackSubscribed = (
+        track: { kind: string; mediaStreamTrack: MediaStreamTrack; attach: () => HTMLMediaElement },
+        publication: { trackSid: string; trackName: string },
+        participant: { sid: string; identity: string }
+      ) => {
         if (roomRef.current !== nextRoom) {
           return
         }
@@ -581,9 +834,12 @@ export function useLiveKit(
             remoteAudioElementsRef.current.set(publication.trackSid, audioElement)
           }
         }
-      })
+      }
 
-      nextRoom.on(RoomEvent.TrackUnsubscribed, (track, publication) => {
+      const handleTrackUnsubscribed = (
+        track: { kind: string; detach: () => void },
+        publication: { trackSid: string }
+      ) => {
         if (roomRef.current !== nextRoom) {
           return
         }
@@ -603,17 +859,81 @@ export function useLiveKit(
           audioElement.remove()
           remoteAudioElementsRef.current.delete(publication.trackSid)
         }
-      })
+      }
+
+      const roomWithListeners = nextRoom
+      roomWithListeners.on(RoomEvent.Connected, handleConnected)
+      incrementRoomListenerCount(RoomEvent.Connected)
+      roomWithListeners.on(RoomEvent.ConnectionStateChanged, handleConnectionFlags)
+      incrementRoomListenerCount(RoomEvent.ConnectionStateChanged)
+      roomWithListeners.on(RoomEvent.Reconnecting, handleConnectionFlags)
+      incrementRoomListenerCount(RoomEvent.Reconnecting)
+      roomWithListeners.on(RoomEvent.SignalReconnecting, handleConnectionFlags)
+      incrementRoomListenerCount(RoomEvent.SignalReconnecting)
+      roomWithListeners.on(RoomEvent.Reconnected, handleConnectionFlags)
+      incrementRoomListenerCount(RoomEvent.Reconnected)
+      roomWithListeners.on(RoomEvent.Disconnected, handleDisconnected)
+      incrementRoomListenerCount(RoomEvent.Disconnected)
+      roomWithListeners.on(RoomEvent.LocalTrackPublished, handleLocalTrackPublished)
+      incrementRoomListenerCount(RoomEvent.LocalTrackPublished)
+      roomWithListeners.on(RoomEvent.LocalTrackUnpublished, handleLocalTrackUnpublished)
+      incrementRoomListenerCount(RoomEvent.LocalTrackUnpublished)
+      roomWithListeners.on(RoomEvent.ParticipantConnected, handleParticipantConnected)
+      incrementRoomListenerCount(RoomEvent.ParticipantConnected)
+      roomWithListeners.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
+      incrementRoomListenerCount(RoomEvent.ParticipantDisconnected)
+      roomWithListeners.on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
+      incrementRoomListenerCount(RoomEvent.TrackSubscribed)
+      roomWithListeners.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
+      incrementRoomListenerCount(RoomEvent.TrackUnsubscribed)
+      logRoomListenerSnapshot('register')
+
+      teardownRoomListenersRef.current = () => {
+        roomWithListeners.off(RoomEvent.Connected, handleConnected)
+        decrementRoomListenerCount(RoomEvent.Connected)
+        roomWithListeners.off(RoomEvent.ConnectionStateChanged, handleConnectionFlags)
+        decrementRoomListenerCount(RoomEvent.ConnectionStateChanged)
+        roomWithListeners.off(RoomEvent.Reconnecting, handleConnectionFlags)
+        decrementRoomListenerCount(RoomEvent.Reconnecting)
+        roomWithListeners.off(RoomEvent.SignalReconnecting, handleConnectionFlags)
+        decrementRoomListenerCount(RoomEvent.SignalReconnecting)
+        roomWithListeners.off(RoomEvent.Reconnected, handleConnectionFlags)
+        decrementRoomListenerCount(RoomEvent.Reconnected)
+        roomWithListeners.off(RoomEvent.Disconnected, handleDisconnected)
+        decrementRoomListenerCount(RoomEvent.Disconnected)
+        roomWithListeners.off(RoomEvent.LocalTrackPublished, handleLocalTrackPublished)
+        decrementRoomListenerCount(RoomEvent.LocalTrackPublished)
+        roomWithListeners.off(RoomEvent.LocalTrackUnpublished, handleLocalTrackUnpublished)
+        decrementRoomListenerCount(RoomEvent.LocalTrackUnpublished)
+        roomWithListeners.off(RoomEvent.ParticipantConnected, handleParticipantConnected)
+        decrementRoomListenerCount(RoomEvent.ParticipantConnected)
+        roomWithListeners.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
+        decrementRoomListenerCount(RoomEvent.ParticipantDisconnected)
+        roomWithListeners.off(RoomEvent.TrackSubscribed, handleTrackSubscribed)
+        decrementRoomListenerCount(RoomEvent.TrackSubscribed)
+        roomWithListeners.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
+        decrementRoomListenerCount(RoomEvent.TrackUnsubscribed)
+        logRoomListenerSnapshot('teardown')
+      }
+
+      if (connectionAttemptRef.current !== attemptId || !isMountedRef.current) {
+        teardownRoomListeners()
+        await nextRoom.disconnect()
+        teardownRoomListeners()
+        return
+      }
 
       // Connect to room
       await nextRoom.connect(tokenData.url, tokenData.token, {
         autoSubscribe: true,
       })
 
-      syncConnectionFlags()
+      handleConnectionFlags()
 
       if (roomRef.current !== nextRoom || connectionAttemptRef.current !== attemptId) {
+        teardownRoomListeners()
         await nextRoom.disconnect()
+        teardownRoomListeners()
         return
       }
 
@@ -636,7 +956,8 @@ export function useLiveKit(
       connectionKeyRef.current = targetConnectionKey
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err)
-      const expectedDisconnect = isExpectedDisconnectError(err)
+      const supersededAttempt = connectionAttemptRef.current !== attemptId || !isMountedRef.current
+      const expectedDisconnect = isExpectedDisconnectError(err) || supersededAttempt
 
       if (nextRoom && roomRef.current === nextRoom) {
         roomRef.current = null
@@ -645,7 +966,9 @@ export function useLiveKit(
 
       if (nextRoom) {
         try {
+          teardownRoomListeners()
           await nextRoom.disconnect()
+          teardownRoomListeners()
         } catch {
           // Ignore cleanup failures after a failed connection attempt.
         }
@@ -690,124 +1013,492 @@ export function useLiveKit(
       })
     }
   }, [
-    fetchToken,
-    getHasLocalPublication,
-    isExpectedDisconnectError,
-    publishConnectionSnapshot,
-    roomId,
     sessionId,
-    setRoomState,
+    roomId,
     tokenChannel,
+    logConnectionStartDiag,
+    publishConnectionSnapshot,
+    currentUserId,
+    syncBackendMuteState,
+    setUserMute,
+    fetchToken,
+    setRoomState,
+    teardownRoomListeners,
+    incrementRoomListenerCount,
+    logRoomListenerSnapshot,
+    getHasLocalPublication,
+    decrementRoomListenerCount,
+    isExpectedDisconnectError,
   ])
+
+  // Immediate connect flow; no deferred-connect resume logic.
+
+  const attemptDualRoomHandoff = useCallback(
+    async (targetConnectionKey: string): Promise<boolean> => {
+      const previousRoom = roomRef.current
+      const previousTeardown = teardownRoomListenersRef.current
+      const previousConnectionKey = connectionKeyRef.current
+
+      const mirrorLocalPublicationIfNeeded = async (
+        targetRoom: Room
+      ): Promise<LocalAudioTrack | null> => {
+        if (!dualRoomMirrorPublishEnabled) {
+          return null
+        }
+
+        const shouldMirrorForContinuity =
+          device.microphoneOn &&
+          (!device.pttEnabled || pttActive) &&
+          getHasLocalPublication(previousRoom)
+
+        if (!shouldMirrorForContinuity) {
+          return null
+        }
+
+        const sourceInputTrack = localInputTrack ?? localAudioRef.current?.mediaStreamTrack
+        if (!sourceInputTrack) {
+          throw new Error('dual-room mirror requested but no local input track is available')
+        }
+
+        const clonedInputTrack = sourceInputTrack.clone()
+        const mirroredTrack = new LocalAudioTrack(clonedInputTrack)
+
+        try {
+          await Promise.race([
+            targetRoom.localParticipant.publishTrack(mirroredTrack, {
+              audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
+            }),
+            new Promise<never>((_, reject) => {
+              window.setTimeout(() => {
+                reject(new Error('dual-room mirror publish timeout'))
+              }, dualRoomMirrorPublishMaxMs)
+            }),
+          ])
+        } catch (err) {
+          await targetRoom.localParticipant.unpublishTrack(mirroredTrack).catch(() => undefined)
+          mirroredTrack.stop()
+          throw err
+        }
+
+        setLocalAudioTrackState(mirroredTrack)
+        if (typeof setLiveKitLocalInputTrack === 'function') {
+          setLiveKitLocalInputTrack(connectionKey, clonedInputTrack)
+        }
+
+        logger.info('useLiveKit', 'Dual-room mirror publish succeeded', {
+          targetConnectionKey,
+          maxMirrorMs: dualRoomMirrorPublishMaxMs,
+        })
+
+        return mirroredTrack
+      }
+
+      if (!previousRoom || !previousConnectionKey) {
+        return false
+      }
+
+      logConnectionStartDiag('dual_handoff_start', {
+        targetConnectionKey,
+        previousConnectionKey,
+        maxOverlapMs: dualRoomHandoffMaxOverlapMs,
+      })
+
+      isConnectingRef.current = true
+      connectingTargetRef.current = targetConnectionKey
+      if (isMountedRef.current) {
+        setConnectionState(ConnectionState.Reconnecting)
+        setIsConnected(true)
+        setIsConnecting(true)
+        setError(null)
+      }
+
+      publishConnectionSnapshot({
+        connectionState: ConnectionState.Reconnecting,
+        isConnected: true,
+        isConnecting: true,
+        hasLocalPublication: getHasLocalPublication(previousRoom),
+        error: null,
+      })
+
+      // Keep previous room alive during overlap attempt, but detach its teardown
+      // from the active ref so connect() can attach the candidate room listeners.
+      teardownRoomListenersRef.current = null
+      roomRef.current = null
+      connectionKeyRef.current = null
+
+      let timeoutTriggered = false
+
+      try {
+        await Promise.race([
+          connect(),
+          new Promise<never>((_, reject) => {
+            window.setTimeout(() => {
+              timeoutTriggered = true
+              reject(new Error('dual-room handoff overlap timeout'))
+            }, dualRoomHandoffMaxOverlapMs)
+          }),
+        ])
+
+        const currentRoom = roomRef.current
+        if (
+          !currentRoom ||
+          currentRoom === previousRoom ||
+          connectionKeyRef.current !== targetConnectionKey
+        ) {
+          throw new Error('dual-room handoff did not activate the target room')
+        }
+
+        await mirrorLocalPublicationIfNeeded(currentRoom)
+
+        // Remove listeners from previous room and terminate it after swap.
+        previousTeardown?.()
+        await previousRoom.disconnect().catch(() => undefined)
+
+        logger.info('useLiveKit', 'Dual-room handoff succeeded', {
+          targetConnectionKey,
+          previousConnectionKey,
+        })
+        return true
+      } catch (err) {
+        if (timeoutTriggered) {
+          // Supersede any in-flight connect attempt that exceeded overlap guard.
+          connectionAttemptRef.current += 1
+        }
+
+        const candidateRoom = roomRef.current as Room | null
+        if (candidateRoom && candidateRoom !== previousRoom) {
+          teardownRoomListeners()
+          await (candidateRoom as Room).disconnect().catch(() => undefined)
+          teardownRoomListeners()
+        }
+
+        // Roll back to previously connected room.
+        roomRef.current = previousRoom
+        if (isMountedRef.current) {
+          setRoom(previousRoom)
+        }
+        teardownRoomListenersRef.current = previousTeardown ?? null
+        connectionKeyRef.current = previousConnectionKey
+        isConnectingRef.current = false
+        connectingTargetRef.current = null
+
+        const previousState = previousRoom.state
+        if (isMountedRef.current) {
+          setConnectionState(previousState)
+          setIsConnected(previousState === ConnectionState.Connected)
+          setIsConnecting(false)
+          setError(null)
+        }
+
+        publishConnectionSnapshot({
+          connectionState: previousState,
+          isConnected: previousState === ConnectionState.Connected,
+          isConnecting: false,
+          hasLocalPublication: getHasLocalPublication(previousRoom),
+          error: null,
+        })
+
+        logger.warn(
+          'useLiveKit',
+          `Dual-room handoff failed, rolled back: ${err instanceof Error ? err.message : String(err)}`,
+          {
+            targetConnectionKey,
+            previousConnectionKey,
+            timeoutTriggered,
+          }
+        )
+        return false
+      }
+    },
+    [
+      connect,
+      connectionKey,
+      device.microphoneOn,
+      device.pttEnabled,
+      dualRoomHandoffMaxOverlapMs,
+      dualRoomMirrorPublishEnabled,
+      dualRoomMirrorPublishMaxMs,
+      getHasLocalPublication,
+      localInputTrack,
+      logConnectionStartDiag,
+      pttActive,
+      publishConnectionSnapshot,
+      setLiveKitLocalInputTrack,
+      setLocalAudioTrackState,
+      teardownRoomListeners,
+    ]
+  )
+
+  const waitForRoomConnected = useCallback(async (targetRoom: Room, timeoutMs = 6000) => {
+    if (targetRoom.state === ConnectionState.Connected) {
+      return
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      let settled = false
+
+      const cleanup = () => {
+        targetRoom.off(RoomEvent.Connected, handleConnected)
+        targetRoom.off(RoomEvent.Reconnected, handleConnected)
+        targetRoom.off(RoomEvent.ConnectionStateChanged, handleStateChanged)
+        targetRoom.off(RoomEvent.Disconnected, handleDisconnected)
+      }
+
+      const settle = (fn: () => void) => {
+        if (settled) {
+          return
+        }
+        settled = true
+        clearTimeout(timeout)
+        cleanup()
+        fn()
+      }
+
+      const handleConnected = () => {
+        settle(resolve)
+      }
+
+      const handleStateChanged = () => {
+        if (targetRoom.state === ConnectionState.Connected) {
+          settle(resolve)
+        }
+      }
+
+      const handleDisconnected = () => {
+        settle(() => reject(new Error('Room disconnected before becoming connected')))
+      }
+
+      const timeout = window.setTimeout(() => {
+        settle(() =>
+          reject(new Error('publishing rejected as engine not connected within timeout'))
+        )
+      }, timeoutMs)
+
+      targetRoom.on(RoomEvent.Connected, handleConnected)
+      targetRoom.on(RoomEvent.Reconnected, handleConnected)
+      targetRoom.on(RoomEvent.ConnectionStateChanged, handleStateChanged)
+      targetRoom.on(RoomEvent.Disconnected, handleDisconnected)
+      handleStateChanged()
+    })
+  }, [])
 
   /**
    * Publish the local microphone to the active room.
    */
   const publishAudio = useCallback(async () => {
-    const activeRoom = roomRef.current
-    if (!activeRoom) {
-      throw new Error('Room not connected')
+    if (publishAudioInFlightRef.current) {
+      return publishAudioInFlightRef.current
     }
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: getLocalAudioConstraints(),
-      })
+    const publishGeneration = publishGenerationRef.current
+    const targetConnectionKey = `${sessionId}:${roomId}:${tokenChannel}`
+    const connectionAttemptAtStart = connectionAttemptRef.current
 
-      const inputTrack = stream.getAudioTracks()[0]
+    const publishPromise = (async () => {
+      let activeRoom = roomRef.current
 
-      const audioTrack = new LocalAudioTrack(inputTrack)
-      await activeRoom.localParticipant.publishTrack(audioTrack, {
-        audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
-      })
-
-      setLocalAudioTrackState(audioTrack)
-      if (typeof setLiveKitLocalInputTrack === 'function') {
-        setLiveKitLocalInputTrack(connectionKey, inputTrack)
-      }
-      publishConnectionSnapshot({
-        connectionState: activeRoom.state,
-        isConnected: activeRoom.state === ConnectionState.Connected,
-        isConnecting:
-          activeRoom.state === ConnectionState.Connecting ||
-          activeRoom.state === ConnectionState.Reconnecting ||
-          activeRoom.state === ConnectionState.SignalReconnecting,
-        hasLocalPublication: getHasLocalPublication(activeRoom),
-        error: null,
-      })
-
-      logger.info('useLiveKit', 'Audio track published')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      const isPermissionError = /insufficient permissions|not authorized|permission/i.test(message)
-
-      if (isPermissionError) {
-        logger.warn(
-          'useLiveKit',
-          `Audio publish permission denied, retrying after reconnect: ${message}`
-        )
-        // One-shot recovery: refresh token/permissions by reconnecting and retry once.
-        const recoveryRoom = roomRef.current
-        if (recoveryRoom) {
-          await recoveryRoom.disconnect().catch(() => undefined)
-        }
-        roomRef.current = null
-        connectionKeyRef.current = null
-        setRoomState(null)
-        setLocalAudioTrackState(null)
-        if (typeof setLiveKitLocalInputTrack === 'function') {
-          setLiveKitLocalInputTrack(connectionKey, null)
-        }
-
+      if (!activeRoom) {
         await connect()
+        activeRoom = roomRef.current
+      }
 
-        const recoveredRoom = roomRef.current as Room | null
-        if (!recoveredRoom) {
-          throw err
+      if (
+        isPublishSuperseded({
+          targetRoom: activeRoom,
+          targetConnectionKey,
+          publishGeneration,
+          attemptId: connectionAttemptAtStart,
+        })
+      ) {
+        return
+      }
+
+      if (!activeRoom) {
+        throw new Error('Room not connected')
+      }
+
+      if (activeRoom.state !== ConnectionState.Connected) {
+        await waitForRoomConnected(activeRoom)
+        if (
+          isPublishSuperseded({
+            targetRoom: activeRoom,
+            targetConnectionKey,
+            publishGeneration,
+            attemptId: connectionAttemptAtStart,
+          })
+        ) {
+          return
         }
+      }
 
+      if (getHasLocalPublication(activeRoom)) {
+        publishConnectionSnapshot({
+          connectionState: activeRoom.state,
+          isConnected: activeRoom.state === ConnectionState.Connected,
+          isConnecting:
+            activeRoom.state === ConnectionState.Connecting ||
+            activeRoom.state === ConnectionState.Reconnecting ||
+            activeRoom.state === ConnectionState.SignalReconnecting,
+          hasLocalPublication: true,
+          error: null,
+        })
+        return
+      }
+
+      try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: getLocalAudioConstraints(),
         })
 
-        const inputTrack = stream.getAudioTracks()[0]
-        const retryTrack = new LocalAudioTrack(inputTrack)
+        if (
+          isPublishSuperseded({
+            targetRoom: activeRoom,
+            targetConnectionKey,
+            publishGeneration,
+            attemptId: connectionAttemptAtStart,
+          })
+        ) {
+          stream.getTracks().forEach((track) => track.stop())
+          return
+        }
 
-        await recoveredRoom.localParticipant.publishTrack(retryTrack, {
+        const inputTrack = stream.getAudioTracks()[0]
+
+        const audioTrack = new LocalAudioTrack(inputTrack)
+        await activeRoom.localParticipant.publishTrack(audioTrack, {
           audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
         })
 
-        setLocalAudioTrackState(retryTrack)
+        if (
+          isPublishSuperseded({
+            targetRoom: activeRoom,
+            targetConnectionKey,
+            publishGeneration,
+            attemptId: connectionAttemptAtStart,
+          })
+        ) {
+          await activeRoom.localParticipant.unpublishTrack(audioTrack).catch(() => undefined)
+          audioTrack.stop()
+          return
+        }
+
+        setLocalAudioTrackState(audioTrack)
         if (typeof setLiveKitLocalInputTrack === 'function') {
           setLiveKitLocalInputTrack(connectionKey, inputTrack)
         }
         publishConnectionSnapshot({
-          connectionState: recoveredRoom.state,
-          isConnected: recoveredRoom.state === ConnectionState.Connected,
+          connectionState: activeRoom.state,
+          isConnected: activeRoom.state === ConnectionState.Connected,
           isConnecting:
-            recoveredRoom.state === ConnectionState.Connecting ||
-            recoveredRoom.state === ConnectionState.Reconnecting ||
-            recoveredRoom.state === ConnectionState.SignalReconnecting,
-          hasLocalPublication: getHasLocalPublication(recoveredRoom),
+            activeRoom.state === ConnectionState.Connecting ||
+            activeRoom.state === ConnectionState.Reconnecting ||
+            activeRoom.state === ConnectionState.SignalReconnecting,
+          hasLocalPublication: getHasLocalPublication(activeRoom),
           error: null,
         })
 
-        logger.info('useLiveKit', 'Audio track published after permission recovery reconnect')
-        return
-      }
+        logger.info('useLiveKit', 'Audio track published')
+      } catch (err) {
+        if (
+          isPublishSuperseded({
+            targetRoom: activeRoom,
+            targetConnectionKey,
+            publishGeneration,
+            attemptId: connectionAttemptAtStart,
+          })
+        ) {
+          return
+        }
 
-      logger.error('useLiveKit', `Audio publish failed: ${message}`)
-      throw err
+        const message = err instanceof Error ? err.message : String(err)
+        const isPermissionError = /insufficient permissions|not authorized|permission/i.test(
+          message
+        )
+
+        if (isPermissionError) {
+          logger.warn(
+            'useLiveKit',
+            `Audio publish permission denied, retrying after reconnect: ${message}`
+          )
+          // One-shot recovery: refresh token/permissions by reconnecting and retry once.
+          const recoveryRoom = roomRef.current
+          if (recoveryRoom) {
+            await recoveryRoom.disconnect().catch(() => undefined)
+          }
+          roomRef.current = null
+          connectionKeyRef.current = null
+          setRoomState(null)
+          setLocalAudioTrackState(null)
+          if (typeof setLiveKitLocalInputTrack === 'function') {
+            setLiveKitLocalInputTrack(connectionKey, null)
+          }
+
+          await connect()
+
+          const recoveredRoom = roomRef.current as Room | null
+          if (!recoveredRoom) {
+            throw err
+          }
+
+          await waitForRoomConnected(recoveredRoom)
+
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: getLocalAudioConstraints(),
+          })
+
+          const inputTrack = stream.getAudioTracks()[0]
+          const retryTrack = new LocalAudioTrack(inputTrack)
+
+          await recoveredRoom.localParticipant.publishTrack(retryTrack, {
+            audioPreset: { ...AudioPresets.music, maxBitrate: 128000 },
+          })
+
+          setLocalAudioTrackState(retryTrack)
+          if (typeof setLiveKitLocalInputTrack === 'function') {
+            setLiveKitLocalInputTrack(connectionKey, inputTrack)
+          }
+          publishConnectionSnapshot({
+            connectionState: recoveredRoom.state,
+            isConnected: recoveredRoom.state === ConnectionState.Connected,
+            isConnecting:
+              recoveredRoom.state === ConnectionState.Connecting ||
+              recoveredRoom.state === ConnectionState.Reconnecting ||
+              recoveredRoom.state === ConnectionState.SignalReconnecting,
+            hasLocalPublication: getHasLocalPublication(recoveredRoom),
+            error: null,
+          })
+
+          logger.info('useLiveKit', 'Audio track published after permission recovery reconnect')
+          return
+        }
+
+        logger.error('useLiveKit', `Audio publish failed: ${message}`)
+        throw err
+      }
+    })()
+
+    publishAudioInFlightRef.current = publishPromise
+    try {
+      await publishPromise
+    } finally {
+      if (publishAudioInFlightRef.current === publishPromise) {
+        publishAudioInFlightRef.current = null
+      }
     }
   }, [
     connect,
     connectionKey,
     getHasLocalPublication,
     getLocalAudioConstraints,
+    isPublishSuperseded,
     publishConnectionSnapshot,
+    roomId,
+    sessionId,
     setLiveKitLocalInputTrack,
     setLocalAudioTrackState,
     setRoomState,
+    tokenChannel,
+    waitForRoomConnected,
   ])
 
   /**
@@ -859,6 +1550,7 @@ export function useLiveKit(
     connectionAttemptRef.current += 1
     isConnectingRef.current = false
     connectingTargetRef.current = null
+    invalidatePendingPublish()
 
     const activeRoom = roomRef.current
     const activeAudioTrack = localAudioRef.current
@@ -869,7 +1561,9 @@ export function useLiveKit(
 
     if (activeRoom) {
       try {
+        teardownRoomListeners()
         await activeRoom.disconnect()
+        teardownRoomListeners()
       } catch (err) {
         if (!isExpectedDisconnectError(err)) {
           logger.warn(
@@ -914,6 +1608,8 @@ export function useLiveKit(
     setLocalAudioTrackState,
     setLocalVideoTrackState,
     setRoomState,
+    teardownRoomListeners,
+    invalidatePendingPublish,
   ])
 
   /**
@@ -921,20 +1617,25 @@ export function useLiveKit(
    */
   useEffect(() => {
     if (!sessionId || !roomId) {
+      logConnectionStartDiag('effect_early_return_missing_session_or_room')
       if (roomRef.current || isConnectingRef.current || localAudioRef.current) {
+        logConnectionStartDiag('effect_disconnect_due_to_missing_session_or_room')
         void disconnect()
       }
       return
     }
 
     let cancelled = false
+    let startTimer: ReturnType<typeof setTimeout> | null = null
     const targetConnectionKey = `${sessionId}:${roomId}:${tokenChannel}`
 
     const startConnection = async () => {
-      await Promise.resolve()
       if (cancelled) {
+        logConnectionStartDiag('effect_early_return_cancelled_before_start')
         return
       }
+
+      logConnectionStartDiag('effect_start_connection', { targetConnectionKey })
 
       // If room target changed, replace stale connection work before connecting.
       const hasStaleConnectedRoom =
@@ -943,12 +1644,26 @@ export function useLiveKit(
         isConnectingRef.current && connectingTargetRef.current !== targetConnectionKey
 
       if (hasStaleConnectedRoom) {
+        if (dualRoomHandoffEnabled) {
+          logConnectionStartDiag('effect_dual_handoff_attempt', { targetConnectionKey })
+          const handoffSucceeded = await attemptDualRoomHandoff(targetConnectionKey)
+          if (handoffSucceeded) {
+            return
+          }
+          logConnectionStartDiag('effect_dual_handoff_fallback_legacy', { targetConnectionKey })
+        }
+
+        logConnectionStartDiag('effect_disconnect_stale_connected_room', { targetConnectionKey })
+        invalidatePendingPublish()
         await disconnect()
       } else if (hasStaleInFlightRoom) {
+        logConnectionStartDiag('effect_invalidate_stale_inflight_room', { targetConnectionKey })
         // Avoid disconnecting while offer negotiation is in-flight; invalidate and replace.
         connectionAttemptRef.current += 1
         isConnectingRef.current = false
         connectingTargetRef.current = null
+        invalidatePendingPublish()
+        teardownRoomListeners()
         roomRef.current = null
         connectionKeyRef.current = null
 
@@ -961,16 +1676,39 @@ export function useLiveKit(
       }
 
       if (!cancelled) {
+        // WebRTC signaling/socket setup does not require a user gesture.
+        // Keep autoplay handling gesture-gated via startRoomAudioAfterGesture.
+        logConnectionStartDiag('effect_call_connect', { targetConnectionKey })
         await connect()
+      } else {
+        logConnectionStartDiag('effect_early_return_cancelled_before_connect')
       }
     }
 
-    void startConnection()
+    // Delay connection work to the next task so StrictMode probe cleanups and
+    // same-tick room retargets can cancel before token fetch/socket setup begins.
+    startTimer = setTimeout(() => {
+      void startConnection()
+    }, 0)
 
     return () => {
       cancelled = true
+      if (startTimer) {
+        clearTimeout(startTimer)
+      }
     }
-  }, [sessionId, roomId, tokenChannel, connect, disconnect])
+  }, [
+    sessionId,
+    roomId,
+    tokenChannel,
+    connect,
+    disconnect,
+    dualRoomHandoffEnabled,
+    attemptDualRoomHandoff,
+    invalidatePendingPublish,
+    logConnectionStartDiag,
+    teardownRoomListeners,
+  ])
 
   useEffect(() => {
     if (!sessionId || !roomId) {

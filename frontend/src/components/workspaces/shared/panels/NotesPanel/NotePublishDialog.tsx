@@ -16,39 +16,20 @@ export function NotePublishDialog(props: NotePublishDialogProps) {
   return (
     <DialogPrimitive.Root open={props.open} onOpenChange={props.onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-1200 bg-slate-900/45" />
-        <DialogPrimitive.Content className="fixed left-1/2 top-[42%] z-1201 w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-ui-md border border-ui-border bg-ui-surface p-4 shadow-xl">
+        <DialogPrimitive.Overlay className="fixed inset-0 z-2200 bg-slate-900/45" />
+        <DialogPrimitive.Content className="fixed left-1/2 top-[42%] z-2201 w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-ui-md border border-ui-border bg-ui-surface p-4 shadow-xl">
           <DialogPrimitive.Title className="text-base font-semibold text-ui-primary">
             Post Handout To Chat
           </DialogPrimitive.Title>
           <DialogPrimitive.Description className="mt-2 text-sm text-ui-secondary">
-            Choose where this handout should appear. Posting to a room also shares the handout with
-            the players currently in that room.
+            Choose a room. Posting will also update handout sharing to match the players currently
+            in that room.
           </DialogPrimitive.Description>
 
           <div className="mt-4 flex flex-col gap-2">
-            {props.rooms.length > 1 && (
-              <button
-                type="button"
-                disabled={props.isSubmitting}
-                onClick={() =>
-                  void props.onConfirmPublish({
-                    audience: 'ALL_ROOMS',
-                    roomIds: props.rooms.map((r) => r.id),
-                  })
-                }
-                className="rounded-ui-sm border border-ui-border bg-ui-surface-subtle px-3 py-3 text-left text-sm text-ui-primary transition hover:bg-ui-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <div className="font-medium">All Rooms</div>
-                <div className="mt-1 text-xs text-ui-secondary">
-                  Post to every room with players.
-                </div>
-              </button>
-            )}
-
             {props.rooms.map((room) => {
               const memberCount = props.roomMemberIdsByRoomId[room.id]?.length || 0
-              const roomLabel = room.type === RoomType.MAIN ? 'Main room' : 'Group'
+              const roomLabel = room.type === RoomType.MAIN ? 'Main' : 'Group'
 
               return (
                 <button

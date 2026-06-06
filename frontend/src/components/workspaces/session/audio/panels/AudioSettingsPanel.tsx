@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { Slider } from '@/components/ui'
 import type { AudioDeviceState } from '@/types/audio'
+import { MicLevelMeter } from '../indicators/MicLevelMeter'
 import {
   AUDIO_CONTROL_COPY,
   AUDIO_SETTINGS_COPY,
@@ -15,7 +16,12 @@ interface MediaDeviceOption {
 
 interface AudioSettingsPanelProps {
   device: AudioDeviceState
-  localMicLevel: number
+  /**
+   * Ref holding the live 0..1 mic level. The MicLevelMeter leaf reads this
+   * imperatively at frame rate, so this panel does not re-render on level
+   * changes.
+   */
+  localMicLevelRef: RefObject<number>
   isDm: boolean
   isWhisperMode: boolean
   onDeviceChange: (updates: Partial<AudioDeviceState>) => void
@@ -42,7 +48,7 @@ function truncateDeviceLabel(label: string): string {
 
 export function AudioSettingsPanel({
   device,
-  localMicLevel,
+  localMicLevelRef,
   isDm,
   isWhisperMode,
   onDeviceChange,
@@ -50,15 +56,6 @@ export function AudioSettingsPanel({
 }: AudioSettingsPanelProps) {
   const [micDevices, setMicDevices] = useState<MediaDeviceOption[]>([])
   const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceOption[]>([])
-  const micMeterFillRef = useRef<HTMLSpanElement | null>(null)
-  const localMicLevelPercent = Math.round(Math.max(0, Math.min(1, localMicLevel)) * 100)
-
-  useEffect(() => {
-    micMeterFillRef.current?.style.setProperty(
-      '--audio-mic-level-width',
-      `${localMicLevelPercent}%`
-    )
-  }, [localMicLevelPercent])
 
   useEffect(() => {
     navigator.mediaDevices
@@ -159,12 +156,13 @@ export function AudioSettingsPanel({
             </span>
           </label>
 
-          <div
-            className="session-audio-settings-panel__mic-meter"
-            aria-label={AUDIO_SETTINGS_COPY.outgoingMicrophoneSignal}
-          >
-            <span ref={micMeterFillRef} className="session-audio-settings-panel__mic-meter-fill" />
-          </div>
+          <MicLevelMeter
+            levelRef={localMicLevelRef}
+            wrapperClassName="session-audio-settings-panel__mic-meter"
+            fillClassName="session-audio-settings-panel__mic-meter-fill"
+            cssVariable="--audio-mic-level-width"
+            ariaLabel={AUDIO_SETTINGS_COPY.outgoingMicrophoneSignal}
+          />
         </section>
 
         {/* Gain / Sensitivity */}

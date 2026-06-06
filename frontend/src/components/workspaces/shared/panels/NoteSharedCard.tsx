@@ -1,3 +1,4 @@
+import { useMemo, type ReactNode } from 'react'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
 import '@/styles/components/workspaces/shared/panels/NoteSharedCard.css'
@@ -7,6 +8,8 @@ interface NoteSharedCardProps {
   timestampLabel?: string
   timestampDateTime?: string
   className?: string
+  /** When true, an "excerpt" badge is shown and a "View in Notes" hint is displayed. */
+  isExcerpt?: boolean
 }
 
 /**
@@ -17,9 +20,27 @@ export function NoteSharedCard({
   timestampLabel,
   timestampDateTime,
   className,
+  isExcerpt,
 }: NoteSharedCardProps) {
   const rootClass = ['session-note-shared-card', className ?? ''].filter(Boolean).join(' ')
   const hasBody = note.markdown.trim().length > 0
+  const hashtags = useMemo(() => {
+    if (!note.hashtags) {
+      return []
+    }
+
+    return note.hashtags
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0 && tag.toLowerCase() !== 'none')
+      .map((tag) => (tag.startsWith('#') ? tag : `#${tag}`))
+  }, [note.hashtags])
+  const visibleHashtags = hashtags.slice(0, 3)
+  const hiddenHashtagCount = Math.max(hashtags.length - visibleHashtags.length, 0)
+  const hashtagsSummary =
+    hiddenHashtagCount > 0
+      ? `${visibleHashtags.join(' ')} +${hiddenHashtagCount} more`
+      : visibleHashtags.join(' ')
 
   return (
     <article className={rootClass} aria-label={`Shared handout ${note.title}`}>
@@ -31,40 +52,99 @@ export function NoteSharedCard({
           menu_book
         </span>
         <div className="session-note-shared-card__headline">
-          <span className="session-note-shared-card__label">Handout Shared</span>
+          <div className="session-note-shared-card__label-row">
+            <span className="session-note-shared-card__label">Handout Shared</span>
+            {isExcerpt ? (
+              <span className="session-note-shared-card__excerpt-badge" title="Excerpt — open Notes tab for the full handout">
+                excerpt
+              </span>
+            ) : null}
+          </div>
           <h3 className="session-note-shared-card__title">{note.title}</h3>
         </div>
       </div>
 
-      {note.sharedWith || note.hashtags ? (
-        <dl className="session-note-shared-card__meta">
-          {note.sharedWith ? (
-            <>
-              <dt>Shared with</dt>
-              <dd>{note.sharedWith}</dd>
-            </>
-          ) : null}
-          {note.hashtags ? (
-            <>
-              <dt>Hashtags</dt>
-              <dd>{note.hashtags}</dd>
-            </>
-          ) : null}
-        </dl>
+      {isExcerpt ? (
+        <p className="session-note-shared-card__full-note-hint">
+          <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px' }}>
+            menu_book
+          </span>
+          Full note available in the Notes tab
+        </p>
       ) : null}
 
       {hasBody ? (
-        <MarkdownEditor
-          value={note.markdown}
-          readOnly
-          variant="full"
-          className="session-note-shared-card__markdown"
-        />
-      ) : null}
+        // Lightweight renderer: convert inline image markdown with data: URLs
+        // into <img> elements while keeping the rest as pre-wrapped text.
+        // This avoids mounting the full editor while still supporting
+        // embedded base64 images in history/handouts.
+        <div className="session-note-shared-card__markdown">
+          <div className="session-note-shared-card__markdown-pre">
+            {(() => {
+              const parts: Array<string | ReactNode> = []
+              const md = note.markdown || ''
+              // Match image markdown: ![alt](url)
+              const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g
+              let lastIndex = 0
+              let match: RegExpExecArray | null
 
+              while ((match = imgRe.exec(md))) {
+                const before = md.slice(lastIndex, match.index)
+                if (before) parts.push(before)
+
+                const alt = match[1] || ''
+                const url = match[2] || ''
+
+                // Only render data: image URLs here for safety
+                if (/^data:image\/(png|jpeg|jpg|gif|webp);base64,/i.test(url)) {
+                  parts.push(
+                    <img
+                      key={parts.length}
+                      src={url}
+                      alt={alt}
+                      className="session-note-shared-card__inline-image"
+                      loading="lazy"
+                    />
+                  )
+                } else {
+                  // Leave non-data URLs as literal markdown text
+                  parts.push(match[0])
+                }
+
+                lastIndex = imgRe.lastIndex
+              }
+
+              const rest = md.slice(lastIndex)
+              if (rest) parts.push(rest)
+
+              // Render array with preserved line breaks
+              return parts.map((p, i) =>
+                typeof p === 'string' ? (
+                  <span key={i} style={{ whiteSpace: 'pre-wrap' }}>
+                    {p}
+                  </span>
+                ) : (
+                  p
+                )
+              )
+            })()}
+          </div>
+        </div>
+      ) : null}
       {timestampLabel ? (
         <div className="session-note-shared-card__footer">
           <time dateTime={timestampDateTime}>{timestampLabel}</time>
+          {hashtagsSummary ? (
+            <span className="session-note-shared-card__hashtags" title={hashtags.join(', ')}>
+              {hashtagsSummary}
+            </span>
+          ) : null}
+        </div>
+      ) : hashtagsSummary ? (
+        <div className="session-note-shared-card__footer session-note-shared-card__footer--hashtags-only">
+          <span className="session-note-shared-card__hashtags" title={hashtags.join(', ')}>
+            {hashtagsSummary}
+          </span>
         </div>
       ) : null}
     </article>

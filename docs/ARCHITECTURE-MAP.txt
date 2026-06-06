@@ -2,6 +2,14 @@
                                 VTT‑CHAT PLATFORM
 ================================================================================
 
+  NOTE: This file is a high-level orientation overview, not a maintenance
+  target. It is not kept in sync with every file or module addition.
+  For the living architecture reference use:
+    • docs/README.md          — full documentation index
+    • docs/architecture/      — per-subsystem architecture docs
+    • shared/events/*.ts      — authoritative WS event contracts
+
+================================================================================
                          A ROLE‑AWARE, PRIVACY‑FIRST,
                      EVENT‑DRIVEN COMMUNICATION LAYER FOR VTTs
 --------------------------------------------------------------------------------
@@ -113,11 +121,18 @@ Privacy enforced at:
 SECTION 6 — SESSION LIFECYCLE
 ████████████████████████████████████████████████████████████████████████████████
 
- ┌──────┐   start  ┌────────┐   pause   ┌────────┐  end   ┌──────┐
+ ┌──────┐   start ┌────────┐   pause   ┌────────┐  end   ┌──────┐
  │ idle │────────▶│ active │──────────▶│ paused │───────▶│ ended│
- └──────┘          └────────┘           └────────┘        └──────┘
-                       ▲                         │
-                       └──────── resume ─────────┘
+ └──────┘         └────────┘           └────────┘        └──────┘
+                     ▲                         │
+                     └──────── resume ─────────┘
+
+Lifecycle authority boundaries:
+   • Session controls room assignment/routing and recording boundaries.
+   • Campaign membership + role controls conversation eligibility.
+   • Session transitions remap policy/routing; they do not grant campaign authority.
+   • Audio transport continuity may survive session-state transitions; whisper/spectator
+      privacy policy remains authoritative regardless of transport continuity.
 
 
 ████████████████████████████████████████████████████████████████████████████████
@@ -159,8 +174,16 @@ Current shipped note:
    Shared panel extensions now include reusable player-settings helpers under
    `components/workspaces/shared/panels`, including avatar upload/crop and manual
    handout-publish destination dialogs used by the right rail.
+   Notes panel attachment editing now lives beside the right-rail notes UI in
+   `components/workspaces/shared/panels/NotesPanel`, with image compression and
+   attachment helpers in `frontend/src/utils/{notesImageInsertActions,noteAttachments}.ts`.
    Toolbar types live in `frontend/src/types`, toolbar constants live in
    `frontend/src/constants`, and toolbar hooks live in `frontend/src/hooks`.
+   Workspace runtime guard hooks now also include
+   `frontend/src/hooks/session/useWorkspacesMemoryPressureGuard.ts`, which polls
+   browser memory APIs, surfaces a recovery toast, emits recovery telemetry,
+   supports beta env tuning, and triggers a guarded reload so server/Zustand
+   rehydration can recover before the tab crashes.
    Room movement / whisper hooks now live in `frontend/src/hooks/session`, campaign
    panel props live in `frontend/src/types`, and party mock-data generators live in
    `frontend/src/utils` instead of component folders.

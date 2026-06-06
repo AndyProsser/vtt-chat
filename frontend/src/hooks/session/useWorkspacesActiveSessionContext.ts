@@ -1,4 +1,4 @@
-import { useEffect, type MutableRefObject } from 'react'
+import { useEffect, type RefObject } from 'react'
 import type { UUID } from '@shared'
 import {
   ACTIVE_SESSION_CONTEXT_STORAGE_KEY,
@@ -12,7 +12,7 @@ import { safeLocalStorageGetItem, safeLocalStorageSetItem } from '@/utils/sessio
 type UseWorkspacesActiveSessionContextParams = {
   isLoadingCampaigns: boolean
   currentSessionId: UUID | null
-  lobbyAutoEnterTriggeredRef: MutableRefObject<boolean>
+  lobbyAutoEnterTriggeredRef: RefObject<boolean>
   campaigns: CampaignSummary[]
   clearPersistedActiveSessionContext: () => void
   setIsCampaignRestorePending: (value: boolean) => void

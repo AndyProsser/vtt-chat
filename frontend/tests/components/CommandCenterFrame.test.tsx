@@ -48,7 +48,6 @@ describe('getRightRailTabsForRole', () => {
       'journal',
       'notes',
       'history',
-      'audio',
       'settings',
     ])
   })
@@ -78,6 +77,9 @@ describe('getRightRailTabsForRole', () => {
 describe('CommandCenterFrame', () => {
   beforeEach(() => {
     useStore.getState().resetToolbarActionsState()
+    // Reset window.innerWidth to a non-wide default so the auto-open
+    // effect (isWideLayout && !railOpen) doesn't fire between tests.
+    Object.defineProperty(window, 'innerWidth', { value: 1024, configurable: true, writable: true })
   })
 
   it('toggles center pane between chat and notes', () => {
@@ -161,7 +163,7 @@ describe('CommandCenterFrame', () => {
     expect(screen.getByRole('tab', { name: 'Tool Groups' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool Handouts' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Tool History' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Tool Audio' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Tool Audio' })).toBeNull()
     expect(screen.getByRole('tab', { name: 'Tool Settings' })).toBeTruthy()
 
     rerender(

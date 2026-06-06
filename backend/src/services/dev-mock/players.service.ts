@@ -630,7 +630,6 @@ export async function ensureDevMockPlayersForSession(
     const archetype = selectedArchetypes[i]
     const level = levels[i]
     const user = await upsertMockUser(archetype)
-    selectedUsers.push(user)
 
     if (session.campaignId) {
       await ensureCampaignCharacter({

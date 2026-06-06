@@ -4,19 +4,21 @@
  * New messages arrive via WS events (CHAT:MESSAGE_SENT) dispatched to chatSlice.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { UIEvent, WheelEvent } from 'react'
 import type { EventEnvelope, UUID } from '@shared'
-import { MessageType, Role, RoomType } from '@shared'
+import { isGreenroomSessionState, MessageType, Role, RoomType, SessionState } from '@shared'
 import { useStore } from '@/hooks/useStore'
-import { isGreenRoomName, ROOM_NAMES } from '@/constants/roomPresence.constants'
+import { ROOM_NAMES } from '@/constants/roomPresence.constants'
 import { CHAT_HISTORY_PAGE_SIZE } from '@/constants/chatPresence.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { useChatVisibleMessages } from '@/hooks/session/useChatVisibleMessages'
+import { ChatWindowHeader } from './ChatWindowHeader'
 import { MessageList } from './MessageList'
 import { MessageInput } from './MessageInput'
 import { TypingIndicator } from './TypingIndicator'
 import type { OutgoingChatMessage } from '@/state/chatSlice'
-import type { BookendState, Message } from '@/types/chat'
+import type { Message } from '@/types/chat'
 import { generateClientId } from '@/utils/uuid'
 import '@/styles/components/workspaces/session/chat/ChatWindow.css'
 
@@ -35,28 +37,28 @@ interface ChatWindowProps {
   onPendingNewMessageCountChange?: (count: number) => void
 }
 
+function areChatWindowPropsEqual(previous: ChatWindowProps, next: ChatWindowProps): boolean {
+  return (
+    previous.apiUrl === next.apiUrl &&
+    previous.token === next.token &&
+    previous.sessionId === next.sessionId &&
+    previous.roomId === next.roomId &&
+    previous.campaignId === next.campaignId &&
+    previous.roomName === next.roomName &&
+    previous.roomType === next.roomType &&
+    previous.user.id === next.user.id &&
+    previous.user.username === next.user.username &&
+    previous.user.role === next.user.role &&
+    previous.messageGroupingWindowMs === next.messageGroupingWindowMs &&
+    previous.forceMessageType === next.forceMessageType &&
+    previous.sendWsEvent === next.sendWsEvent &&
+    previous.onPendingNewMessageCountChange === next.onPendingNewMessageCountChange
+  )
+}
+
 const DEFAULT_MESSAGE_GROUPING_WINDOW_MS = 5 * 60 * 1000
 const AUTO_FOLLOW_BOTTOM_THRESHOLD_PX = 48
 const AUTO_FOLLOW_SMOOTH_SETTLE_MS = 480
-const EMPTY_PARTICIPANT_DIRECTORY: Record<
-  UUID,
-  {
-    displayName: string
-    avatarUrl?: string | null
-  }
-> = {}
-const EMPTY_ROOM_DIRECTORY: Record<string, { name: string }> = {}
-const EMPTY_SESSION_PRESENCE: Record<
-  UUID,
-  {
-    username: string
-    avatarUrl?: string | null
-    characterName?: string | null
-    role?: Role | string
-    primaryRoomId?: UUID
-  }
-> = {}
-const EMPTY_SESSION_ROOMS: Record<UUID, { id: UUID; name: string }> = {}
 const EMPTY_OUTGOING_QUEUE: OutgoingChatMessage[] = []
 
 function toTimestamp(value: unknown): number {
@@ -79,30 +81,6 @@ function toTimestamp(value: unknown): number {
   return Date.now()
 }
 
-function getBookendState(content: string, type: MessageType): BookendState {
-  if (type !== MessageType.SYSTEM) {
-    return null
-  }
-
-  if (content.startsWith('[Session Started]') || content.startsWith('Session Start:')) {
-    return 'started'
-  }
-  if (content.startsWith('[Session Ended]') || content.startsWith('Session End:')) {
-    return 'ended'
-  }
-  if (content.startsWith('[Session Paused]')) {
-    return 'paused'
-  }
-  if (content.startsWith('[Session Resumed]')) {
-    return 'resumed'
-  }
-  if (content.startsWith('[Session Cooldown]')) {
-    return 'cooldown'
-  }
-
-  return null
-}
-
 function getStartOfTodayTimestamp(): number {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
@@ -117,7 +95,7 @@ function isNearBottom(
   return distanceFromBottom <= thresholdPx
 }
 
-export function ChatWindow({
+function ChatWindowComponent({
   apiUrl,
   token,
   sessionId,
@@ -139,8 +117,6 @@ export function ChatWindow({
   const [isAutoFollowInProgress, setIsAutoFollowInProgress] = useState(false)
   const [pendingNewMessageCount, setPendingNewMessageCount] = useState(0)
   const [hasHiddenOlderGreenroomHistory, setHasHiddenOlderGreenroomHistory] = useState(false)
-  // Total session message count shown in header. Queried once on hydration, then incremented.
-  const [totalMessageCount, setTotalMessageCount] = useState<number | null>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
   const topSentinelRef = useRef<HTMLDivElement>(null)
   const isLoadingOlderRef = useRef(false)
@@ -151,14 +127,14 @@ export function ChatWindow({
   // IntersectionObserver so it can't re-fire within OBSERVER_LOAD_COOLDOWN_MS.
   const lastLoadCompletedAtRef = useRef(0)
   const OBSERVER_LOAD_COOLDOWN_MS = 600
-  // Tracks whether the initial message count has been fetched from the server.
-  const messageCountFetchedRef = useRef(false)
-  const prevVisibleCountRef = useRef(0)
   const prevMessageCountRef = useRef(0)
   const lastSeenLatestMessageKeyRef = useRef<string | undefined>(undefined)
   const autoFollowResetTimeoutRef = useRef<number | null>(null)
+  const bottomSnapRafRef = useRef<number | null>(null)
+  const bottomSnapTimerRef = useRef<number | null>(null)
   const initialScrollContextRef = useRef<string | null>(null)
   const greenroomTodayStartRef = useRef(getStartOfTodayTimestamp())
+  const lastHydratedGreenroomStateRef = useRef<string | null | undefined>(undefined)
   const pendingScrollRestoreRef = useRef<{ previousTop: number; previousHeight: number } | null>(
     null
   )
@@ -166,29 +142,21 @@ export function ChatWindow({
     setPendingNewMessageCount((count) => (count === 0 ? count : 0))
   }, [])
   const isGreenroomMode = forceMessageType === MessageType.OOC
-  const headerTitle = isGreenroomMode ? 'Greenroom (OOC)' : 'Main Room'
   const resolvedRoomName =
     roomName?.trim() || (isGreenroomMode ? ROOM_NAMES.greenRoom : ROOM_NAMES.mainRoom)
-  const headerSubtitle = `${headerTitle} • ${resolvedRoomName}`
+  const { roomDirectory, visibleMessages } = useChatVisibleMessages({
+    sessionId,
+    roomId,
+    resolvedRoomName,
+    isGreenroomMode,
+    currentUserId: user.id,
+  })
 
-  const sessionMessages = useStore((state) => (state.messages as any)[sessionId]) as
-    | Record<UUID, Message>
-    | undefined
   // Typing indicators are intentionally NOT read here. They flip at keystroke
   // frequency and would re-render the whole chat window. See <TypingIndicator />
   // below for the leaf subscription.
-  const sessionPresence = useStore(
-    (state) =>
-      ((state.sessionPresence as any)[sessionId] as typeof EMPTY_SESSION_PRESENCE) ??
-      EMPTY_SESSION_PRESENCE
-  )
-  const sessionRooms = useStore(
-    (state) =>
-      ((state.rooms as any)[sessionId] as Record<UUID, { id: UUID; name: string }>) ??
-      EMPTY_SESSION_ROOMS
-  )
   const sessionRecord = useStore((state) => (state.sessions as any)[sessionId]) as
-    | { dmId?: UUID }
+    | { dmId?: UUID; state?: SessionState }
     | undefined
   const addMessage = useStore((state) => state.addMessage)
   const addMessages = useStore((state) => state.addMessages)
@@ -200,72 +168,6 @@ export function ChatWindow({
       ((state.outgoingQueue as any)[sessionId] as OutgoingChatMessage[]) ?? EMPTY_OUTGOING_QUEUE
   )
 
-  const participantDirectory = useMemo(() => {
-    const entries = Object.entries(sessionPresence) as Array<
-      [UUID, { username: string; avatarUrl?: string | null; characterName?: string | null }]
-    >
-
-    if (entries.length === 0) {
-      return EMPTY_PARTICIPANT_DIRECTORY
-    }
-
-    return entries.reduce(
-      (acc, [participantUserId, participant]) => {
-        acc[participantUserId] = {
-          displayName: participant.characterName || participant.username,
-          avatarUrl: participant.avatarUrl,
-        }
-        return acc
-      },
-      {} as Record<UUID, { displayName: string; avatarUrl?: string | null }>
-    )
-  }, [sessionPresence])
-
-  const roomDirectory = useMemo(() => {
-    const entries = Object.values(sessionRooms) as Array<{ id: UUID; name: string }>
-
-    if (entries.length === 0) {
-      return EMPTY_ROOM_DIRECTORY
-    }
-
-    return entries.reduce(
-      (acc, room) => {
-        acc[room.id] = { name: room.name }
-        return acc
-      },
-      {} as Record<string, { name: string }>
-    )
-  }, [sessionRooms])
-
-  const greenroomRoomId = useMemo(() => {
-    const rooms = Object.values(sessionRooms) as Array<{ id: UUID; name: string }>
-    const greenroom = rooms.find((room) => isGreenRoomName(room.name))
-    return greenroom?.id
-  }, [sessionRooms])
-
-  // Derive ordered message list for this session
-  // messages shape: Record<UUID, Record<UUID, Message>> (session → id → Message)
-  const messageList = useMemo(() => {
-    const values = Object.values(sessionMessages ?? {}) as Message[]
-    if (values.length < 2) {
-      return values
-    }
-
-    let isChronological = true
-    for (let index = 1; index < values.length; index += 1) {
-      if (values[index - 1].createdAt > values[index].createdAt) {
-        isChronological = false
-        break
-      }
-    }
-
-    if (isChronological) {
-      return values
-    }
-
-    return [...values].sort((a, b) => a.createdAt - b.createdAt)
-  }, [sessionMessages])
-
   useEffect(() => {
     isLoadingOlderRef.current = isLoadingOlder
   }, [isLoadingOlder])
@@ -273,8 +175,8 @@ export function ChatWindow({
   // Keep the oldest-message timestamp ref in sync so the IntersectionObserver
   // always uses the correct cursor without needing messageList in its own deps.
   useEffect(() => {
-    oldestMessageTimestampRef.current = messageList[0]?.createdAt
-  }, [messageList])
+    oldestMessageTimestampRef.current = visibleMessages[0]?.createdAt
+  }, [visibleMessages])
 
   // Restore scroll position after prepended history messages are committed to the DOM.
   // Using useLayoutEffect (not RAF) guarantees we read scrollHeight AFTER React has
@@ -301,7 +203,7 @@ export function ChatWindow({
   // the user is auto-scrolling and new messages arrive past the MAX threshold — the
   // slice trims the oldest messages. Re-enable "load older" so the user can scroll
   // back up and rehydrate the pruned history from the server.
-  const messageCount = messageList.length
+  const messageCount = visibleMessages.length
   useEffect(() => {
     const prevCount = prevMessageCountRef.current
     if (messageCount < prevCount && prevCount > 0 && !isLoadingOlderRef.current) {
@@ -315,6 +217,14 @@ export function ChatWindow({
       if (autoFollowResetTimeoutRef.current) {
         window.clearTimeout(autoFollowResetTimeoutRef.current)
         autoFollowResetTimeoutRef.current = null
+      }
+      if (bottomSnapRafRef.current) {
+        window.cancelAnimationFrame(bottomSnapRafRef.current)
+        bottomSnapRafRef.current = null
+      }
+      if (bottomSnapTimerRef.current) {
+        window.clearTimeout(bottomSnapTimerRef.current)
+        bottomSnapTimerRef.current = null
       }
     },
     []
@@ -364,6 +274,7 @@ export function ChatWindow({
         const data = await res.json()
         const msgs: Message[] = (data.messages ?? []).map((m: any) => ({
           id: m.id as UUID,
+          sessionId: m.sessionId as UUID | undefined,
           roomId: (m.roomId as UUID | undefined) || roomId,
           authorId: m.authorId as UUID,
           authorUsername: m.authorUsername as string,
@@ -372,6 +283,7 @@ export function ChatWindow({
           isDmOnly: m.isDmOnly as boolean,
           visibleTo: Array.isArray(m.visibleTo) ? (m.visibleTo as UUID[]) : undefined,
           targetIds: Array.isArray(m.targetIds) ? (m.targetIds as UUID[]) : undefined,
+          metadata: m.metadata,
           createdAt: toTimestamp(m.createdAt),
           editedAt: m.editedAt !== undefined ? toTimestamp(m.editedAt) : undefined,
         }))
@@ -409,28 +321,31 @@ export function ChatWindow({
     }
   }, [loadHistoryPage])
 
-  // Fetch approximate total message count once after initial hydration.
-  // Greenroom uses visible message count directly — no separate query needed.
   useEffect(() => {
-    if (isLoading || isGreenroomMode || messageCountFetchedRef.current) {
+    if (!isGreenroomMode) {
+      lastHydratedGreenroomStateRef.current = sessionRecord?.state
       return
     }
-    messageCountFetchedRef.current = true
-    prevVisibleCountRef.current = 0 // will be set on first increment effect run
 
-    fetch(`${apiUrl}/api/chat/messages/${sessionId}/count`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { count?: number } | null) => {
-        if (typeof data?.count === 'number') {
-          setTotalMessageCount(data.count)
-        }
-      })
-      .catch(() => {
-        // Silently ignore — count is display-only
-      })
-  }, [apiUrl, isGreenroomMode, isLoading, sessionId, token])
+    if (lastHydratedGreenroomStateRef.current === undefined) {
+      lastHydratedGreenroomStateRef.current = sessionRecord?.state
+      return
+    }
+
+    if (lastHydratedGreenroomStateRef.current === sessionRecord?.state) {
+      return
+    }
+
+    lastHydratedGreenroomStateRef.current = sessionRecord?.state
+
+    if (!isGreenroomSessionState(sessionRecord?.state)) {
+      return
+    }
+
+    prevMessageCountRef.current = 0
+    lastSeenLatestMessageKeyRef.current = undefined
+    void loadHistoryPage({ older: false })
+  }, [isGreenroomMode, loadHistoryPage, sessionRecord?.state])
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scrollContainer = messageListRef.current
@@ -462,6 +377,62 @@ export function ChatWindow({
 
     scrollContainer.scrollTo({ top, behavior })
   }, [])
+
+  const scheduleSettledBottomSnap = useCallback(() => {
+    if (bottomSnapRafRef.current) {
+      window.cancelAnimationFrame(bottomSnapRafRef.current)
+      bottomSnapRafRef.current = null
+    }
+    if (bottomSnapTimerRef.current) {
+      window.clearTimeout(bottomSnapTimerRef.current)
+      bottomSnapTimerRef.current = null
+    }
+
+    const MAX_SETTLE_FRAMES = 24
+    const REQUIRED_STABLE_FRAMES = 3
+    let frameCount = 0
+    let stableFrameCount = 0
+    let previousHeight = -1
+
+    const tick = () => {
+      const scrollContainer = messageListRef.current
+      if (!scrollContainer) {
+        bottomSnapRafRef.current = null
+        return
+      }
+
+      // Keep pinning to the true bottom while virtual row heights converge.
+      scrollToLatest('auto')
+
+      const nextHeight = scrollContainer.scrollHeight
+      if (nextHeight === previousHeight) {
+        stableFrameCount += 1
+      } else {
+        stableFrameCount = 0
+        previousHeight = nextHeight
+      }
+
+      frameCount += 1
+      if (stableFrameCount >= REQUIRED_STABLE_FRAMES || frameCount >= MAX_SETTLE_FRAMES) {
+        bottomSnapRafRef.current = null
+        return
+      }
+
+      bottomSnapRafRef.current = window.requestAnimationFrame(tick)
+    }
+
+    // Hard cap for safety; ensures no lingering loop on edge-case layout churn.
+    bottomSnapTimerRef.current = window.setTimeout(() => {
+      if (bottomSnapRafRef.current) {
+        window.cancelAnimationFrame(bottomSnapRafRef.current)
+        bottomSnapRafRef.current = null
+      }
+      scrollToLatest('auto')
+      bottomSnapTimerRef.current = null
+    }, 700)
+
+    bottomSnapRafRef.current = window.requestAnimationFrame(tick)
+  }, [scrollToLatest])
 
   const handleListScroll = useCallback(() => {
     const scrollContainer = messageListRef.current
@@ -584,129 +555,6 @@ export function ChatWindow({
     }
   }, [hasMoreHistory, isLoading, loadHistoryPage])
 
-  const messageView = useMemo(() => {
-    const roomScopedMessages: Message[] = []
-    const startedIndices: number[] = []
-    const isResolvedRoomGreen = isGreenRoomName(resolvedRoomName)
-
-    for (const message of messageList) {
-      if (Array.isArray(message.visibleTo) && !message.visibleTo.includes(user.id)) {
-        continue
-      }
-
-      const roomNameForMessage = message.roomId ? roomDirectory[message.roomId]?.name : undefined
-      const isGreenroomMessage =
-        message.roomId === greenroomRoomId ||
-        (message.roomId === roomId
-          ? isResolvedRoomGreen
-          : typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
-      const bookendState = getBookendState(message.content, message.type)
-
-      if (!isGreenroomMode) {
-        if (isGreenroomMessage) {
-          continue
-        }
-
-        if (bookendState === 'started') {
-          startedIndices.push(roomScopedMessages.length)
-        }
-
-        roomScopedMessages.push(message)
-        continue
-      }
-
-      const isGreenroomContextMessage =
-        message.roomId === roomId ||
-        (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
-
-      if (!isGreenroomContextMessage) {
-        continue
-      }
-
-      if (bookendState && bookendState !== 'started' && bookendState !== 'ended') {
-        continue
-      }
-
-      roomScopedMessages.push(message)
-    }
-
-    // In greenroom mode, all campaign messages should be visible (old greenroom messages appear
-    // before the STARTED bookend). Only trim to the latest STARTED bookend in session chat.
-    const visibleMessages =
-      isGreenroomMode || startedIndices.length === 0
-        ? roomScopedMessages
-        : roomScopedMessages.slice(startedIndices[startedIndices.length - 1])
-
-    return {
-      visibleMessages,
-    }
-  }, [
-    greenroomRoomId,
-    isGreenroomMode,
-    messageList,
-    resolvedRoomName,
-    roomDirectory,
-    roomId,
-    user.id,
-  ])
-
-  const { visibleMessages } = messageView
-
-  // Track visible message count changes to increment the header counter.
-  // This keeps the count live after hydration without re-querying the backend.
-  const currentVisibleCount = visibleMessages.length
-  useEffect(() => {
-    const prev = prevVisibleCountRef.current
-    if (totalMessageCount !== null && currentVisibleCount > prev && prev > 0) {
-      setTotalMessageCount((c) => (c !== null ? c + (currentVisibleCount - prev) : c))
-    }
-    prevVisibleCountRef.current = currentVisibleCount
-  }, [currentVisibleCount, totalMessageCount])
-
-  const whisperRecipients = useMemo(() => {
-    const participants = Object.entries(sessionPresence ?? {}) as Array<
-      [
-        UUID,
-        {
-          username: string
-          characterName?: string | null
-          avatarUrl?: string | null
-          role?: Role | string
-          primaryRoomId?: UUID
-        },
-      ]
-    >
-
-    const dmId = sessionRecord?.dmId
-    const isDmUser = user.role === Role.DM || String(user.role) === 'DM'
-
-    return participants
-      .filter(([participantUserId, participant]) => {
-        if (participantUserId === user.id) {
-          return false
-        }
-
-        if (isDmUser) {
-          return true
-        }
-
-        if (participantUserId === dmId) {
-          return false
-        }
-
-        return participant.primaryRoomId === roomId
-      })
-      .map(([participantUserId, participant]) => ({
-        id: participantUserId,
-        label:
-          participant.characterName && participant.characterName.trim().length > 0
-            ? participant.characterName
-            : participant.username,
-        avatarUrl: participant.avatarUrl,
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label))
-  }, [roomId, sessionPresence, sessionRecord?.dmId, user.id, user.role])
-
   const emitTypingEvent = useCallback(
     (type: 'CHAT:TYPING_STARTED' | 'CHAT:TYPING_STOPPED') => {
       if (!sendWsEvent) {
@@ -786,10 +634,8 @@ export function ChatWindow({
       return
     }
 
-    requestAnimationFrame(() => {
-      scrollToLatest('auto')
-      setIsUserPinnedToBottom(true)
-    })
+    scheduleSettledBottomSnap()
+    setIsUserPinnedToBottom(true)
     initialScrollContextRef.current = contextKey
     clearPendingNewMessageCount()
     lastSeenLatestMessageKeyRef.current = latestVisibleMessageKey
@@ -798,10 +644,51 @@ export function ChatWindow({
     isLoading,
     latestVisibleMessageKey,
     roomId,
-    scrollToLatest,
+    scheduleSettledBottomSnap,
     sessionId,
     visibleMessages.length,
   ])
+
+  useEffect(() => {
+    const node = messageListRef.current
+    if (!node || typeof ResizeObserver === 'undefined') {
+      return
+    }
+
+    let prevWidth = node.clientWidth
+    let prevHeight = node.clientHeight
+
+    const observer = new ResizeObserver(() => {
+      if (!messageListRef.current) {
+        return
+      }
+
+      const nextWidth = messageListRef.current.clientWidth
+      const nextHeight = messageListRef.current.clientHeight
+      const sizeChanged = nextWidth !== prevWidth || nextHeight !== prevHeight
+
+      if (!sizeChanged) {
+        return
+      }
+
+      prevWidth = nextWidth
+      prevHeight = nextHeight
+
+      const shouldStickToBottom =
+        isAutoFollowInProgress ||
+        isUserPinnedToBottom ||
+        isNearBottom(messageListRef.current, AUTO_FOLLOW_BOTTOM_THRESHOLD_PX)
+
+      if (shouldStickToBottom) {
+        scheduleSettledBottomSnap()
+      }
+    })
+
+    observer.observe(node)
+    return () => {
+      observer.disconnect()
+    }
+  }, [isAutoFollowInProgress, isUserPinnedToBottom, scheduleSettledBottomSnap])
 
   // Follow new messages only when user is already pinned to bottom.
   // If user is reading history, keep their position and surface a subtle jump cue.
@@ -833,7 +720,9 @@ export function ChatWindow({
         autoFollowResetTimeoutRef.current = null
       }, AUTO_FOLLOW_SMOOTH_SETTLE_MS)
 
-      scrollToLatest('smooth')
+      // Smooth follow can land short while virtual rows are still being
+      // remeasured in bursts; settle with multi-pass snapping.
+      scheduleSettledBottomSnap()
       setIsUserPinnedToBottom(true)
       clearPendingNewMessageCount()
       lastSeenLatestMessageKeyRef.current = latestVisibleMessageKey
@@ -848,7 +737,7 @@ export function ChatWindow({
     isAutoFollowInProgress,
     isUserPinnedToBottom,
     latestVisibleMessageKey,
-    scrollToLatest,
+    scheduleSettledBottomSnap,
   ])
 
   const postMessage = useCallback(
@@ -925,32 +814,50 @@ export function ChatWindow({
     ]
   )
 
-  const handleSend = async (content: string, type: MessageType, recipientId?: string) => {
-    setError(null)
-    const queuedMessageId = generateClientId('queued-message') as UUID
+  const handleSend = useCallback(
+    async (content: string, type: MessageType, recipientId?: string) => {
+      setError(null)
+      const queuedMessageId = generateClientId('queued-message') as UUID
 
-    enqueueOutgoingMessage(sessionId, {
-      id: queuedMessageId,
-      roomId,
-      content,
-      type,
-      recipientId: recipientId as UUID | undefined,
-      createdAt: Date.now(),
-      status: 'sending',
-    })
-
-    try {
-      await postMessage(content, type, recipientId as UUID | undefined)
-      removeOutgoingMessage(sessionId, queuedMessageId)
-    } catch (err: any) {
-      const message = err.message ?? 'Failed to send message'
-      updateOutgoingMessage(sessionId, queuedMessageId, {
-        status: 'failed',
-        error: message,
+      enqueueOutgoingMessage(sessionId, {
+        id: queuedMessageId,
+        roomId,
+        content,
+        type,
+        recipientId: recipientId as UUID | undefined,
+        createdAt: Date.now(),
+        status: 'sending',
       })
-      setError(message)
-    }
-  }
+
+      try {
+        await postMessage(content, type, recipientId as UUID | undefined)
+        removeOutgoingMessage(sessionId, queuedMessageId)
+      } catch (err: any) {
+        const message = err.message ?? 'Failed to send message'
+        updateOutgoingMessage(sessionId, queuedMessageId, {
+          status: 'failed',
+          error: message,
+        })
+        setError(message)
+      }
+    },
+    [
+      enqueueOutgoingMessage,
+      postMessage,
+      removeOutgoingMessage,
+      roomId,
+      sessionId,
+      updateOutgoingMessage,
+    ]
+  )
+
+  const handleTypingStarted = useCallback(() => {
+    emitTypingEvent('CHAT:TYPING_STARTED')
+  }, [emitTypingEvent])
+
+  const handleTypingStopped = useCallback(() => {
+    emitTypingEvent('CHAT:TYPING_STOPPED')
+  }, [emitTypingEvent])
 
   const retryFailedMessage = useCallback(
     async (entry: OutgoingChatMessage) => {
@@ -977,21 +884,15 @@ export function ChatWindow({
 
   return (
     <section className="session-chat-window">
-      <header className="session-chat-window__header">
-        <div className="session-chat-window__header-copy">
-          <h3 className="session-chat-window__title">{headerTitle}</h3>
-          <p className="session-chat-window__subtitle">{headerSubtitle}</p>
-        </div>
-        <div className="session-chat-window__header-pills" aria-label="Timeline context">
-          <span className="session-chat-window__pill">
-            {isGreenroomMode
-              ? `${visibleMessages.length} ${visibleMessages.length === 1 ? 'entry' : 'entries'}`
-              : totalMessageCount !== null
-                ? `${totalMessageCount} messages`
-                : `${visibleMessages.length} ${visibleMessages.length === 1 ? 'entry' : 'entries'}`}
-          </span>
-        </div>
-      </header>
+      <ChatWindowHeader
+        apiUrl={apiUrl}
+        token={token}
+        sessionId={sessionId}
+        roomName={roomName}
+        isGreenroomMode={isGreenroomMode}
+        isLoading={isLoading}
+        visibleMessageCount={visibleMessages.length}
+      />
 
       {/* Error banner */}
       {error && <div className="session-chat-window__error">{error}</div>}
@@ -1038,22 +939,47 @@ export function ChatWindow({
       {isLoading ? (
         <div className="session-chat-window__loading-state">Loading messages…</div>
       ) : (
-        <MessageList
-          messages={visibleMessages}
-          currentUserId={user.id}
-          currentUserRole={String(user.role)}
-          sessionDmId={sessionRecord?.dmId}
-          groupingWindowMs={messageGroupingWindowMs}
-          listRef={messageListRef}
-          topSentinelRef={topSentinelRef}
-          onListScroll={handleListScroll}
-          onListWheel={handleListWheel}
-          participantDirectory={participantDirectory}
-          roomDirectory={roomDirectory}
-          activeRoomId={roomId}
-          hideIntermissionMarkers={isGreenroomMode}
-          emptyDayLabel={isGreenroomMode ? 'Today' : undefined}
-        />
+        <>
+          {isGreenroomMode && hasHiddenOlderGreenroomHistory ? (
+            <div className="session-chat-window__hidden-older">
+              <button
+                type="button"
+                className="session-chat-window__hidden-older-button"
+                onClick={() => {
+                  revealOlderGreenroomHistory()
+                }}
+                aria-label="Load earlier messages"
+              >
+                <span
+                  className="material-symbols-outlined session-chat-window__hidden-older-icon"
+                  aria-hidden="true"
+                >
+                  history
+                </span>
+                <span className="session-chat-window__hidden-older-text">
+                  Load earlier messages
+                </span>
+              </button>
+            </div>
+          ) : null}
+
+          <MessageList
+            messages={visibleMessages}
+            sessionId={sessionId}
+            currentUserId={user.id}
+            currentUserRole={String(user.role)}
+            sessionDmId={sessionRecord?.dmId}
+            groupingWindowMs={messageGroupingWindowMs}
+            listRef={messageListRef}
+            topSentinelRef={topSentinelRef}
+            onListScroll={handleListScroll}
+            onListWheel={handleListWheel}
+            roomDirectory={roomDirectory}
+            activeRoomId={roomId}
+            hideIntermissionMarkers={isGreenroomMode}
+            emptyDayLabel={isGreenroomMode ? 'Today' : undefined}
+          />
+        </>
       )}
 
       {!isLoading &&
@@ -1091,14 +1017,18 @@ export function ChatWindow({
       {/* Input */}
       <MessageInput
         onSend={handleSend}
-        onTypingStarted={() => emitTypingEvent('CHAT:TYPING_STARTED')}
-        onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
+        onTypingStarted={handleTypingStarted}
+        onTypingStopped={handleTypingStopped}
         role={user.role}
+        sessionId={sessionId}
+        currentUserId={user.id}
+        currentRoomId={roomId}
         disabled={isLoading}
         forceMessageType={forceMessageType}
-        whisperRecipients={whisperRecipients}
         roomType={roomType}
       />
     </section>
   )
 }
+
+export const ChatWindow = memo(ChatWindowComponent, areChatWindowPropsEqual)

@@ -5,6 +5,7 @@ import { fetchSessionNotesOnce } from '../../src/utils/notesFetch'
 const SESSION_ID = '11111111-1111-4111-8111-111111111111' as UUID
 const NOTE_ID = '22222222-2222-4222-8222-222222222222' as UUID
 const USER_ID = '33333333-3333-4333-8333-333333333333' as UUID
+const ATTACHMENT_ID = '44444444-4444-4444-8444-444444444444' as UUID
 
 function makeFetchResponse(body: unknown, ok = true, status = 200) {
   return {
@@ -38,6 +39,16 @@ describe('fetchSessionNotesOnce', () => {
               visibility: 'PRIVATE',
               tags: undefined,
               allowedUsers: [USER_ID],
+              attachments: [
+                {
+                  id: ATTACHMENT_ID,
+                  campaignId: '55555555-5555-4555-8555-555555555555',
+                  mime: 'image/jpeg',
+                  name: 'map-fragment',
+                  uri: 'data:image/jpeg;base64,AAAA',
+                  createdAt: 3,
+                },
+              ],
               publishedAt: null,
               createdAt: 1,
               updatedAt: 2,
@@ -59,6 +70,16 @@ describe('fetchSessionNotesOnce', () => {
         visibility: 'PRIVATE',
         tags: [],
         allowedUsers: [USER_ID],
+        attachments: [
+          {
+            id: ATTACHMENT_ID,
+            campaignId: '55555555-5555-4555-8555-555555555555',
+            mime: 'image/jpeg',
+            name: 'map-fragment',
+            uri: 'data:image/jpeg;base64,AAAA',
+            createdAt: 3,
+          },
+        ],
         publishedAt: undefined,
         createdAt: 1,
         updatedAt: 2,

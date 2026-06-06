@@ -24,6 +24,8 @@ type BuildLobbyWorkspacePropsParams = {
   onEnterCampaign: ComponentProps<typeof LobbyView>['onEnterCampaign']
   onJoinRequest: ComponentProps<typeof LobbyView>['onJoinRequest']
   onWatchCampaign: ComponentProps<typeof LobbyView>['onWatchCampaign']
+  onLoadPendingJoinRequests: ComponentProps<typeof LobbyView>['onLoadPendingJoinRequests']
+  onResolveJoinRequest: ComponentProps<typeof LobbyView>['onResolveJoinRequest']
   onError: ComponentProps<typeof LobbyView>['onError']
 }
 
@@ -54,6 +56,8 @@ export function buildLobbyWorkspaceProps(
     onEnterCampaign: params.onEnterCampaign,
     onJoinRequest: params.onJoinRequest,
     onWatchCampaign: params.onWatchCampaign,
+    onLoadPendingJoinRequests: params.onLoadPendingJoinRequests,
+    onResolveJoinRequest: params.onResolveJoinRequest,
     onError: params.onError,
   }
 }

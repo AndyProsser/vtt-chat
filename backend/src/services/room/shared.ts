@@ -9,7 +9,7 @@ import type { RealtimePresence, StoredRoom } from '@/types/room.types'
 import type { PresenceState, RoomType } from '@shared'
 import type { UUID } from '@shared'
 
-export const MAIN_ROOM_NAME = 'Main Room'
+export const MAIN_ROOM_NAME = 'Main'
 export const GREEN_ROOM_NAME = 'Green Room'
 export const WHISPER_ROOM_NAME = 'Whisper'
 

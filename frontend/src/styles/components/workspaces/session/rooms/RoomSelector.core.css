@@ -67,8 +67,8 @@
 }
 
 .room-selector-header__create-wrap {
-  position: relative;
-  isolation: isolate;
+  position: static;
+  isolation: auto;
 }
 
 .room-selector-header__end-whisper {
@@ -391,6 +391,10 @@
   cursor: pointer;
 }
 
+.room-selector-item__env-icon:disabled {
+  cursor: default;
+}
+
 .room-selector-item__env-icon .material-symbols-outlined {
   font-size: 0.9rem;
 }
@@ -473,6 +477,7 @@
 
 .room-selector-dm__voice-target strong {
   color: var(--color-text-primary);
+  text-transform: uppercase;
   font-weight: 700;
 }
 
@@ -587,6 +592,7 @@
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--color-text-primary);
+  text-transform: uppercase;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -698,6 +704,10 @@
 
 .room-selector-presence-dot[data-state='offline'] .room-selector-presence-dot__inner {
   background: color-mix(in srgb, var(--color-error, #ef4444) 88%, #ffffff 12%);
+}
+
+.room-selector-presence-dot[data-state='ghost'] .room-selector-presence-dot__inner {
+  background: color-mix(in srgb, var(--color-text-secondary) 88%, #ffffff 12%);
 }
 
 .room-selector-profile__avatar {
@@ -965,12 +975,6 @@
   background: color-mix(in srgb, var(--color-error, #ef4444) 12%, transparent);
 }
 
-.room-selector-status-pill.ghost {
-  border-color: color-mix(in srgb, var(--color-text-secondary) 44%, var(--color-border-soft));
-  color: color-mix(in srgb, var(--color-text-secondary) 86%, #f8fafc 14%);
-  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
-}
-
 .room-selector-status-pill.condition {
   border-color: color-mix(in srgb, #7c3aed 38%, var(--color-border-soft));
   color: color-mix(in srgb, #7c3aed 68%, var(--color-text-primary));
@@ -1052,4 +1056,110 @@
   .room-selector-members-list--selected {
     max-height: none;
   }
+}
+
+/* ── DM Voice Target Panel ────────────────────────────────────────────── */
+
+.room-selector-header__voice-wrap {
+  position: static;
+  display: inline-flex;
+}
+
+.room-selector-header__voice-wrap .dm-voice-panel-shell {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 100;
+  min-width: 200px;
+  max-width: 260px;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.985);
+  transition:
+    opacity 140ms ease,
+    transform 160ms ease;
+  pointer-events: none;
+}
+
+.room-selector-header__voice-wrap .dm-voice-panel-shell.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.room-selector-header__voice-wrap .dm-voice-panel-shell.is-closing {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.985);
+  pointer-events: none;
+}
+
+.dm-voice-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.dm-voice-panel__title {
+  margin: 0 0 0.1rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  padding: 0 0.2rem;
+}
+
+.dm-voice-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.dm-voice-panel__preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.38rem 0.2rem;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 80%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.62rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.dm-voice-panel__preset:hover {
+  background: color-mix(in srgb, var(--color-surface-raised) 90%, transparent);
+  color: var(--color-text-primary);
+}
+
+.dm-voice-panel__preset.is-active {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-brand) 52%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 16%, transparent);
+}
+
+.dm-voice-panel__preset-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.dm-voice-panel__preset-label {
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Voice target button — active state uses brand colour (different from broadcast green) */
+.room-selector-header__broadcast-icon.voice-target-active {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-brand) 52%, var(--color-border-soft));
+  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
 }

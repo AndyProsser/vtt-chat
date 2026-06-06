@@ -1,4 +1,4 @@
-import type { NoteVisibility, UUID } from '@shared'
+import type { NoteAttachmentEntity, NoteVisibility, UUID } from '@shared'
 
 export interface NotesCreateRequest {
   campaignId: UUID
@@ -8,6 +8,7 @@ export interface NotesCreateRequest {
   visibility: NoteVisibility
   tags: string[]
   allowedUsers: UUID[]
+  attachments: NoteAttachmentEntity[]
 }
 
 export interface NotesUpdateRequest {
@@ -17,4 +18,5 @@ export interface NotesUpdateRequest {
   visibility?: NoteVisibility
   tags?: string[]
   allowedUsers?: UUID[]
+  attachments?: NoteAttachmentEntity[]
 }

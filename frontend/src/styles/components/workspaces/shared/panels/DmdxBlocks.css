@@ -1,0 +1,457 @@
+/* DMDX Block Styles
+ * Shared visual language for all 9 DMDX block types.
+ * Each block type gets an accent color via --dmdx-accent.
+ */
+
+.dmdx-block {
+  --dmdx-accent: var(--color-info-text, #60a5fa);
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 28%, var(--color-border-soft));
+  border-left: 3px solid var(--dmdx-accent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--dmdx-accent) 5%, var(--color-surface));
+  padding: 0.65rem 0.8rem;
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.dmdx-block--warn {
+  --dmdx-accent: var(--color-warning, #f59e0b);
+}
+
+/* Per-type accent colors */
+.dmdx-block--npc       { --dmdx-accent: #818cf8; } /* indigo */
+.dmdx-block--monster   { --dmdx-accent: #f87171; } /* red */
+.dmdx-block--encounter { --dmdx-accent: #fb923c; } /* orange */
+.dmdx-block--loot      { --dmdx-accent: #facc15; } /* gold */
+.dmdx-block--spell     { --dmdx-accent: #a78bfa; } /* violet */
+.dmdx-block--session   { --dmdx-accent: #34d399; } /* emerald */
+.dmdx-block--roll      { --dmdx-accent: #f472b6; } /* pink */
+.dmdx-block--map       { --dmdx-accent: #38bdf8; } /* sky */
+.dmdx-block--timeline  { --dmdx-accent: #a3e635; } /* lime */
+
+/* ── Header ─────────────────────────────────────────── */
+
+.dmdx-block__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.dmdx-block__header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.dmdx-block__type-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--dmdx-accent);
+}
+
+.dmdx-block__type-label .material-symbols-outlined {
+  font-size: 0.9rem;
+}
+
+.dmdx-block__title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.25;
+}
+
+.dmdx-block__meta {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.dmdx-block__tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+}
+
+.dmdx-block__tag {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dmdx-accent) 15%, var(--color-surface));
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 25%, transparent);
+}
+
+.dmdx-block__section-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+
+.dmdx-block__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dmdx-block__list li {
+  color: var(--color-text-primary);
+}
+
+.dmdx-block__notes {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.dmdx-block__empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.dmdx-block__ref {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.74rem;
+  color: var(--color-text-secondary);
+}
+
+.dmdx-block__ref .material-symbols-outlined {
+  font-size: 0.85rem;
+}
+
+/* ── NPC ─────────────────────────────────────────────── */
+
+.dmdx-npc__portrait-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--dmdx-accent) 20%, var(--color-surface));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--dmdx-accent);
+}
+
+.dmdx-npc__portrait-placeholder .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+/* ── Monster ─────────────────────────────────────────── */
+
+.dmdx-monster__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.dmdx-monster__stat {
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+}
+
+.dmdx-monster__stat strong {
+  color: var(--dmdx-accent);
+  margin-right: 0.2rem;
+}
+
+.dmdx-monster__abilities {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.dmdx-monster__ability {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dmdx-accent) 8%, var(--color-surface));
+  min-width: 44px;
+}
+
+.dmdx-monster__ability-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dmdx-accent);
+}
+
+.dmdx-monster__ability-score {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.dmdx-monster__ability-mod {
+  font-size: 0.68rem;
+  color: var(--color-text-secondary);
+}
+
+.dmdx-monster__actions,
+.dmdx-monster__action-list {
+  margin: 0;
+  padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+/* ── Encounter ───────────────────────────────────────── */
+
+.dmdx-encounter__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dmdx-encounter__refs {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.dmdx-encounter__difficulty {
+  font-weight: 600;
+}
+
+.dmdx-encounter__difficulty--trivial  { color: var(--color-text-secondary); }
+.dmdx-encounter__difficulty--easy     { color: #34d399; }
+.dmdx-encounter__difficulty--medium   { color: #facc15; }
+.dmdx-encounter__difficulty--hard     { color: #fb923c; }
+.dmdx-encounter__difficulty--deadly   { color: #f87171; }
+
+/* ── Loot ────────────────────────────────────────────── */
+
+.dmdx-loot__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dmdx-loot__item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  color: var(--color-text-primary);
+}
+
+.dmdx-loot__item-icon {
+  font-size: 0.7rem;
+  color: var(--dmdx-accent);
+  flex-shrink: 0;
+  position: relative;
+  top: 1px;
+}
+
+/* ── Spell ───────────────────────────────────────────── */
+
+.dmdx-spell__school-icon {
+  font-size: 1.4rem;
+  color: var(--dmdx-accent);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.dmdx-spell__stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.75rem;
+  margin: 0;
+}
+
+.dmdx-spell__stat-row {
+  display: contents;
+}
+
+.dmdx-spell__stat-row dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.dmdx-spell__stat-row dd {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+}
+
+.dmdx-spell__description {
+  font-style: normal;
+}
+
+/* ── Session ─────────────────────────────────────────── */
+
+.dmdx-session__players,
+.dmdx-session__events {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+/* ── Roll ────────────────────────────────────────────── */
+
+.dmdx-block--roll {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dmdx-roll__icon {
+  font-size: 1.3rem;
+  color: var(--dmdx-accent);
+  flex-shrink: 0;
+}
+
+.dmdx-roll__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+}
+
+.dmdx-roll__expr {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  color: var(--color-text-primary);
+}
+
+.dmdx-roll__expr--invalid {
+  color: var(--color-ui-error-text, #f87171);
+}
+
+.dmdx-roll__results {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.dmdx-roll__avg {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dmdx-accent);
+}
+
+.dmdx-roll__range {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+/* ── Map ─────────────────────────────────────────────── */
+
+.dmdx-map__icon {
+  font-size: 1.2rem;
+  color: var(--dmdx-accent);
+  flex-shrink: 0;
+}
+
+.dmdx-map__image-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dmdx-accent) 8%, var(--color-surface));
+  color: var(--color-text-secondary);
+}
+
+.dmdx-map__image-placeholder .material-symbols-outlined {
+  font-size: 1.1rem;
+  color: var(--dmdx-accent);
+}
+
+/* ── Timeline ────────────────────────────────────────── */
+
+.dmdx-timeline__icon {
+  font-size: 1.1rem;
+  color: var(--dmdx-accent);
+}
+
+.dmdx-timeline__events {
+  margin: 0;
+  padding: 0 0 0 0.25rem;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.dmdx-timeline__event {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  position: relative;
+  padding-bottom: 0.65rem;
+}
+
+/* Vertical connecting line between events */
+.dmdx-timeline__event:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: calc(0.25rem + 3px);
+  top: 10px;
+  bottom: 0;
+  width: 1px;
+  background: color-mix(in srgb, var(--dmdx-accent) 30%, transparent);
+}
+
+.dmdx-timeline__event:last-child {
+  padding-bottom: 0;
+}
+
+.dmdx-timeline__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dmdx-accent);
+  flex-shrink: 0;
+  margin-top: 3px;
+  box-shadow: 0 0 4px color-mix(in srgb, var(--dmdx-accent) 50%, transparent);
+}
+
+.dmdx-timeline__event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.dmdx-timeline__event-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--dmdx-accent);
+  line-height: 1.25;
+}
+
+.dmdx-timeline__event-desc {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}

@@ -111,7 +111,7 @@ describe('room failback integration paths', () => {
       {
         id: MAIN_ROOM_ID,
         sessionId: SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: RoomType.MAIN,
         createdBy: DM_ID,
         createdAt: Date.now(),
@@ -187,7 +187,7 @@ describe('room failback integration paths', () => {
       return {
         id: MAIN_ROOM_ID,
         sessionId: SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: RoomType.MAIN,
       }
     })

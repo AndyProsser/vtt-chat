@@ -3,10 +3,9 @@ import type { Dispatch, SetStateAction, SubmitEventHandler } from 'react'
 import { normalizeCampaignSessionBaseName, type UUID } from '@shared'
 import { SessionState } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
-import type { CampaignSummary } from '@/types/session/campaign'
+import type { CampaignJoinRequestSummary, CampaignSummary } from '@/types/session/campaign'
 import {
   buildDefaultChapterName,
-  getPreferredSession,
   normalizeSessionRecord,
   parsePlayerInviteCode,
 } from '@/utils/session/workspaces'
@@ -40,7 +39,7 @@ type UseWorkspacesCampaignEntryOrchestrationParams = {
   setLobbyNotice: Dispatch<SetStateAction<string | null>>
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
   fetchCampaignSessionsData: (campaignId: UUID) => Promise<SessionRecord[]>
-  ensureSessionMembership: (sessionId: UUID) => Promise<void>
+  ensureSessionMembership: (sessionId: UUID) => Promise<SessionRecord | null>
   replaceSessions: (sessions: SessionRecord[]) => void
   setCurrentSession: (sessionId: UUID | null) => void
   openEditorCampaignWorkspace: (campaignId: UUID) => void
@@ -152,17 +151,44 @@ export function useWorkspacesCampaignEntryOrchestration(
         return
       }
 
-      const preferredSession =
-        (preferredSessionId
-          ? targetSessions.find((session) => session.id === preferredSessionId) || null
-          : null) || getPreferredSession(targetSessions)
+      // Server is authoritative about which session to open. Use the
+      // server-provided sessions list order (most-recent first) as the
+      // canonical source. If the caller provided an explicit
+      // `preferredSessionId`, attempt to join that session and rely on the
+      // server's response. Otherwise, use the server's most recent session
+      // (targetSessions[0]) when present.
+      const serverPreferredSession = targetSessions.length > 0 ? targetSessions[0] : null
 
-      if (preferredSession) {
-        if (shouldEnsureMembership(preferredSession)) {
-          await ensureSessionMembership(preferredSession.id)
+      // If the caller has an explicit preferred session id, let the server
+      // resolve membership for that id and use the returned session.
+      if (preferredSessionId) {
+        try {
+          const joined = await ensureSessionMembership(preferredSessionId)
+          if (joined && joined.id) {
+            replaceSessions(targetSessions)
+            setCurrentSession(joined.id)
+            return
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'An error occurred'
+          setError(message)
         }
-        setCurrentSession(preferredSession.id)
-        return
+      }
+
+      if (serverPreferredSession) {
+        // If the most recent session is in ENDED/CLEANUP, the backend may
+        // already have created a fresh session for us (see server logic).
+        // We still call ensureSessionMembership to let the server finalize
+        // any presence and return the authoritative session to bind to.
+        try {
+          const joined = await ensureSessionMembership(serverPreferredSession.id)
+          replaceSessions(targetSessions)
+          setCurrentSession((joined && joined.id) || serverPreferredSession.id)
+          return
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'An error occurred'
+          setError(message)
+        }
       }
 
       const canStartAsDm = targetCampaign?.currentDmId === userId
@@ -192,11 +218,12 @@ export function useWorkspacesCampaignEntryOrchestration(
         }
 
         const payload = (await response.json()) as { session: SessionRecord }
+        let joinedNew = null
         if (shouldEnsureMembership(payload.session)) {
-          await ensureSessionMembership(payload.session.id)
+          joinedNew = await ensureSessionMembership(payload.session.id)
         }
         replaceSessions([normalizeSessionRecord(payload.session), ...targetSessions])
-        setCurrentSession(payload.session.id)
+        setCurrentSession((joinedNew && joinedNew.id) || payload.session.id)
         onSessionCreated?.(payload.session.id)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'An error occurred'
@@ -477,19 +504,118 @@ export function useWorkspacesCampaignEntryOrchestration(
   )
 
   const handleWatchCampaign = useCallback(
-    (campaign: CampaignSummary) => {
+    async (campaign: CampaignSummary) => {
       setError(null)
       setLobbyNotice(null)
 
-      const inviteCode = campaign.spectatorInviteCode?.trim()
-      if (!inviteCode || campaign.spectatorInviteActive === false) {
-        setError('Watch is unavailable for this campaign right now.')
+      if (userAuthType === 'GUEST') {
+        setError('Guest spectators must enter through a spectator invite link.')
         return
       }
 
-      window.location.assign(`/watch/${encodeURIComponent(inviteCode)}`)
+      try {
+        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/${campaign.id}/watch`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Watch is unavailable for this campaign right now.')
+        }
+
+        const payload = (await response.json()) as { campaignId: UUID; sessionId: UUID }
+        const refreshedCampaigns = await refreshLobbyCampaignData({
+          showLoading: false,
+          surfaceError: false,
+        })
+        const watchedCampaign =
+          refreshedCampaigns?.find((entry) => entry.id === payload.campaignId) ||
+          campaigns.find((entry) => entry.id === payload.campaignId) ||
+          campaign
+
+        await handleEnterCampaign(payload.campaignId, payload.sessionId, {
+          ...watchedCampaign,
+          memberRole: 'SPECTATOR',
+          isMember: true,
+          latestSessionState: watchedCampaign.latestSessionState ?? SessionState.ACTIVE,
+        })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'An error occurred'
+        setError(message)
+      }
     },
-    [setError, setLobbyNotice]
+    [
+      apiUrl,
+      campaigns,
+      fetchWithAuthGuard,
+      handleEnterCampaign,
+      refreshLobbyCampaignData,
+      setError,
+      setLobbyNotice,
+      token,
+      userAuthType,
+    ]
+  )
+
+  const handleLoadPendingJoinRequests = useCallback(
+    async (campaignId: UUID): Promise<CampaignJoinRequestSummary[]> => {
+      setError(null)
+
+      const response = await fetchWithAuthGuard(
+        `${apiUrl}/api/campaigns/${campaignId}/join-request`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to load pending join requests')
+      }
+
+      const payload = (await response.json()) as {
+        requests?: CampaignJoinRequestSummary[]
+      }
+
+      return payload.requests || []
+    },
+    [apiUrl, fetchWithAuthGuard, setError, token]
+  )
+
+  const handleResolveJoinRequest = useCallback(
+    async (campaignId: UUID, requestId: UUID, resolution: 'APPROVED' | 'REJECTED') => {
+      setError(null)
+      setLobbyNotice(null)
+
+      const actionPath = resolution === 'APPROVED' ? 'approve' : 'reject'
+      const response = await fetchWithAuthGuard(
+        `${apiUrl}/api/campaigns/${campaignId}/join-request/${requestId}/${actionPath}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to resolve join request')
+      }
+
+      await refreshLobbyCampaignData({ showLoading: false, surfaceError: false })
+      setLobbyNotice(
+        resolution === 'APPROVED'
+          ? 'Join request approved. The player can now launch the campaign.'
+          : 'Join request rejected.'
+      )
+    },
+    [apiUrl, fetchWithAuthGuard, refreshLobbyCampaignData, setError, setLobbyNotice, token]
   )
 
   /**
@@ -559,6 +685,8 @@ export function useWorkspacesCampaignEntryOrchestration(
     startCampaignSession,
     handleJoinRequest,
     handleWatchCampaign,
+    handleLoadPendingJoinRequests,
+    handleResolveJoinRequest,
     handleDeleteCampaign,
   }
 }

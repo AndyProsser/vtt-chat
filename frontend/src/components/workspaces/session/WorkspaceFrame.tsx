@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Role } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
@@ -35,7 +35,10 @@ interface SessionWorkspaceFrameProps {
   role: Role
   renderToolbar: (model: ToolbarActionModel) => ReactNode
   renderSystemToasts?: () => ReactNode
-  renderLeftRail: (actions: { openRightRailTab: (tab: RightRailTab) => void }) => ReactNode
+  renderLeftRail: (actions: {
+    openRightRailTab: (tab: RightRailTab) => void
+    openInformationPanel: () => void
+  }) => ReactNode
   renderCenterPane: (view: CenterPaneView) => ReactNode
   renderRightRailTab: (tab: RightRailTab) => ReactNode
   rightRailIndicators?: Partial<Record<RightRailTab, number>>
@@ -43,6 +46,49 @@ interface SessionWorkspaceFrameProps {
   forcedRightRailTab?: RightRailTab | null
   onForcedRightRailTabApplied?: () => void
 }
+
+type ToolbarSlotProps = {
+  renderToolbar: SessionWorkspaceFrameProps['renderToolbar']
+  toolbarModel: ToolbarActionModel
+}
+
+const ToolbarSlot = memo(
+  function ToolbarSlot({ renderToolbar, toolbarModel }: ToolbarSlotProps) {
+    return <>{renderToolbar(toolbarModel)}</>
+  },
+  (previous, next) =>
+    previous.renderToolbar === next.renderToolbar && previous.toolbarModel === next.toolbarModel
+)
+
+type LeftRailSlotProps = {
+  renderLeftRail: SessionWorkspaceFrameProps['renderLeftRail']
+  leftRailActions: {
+    openRightRailTab: (tab: RightRailTab) => void
+    openInformationPanel: () => void
+  }
+}
+
+const LeftRailSlot = memo(
+  function LeftRailSlot({ renderLeftRail, leftRailActions }: LeftRailSlotProps) {
+    return <>{renderLeftRail(leftRailActions)}</>
+  },
+  (previous, next) =>
+    previous.renderLeftRail === next.renderLeftRail &&
+    previous.leftRailActions === next.leftRailActions
+)
+
+type CenterPaneSlotProps = {
+  renderCenterPane: SessionWorkspaceFrameProps['renderCenterPane']
+  view: CenterPaneView
+}
+
+const CenterPaneSlot = memo(
+  function CenterPaneSlot({ renderCenterPane, view }: CenterPaneSlotProps) {
+    return <>{renderCenterPane(view)}</>
+  },
+  (previous, next) =>
+    previous.renderCenterPane === next.renderCenterPane && previous.view === next.view
+)
 
 function normalizeIndicatorCount(rawCount: number | undefined): number {
   if (!Number.isFinite(rawCount)) return 0
@@ -53,7 +99,7 @@ function formatIndicatorCount(count: number): string {
   return count > 99 ? '99+' : String(count)
 }
 
-export function SessionWorkspaceFrame({
+export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
   role,
   renderToolbar,
   renderSystemToasts,
@@ -74,14 +120,18 @@ export function SessionWorkspaceFrame({
   const toggleToolbarRightRail = useStore((state) => state.toggleToolbarRightRail)
 
   const [isCompactLayout, setIsCompactLayout] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 1100 : false
+    typeof window !== 'undefined' ? window.innerWidth < 1080 : false
+  )
+  const [isWideLayout, setIsWideLayout] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1080 : false
   )
   const [isDockLayout, setIsDockLayout] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 720 : false
+    typeof window !== 'undefined' ? window.innerWidth <= 680 : false
   )
   const [isRightRailVisible, setIsRightRailVisible] = useState(toolbarRightRailOpen)
   const [isRightRailClosing, setIsRightRailClosing] = useState(false)
   const [isChatDockOpen, setIsChatDockOpen] = useState(false)
+  const previousIsWideLayoutRef = useRef(isWideLayout)
   const lastTabToggleRef = useRef<{ at: number; tab: RightRailTab | null }>({
     at: 0,
     tab: null,
@@ -104,9 +154,8 @@ export function SessionWorkspaceFrame({
     []
   )
 
-  const toolbarModel: ToolbarActionModel = {
-    centerPaneView: toolbarCenterPaneView,
-    setCenterPaneView: (view) => {
+  const handleSetCenterPaneView = useCallback(
+    (view: CenterPaneView) => {
       telemetryClient.track('UI_TAB_SWITCH', {
         surface: 'session-workspace-frame__center-pane',
         from: toolbarCenterPaneView,
@@ -115,21 +164,34 @@ export function SessionWorkspaceFrame({
       })
       setToolbarCenterPaneView(view)
     },
-    rightRailOpen: toolbarRightRailOpen,
-    activeRightRailTab,
-    availableRightRailTabs: tabs,
-    toggleRightRail: () => {
-      telemetryClient.track('UI_PANEL_TOGGLE', {
-        surface: 'command-center-right-rail',
-        nextOpen: !toolbarRightRailOpen,
-        role,
-      })
-      toggleToolbarRightRail()
-    },
-    openRightRailTab: (tab) => {
+    [role, setToolbarCenterPaneView, toolbarCenterPaneView]
+  )
+
+  const handleToggleRightRail = useCallback(() => {
+    if (isWideLayout) {
+      setToolbarRightRailOpen(true)
+      return
+    }
+
+    telemetryClient.track('UI_PANEL_TOGGLE', {
+      surface: 'command-center-right-rail',
+      nextOpen: !toolbarRightRailOpen,
+      role,
+    })
+    toggleToolbarRightRail()
+  }, [isWideLayout, role, setToolbarRightRailOpen, toggleToolbarRightRail, toolbarRightRailOpen])
+
+  const handleOpenRightRailTab = useCallback(
+    (tab: RightRailTab) => {
       if (!tabs.includes(tab)) {
         return
       }
+
+      telemetryClient.track('UI_PANEL_TOGGLE', {
+        surface: 'command-center-right-rail',
+        nextOpen: true,
+        role,
+      })
 
       telemetryClient.track('UI_TAB_SWITCH', {
         surface: 'command-center-right-rail',
@@ -141,13 +203,45 @@ export function SessionWorkspaceFrame({
       setSelectedRightRailTab(tab)
       setToolbarRightRailOpen(true)
     },
-    placeholderActions,
-  }
+    [activeRightRailTab, role, setToolbarRightRailOpen, tabs]
+  )
+
+  const toolbarModel: ToolbarActionModel = useMemo(
+    () => ({
+      centerPaneView: toolbarCenterPaneView,
+      setCenterPaneView: handleSetCenterPaneView,
+      rightRailOpen: toolbarRightRailOpen,
+      activeRightRailTab,
+      availableRightRailTabs: tabs,
+      toggleRightRail: handleToggleRightRail,
+      openRightRailTab: handleOpenRightRailTab,
+      placeholderActions,
+    }),
+    [
+      activeRightRailTab,
+      handleOpenRightRailTab,
+      handleSetCenterPaneView,
+      handleToggleRightRail,
+      placeholderActions,
+      tabs,
+      toolbarCenterPaneView,
+      toolbarRightRailOpen,
+    ]
+  )
+
+  const leftRailActions = useMemo(
+    () => ({
+      openRightRailTab: handleOpenRightRailTab,
+      openInformationPanel: () => handleOpenRightRailTab('information'),
+    }),
+    [handleOpenRightRailTab]
+  )
 
   useEffect(() => {
     const handleResize = () => {
-      setIsCompactLayout(window.innerWidth <= 1100)
-      setIsDockLayout(window.innerWidth <= 720)
+      setIsCompactLayout(window.innerWidth < 1080)
+      setIsWideLayout(window.innerWidth >= 1080)
+      setIsDockLayout(window.innerWidth <= 680)
     }
 
     window.addEventListener('resize', handleResize)
@@ -155,6 +249,20 @@ export function SessionWorkspaceFrame({
       window.removeEventListener('resize', handleResize)
     }
   }, [])
+
+  useEffect(() => {
+    const wasWideLayout = previousIsWideLayoutRef.current
+
+    if (isWideLayout && !toolbarRightRailOpen) {
+      setToolbarRightRailOpen(true)
+    }
+
+    if (!isWideLayout && wasWideLayout && toolbarRightRailOpen) {
+      setToolbarRightRailOpen(false)
+    }
+
+    previousIsWideLayoutRef.current = isWideLayout
+  }, [isWideLayout, setToolbarRightRailOpen, toolbarRightRailOpen])
 
   useEffect(() => {
     if (!isDockLayout && isChatDockOpen) {
@@ -207,7 +315,7 @@ export function SessionWorkspaceFrame({
     }
     lastTabToggleRef.current = { at: now, tab }
 
-    if (toolbarRightRailOpen && activeRightRailTab === tab) {
+    if (!isWideLayout && toolbarRightRailOpen && activeRightRailTab === tab) {
       setToolbarRightRailOpen(false)
       return
     }
@@ -233,8 +341,12 @@ export function SessionWorkspaceFrame({
     setIsChatDockOpen(true)
   }
 
-  const handleRightRailClickOutside = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.currentTarget !== event.target || isRightRailClosing) {
+  const handleRightRailClickOutside = (event: React.MouseEvent<HTMLElement>) => {
+    if (isRightRailClosing) {
+      return
+    }
+
+    if (isWideLayout) {
       return
     }
 
@@ -265,7 +377,7 @@ export function SessionWorkspaceFrame({
         className="session-workspace-frame__top-toolbar"
         data-ui-component="SessionWorkspaceToolbar"
       >
-        {renderToolbar(toolbarModel)}
+        <ToolbarSlot renderToolbar={renderToolbar} toolbarModel={toolbarModel} />
       </section>
 
       {systemToastsNode && (
@@ -292,7 +404,7 @@ export function SessionWorkspaceFrame({
           className="session-workspace-frame__surface session-workspace-frame__left-rail-shell"
           data-ui-component="SessionWorkspaceLeftRail"
         >
-          {renderLeftRail({ openRightRailTab: toolbarModel.openRightRailTab })}
+          <LeftRailSlot renderLeftRail={renderLeftRail} leftRailActions={leftRailActions} />
         </aside>
 
         <div
@@ -301,27 +413,36 @@ export function SessionWorkspaceFrame({
           data-ui-component="SessionWorkspaceCenterPane"
           data-ui-state={toolbarCenterPaneView}
         >
-          {shouldRenderCenterPaneBase ? renderCenterPane(toolbarCenterPaneView) : null}
+          {shouldRenderCenterPaneBase ? (
+            <CenterPaneSlot renderCenterPane={renderCenterPane} view={toolbarCenterPaneView} />
+          ) : null}
+
+          {isDockOverlayVisible && (
+            <div
+              className="knowledge-panels__right-rail-backdrop"
+              onClick={handleRightRailClickOutside}
+              data-ui-component="SessionWorkspaceRightRailBackdrop"
+            />
+          )}
 
           {isDockOverlayVisible && (
             <aside
               data-testid={isChatDockOpen ? 'chat-dock-panel' : 'right-rail'}
-              className={`session-workspace-frame__right-rail-overlay ${
-                isRightRailClosing ? 'session-workspace-frame__right-rail-overlay--closing' : ''
-              } ${isChatDockOpen ? 'session-workspace-frame__right-rail-overlay--chat' : `session-workspace-frame__right-rail-overlay--tab-${pointerTabIndex}`}`}
-              onClick={handleRightRailClickOutside}
+              className={`knowledge-panels__right-rail-overlay ${
+                isRightRailClosing ? 'knowledge-panels__right-rail-overlay--closing' : ''
+              } ${isChatDockOpen ? 'knowledge-panels__right-rail-overlay--chat' : `knowledge-panels__right-rail-overlay--tab-${pointerTabIndex}`}`}
               data-ui-component={
                 isChatDockOpen ? 'SessionWorkspaceChatDock' : 'SessionWorkspaceRightRail'
               }
               data-ui-state={activeDockTab}
             >
-              <div className="session-workspace-frame__right-rail-layout">
+              <div className="knowledge-panels__right-rail-layout">
                 {isChatDockOpen ? (
                   <div
                     data-testid="chat-dock-content"
                     className="session-workspace-frame__dock-chat-panel"
                   >
-                    {renderCenterPane('chat')}
+                    <CenterPaneSlot renderCenterPane={renderCenterPane} view="chat" />
                   </div>
                 ) : (
                   <Tabs value={activeRightRailTab}>
@@ -340,17 +461,14 @@ export function SessionWorkspaceFrame({
         </div>
 
         <aside
-          className="session-workspace-frame__right-rail-dock"
+          className="knowledge-panels__right-rail-dock"
           aria-label="Tools"
           data-ui-component="SessionWorkspaceDock"
         >
           {tooltipLabelsEnabled ? (
             <TooltipProvider delayDuration={140}>
               <Tabs value={activeRightRailTab}>
-                <TabsList
-                  className="session-workspace-frame__right-rail-toolbar"
-                  aria-label="Tool panels"
-                >
+                <TabsList className="knowledge-panels__right-rail-toolbar" aria-label="Tool panels">
                   {isDockLayout ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -358,7 +476,7 @@ export function SessionWorkspaceFrame({
                           type="button"
                           aria-label="Open chat"
                           aria-pressed={isChatDockOpen}
-                          className="session-workspace-frame__right-rail-trigger"
+                          className="knowledge-panels__right-rail-trigger"
                           data-state={isChatDockOpen ? 'active' : 'inactive'}
                           onClick={(event) => {
                             handleChatDockClick(event.timeStamp)
@@ -367,7 +485,7 @@ export function SessionWorkspaceFrame({
                           <Icon name="chat" />
                           {chatBadgeCount > 0 ? (
                             <span
-                              className="session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--chat"
+                              className="knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--chat"
                               aria-hidden="true"
                             >
                               {formatIndicatorCount(chatBadgeCount)}
@@ -388,7 +506,7 @@ export function SessionWorkspaceFrame({
                           <TabsTrigger
                             value={tab}
                             aria-label={`Tool ${label}`}
-                            className="session-workspace-frame__right-rail-trigger"
+                            className="knowledge-panels__right-rail-trigger"
                             onClick={(event) => {
                               handleRightRailTabClick(tab, event.timeStamp)
                             }}
@@ -396,7 +514,7 @@ export function SessionWorkspaceFrame({
                             <Icon name={getWorkspacePanelIcon(tab)} />
                             {indicatorCount > 0 ? (
                               <span
-                                className={`session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--${tab}`}
+                                className={`knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--${tab}`}
                                 aria-hidden="true"
                               >
                                 {formatIndicatorCount(indicatorCount)}
@@ -413,16 +531,13 @@ export function SessionWorkspaceFrame({
             </TooltipProvider>
           ) : (
             <Tabs value={activeRightRailTab}>
-              <TabsList
-                className="session-workspace-frame__right-rail-toolbar"
-                aria-label="Tool panels"
-              >
+              <TabsList className="knowledge-panels__right-rail-toolbar" aria-label="Tool panels">
                 {isDockLayout ? (
                   <button
                     type="button"
                     aria-label="Open chat"
                     aria-pressed={isChatDockOpen}
-                    className="session-workspace-frame__right-rail-trigger"
+                    className="knowledge-panels__right-rail-trigger"
                     data-state={isChatDockOpen ? 'active' : 'inactive'}
                     onClick={(event) => {
                       handleChatDockClick(event.timeStamp)
@@ -431,7 +546,7 @@ export function SessionWorkspaceFrame({
                     <Icon name="chat" />
                     {chatBadgeCount > 0 ? (
                       <span
-                        className="session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--chat"
+                        className="knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--chat"
                         aria-hidden="true"
                       >
                         {formatIndicatorCount(chatBadgeCount)}
@@ -448,7 +563,7 @@ export function SessionWorkspaceFrame({
                       key={tab}
                       value={tab}
                       aria-label={`Tool ${label}`}
-                      className="session-workspace-frame__right-rail-trigger"
+                      className="knowledge-panels__right-rail-trigger"
                       onClick={(event) => {
                         handleRightRailTabClick(tab, event.timeStamp)
                       }}
@@ -456,7 +571,7 @@ export function SessionWorkspaceFrame({
                       <Icon name={getWorkspacePanelIcon(tab)} />
                       {indicatorCount > 0 ? (
                         <span
-                          className={`session-workspace-frame__right-rail-indicator session-workspace-frame__right-rail-indicator--${tab}`}
+                          className={`knowledge-panels__right-rail-indicator knowledge-panels__right-rail-indicator--${tab}`}
                           aria-hidden="true"
                         >
                           {formatIndicatorCount(indicatorCount)}
@@ -472,4 +587,4 @@ export function SessionWorkspaceFrame({
       </div>
     </section>
   )
-}
+})

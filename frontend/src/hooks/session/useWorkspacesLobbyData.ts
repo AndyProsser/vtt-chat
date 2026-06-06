@@ -14,6 +14,8 @@ import {
   LOBBY_CAMPAIGN_LIST_RELOAD_DEBOUNCE_MS,
 } from '@/constants/lobby.constants'
 
+const CAMPAIGN_INVALIDATION_SUPPRESS_AFTER_LOAD_MS = 1500
+
 export type UseWorkspacesLobbyDataParams = {
   apiUrl: string
   token: string
@@ -50,6 +52,7 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
   const [lobbyStats, setLobbyStats] = useState(INITIAL_LOBBY_STATS)
   const [partyPresenceRefreshVersion, setPartyPresenceRefreshVersion] = useState(0)
   const lobbyCampaignReloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastLobbyCampaignLoadAtRef = useRef<number>(0)
 
   const applyLobbyStatsSnapshot = useCallback((snapshot: CampaignLobbyStatsUpdatedPayload) => {
     setLobbyStats({
@@ -90,6 +93,20 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
         const data = await response.json()
         const nextCampaigns = (data.campaigns || []) as CampaignSummary[]
         const pendingCampaignId = sessionStorage.getItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
+        // DEV-HELPER: log campaigns returned from server to diagnose membership issues
+        try {
+          console.debug(
+            'Lobby: loaded campaigns',
+            nextCampaigns.map((c) => ({
+              id: c.id,
+              name: c.name,
+              isMember: (c as any).isMember,
+              memberRole: (c as any).memberRole,
+            }))
+          )
+        } catch {
+          // ignore
+        }
         const pendingNotice = sessionStorage.getItem(LOBBY_NOTICE_STORAGE_KEY)
         setCampaigns(nextCampaigns)
 
@@ -174,6 +191,10 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
     async ({ showLoading = true, surfaceError = true } = {}) => {
       const nextCampaigns = await loadCampaigns({ showLoading, surfaceError })
 
+      if (nextCampaigns) {
+        lastLobbyCampaignLoadAtRef.current = Date.now()
+      }
+
       // Discover campaigns are secondary UX data. Never let discover failures
       // block or delay the member campaign list from rendering.
       void loadDiscoverableCampaigns({ surfaceError: false })
@@ -219,6 +240,13 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
   }, [apiUrl, applyLobbyStatsSnapshot, fetchWithAuthGuard, token])
 
   const handleCampaignListInvalidated = useCallback(() => {
+    if (
+      Date.now() - lastLobbyCampaignLoadAtRef.current <
+      CAMPAIGN_INVALIDATION_SUPPRESS_AFTER_LOAD_MS
+    ) {
+      return
+    }
+
     if (lobbyCampaignReloadTimeoutRef.current) {
       clearTimeout(lobbyCampaignReloadTimeoutRef.current)
     }

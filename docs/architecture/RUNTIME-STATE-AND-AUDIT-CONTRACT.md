@@ -69,6 +69,15 @@ This section captures what is verified in code and tests today, so this contract
 
 ## 2. Core Policy
 
+### 2.0 Authority split: campaign conversation vs session routing
+
+Runtime behavior follows an explicit split:
+
+- Campaign membership + role are authoritative for conversation eligibility.
+- Session lifecycle is authoritative for routing and policy overlays (room assignment, recording windows, spectator interaction rules).
+- Session transitions may remap routing/policy without forcing transport identity resets.
+- Unauthorized campaign participants must be rejected before routing or delivery decisions are applied.
+
 ### 2.1 Redis-first runtime authority
 
 For all interactive session mutations that transit websocket channels:
@@ -78,6 +87,13 @@ For all interactive session mutations that transit websocket channels:
 3. Append session audit event.
 4. Publish websocket event.
 5. Persist to Postgres immediately or via controlled flush depending on data class.
+
+Validation order requirement (mandatory):
+
+1. Campaign authorization and role policy
+2. Session lifecycle policy gate
+3. Routing target resolution (room/group/private)
+4. Redis update + audit + websocket publish
 
 ### 2.2 Postgres durability authority
 

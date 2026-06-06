@@ -787,11 +787,13 @@ export async function listCampaignMembersForPresence(
     const activeCharacter = characterByUser.get(membership.userId)
     const metadata = (activeCharacter?.metadata as Record<string, unknown> | null) || null
     const rawLevel = metadata && typeof metadata.level === 'number' ? metadata.level : null
+    const effectiveRole =
+      membership.userId === membership.campaign.currentDmId ? 'DM' : membership.role
 
     return {
       userId: membership.userId,
       username: membership.user.username,
-      role: membership.role,
+      role: effectiveRole,
       playerName: membership.user.displayName || membership.user.username,
       avatarUrl: activeCharacter?.avatarUrl || membership.user.avatarUrl || null,
       characterName: activeCharacter?.name || null,
@@ -812,10 +814,9 @@ export async function getCampaignDmId(campaignId: string): Promise<string | null
 }
 
 /**
- * Returns discoverable campaigns that the requesting user is NOT a member of.
- * Includes:
- *   - PUBLIC (discoverable=true) non-retired campaigns
- *   - PRIVATE non-retired campaigns with spectators enabled + active session with DM or player online
+ * Returns lobby-visible campaigns that the requesting user is NOT a member of.
+ * Includes both PUBLIC and PRIVATE non-retired campaigns so private cards can render
+ * in a dimmed locked state when no watch path is currently available.
  */
 export async function listDiscoverableCampaigns(userId: string): Promise<
   Array<{
@@ -849,18 +850,6 @@ export async function listDiscoverableCampaigns(userId: string): Promise<
         retiredAt: null,
         deletedAt: null,
         ...(memberCampaignIds.length > 0 ? { id: { notIn: memberCampaignIds } } : {}),
-        OR: [
-          { discoverable: true },
-          {
-            discoverable: false,
-            spectatorPolicy: { not: 'NONE' },
-            sessions: {
-              some: {
-                state: 'ACTIVE',
-              },
-            },
-          },
-        ],
       },
       include: {
         currentDm: {
@@ -913,10 +902,6 @@ export async function listDiscoverableCampaigns(userId: string): Promise<
         (id) => roleByUserId.get(id) === 'PLAYER'
       ).length
       const activeConnectedCount = (dmOnline ? 1 : 0) + playersOnline
-
-      // PRIVATE campaigns are only included if active session + connected DM or player
-      if (!c.discoverable && activeConnectedCount === 0) return null
-
       const spectatorsEnabled = c.spectatorPolicy !== 'NONE'
 
       return {
@@ -1002,6 +987,49 @@ export async function createJoinRequest(params: {
     status: 'PENDING',
     requestedAt: request.requestedAt,
   }
+}
+
+/**
+ * List pending join requests for a campaign so the DM can review them from the lobby.
+ */
+export async function listPendingJoinRequests(campaignId: string): Promise<
+  Array<{
+    id: string
+    userId: string
+    username: string
+    displayName: string
+    avatarUrl: string | null
+    message: string | null
+    requestedAt: Date
+  }>
+> {
+  const requests = await prisma.campaignJoinRequest.findMany({
+    where: { campaignId, status: 'PENDING' },
+    orderBy: [{ requestedAt: 'asc' }],
+    select: {
+      id: true,
+      userId: true,
+      message: true,
+      requestedAt: true,
+      user: {
+        select: {
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+        },
+      },
+    },
+  })
+
+  return requests.map((request) => ({
+    id: request.id,
+    userId: request.userId,
+    username: request.user?.username || 'user',
+    displayName: request.user?.displayName || request.user?.username || 'Player',
+    avatarUrl: request.user?.avatarUrl || null,
+    message: request.message,
+    requestedAt: request.requestedAt,
+  }))
 }
 
 /**

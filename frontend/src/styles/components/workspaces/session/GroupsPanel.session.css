@@ -75,19 +75,34 @@
   color: var(--color-text-primary);
   padding: 0.5rem 0.65rem;
   font-size: 0.76rem;
+  outline: none;
+}
+
+.session-groups-panel__create-input:focus {
+  border-color: var(--color-border-focus);
 }
 
 .session-groups-panel__create-button {
   width: 2rem;
   height: 2rem;
-  border: 1px solid color-mix(in srgb, var(--color-brand) 54%, var(--color-border-soft));
+  border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-brand) 18%, var(--color-surface));
-  color: color-mix(in srgb, var(--color-brand) 72%, var(--color-text-primary));
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.session-groups-panel__create-button .material-symbols-outlined {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.session-groups-panel__create-button:not(:disabled):hover {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
 }
 
 .session-groups-panel__body {
@@ -124,10 +139,19 @@
   color: var(--color-text-secondary);
 }
 
-.session-groups-dm-detached__name {
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: var(--color-text-primary);
+.session-groups-dm-detached__footer {
+  padding-top: 0.3rem;
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+.session-groups-dm-detached__member {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 0.4rem;
+  align-items: start;
+  margin-top: 0.18rem;
 }
 
 .session-groups-dm-detached__target {
@@ -138,6 +162,7 @@
 .session-groups-dm-detached__target strong {
   color: var(--color-text-primary);
   font-weight: 700;
+  text-transform: uppercase;
 }
 
 .session-groups-room-card {
@@ -161,6 +186,7 @@
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--color-text-primary);
+  text-transform: uppercase;
 }
 
 .session-groups-room-card__subtitle,
@@ -188,6 +214,11 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.session-groups-room-card__icon-button .material-symbols-outlined {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .session-groups-room-card__icon-button--danger {
@@ -390,4 +421,27 @@
 .session-groups-panel__footer {
   padding-top: 0.6rem;
   border-top: 1px solid var(--color-border-soft);
+}
+
+.session-groups-room-card__spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  border-top-color: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  animation: session-spinner-spin 0.9s linear infinite;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+@keyframes session-spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.session-groups-room-card__icon-button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

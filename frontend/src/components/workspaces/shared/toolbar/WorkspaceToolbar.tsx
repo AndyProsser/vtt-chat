@@ -18,6 +18,7 @@ export function WorkspaceToolbar({
   exitIcon,
   exitAriaLabel,
   exitTooltipLabel,
+  connectionStatusLeaf,
   connectionStatusColorKey,
   connectionStatusLabel,
   connectionStatusRows,
@@ -127,34 +128,38 @@ export function WorkspaceToolbar({
           </>
         )}
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className="session-toolbar__connection"
-              data-status-color={connectionStatusColorKey}
-              aria-label={`Connection: ${connectionStatusLabel}`}
-              role="status"
-            >
-              <span className="session-toolbar__connection-dot" aria-hidden="true" />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent
-            side="bottom"
-            align="end"
-            className="session-toolbar__tooltip-content--status"
-          >
-            <div className="session-toolbar__status-tooltip-title">Status</div>
-            {connectionStatusRows.map((row) => (
-              <div
-                key={`${row.label}-${row.value}`}
-                className="session-toolbar__status-tooltip-row"
+        {connectionStatusLeaf ? (
+          connectionStatusLeaf
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className="session-toolbar__connection"
+                data-status-color={connectionStatusColorKey}
+                aria-label={`Connection: ${connectionStatusLabel}`}
+                role="status"
               >
-                <span>{row.label}</span>
-                <strong className={row.toneClassName}>{row.value}</strong>
-              </div>
-            ))}
-          </TooltipContent>
-        </Tooltip>
+                <span className="session-toolbar__connection-dot" aria-hidden="true" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              align="end"
+              className="session-toolbar__tooltip-content--status"
+            >
+              <div className="session-toolbar__status-tooltip-title">Status</div>
+              {connectionStatusRows?.map((row) => (
+                <div
+                  key={`${row.label}-${row.value}`}
+                  className="session-toolbar__status-tooltip-row"
+                >
+                  <span>{row.label}</span>
+                  <strong className={row.toneClassName}>{row.value}</strong>
+                </div>
+              ))}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </div>
   )

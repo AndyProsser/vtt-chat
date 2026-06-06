@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   mockLogSessionLeave: vi.fn(),
   mockBroadcastSessionStatsSnapshot: vi.fn(),
   mockAppendSessionAuditEvent: vi.fn(),
+  mockGetSessionPresence: vi.fn(),
+  mockRemovePresenceProjection: vi.fn(),
+  mockGetSessionParticipantProfiles: vi.fn(),
 }))
 
 vi.mock('@/infra/db', () => ({
@@ -53,6 +56,18 @@ vi.mock('@/services/session/core.service', () => ({
 vi.mock('@/services/room.service', () => ({
   applySessionStateRoomTransition: mocks.mockApplySessionStateRoomTransition,
   deletePrivateRoomsForEndedSession: mocks.mockDeletePrivateRoomsForEndedSession,
+  getSessionPresence: mocks.mockGetSessionPresence,
+  removePresenceProjection: mocks.mockRemovePresenceProjection,
+}))
+
+vi.mock('@/services/session/disconnect-cascade.service', () => ({
+  sessionDisconnectCascadeService: {
+    cancelUserTimers: vi.fn(),
+  },
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  getSessionParticipantProfiles: mocks.mockGetSessionParticipantProfiles,
 }))
 
 vi.mock('@/services/audio/audio-state', () => ({
@@ -164,11 +179,11 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
       mainRoomId: '44444444-4444-4444-8444-444444444444',
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: '55555555-5555-4555-8555-555555555555',
       greenRoomName: 'Green Room',
       targetRoomId: '44444444-4444-4444-8444-444444444444',
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       movedUsers: 2,
       targetState: 'ONLINE',
       users: [
@@ -193,6 +208,9 @@ describe('session state room orchestration', () => {
 
     mocks.mockClearRoomMessages.mockResolvedValue(0)
     mocks.mockDeletePrivateRoomsForEndedSession.mockResolvedValue([])
+    mocks.mockGetSessionPresence.mockResolvedValue([])
+    mocks.mockRemovePresenceProjection.mockResolvedValue(undefined)
+    mocks.mockGetSessionParticipantProfiles.mockResolvedValue({})
   })
 
   it('applies bulk room transitions after session state update', async () => {
@@ -207,6 +225,7 @@ describe('session state room orchestration', () => {
     expect(mocks.mockApplySessionStateRoomTransition).toHaveBeenCalledWith({
       sessionId: SESSION_ID,
       dmId: DM_ID,
+      previousState: 'IDLE',
       nextState: 'ACTIVE',
       users: [
         { id: DM_ID, username: 'dm-user' },
@@ -215,7 +234,7 @@ describe('session state room orchestration', () => {
     })
 
     const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
-    expect(wsCalls).toHaveLength(1)
+    expect(wsCalls).toHaveLength(2)
     expect(wsCalls[0][0]).toBe(SESSION_ID)
     expect(wsCalls[0][1].type).toBe('ROOM:SESSION_TRANSITION_APPLIED')
     expect(wsCalls[0][1].payload).toEqual(
@@ -225,6 +244,7 @@ describe('session state room orchestration', () => {
         targetRoomId: '44444444-4444-4444-8444-444444444444',
       })
     )
+    expect(wsCalls[1][1].type).toBe('SESSION:STATE_CHANGED')
 
     expect(mocks.mockEmitSessionBoundarySystemMessage).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -251,7 +271,7 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: GREEN_ROOM_ID,
       greenRoomName: 'Green Room',
       targetRoomId: GREEN_ROOM_ID,
@@ -274,7 +294,7 @@ describe('session state room orchestration', () => {
       expect.objectContaining({
         sessionId: SESSION_ID,
         boundaryType: 'SESSION_COOLDOWN',
-        roomIds: [MAIN_ROOM_ID],
+        roomIds: [MAIN_ROOM_ID, GREEN_ROOM_ID],
       })
     )
   })
@@ -325,9 +345,10 @@ describe('session state room orchestration', () => {
     expect(mocks.mockLogSessionLeave).toHaveBeenCalledWith(SESSION_ID, PLAYER_ID, 'alice')
 
     const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
-    expect(wsCalls).toHaveLength(2)
-    expect(wsCalls[0][1].payload.content).toBe('alice left the session')
-    expect(wsCalls[1][1].payload.content).toBe(
+    expect(wsCalls).toHaveLength(3)
+    expect(wsCalls[0][1].type).toBe('SESSION:MEMBER_LEFT')
+    expect(wsCalls[1][1].payload.content).toBe('alice left the session')
+    expect(wsCalls[2][1].payload.content).toBe(
       'spectator-queue-1 was promoted from the spectator waitlist'
     )
   })
@@ -348,11 +369,11 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: GREEN_ROOM_ID,
       greenRoomName: 'Green Room',
       targetRoomId: MAIN_ROOM_ID,
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       movedUsers: 2,
       targetState: 'ONLINE',
       users: [
@@ -370,8 +391,9 @@ describe('session state room orchestration', () => {
     expect(mocks.mockClearRoomMessages).not.toHaveBeenCalled()
 
     const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
-    expect(wsCalls).toHaveLength(1)
+    expect(wsCalls).toHaveLength(2)
     expect(wsCalls[0][1].type).toBe('ROOM:SESSION_TRANSITION_APPLIED')
+    expect(wsCalls[1][1].type).toBe('SESSION:STATE_CHANGED')
   })
 
   it('allows the session owner to transition state even if auth role is not DM', async () => {
@@ -392,7 +414,7 @@ describe('session state room orchestration', () => {
     expect(mocks.mockUpdateSessionState).toHaveBeenCalledWith(SESSION_ID, 'ACTIVE', DM_ID)
 
     const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
-    expect(wsCalls).toHaveLength(1)
+    expect(wsCalls).toHaveLength(2)
     expect(wsCalls[0][1]).toEqual(
       expect.objectContaining({
         userId: DM_ID,
@@ -400,6 +422,77 @@ describe('session state room orchestration', () => {
         type: 'ROOM:SESSION_TRANSITION_APPLIED',
       })
     )
+    expect(wsCalls[1][1].type).toBe('SESSION:STATE_CHANGED')
+  })
+
+  it('broadcasts per-user room targets supplied by the transition service', async () => {
+    const app = buildApp()
+    const MAIN_ROOM_ID = '44444444-4444-4444-8444-444444444444'
+    const GROUP_ROOM_ID = '66666666-6666-4666-8666-666666666666'
+
+    mocks.mockGetSession.mockResolvedValueOnce({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'PAUSED',
+      createdAt: Date.now(),
+      startedAt: Date.now(),
+    })
+
+    mocks.mockUpdateSessionState.mockResolvedValueOnce({
+      id: SESSION_ID,
+      name: 'Session 1',
+      dmId: DM_ID,
+      state: 'ACTIVE',
+      createdAt: Date.now(),
+      startedAt: Date.now(),
+    })
+
+    mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
+      mainRoomId: MAIN_ROOM_ID,
+      mainRoomName: 'Main',
+      greenRoomId: '55555555-5555-4555-8555-555555555555',
+      greenRoomName: 'Green Room',
+      targetRoomId: MAIN_ROOM_ID,
+      targetRoomName: 'Main',
+      movedUsers: 2,
+      targetState: 'ONLINE',
+      users: [
+        { id: DM_ID, username: 'dm-user', roomId: MAIN_ROOM_ID, roomName: 'Main' },
+        {
+          id: PLAYER_ID,
+          username: 'alice',
+          roomId: GROUP_ROOM_ID,
+          roomName: 'Scouts',
+          previousGroupId: GROUP_ROOM_ID,
+        },
+      ],
+    })
+
+    const response = await request(app)
+      .put(`/api/session/${SESSION_ID}/state`)
+      .set('Authorization', 'Bearer token')
+      .send({ state: 'ACTIVE' })
+
+    expect(response.status).toBe(200)
+
+    const wsCalls = (app.locals.wsManager.broadcastEventToSession as any).mock.calls
+    expect(wsCalls[0][1].payload.users).toEqual([
+      {
+        userId: DM_ID,
+        username: 'dm-user',
+        roomId: MAIN_ROOM_ID,
+        roomName: 'Main',
+        previousGroupId: null,
+      },
+      {
+        userId: PLAYER_ID,
+        username: 'alice',
+        roomId: GROUP_ROOM_ID,
+        roomName: 'Scouts',
+        previousGroupId: GROUP_ROOM_ID,
+      },
+    ])
   })
 
   it('resets overrides and clears MAIN environment on ACTIVE transition', async () => {
@@ -436,6 +529,7 @@ describe('session state room orchestration', () => {
       'ROOM:SESSION_TRANSITION_APPLIED',
       'AUDIO:DM_OVERRIDE_REMOVED',
       'AUDIO:BROADCAST_STATE_CHANGED',
+      'SESSION:STATE_CHANGED',
     ])
   })
 
@@ -453,7 +547,7 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
       mainRoomId: '44444444-4444-4444-8444-444444444444',
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: GREEN_ROOM_ID,
       greenRoomName: 'Green Room',
       targetRoomId: GREEN_ROOM_ID,
@@ -480,7 +574,7 @@ describe('session state room orchestration', () => {
     })
   })
 
-  it('resets overrides and clears Main Room environment on PAUSED transition', async () => {
+  it('resets overrides and clears Main environment on PAUSED transition', async () => {
     const app = buildApp()
     const MAIN_ROOM_ID = '44444444-4444-4444-8444-444444444444'
     const GREEN_ROOM_ID = '55555555-5555-4555-8555-555555555555'
@@ -496,11 +590,11 @@ describe('session state room orchestration', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
       mainRoomId: MAIN_ROOM_ID,
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: GREEN_ROOM_ID,
       greenRoomName: 'Green Room',
       targetRoomId: MAIN_ROOM_ID,
-      targetRoomName: 'Main Room',
+      targetRoomName: 'Main',
       movedUsers: 2,
       targetState: 'ONLINE',
       users: [
@@ -551,11 +645,11 @@ describe('session state room orchestration', () => {
 
       mocks.mockApplySessionStateRoomTransition.mockResolvedValueOnce({
         mainRoomId: MAIN_ROOM_ID,
-        mainRoomName: 'Main Room',
+        mainRoomName: 'Main',
         greenRoomId: GREEN_ROOM_ID,
         greenRoomName: 'Green Room',
         targetRoomId: testCase.targetRoomId,
-        targetRoomName: testCase.targetRoomId === GREEN_ROOM_ID ? 'Green Room' : 'Main Room',
+        targetRoomName: testCase.targetRoomId === GREEN_ROOM_ID ? 'Green Room' : 'Main',
         movedUsers: 2,
         targetState: testCase.targetRoomId === GREEN_ROOM_ID ? 'IDLE' : 'ONLINE',
         users: [

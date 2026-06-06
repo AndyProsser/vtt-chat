@@ -9,7 +9,6 @@ export type WorkspacePanelTab =
   | 'journal'
   | 'notes'
   | 'history'
-  | 'audio'
   | 'settings'
 
 export type RightRailTab = WorkspacePanelTab

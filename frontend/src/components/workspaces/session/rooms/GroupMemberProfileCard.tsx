@@ -1,11 +1,10 @@
+import { memo } from 'react'
 import type { UUID } from '@shared'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '@/constants/voiceGroupStatus.constants'
-import type { SessionPresence } from '@/types/room'
-import { ParticipantDeviceList } from './ParticipantDeviceList'
 import { PresenceIndicator } from './PresenceIndicator'
 import { MicMutedIndicator } from './MicMutedIndicator'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
-import { useStore } from '@/state/store'
+import { ProfileDeviceSessionsLeaf } from './ProfileDeviceSessionsLeaf'
 
 export interface GroupMemberProfileCardParticipant {
   userId: UUID
@@ -20,7 +19,7 @@ export interface GroupMemberProfileCardParticipant {
 
 interface GroupMemberProfileCardProps {
   /**
-   * Per-user presence wiring. Mute, ghost and presence-dot leaves subscribe
+   * Per-user presence wiring. Mute and presence-dot leaves subscribe
    * directly to per-user store bits using these identifiers — so a mute or
    * presence flip never re-renders the whole profile card or its parent.
    */
@@ -32,12 +31,38 @@ interface GroupMemberProfileCardProps {
   environmentName: string
   presenceIconName?: string
   activeTakeover?: boolean
-  deviceSessions?: NonNullable<SessionPresence['deviceSessions']>
 }
 
 function getDisplayName(member: GroupMemberProfileCardParticipant): string {
   return member.characterName || member.username || member.playerName || 'Player'
 }
+
+interface ProfileMutedStatusPillProps {
+  sessionId: UUID
+  userId: UUID
+  isSelf: boolean
+}
+
+const ProfileMutedStatusPill = memo(function ProfileMutedStatusPill({
+  sessionId,
+  userId,
+  isSelf,
+}: ProfileMutedStatusPillProps) {
+  const isMuted = useIsUserMuted(sessionId, userId, isSelf)
+
+  if (!isMuted) {
+    return null
+  }
+
+  return (
+    <span className="room-selector-status-pill muted">
+      <span className="material-symbols-outlined" aria-hidden="true">
+        {STATUS_PILL_ICONS.muted}
+      </span>
+      {STATUS_PILL_LABELS.muted}
+    </span>
+  )
+})
 
 export function GroupMemberProfileCard({
   sessionId,
@@ -47,18 +72,8 @@ export function GroupMemberProfileCard({
   statEntries,
   environmentName,
   activeTakeover = false,
-  deviceSessions,
 }: GroupMemberProfileCardProps) {
   const displayName = getDisplayName(member)
-
-  // Subscribe to mute and ghost bits locally for the status pills at the
-  // bottom of the card. These are primitive boolean selectors so the card
-  // re-renders only when THIS user's mute or ghost bit flips, never on any
-  // other user's changes.
-  const isMuted = useIsUserMuted(sessionId, member.userId, isSelf)
-  const isGhost = useStore((state) =>
-    Boolean(state.sessionPresence[sessionId]?.[member.userId]?.ghost)
-  )
 
   const avatarVisual = (
     <>
@@ -78,18 +93,12 @@ export function GroupMemberProfileCard({
 
   return (
     <div className="room-selector-profile">
-      {deviceSessions ? (
-        <div className="room-selector-profile__avatar-col">
-          <div className="room-selector-profile__avatar" aria-hidden="true">
-            {avatarVisual}
-          </div>
-          <ParticipantDeviceList deviceSessions={deviceSessions} />
-        </div>
-      ) : (
+      <div className="room-selector-profile__avatar-col">
         <div className="room-selector-profile__avatar" aria-hidden="true">
           {avatarVisual}
         </div>
-      )}
+        <ProfileDeviceSessionsLeaf sessionId={sessionId} userId={member.userId} />
+      </div>
 
       <div className="room-selector-profile__meta">
         <div className="room-selector-profile__title-row">
@@ -147,26 +156,8 @@ export function GroupMemberProfileCard({
               Condition: {member.condition || STATUS_PILL_LABELS.conditionNone}
             </span>
           ) : null}
-          {isMuted ? (
-            <span className="room-selector-status-pill muted">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                {STATUS_PILL_ICONS.muted}
-              </span>
-              {STATUS_PILL_LABELS.muted}
-            </span>
-          ) : null}
-          {isGhost ? (
-            <span className="room-selector-status-pill ghost">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                visibility_off
-              </span>
-              Ghost Mode
-            </span>
-          ) : null}
+          <ProfileMutedStatusPill sessionId={sessionId} userId={member.userId} isSelf={isSelf} />
         </div>
-        {/* GhostIndicator mounted invisibly is unnecessary — we already subscribe
-            to ghost above to render the pill. Avatar's ghost badge is on the
-            AvatarOverlay tree, not here. */}
       </div>
     </div>
   )

@@ -1,9 +1,12 @@
+import { memo } from 'react'
 import { MessageType, Role, SessionState, type UUID } from '@shared'
 import { ChatWindow } from '@/components/workspaces/session/chat/ChatWindow'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { SpectatorWaitScreen } from '@/components/workspaces/session/SpectatorWaitScreen'
-import type { Room as RoomRecord } from '@/types/room'
 import type { ComponentProps } from 'react'
+import { useStore } from '@/hooks/useStore'
+import { useSessionSelectedRoomId } from '@/hooks/session/useSessionSelectedRoomId'
+import { isGreenRoom } from '@/utils/session/workspaces'
 
 type SessionWorkspaceCenterPaneProps = {
   view: 'chat' | 'notes'
@@ -11,11 +14,9 @@ type SessionWorkspaceCenterPaneProps = {
   currentSessionState: SessionState
   sessionEndedAt?: number
   configuredCooldownDurationMs: number
-  selectedRoomId: UUID | ''
   apiUrl: string
   token: string
   currentSessionId: UUID
-  selectedRoom: RoomRecord | null
   campaignId: UUID | undefined
   effectiveSessionUser: {
     id: UUID
@@ -25,13 +26,23 @@ type SessionWorkspaceCenterPaneProps = {
   }
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof ChatWindow>['sendWsEvent']
-  isGreenroomChatMode: boolean
   onPendingNewMessageCountChange?: ComponentProps<
     typeof ChatWindow
   >['onPendingNewMessageCountChange']
 }
 
-export function SessionWorkspaceCenterPane(props: SessionWorkspaceCenterPaneProps) {
+function SessionWorkspaceCenterPaneComponent(props: SessionWorkspaceCenterPaneProps) {
+  const selectedRoomId = useSessionSelectedRoomId(props.currentSessionId)
+
+  const selectedRoom = useStore((state) => {
+    if (!selectedRoomId) {
+      return null
+    }
+
+    return state.rooms[props.currentSessionId]?.[selectedRoomId] ?? null
+  })
+  const isGreenroomChatMode = Boolean(selectedRoom && isGreenRoom(selectedRoom))
+
   return (
     <div
       className="session-command-center-pane"
@@ -52,19 +63,19 @@ export function SessionWorkspaceCenterPane(props: SessionWorkspaceCenterPaneProp
       ) : props.view === 'chat' ? (
         <div className="session-live-comms">
           <section className="session-live-comms__chat" aria-label="Chat panel">
-            {props.selectedRoomId ? (
+            {selectedRoomId ? (
               <ChatWindow
                 apiUrl={props.apiUrl}
                 token={props.token}
                 sessionId={props.currentSessionId}
-                roomId={props.selectedRoomId}
+                roomId={selectedRoomId}
                 campaignId={props.campaignId}
-                roomName={props.selectedRoom?.name}
-                roomType={props.selectedRoom?.type}
+                roomName={selectedRoom?.name}
+                roomType={selectedRoom?.type}
                 user={props.effectiveSessionUser}
                 messageGroupingWindowMs={props.messageGroupingWindowMs}
                 sendWsEvent={props.sendWsEvent}
-                forceMessageType={props.isGreenroomChatMode ? MessageType.OOC : undefined}
+                forceMessageType={isGreenroomChatMode ? MessageType.OOC : undefined}
                 onPendingNewMessageCountChange={props.onPendingNewMessageCountChange}
               />
             ) : (
@@ -90,3 +101,5 @@ export function SessionWorkspaceCenterPane(props: SessionWorkspaceCenterPaneProp
     </div>
   )
 }
+
+export const SessionWorkspaceCenterPane = memo(SessionWorkspaceCenterPaneComponent)

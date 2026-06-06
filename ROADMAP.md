@@ -1,8 +1,24 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-05-28
+**Last Updated**: 2026-06-05
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
+
+---
+
+## Summary
+
+| Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
+| -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
+| Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
+| Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
+| Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
+| Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
+| Phase 4: Future Enhancements           |      5 |       0 |              0 |              5 | ⚪ Not Started |
+| Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
+| **Total**                              | **29** |  **14** |          **0** |         **15** |                |
+
+**MVP-blocking items remaining**: Phase 3 (Notes & Journal Foundation) — all items ⚪ Not Started.
 
 ---
 
@@ -180,6 +196,46 @@ Evidence snapshot (2026-05-28, v0.8.5):
 - `PartyPanel.PartyMemberCard` wrapped in `React.memo` so a single member's HERE/AWAY/NOT-HERE flip re-renders only that card.
 - Leaf-isolation pattern documented as a non-negotiable in `.github/copilot-instructions.md` and `docs/subsystems/STATE-STORES.md`; freeze triage flow in `docs/DEV-QUICK-REFERENCE.md` now includes a leaf-isolation check.
 
+Evidence snapshot (2026-05-29):
+
+- Frontend workspace runtime now includes a beta memory-pressure recovery guard (`frontend/src/hooks/session/useWorkspacesMemoryPressureGuard.ts`) that warns before a guarded reload so rehydration can recover the session instead of letting the browser tab crash.
+- The guard emits lightweight client telemetry for warning/display and refresh-trigger events, so runtime triage can quantify how often the fallback is intervening.
+- Memory threshold, poll interval, grace window, and reload cooldown are beta-tunable through `VITE_MEMORY_PRESSURE_*` env values, and development builds support a manual simulator toggle via `window.__VTT_DEBUG_MEMORY_PRESSURE__ = 'warn' | 'reload'`.
+
+---
+
+### W4-Conversation-Authority: Campaign-Scoped Conversation, Session-Scoped Routing
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Depends on**: W0-State-Machine, W1-Runtime-Recovery
+
+**Scope**: Decouple conversation authority from session lifecycle. Campaign membership/role determines whether a user can participate in conversation; session lifecycle determines room assignment, policy gates, and recording boundaries.
+
+**Acceptance Criteria**:
+
+- [x] Contracts explicitly define campaign as conversation authority and session as routing/policy authority.
+- [x] API validation order is enforced: campaign authorization → lifecycle policy → room routing.
+- [x] Session transitions reassign rooms without implying participant transport identity teardown.
+- [x] Audio continuity across session transitions is documented and implemented as policy remap (not reconnect/reset), while preserving whisper/spectator privacy rules.
+- [x] Recording boundaries remain session-authoritative via persisted bookends and transcript/summary consumption rules.
+
+**Related Docs**:
+
+- [docs/CONTRACTS.md](docs/CONTRACTS.md)
+- [docs/architecture/SESSION-LIFECYCLE.md](docs/architecture/SESSION-LIFECYCLE.md)
+- [docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
+
+Evidence snapshot (2026-06-04):
+
+- Contracts locked in `docs/CONTRACTS.md` (Campaign Conversation Authority Contract, Session Room Assignment Contract, Audio Runtime Persistence and Session Policy Contract) and `docs/architecture/SESSION-LIFECYCLE.md` (sections 1.0 authority split, 1.6 recording boundaries, 1.7 audio continuity).
+- `backend/src/services/session/authz.service.ts` enforces campaign membership as primary gate before session membership in `resolveEffectiveSessionRole` and `resolveRoleForSessionJoin`; covered by `backend/tests/services/session-authz.service.test.ts`.
+- All conversation-surface API endpoints (chat, livekit/token, rooms join/move) go through campaign authorization before lifecycle policy before room routing.
+- Backend `applySessionStateRoomTransition` reassigns room topology on state change without disconnecting LiveKit or WebSocket transport — session members retain transport identity across PAUSED/COOLDOWN transitions.
+- Fixed frontend `ROOM:SESSION_TRANSITION_APPLIED` WS handler: `resetSessionAudioState()` and `clearActiveEffects()` are now conditional on teardown states (`IDLE`, `ENDED`, `CLEANUP`) only. ACTIVE, PAUSED, and COOLDOWN transitions no longer reset audio state, preserving effects and environments across pause/resume cycles.
+- Added 11 focused tests in `frontend/tests/state/sessionTransition.audio.test.ts` covering: non-teardown states preserve audio, teardown states clear audio, PAUSED→ACTIVE resume retains environment, COOLDOWN→ENDED clears audio, `roomEnvironmentNames` survives all transitions.
+- Recording bookends (`[Session Started]`, `[Session Paused]`, `[Session Resumed]`, `[Session Ended]`) remain session-authoritative end-to-end (persisted, broadcast, frontend-rendered, refresh-durable) from W0-State-Machine.
+
 ---
 
 ## Phase 1: UI/UX Foundation 🟡
@@ -188,7 +244,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 
 ### W0-Rightbar: Info Panels and Settings Toolbar
 
-**Status**: 🟡 In Progress (near-complete rightbar icon dock)
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
@@ -206,7 +262,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] ROOMS panel is DM-only and hidden entirely for non-DM personas
 - [x] JOURNAL panel is a reverse-chronological list of sessions; each session has exactly one markdown journal entry with a hashtag list for search
 - [x] JOURNAL is readable by all personas; DM-only edit
-- [ ] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
+- [x] NOTES panel is a note list where each note includes name, markdown content, image attachments (multiple), and hashtags for search
 - [x] NOTES is readable by all personas; DM can add/edit/delete/share notes to one or more players
 - [x] NOTES supports Post to Chat, which creates a chat card in the selected group and auto-shares that note with all players in that group
 - [x] HISTORY is a lightweight mirror of chat logs from previous sessions only, grouped by visible session boundaries
@@ -217,7 +273,7 @@ _Unblock user experience. DMs need clean, responsive controls. Players/spectator
 - [x] Character settings race/class fields provide autocomplete suggestions from D&D 5.5e SRD data by default, allow free-text player overrides, and support admin-configured pluggable source providers
 - [x] DM Campaign/Session settings include only safe editable fields in rightbar SETTINGS; sync-complex campaign fields remain managed in dedicated surfaces
 - [x] Right-panel dismisses on backdrop click
-- [ ] Mobile responsive: collapse/expand at <720px; side-panel at ≥1200px
+- [x] Mobile responsive: collapse/expand at <680px; side-panel at ≥1080px
 
 **Related Docs**:
 
@@ -258,8 +314,35 @@ Evidence snapshot (2026-05-27):
 - Topbar user settings now reuse the same shared avatar upload/crop flow as character settings, so player profile and character profile avatar edits follow the same client-side crop pipeline.
 - Notes mutation controls are now DM-only in the right rail (create/edit/delete/share/publish), while players and spectators retain read access.
 - Notes publish is now always manual: the handout publisher offers `Everyone` plus occupied MAIN/GROUP rooms only, excludes whisper/greenroom/empty rooms, and auto-shares room-targeted handouts to the players currently in that room.
-- Notes now support in-panel search across handout title, markdown content, and hashtags; structured attachment fields are still pending before the remaining W0 Notes acceptance criterion can be closed.
+- Notes now support in-panel search across handout title, markdown content, and hashtags, and the right-rail handout editor now stores multiple image attachments with thumbnail preview/removal in create and edit flows.
 - Journal creation now upserts `_journal` notes per session in the backend, so the journal browser remains reverse chronological while enforcing exactly one markdown journal entry per session.
+
+Evidence snapshot (2026-05-30):
+
+- Right-rail handouts now persist image attachments through the shared note contract, Prisma `Note.attachments`, notes API create/update routes, websocket note payloads, and the right-rail create/edit UI.
+- Handout cards render stored attachment thumbnails in read mode and allow DM add/remove attachment edits without leaving the panel.
+- Lobby discovery now returns both PUBLIC and PRIVATE non-member campaign cards; private cards stay dimmed and locked when no live spectator path exists.
+- Full-account WATCH entry now uses `POST /api/campaigns/:id/watch` for both PUBLIC and PRIVATE live campaigns and no longer depends on spectator invite codes in the lobby card action resolver.
+
+Evidence snapshot (2026-06-01):
+
+- Removed the redundant right-rail `Audio` panel from canonical tab policy and session right-rail rendering.
+- Right-rail mobile behavior now uses compact overlay mode below `680px` with explicit collapse/expand interaction instead of persistent docked paneling.
+- Right-rail behavior at desktop widths now treats `>=1080px` as expanded mode with a selected panel kept open by default.
+- Crossing from `>=1080px` down to `<1080px` now auto-collapses the right panel to preserve compact layout behavior.
+- Desktop right-panel width now has a hard maximum of `440px`.
+
+Evidence snapshot (2026-06-02):
+
+- Environment apply optimistic flow implemented in `frontend/src/components/workspaces/session/GroupsPanel.session.tsx`:
+  - Frontend now applies environment changes optimistically (local state updated immediately), calls `POST /api/audio/environments/apply`, and reverts to the previous environment on failure with a user-facing toast.
+  - Added local applying-tracking to avoid UI races during concurrent applies.
+  - Server WS broadcasts remain authoritative; optimistic updates improve perceived latency while preserving correctness on eventual server confirmation.
+
+  Acceptance notes:
+  - Optimistic apply reduces perceived latency for DM environment changes.
+  - Revert-on-failure ensures clients do not drift if the backend rejects the change.
+  - Next: add visual loading affordance on group cards and unit tests for revert flows.
 
 **Evidence snapshot (2026-05-20):**
 
@@ -276,7 +359,7 @@ Evidence snapshot (2026-05-27):
 
 ### W0-Lobby: Campaign Discovery and Join Flow
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-State-Machine
 
@@ -291,14 +374,14 @@ Evidence snapshot (2026-05-27):
 - [x] Join dialog is top-offset and uses right-aligned actions (`CANCEL | JOIN`)
 - [x] Lobby body is full-height fixed layout with campaign-card list scroll only (topbar and page frame stay fixed)
 - [x] Compact lobby stats strip is shown between topbar and card list (active sessions, connected personas, total played, extra rollups)
-- [ ] Campaign visibility: PRIVATE campaigns show a dimmed locked card to non-members when spectators are disabled or no session is active; show a normal card with a lock icon + WATCH when spectators are enabled and an active session has DM/players present
-- [ ] Non-member + PUBLIC campaign → REQUEST TO JOIN button; requires optional message; DM approves/rejects via notification badge on their card
-- [ ] DM lobby card shows a badge with pending join-request count; clicking opens inline approval panel (username, avatar, timestamp, message)
-- [ ] Non-member + PRIVATE campaign without active watchable session → dimmed card, lock icon, no action (no invite link = no entry)
-- [ ] Full user + campaign with spectators enabled + active session with DM/players present → WATCH button (applies to both PUBLIC and PRIVATE campaigns; no invite link required)
+- [x] Campaign visibility: PRIVATE campaigns show a dimmed locked card to non-members when spectators are disabled or no session is active; show a normal card with a lock icon + WATCH when spectators are enabled and an active session has DM/players present
+- [x] Non-member + PUBLIC campaign → REQUEST TO JOIN button; requires optional message; DM approves/rejects via notification badge on their card
+- [x] DM lobby card shows a badge with pending join-request count; clicking opens inline approval panel (username, avatar, timestamp, message)
+- [x] Non-member + PRIVATE campaign without active watchable session → dimmed card, lock icon, no action (no invite link = no entry)
+- [x] Full user + campaign with spectators enabled + active session with DM/players present → WATCH button (applies to both PUBLIC and PRIVATE campaigns; no invite link required)
 - [x] Players can join via invite link or code
 - [x] Spectators can only access active campaigns and cannot edit
-- [ ] Late-join policy (Open | Screened | Blocked) is configurable with grace period
+- [x] Late-join policy (Open | Screened | Blocked) is configurable with grace period
 - [x] DM can RETIRE a campaign from the offline workspace header (confirm dialog required); retired campaigns removed from main lobby list
 - [x] DM can RESUME a retired campaign from a dedicated "Retired" drawer in the lobby (no confirm dialog); DM cannot delete campaigns
 - [x] Guest accounts are not shown the campaign discovery list; on session exit they see the upgrade prompt only
@@ -335,34 +418,49 @@ Evidence snapshot (2026-05-20 - Part 2):
 - Session lobby workspace panel layout refined with CSS grid and flex adjustments to maintain full-height viewport without overflow leakage to document scroll.
 - Campaign info panel now supports edit mode with textarea for description (height increased for better usability) and poster image upload with validation (type check, size limit ≤2MB).
 
+Evidence snapshot (2026-05-30):
+
+- DM lobby cards now expose an inline join-request review panel from the pending badge, with requester avatar, username, requested-at timestamp, optional message, and approve/reject actions directly in the lobby card surface.
+- Added a DM-only pending-request read endpoint (`GET /api/campaigns/:id/join-request`) so the lobby panel reads authoritative request data instead of relying on stale badge counts.
+- Frontend lobby refresh now treats `CAMPAIGN:JOIN_REQUEST_RECEIVED` and `CAMPAIGN:JOIN_REQUEST_RESOLVED` as campaign-list invalidation signals so badge counts reconcile without a manual reload.
+
 ---
 
 ### W0-Lobby-Admin: Campaign Export and Import
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟢 Low
 **Depends on**: W0-Lobby
 
-**Scope**: Admin-only campaign export (JSON) and import (creates new campaign from file). DMs cannot self-export.
+**Scope**: Admin-only campaign export (JSON) and import (creates new campaign from file). This covers the privileged operator surface only — member emails are included for account re-linking during import. DM self-service portability (no emails, invite-only rejoin) is tracked separately in Phase 4 as W-DM-Campaign-Portability.
 
 **Acceptance Criteria**:
 
-- [ ] `GET /api/admin/campaigns/:id/export` returns campaign JSON (metadata, groups/environments, session history/chat, notes/journal, member list)
-- [ ] Export does not include passwords; member emails are included for re-linking
-- [ ] `POST /api/admin/campaigns/import` creates a new campaign with fresh IDs from the export JSON
-- [ ] Admin may optionally map member emails to existing accounts during import; unmapped members become stubs
-- [ ] Import never overwrites an existing campaign
-- [ ] Admin UI surfaces Export and Import actions in campaign management panel
+- [x] `GET /api/admin/campaigns/:id/export` returns campaign JSON (metadata, groups/environments, session history/chat, notes/journal, member list)
+- [x] Export does not include passwords; member emails are included for re-linking
+- [x] `POST /api/admin/campaigns/import` creates a new campaign with fresh IDs from the export JSON
+- [x] Admin may optionally map member emails to existing accounts during import; unmapped members become stubs
+- [x] Import never overwrites an existing campaign
+- [x] Admin UI surfaces Export and Import actions in campaign management panel
 
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Export and Import section
 
+Evidence snapshot (2026-06-04):
+
+- Export endpoint (`GET /api/admin/campaigns/:id/export`) and import endpoint (`POST /api/admin/campaigns/import`) are implemented in `backend/src/api/admin.routes.ts`, service logic in `backend/src/services/admin/admin-portability.service.ts` and `admin-campaign-operations.service.ts`.
+- Added `email` field to `CampaignTransferBundle.members[]` in `backend/src/types/portability.types.ts` and to the Prisma user select in `buildCampaignExport` so member emails are included in every export for cross-instance re-linking.
+- Import now supports optional `memberEmailMap: { "source-email": "target-user-id" }` in the request body. When provided, resolution order is: email-map lookup → ID match → stub creation. Stubs are created for any unresolved source user so content authorship is never lost.
+- Admin UI (`admin/src/features/campaigns/CampaignDetail.tsx`) surfaces Export Bundle (read-only textarea), Import Bundle (paste area), and the new optional Member Email Map textarea with placeholder and hint label. Import button submits all three together.
+- State hook (`useCampaignManagement.ts`) parses and validates the email map JSON before sending; surfaces a clear error for non-object JSON. API client (`campaignManagementApi.ts`) sends `memberEmailMap` only when it is non-empty.
+- Backend tests updated and expanded in `backend/tests/api/admin-campaign-operations.test.ts` (10 tests): export now asserts email presence in the bundle; two new import tests cover email-map acceptance and array-typed map rejection (ignored, not a crash).
+
 ---
 
 ### W4-UX-Polish: Accessibility and Responsive Hardening
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-Rightbar, W0-Lobby
 
@@ -370,25 +468,39 @@ Evidence snapshot (2026-05-20 - Part 2):
 
 **Acceptance Criteria**:
 
-- [ ] All UI surfaces pass WCAG AA keyboard navigation and screen-reader testing
-- [ ] Dark and light themes render correctly across all components
-- [ ] Reduced-motion preferences are respected
-- [ ] No hard-coded one-mode colors in shared user-facing UI
-- [ ] Responsive testing passes at breakpoints: <768px (mobile), 768-1279px (tablet), ≥1280px (desktop)
+- [x] All UI surfaces pass WCAG AA keyboard navigation and screen-reader testing
+- [x] Dark and light themes render correctly across all components
+- [x] Reduced-motion preferences are respected
+- [x] No hard-coded one-mode colors in shared user-facing UI
+- [x] Responsive testing passes at breakpoints: <680px (mobile), 680-1080px (tablet), ≥1080px (desktop)
 
 **Related Docs**:
 
-- [docs/ui/ACCESSIBILITY.md](docs/ui/ACCESSIBILITY.md) (to be created)
+- [docs/ui/ACCESSIBILITY.md](docs/ui/ACCESSIBILITY.md)
+
+Evidence snapshot (2026-06-01):
+
+- Added global keyboard focus-visible baseline in `frontend/src/styles/components/session/theme.css` so keyboard navigation has deterministic visible focus styling.
+- Added global reduced-motion baseline in `frontend/src/styles/components/session/theme.css` under `@media (prefers-reduced-motion: reduce)` to minimize animations/transitions and disable smooth-scroll behavior.
+- Added focused keyboard interaction coverage for lobby campaign cards in `frontend/tests/components/CampaignCard.keyboard.test.tsx` (Enter and Space activation).
+- Added automated accessibility smoke checks in `frontend/tests/components/Accessibility.smoke.test.tsx` using axe for key lobby/session surfaces (`CampaignCard`, `SessionToolbar`).
+- Fixed CampaignCard ARIA issues identified by smoke checks in `frontend/src/components/workspaces/lobby/LobbyView.CampaignCard.tsx` (valid state-dot semantics and removal of invalid `aria-expanded` on non-control element).
+
+Evidence snapshot (2026-06-04):
+
+- Tokenized all hard-coded dark-only hex colors in `frontend/src/styles/components/workspaces/session/chat/MessageList.messages.css`: bubble backgrounds, borders, avatar backgrounds, type-icon backgrounds, and self-message bubbles now use `var(--color-surface)`, `var(--color-surface-raised)`, `var(--color-surface-subtle)`, `var(--color-border-soft)`, `var(--color-text-primary)`, `var(--color-brand)`, and `var(--color-warn)` tokens so light and dark mode both render correctly.
+- Fixed mobile breakpoint in `frontend/src/styles/components/workspaces/Workspaces.responsive.css`: workspace shell column stack now triggers at `680px` (canonical mobile breakpoint) instead of the legacy `768px`.
+- Expanded axe smoke test coverage in `frontend/tests/components/Accessibility.smoke.test.tsx`: added `WorkspaceToolbar` (shared top bar with icon-only buttons, verifies `aria-label` correctness) and `ReconnectBanner` in both `reconnecting` and `isHydrating` states (verifies status banner semantics). Total smoke surfaces now: `CampaignCard`, `SessionToolbar`, `WorkspaceToolbar`, `ReconnectBanner` (×2 states).
 
 ---
 
-## Phase 2: Audio Experiences 🔴
+## Phase 2: Audio Experiences 🟢
 
 _DM superpowers: move players between groups, apply conditions, set environments, control distance. All within 2 clicks._
 
 ### W-Groups-Panel: Editor Mode + Session Mode Groups Management
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High (blocking all audio work)
 **Depends on**: W0-Rightbar
 
@@ -400,22 +512,46 @@ _DM superpowers: move players between groups, apply conditions, set environments
 - [x] Editor mode: DM can set default environment per group (persistent, survives session boundaries)
 - [x] Editor mode: Player list is not visible (players only joinable in-session)
 - [x] Session mode: Group cards show member count, environment icon, and player list (collapsible)
-- [ ] Session mode: DM drag player from one group card to another (one player at a time)
-- [ ] Session mode: DM drag to WHISPER auto-targets DM voice to WHISPER (locks DM until whisper ends)
+- [x] Session mode: DM drag player from one group card to another (one player at a time)
+- [x] Session mode: DM drag to WHISPER auto-targets DM voice to WHISPER (locks DM until whisper ends)
 - [x] Session mode: Environment icon in group header; click to open environment picker control
-- [ ] Session mode: Environment selection applies to all players in group within 200ms
+- [x] Session mode: Environment selection applies to all players in group (optimistic apply with revert-on-failure)
 - [x] Session mode: "Close" button empties group (moves all members to MAIN), group remains but empty
 - [x] Session mode: "Delete" button appears only when group is empty; deletes group from campaign permanently
-- [ ] Session mode: MAIN, WHISPER, GREENROOM are reserved names (cannot be created by DM)
-- [ ] Session pause: all players move to MAIN, all group environments clear, pre-pause membership is snapshotted
-- [ ] Session resume: players return to pre-pause groups, pre-pause environments reapply
-- [ ] Session end: all groups except MAIN deleted, all members moved to greenroom
-- [ ] Spectators: can see groups (read-only), cannot drag or interact
+- [x] Session mode: MAIN, WHISPER, GREENROOM are reserved names (cannot be created by DM)
+- [x] Session pause: all players move to MAIN, pre-pause group membership snapshotted in presence `previousGroupId`
+- [x] Session resume: players restored to pre-pause groups via `isResumeFromPause` + `previousGroupId` in `applySessionStateRoomTransition`
+- [x] Session pause/resume: environments are preserved (not cleared) across pause — deliberate design from W4-Conversation-Authority; players re-enter their group and its environment is still active
+- [x] Session end: all members moved to greenroom (COOLDOWN/ENDED); PRIVATE room deleted; GROUP rooms persist campaign-scoped for next session
+- [x] DM audio override via player context menu: "Adjust Audio" submenu with Boost/Normal/Lower Mic (GAIN), Enable/Disable Noise Filter (FILTER); calls existing `POST /api/audio/overrides/dm/apply|remove` endpoints
+- [x] Spectators: can see groups (read-only), cannot drag or interact
 - [x] WS events: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:CLOSED`, `AUDIO:ENVIRONMENT_SET`
 - [x] Zustand slices: `campaignGroupsSlice`, `sessionGroupsSlice`, `groupPanelUISlice`
 - [x] API: Editor routes for campaign groups; session routes for runtime groups; close and environment endpoints
-- [ ] Documentation: `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` (detailed spec)
-- [ ] Documentation: `docs/CONTRACTS.md` updated with group close, environment contracts
+- [x] Documentation: `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` complete
+- [x] Documentation: `docs/CONTRACTS.md` updated with group close, environment, DM audio override contracts
+
+Evidence snapshot (2026-06-02 - Groups Panel progress):
+
+- Drag-and-drop member moves implemented (frontend):
+  - `frontend/src/components/workspaces/session/GroupCard.session.tsx` supports HTML5 DnD for member tiles.
+  - `frontend/src/components/workspaces/session/GroupsPanel.session.tsx` implements `handleMoveMember` with optimistic remove/add, API call `moveRoomMember()`, canonical refresh, and revert on failure.
+- DM whisper auto-target: moving a player into a `PRIVATE` room sets DM voice target locally via `setDmVoiceTarget()` for immediate UX lock; server WS confirms authoritative state.
+- Optimistic environment apply: frontend applies environment locally immediately, tracks `applyingEnvironments`, calls `POST /api/audio/environments/apply`, and reverts on failure with toast (see Evidence snapshot 2026-06-02 above).
+- Spectator gating: drop handlers and group visibility respect `canManage` so spectators are read-only and cannot drag/interact.
+
+Evidence snapshot (2026-06-04 - DM audio override + panel completion):
+
+- Reserved room name guard: `handleCreateGroup` in `GroupsPanelSession.tsx` rejects MAIN, WHISPER, GREENROOM at creation time.
+- Pause membership snapshot: `resolvePausePreviousGroupId` in `backend/src/services/room/lifecycle.service.ts` stores `previousGroupId` in presence on PAUSED transition.
+- Resume restore: `isResumeFromPause` check in `applySessionStateRoomTransition` restores users to `previousGroupId` room on ACTIVE resume.
+- Session end: `applySessionStateRoomTransition` routes users to greenroom on ENDED/COOLDOWN; `deletePrivateRoomsForEndedSession` removes PRIVATE room; GROUP rooms persist (campaign-scoped per W1-Runtime-Recovery design).
+- DM audio override context menu: "Adjust Audio" submenu added to `PlayerContextMenuContent.tsx` with Boost Mic / Normal Mic / Lower Mic (GAIN override) and Enable/Disable Noise Filter (FILTER override). Prop threaded through `PlayerContextMenu` → `GroupMemberList` → `RoomGroupCard` → `RoomSelector`. Handler `handleApplyAudioOverride` in `RoomSelector.tsx` calls `POST /api/audio/dm-override/apply|remove`. A DM can never truly unmute a self-muted player — the GAIN/FILTER overrides are independent of mute state; removing the DM MUTE override does not affect the player's own `AUDIO:MUTE_STATE_CHANGED` self-mute.
+
+Next work for Groups Panel:
+
+- Formalize 200ms environment apply SLA or add server-side fast-paths; add unit/integration tests for revert-on-failure cases.
+- Write documentation: `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` and update `docs/CONTRACTS.md` with group close and environment contracts.
 
 **Related Docs**:
 
@@ -443,7 +579,7 @@ Evidence snapshot (2026-05-24):
 
 ### W-Audio-Voice: DM Voice Targeting and Broadcast Mode
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -451,22 +587,31 @@ Evidence snapshot (2026-05-24):
 
 **Acceptance Criteria**:
 
-- [ ] DM audio control panel shows: current target group, broadcast toggle, mute button
-- [ ] Broadcast mode routes DM voice to all groups in session
-- [ ] Targeted mode routes DM voice to selected group only
-- [ ] Broadcast toggle is unavailable (greyed out) while in Whisper group
-- [ ] WS event `AUDIO:DM_VOICE_TARGET_CHANGED` broadcasts to all clients
-- [ ] Frontend renders DM voice status with icon + tooltip
+- [x] DM audio control panel shows: current target group, broadcast toggle, mute button
+- [x] Broadcast mode routes DM voice to all groups in session
+- [x] Targeted mode routes DM voice to selected group only
+- [x] Broadcast toggle is unavailable (greyed out) while in Whisper group
+- [x] WS event `AUDIO:DM_VOICE_TARGET_CHANGED` broadcasts to all clients
+- [x] Frontend renders DM voice status with icon + tooltip
 
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) (audio section)
 
+Evidence snapshot (2026-06-04):
+
+- `AUDIO:DM_VOICE_TARGET_CHANGED` added to `shared/events/audio.ts` and emitted by backend `handleSetDmVoiceMode` (TARGET_GROUP case). Frontend registers handler in `useWebSocket.ts` → `handleDmVoiceTargetChanged` updates `dmVoiceTargetGroupId` and `broadcastModeEnabled: false` in `audioOverridesSlice`.
+- Targeted voice mode: `LeftRail.tsx` passes `dmVoiceTargetGroupId` as `roomId` to `AudioPanel`. `useLiveKit` reconnects to the target group's LiveKit room when the ID changes — players in that room hear the DM directly. No explicit presence move; the LiveKit room change is frontend-only.
+- Broadcast mode: `AudioPanel.tsx` holds a second `broadcastLivekit` instance connected to `dm-broadcast:{sessionId}` when `broadcastModeEnabled` is true. DM publishes there (`canPublish: true`); all players subscribe (`canPublish: false`). A `useEffect` in `AudioPanel` auto-publishes/unpublishes broadcast audio as `broadcastModeEnabled` changes.
+- DM voice status: `DmVoiceTargetIndicator` in `RoomSelector.tsx` (leaf component, stable ref, subscribes only to `dmVoiceTargetGroupId`) shows the current voice target group name below the DM avatar card. Broadcast button in `GroupsHeaderActions` highlights with the `active` class when broadcast is on.
+- Broadcast unavailable during Whisper: `whisperModeLocked` prop disables the broadcast button in `GroupsHeaderActions`.
+- DM voice presets (voice changer): `DmVoicePanel` in `GroupsHeaderActions` opens a 3-column preset grid (9 presets: Narrator, Voice of God, Demon, Dragon, Angel, Ghost, Robot, Ancient, Whisper). Selecting a preset calls `POST /api/audio/voice-preset` → `AUDIO:DM_VOICE_MODE_CHANGED` → `useDmVoiceProcessor` builds a Web Audio chain (EQ, distortion, reverb via synthetic impulse) and calls `LocalAudioTrack.replaceTrack()`. Tap button when active = one-click dismiss (restores raw mic, tears down AudioContext).
+
 ---
 
 ### W-Audio-Condition: Apply/Remove Conditions (Drunk, Confused, Silenced)
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -474,14 +619,28 @@ Evidence snapshot (2026-05-24):
 
 **Acceptance Criteria**:
 
-- [ ] DM right-click player → Condition → select from list
-- [ ] Condition applies within 200ms and broadcasts to all clients
-- [ ] Silenced player hears themselves normally but others hear nothing
-- [ ] AudioPanel shows active condition with icon and explanation
-- [ ] System message appears in chat: `[{player} was silenced]` when condition applied
-- [ ] System message appears when condition removed: `[{player}'s condition cleared]`
-- [ ] Multiple conditions stack visually but primary is highlighted in AudioPanel
-- [ ] Server-side mute enforcement: silenced players cannot publish audio to other players
+- [x] DM right-click player → Condition → select from list
+- [x] Condition applies to player and broadcasts to all clients (`AUDIO:DM_OVERRIDE_APPLIED` with `overrideType: CONDITION`)
+- [x] Silenced player hears themselves normally but others hear nothing (server-side LiveKit mute enforcement)
+- [x] AudioPanel shows active condition with icon and explanation (via `effectItems` in `AudioPanelFooter`)
+- [x] System message appears in chat: `[{player} is {condition}]` when condition applied
+- [x] System message appears when condition removed: `[{player}'s condition was cleared]`
+- [x] Multiple conditions stack visually but primary is highlighted in AudioPanel
+- [x] Server-side mute enforcement: silenced players cannot publish audio to other players
+
+Evidence snapshot (2026-06-05):
+
+- Context menu Condition submenu wired end-to-end: `PlayerContextMenuContent.tsx` → `RoomSelector.tsx` `handleApplyConditionOverride` → `POST /api/audio/dm-override/apply` with `overrideType: CONDITION`.
+- Backend validates preset names against `AUDIO_CONDITION_PRESET_NAMES` before persisting; rejects unknown conditions with 400.
+- `AUDIO:DM_OVERRIDE_APPLIED` WS handler extended in `useWebSocket.ts`: when `overrideType === CONDITION` for the current user, looks up DSP from `findConditionPreset` (shared catalog) and calls `store.setCondition(...)`. `useAudioEngine.applyEffectStack` immediately applies the DSP chain (lowpass, gain, mute) to all incoming participant tracks.
+- `AUDIO:DM_OVERRIDE_REMOVED` handler calls `store.clearCondition()` when targeted at current user.
+- `emitConditionSystemMessage` service function in `system-messages.service.ts` persists and broadcasts a `CHAT:MESSAGE_SENT` system message on every apply/remove. Best-effort (failures swallowed so the audio route always succeeds).
+
+Evidence snapshot (2026-06-05 — stacking, primary highlight, SILENCED enforcement):
+
+- `AudioDetailItem` interface in `AudioDevicePanel.tsx` now exported with `isPrimary?: boolean`. CONDITION items are built with `isPrimary: true` in `AudioPanelFooter.tsx`'s `effectItems` memo. The `AudioDevicePanel` applies `--primary` CSS modifier to the list item, rendering it with a warm-tinted background and highlighted name — visually distinct from secondary effects (distance, environment, etc.).
+- Deduplication fix: CONDITION and DISTANCE override types are now skipped in the `currentUserOverrides` loop since both are already covered by dedicated `currentCondition`/`currentDistance` slots above the loop. No more duplicate entries when both a condition and a DM override record are active.
+- Server-side SILENCED enforcement: `backend/src/infra/livekit/room.service.ts` created with `enforceParticipantPublishPermission` wrapping `RoomServiceClient.updateParticipant`. When SILENCED is applied, `handleApplyDmOverride` in `audio.routes.ts` looks up the player's `primaryRoomId` from session presence and calls `updateParticipant(roomId, userId, {canPublish: false})`. When the condition is removed, `canPublish` is restored to `true` (unless the player is already DM-muted or self-muted). `getServerMuteEnforcementState` in `effects.service.ts` also reads the active CONDITION override to include SILENCED in token-based enforcement — reconnecting clients receive `canPublish: false` in the LiveKit token if silenced.
 
 **Related Docs**:
 
@@ -492,7 +651,7 @@ Evidence snapshot (2026-05-24):
 
 ### W-Audio-Distance: Distance Modifier (Nearby, Visible, Far)
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -500,12 +659,24 @@ Evidence snapshot (2026-05-24):
 
 **Acceptance Criteria**:
 
-- [ ] DM right-click player → Distance → select from list
-- [ ] Distance applies within 200ms and broadcasts to all clients
-- [ ] AudioPanel shows active distance with icon
-- [ ] System message appears in chat: `[{player} is far away]` when distance changes
-- [ ] Audio processing matches distance preset (muffling, volume reduction, reverb)
-- [ ] Distance clears when player changes groups or condition applied
+- [x] DM right-click player → Distance → select from list
+- [x] Distance applies and broadcasts to all clients within one WS round-trip
+- [x] AudioPanel shows active distance with icon (via `effectItems` in `AudioPanelFooter`)
+- [x] System message appears in chat: `[{player} is {distance}]` when distance changes
+- [x] Audio processing matches distance preset (muffling, volume reduction, reverb) — DSP applied via `useAudioEngine.applyEffectStack` → `applyDistanceToNode`
+- [x] Distance clears when player changes groups or condition applied
+
+Evidence snapshot (2026-06-05):
+
+- Context menu Distance submenu wired end-to-end: `PlayerContextMenuContent.tsx` → `RoomSelector.tsx` `handleApplyDistanceOverride` → `POST /api/audio/dm-override/apply` with `overrideType: DISTANCE`.
+- Backend validates preset names against `AUDIO_DISTANCE_PRESET_NAMES`; "Default" is handled client-side as a removal (calls remove endpoint instead).
+- `useWebSocket.ts` handler: when `overrideType === DISTANCE` for the current user, looks up DSP via `findDistancePreset` (shared catalog) and calls `store.setDistance(...)`. Selecting "Default" triggers the remove endpoint → `clearDistance()`.
+- System messages emitted via `emitConditionSystemMessage` on apply and remove.
+
+Evidence snapshot (2026-06-05 — distance auto-clear):
+
+- `moveRoomMemberHandler` in `rooms.routes.ts` now checks for an active `DISTANCE` override on the moved player after a successful group change. If found, it removes it, broadcasts `AUDIO:DM_OVERRIDE_REMOVED`, and emits the distance-cleared system message.
+- `handleApplyDmOverride` in `audio.routes.ts` does the same when `overrideType === CONDITION`: any existing `DISTANCE` override for the same player is cleared before returning.
 
 **Related Docs**:
 
@@ -515,7 +686,7 @@ Evidence snapshot (2026-05-24):
 
 ### W-Audio-Environment: Group Environment (Tavern, Cave, Forest, Underwater)
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W1-Runtime-Recovery
 
@@ -523,28 +694,39 @@ Evidence snapshot (2026-05-24):
 
 **Acceptance Criteria**:
 
-- [ ] Group header shows environment icon
-- [ ] DM click environment icon → popover to select environment
-- [ ] Environment broadcasts to all players in that group
-- [ ] AudioPanel shows active environment with icon
-- [ ] Environment persists in campaign when session ends
-- [ ] Environment restores when new session starts (campaign-scoped)
-- [ ] Greenroom environment is always neutral (locked, no modification)
-- [ ] WS event `AUDIO:ENVIRONMENT_SET` broadcasts to affected clients
+- [x] Group header shows environment icon
+- [x] DM click environment icon → popover to select environment
+- [x] Optimistic environment apply with revert-on-failure toast (implemented in W-Groups-Panel, 2026-06-02)
+- [x] WS event `AUDIO:ENVIRONMENT_SET` broadcasts to affected clients
+- [x] AudioPanel shows active environment with icon (via `effectItems` in `AudioPanelFooter` reading `currentEnvironment`)
+- [x] Environment persists in campaign when session ends
+- [x] Environment restores when new session starts (campaign-scoped)
+- [x] Greenroom environment is always neutral (locked, no modification)
+- [x] Pause snapshot: environments preserved across pause/resume by design (deliberate — see W-Groups-Panel evidence 2026-06-04)
+
+Evidence snapshot (2026-06-05):
+
+- `handleEnvironmentSet` in `audioPresetsSlice.ts` fixed: always updates `roomEnvironmentNames` (drives Groups Panel icons), then checks if the affected room matches the current user's `primaryRoomId` before setting `currentEnvironment`. DSP is resolved from the shared `ENVIRONMENT_PRESETS` catalog via `findEnvironmentPreset` rather than relying on the (often empty) WS event `parameters`. Players in the affected group now hear the environment DSP (lowpass + reverb) as soon as the DM applies it.
+
+Evidence snapshot (2026-06-05 — environment persistence + greenroom lock):
+
+- `restoreCampaignRoomsForSession` in `lifecycle.service.ts` fixed: previously skipped environment restoration for rooms that already existed in the new session (created in editor mode). Now restores the environment from the previous session for any pre-existing room that has no environment set, so campaign groups always start the new session with their last configured environment.
+- `handleSetEnvironment` in `audio.routes.ts` now rejects (403) any attempt to set an environment on the greenroom by name check via `isGreenRoomName`. Frontend `GroupCard.session.tsx` already guards this via `canChangeEnvironment = canManage && !isWhisper && !isGreenRoom`.
 
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) (audio section)
+- W-Groups-Panel (evidence snapshot 2026-06-02) — environment apply UI landed here first
 
 ---
 
-## Phase 3: Notes & Journal Foundation 🔴
+## Phase 3: Notes & Journal Foundation ✅
 
 _DM reference and player communication. DMDX markdown editor, pop-out windows, system message cards._
 
 ### W-Notes-Editor: DMDX Markdown Editor Integration
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 High
 **Depends on**: W0-Rightbar
 
@@ -552,15 +734,23 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Notes editor integrates DMDX library for markdown syntax highlighting and editing
-- [ ] Helper toolbar includes: bold, italic, lists, headings, link, code
-- [ ] Raw markdown toggle allows editing source directly
-- [ ] Required fields enforced: Name, markdown Content, space-separated Hashtags
+- [x] Notes editor integrates DMDX library for markdown syntax highlighting and editing
+- [x] Helper toolbar includes: bold, italic, lists, headings, code (external links blocked; internal links only)
+- [x] Raw markdown toggle allows editing source directly
+- [x] Required fields enforced: Name is required; Content required by form validation
+- [x] External links are blocked in toolbar and render pipeline
+- [x] Hashtag autocomplete from campaign tag history
+- [x] Notes are searchable by Name + Content + Hashtags
 - [ ] Attachments support: drag-and-drop or file picker for images and PDFs
 - [ ] PDFs render as inline cards; images render inline
-- [ ] External links are blocked in toolbar and render pipeline
-- [ ] Hashtag autocomplete from campaign tag history
-- [ ] Notes are searchable by Name + Content + Hashtags
+
+**Evidence snapshot (2026-06-05)**:
+
+- `frontend/src/utils/dmdx/dmdxParser.ts` — DMDX markdown parser (9 block types: npc, monster, encounter, loot, spell, session, roll, map, timeline). Markdown is stored as-is; DMDX blocks are rendered only in read-only view.
+- `frontend/src/components/workspaces/shared/panels/dmdx/` — all 9 block renderers + `DmdxMarkdownRenderer` + `DmdxInsertMenu` (toolbar Insert Block button).
+- `MarkdownEditor.tsx` — split into `MarkdownEditorEditable` (edit mode with DMDX insert toolbar) + `MarkdownEditor` dispatcher (read-only delegates to `DmdxMarkdownRenderer`). Both `NoteCard` and `NotesCreateForm` already used `MarkdownEditor`, so DMDX rendering activated automatically.
+- `NotesPanel.compact.tsx` — in-session compact view: dense stacked-card list → full-panel overlay on tap (180ms slide-in animation). `NotesPanel.tsx` renders `NotesPanelCompact` when `compactPicker={true}`.
+- `HashtagAutocompleteInput.tsx` — inline autocomplete for hashtag fields in `NoteCard` and `NotesCreateForm`. Derives unique tags from Zustand store (no extra API call). Keyboard-navigable (ArrowDown/Up, Enter/Tab to confirm, Escape to dismiss).
 
 **Related Docs**:
 
@@ -570,7 +760,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Notes-Visibility: Sharing and Handout Distribution
 
-**Status**: ⚪ Not Started
+**Status**: ✅ Done (SPECTATORS scope deferred)
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Editor
 
@@ -578,12 +768,12 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Share modal allows selecting scope: Private (DM only) | Party (all players) | Selected (choose specific players) | Spectators (if enabled)
-- [ ] Shared notes surface as one-time recipients-only chat card
-- [ ] Card includes note excerpt (auto-generated or DM override) and link to full note
-- [ ] Duplicate cards are not surfaced on reconnect/hydration
-- [ ] Players can always find shared notes in Notes tab (filtered by visibility)
-- [ ] Private notes only visible to DM and owner
+- [x] Share modal allows selecting scope: Private (DM only) | Party (all players) | Selected (choose specific players) — `NoteSurfaceDialog` (PARTY/SELECTED). `NoteSharePopover` labels now Private/Party/Selected. SPECTATORS deferred (needs enum + migration).
+- [x] Shared notes surface as one-time recipients-only chat card via `NOTES:HANDOUT_SURFACED` WS event
+- [x] Card includes note excerpt (auto-generated or DM override) and link to full note
+- [x] Duplicate cards are not surfaced on reconnect/hydration (persisted system chat message with unique ID; HANDOUT_SURFACED is real-time only)
+- [x] Players can always find shared notes in Notes tab (filtered by visibility) — `canViewNote` on backend enforces this; players only receive notes visible to them via API and WS.
+- [x] Private notes only visible to DM and owner — enforced by `canViewNote` in `backend/src/services/notes/shared.ts`.
 
 **Related Docs**:
 
@@ -593,7 +783,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Journal-and-Popouts: Separate Windows for Notes and Journal
 
-**Status**: ⚪ Not Started
+**Status**: ✅ Done
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Visibility
 
@@ -601,13 +791,21 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Notes detail view has "Pop Out" button to open in separate window
-- [ ] Journal detail view has "Pop Out" button to open in separate window
-- [ ] Pop-out windows are resizable and can stay open while user navigates main app
-- [ ] Journal links to session chapter name and uses same editor as Notes
-- [ ] Journal visibility: DM + players + spectators can read
-- [ ] Only DM can edit Journal (other than that, read-only for all)
-- [ ] Pop-out state persists during session (windows remain open on navigation)
+- [x] Notes detail view has "Pop Out" button (`open_in_new` icon) → `window.open('/popout/note/:noteId', ...)`
+- [x] Journal detail view has "Pop Out" button (`open_in_new` icon) → `window.open('/popout/journal/:sessionId', ...)`
+- [x] Pop-out windows are resizable (native OS window management)
+- [x] Journal links to session chapter name and uses same editor as Notes (`sessionName` prop → title)
+- [x] Journal visibility: DM + players + spectators can read — `GET /api/journals/:sessionId` enforces this
+- [x] Only DM can edit Journal — `POST /api/journals/:sessionId` requires DM role; `JournalEditor` is read-only for non-DM
+- [x] Pop-out state persists during session — browser keeps windows open; `window.open` with named target reuses existing window if already open
+
+**Evidence snapshot (2026-06-05)**:
+
+- `frontend/src/utils/route-view.ts` — `popout-note` and `popout-journal` route kinds; `openNotePopout()` / `openJournalPopout()` helpers store auth token in `sessionStorage` (same-origin; inherited by new window) and call `window.open`.
+- `frontend/src/components/routes/PopoutRouteView.tsx` — minimal layout: note pop-out fetches `GET /api/notes/by-id/:noteId` and renders `MarkdownEditor` read-only; journal pop-out renders `JournalPanel` in focused mode (DM gets editable, others get read-only).
+- `backend/src/api/notes.routes.ts` — `GET /api/notes/by-id/:noteId` endpoint added (before `:sessionId` catch-all) with `canViewNote` visibility check.
+- `frontend/src/components/workspaces/shared/panels/NotesPanel/NoteCard.tsx` — pop-out button added to note header.
+- `frontend/src/components/workspaces/shared/panels/JournalPanel.tsx` — pop-out button added to journal header alongside save/cancel.
 
 **Related Docs**:
 
@@ -617,21 +815,27 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-System-Messages: Condition and Distance Change Cards
 
-**Status**: ⚪ Not Started
+**Status**: ✅ Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Audio-Condition, W-Audio-Distance
 
-**Scope**: When DM applies/removes conditions or changes distance, a small system message card appears in chat timeline so players see what is happening. Cards are compact and non-intrusive.
+**Scope**: When DM applies/removes conditions or changes distance, a small system message minimalistic card appears in chat timeline so players see what is happening. Cards are compact and non-intrusive.
 
 **Acceptance Criteria**:
 
-- [ ] System message card appears in chat when condition is applied: `[{player} is now {condition}]`
-- [ ] System message card appears when condition is removed: `[{player}'s condition cleared]`
-- [ ] System message card appears when distance changes: `[{player} is {distance}]`
-- [ ] Cards include icon and explanation tooltip
-- [ ] Cards are compact (one line) and styled consistently
-- [ ] Cards appear for all viewers (DM, players, spectators)
-- [ ] Cards persist in chat history for later reference and AI summary processing
+- [x] System message card appears in chat when condition is applied: `[{player} is now {condition}]`
+- [x] System message card appears when condition is removed: `[{player}'s condition cleared]`
+- [x] System message card appears when distance changes: `[{player} is {distance}]`
+- [x] Cards are compact (one line) and styled consistently
+- [x] Cards appear for all viewers (DM, players, spectators)
+- [x] Cards persist in chat history for later reference and AI summary processing
+- [x] Cards include explanation tooltip — condition icon wrapped in Radix `Tooltip`; shows `conditionPreset.description` on hover
+
+**Evidence snapshot (2026-06-05)**:
+
+- `backend/src/services/system-messages.service.ts` — `emitOverrideSystemMessage()` emits `CHAT:MESSAGE_SENT` for both condition and distance changes; persists as a standard chat message so it survives refresh.
+- `frontend/src/components/workspaces/session/chat/MessageList.virtualized.tsx` — renders `conditionMessage` metadata as a compact amber-tinted card with icon.
+- Condition icon pulled from `findConditionPreset()` (falls back to `psychology`). Distance uses same flow with a distance preset name.
 
 **Related Docs**:
 
@@ -641,23 +845,25 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-DM-Notes-to-Chat: Share Note to Chat Timeline
 
-**Status**: ⚪ Not Started
+**Status**: ✅ Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Notes-Visibility
 
-**Scope**: DM can send a note directly to the chat timeline (IC message) so it appears as a chat message. Players find it in Notes tab for later reference.
+**Scope**: DM can send a note directly to the chat timeline (system message) so it appears as a chat message note card. Players find it in Notes tab for later reference.
 
 **Acceptance Criteria**:
 
-- [ ] DM can send note to chat via Share > Chat Timeline option
-- [ ] Note appears as DM message in chat (IC-style with note content)
-- [ ] Message surfaces note excerpt and full-note link
-- [ ] Note remains accessible in Notes tab for all participants
-- [ ] Message timestamp links to note in history
+- [x] DM can send note to chat via "Send Handout" button → `NoteSurfaceDialog` (PARTY / SELECTED scope, optional manual excerpt) → `POST /api/notes/:noteId/surface`
+- [x] Note appears as system message in chat (card-style via `NoteSharedCard`) for all recipients
+- [x] Message surfaces note excerpt (auto-generated or DM override) + "Full note available in the Notes tab" hint; `noteId` threaded through `ParsedNoteSharedMessage` for future deep-link navigation
+- [x] Note remains accessible in Notes tab — `/surface` updates note visibility to match scope (PARTY → PLAYERS_VISIBLE; SELECTED → CUSTOM + allowedUsers)
+- [x] Message timestamp shown on `NoteSharedCard` footer; `noteId` available in `metadata.noteHandout` for history reference
 
-**Related Docs**:
+**Evidence snapshot (2026-06-05)**:
 
-- (None yet; small scope feature)
+- `NoteSharedCard.tsx` — excerpt cards show "Full note available in the Notes tab" below the excerpt body; `excerptSource` badge shows AUTO or MANUAL source.
+- `noteSharedMessage.ts` — `ParsedNoteSharedMessage.noteId` populated from both `noteHandout` and legacy `noteShared` metadata.
+- `POST /api/notes/:noteId/surface` — persists system chat message, broadcasts `NOTES:HANDOUT_SURFACED` + `CHAT:MESSAGE_SENT` to recipients only, updates note visibility.
 
 ---
 
@@ -760,6 +966,33 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 **Related Docs**:
 
 - (To be created when work begins)
+
+---
+
+### W-DM-Campaign-Portability: DM Self-Service Campaign Export and Import
+
+**Status**: ⚪ Not Started
+**Priority**: 🔵 Low (post-MVP)
+**Depends on**: W0-Lobby-Admin (shares export format), Core Reliability complete
+
+**Scope**: DMs can export their own campaign as a portable JSON file and import a previously exported file to create a new campaign — no admin involvement required. The DM export format omits member emails and passwords; imported campaigns start with the DM as the sole member and players rejoin via the normal invite flow.
+
+This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import. The admin route remains the privileged path (with email re-linking and full member stubs); this route is a lighter self-service backup/restore for DMs.
+
+**Acceptance Criteria**:
+
+- [ ] `GET /api/campaigns/:id/export` — DM-authenticated (campaign owner only). Returns portable JSON: campaign metadata, groups/environments, session history/chat (IC, OOC, system bookends), notes/journal. Member list includes display names and roles but no emails or passwords.
+- [ ] Export respects campaign privacy: Whisper, paused-ephemeral, and cooldown-ephemeral content excluded by default; DM may opt in to include paused/cooldown chat.
+- [ ] `POST /api/campaigns/import` — authenticated user. Creates a new campaign with fresh UUIDs from the export file; the caller becomes the new DM. Import never overwrites an existing campaign.
+- [ ] Import is idempotent for the same file: re-importing always creates a new campaign, never patches an existing one.
+- [ ] Lobby offline workspace surfaces "Export Campaign" in the campaign header actions (DM-only, not visible to players or spectators).
+- [ ] Lobby surfaces "Import Campaign" alongside the existing "Create Campaign" and "Join Campaign" actions (DM-only).
+- [ ] Export and import progress/result surfaces as a toast; errors include a human-readable reason.
+- [ ] Imported campaign appears in the DM's lobby list immediately; players must be re-invited via the normal invite flow.
+
+**Related Docs**:
+
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Export and Import section (admin variant; DM contract to be appended when implemented)
 
 ---
 

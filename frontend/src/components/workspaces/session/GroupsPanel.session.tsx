@@ -20,7 +20,7 @@ import { Icon } from '@/components/ui/Icon'
 import { useStore } from '@/state/store'
 import { useToast } from '@/hooks/useToast'
 import { logger } from '@/utils/logger'
-import type { RoomUser, SessionPresence } from '@/types/room'
+import type { RoomUser } from '@/types/room'
 import {
   createSessionGroup,
   fetchSessionGroups,
@@ -28,14 +28,12 @@ import {
   deleteGroup,
   applyGroupEnvironment,
 } from '@/services/groupsPanel.service'
+import { moveRoomMember } from '@/services/groupsPanel.service'
+import { optimisticMoveMember, optimisticApplyEnvironment } from '@/services/groupsPanel.client'
 import { isGreenRoomName } from '@/constants/roomPresence.constants'
 import '@/styles/components/workspaces/session/GroupsPanel.session.css'
 import SessionGroupCard from './GroupCard.session'
 
-const EMPTY_SESSION_PRESENCE: Record<UUID, SessionPresence> = Object.freeze({}) as Record<
-  UUID,
-  SessionPresence
->
 const EMPTY_ROOM_MEMBERS: RoomUser[] = []
 
 function compareMembers(left: RoomUser, right: RoomUser): number {
@@ -98,9 +96,12 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   )
   const roomMembers = useStore((state) => state.roomMembers)
   const currentUser = useStore((state) => state.currentUser)
-  const sessionPresenceByUser = useStore(
-    useShallow((state) => state.sessionPresence[sessionId] || EMPTY_SESSION_PRESENCE)
-  )
+  // Narrow subscription: only the DM's own presence entry. Ghost flips for other users
+  // preserve the per-user object reference in the spread, so this stays stable.
+  const dmSelfPresence = useStore((state) => {
+    const uid = state.currentUser?.id
+    return uid ? (state.sessionPresence[sessionId]?.[uid] ?? null) : null
+  })
   const roomEnvironmentNames = useStore(useShallow((state) => state.roomEnvironmentNames))
   const fallbackRoomEnvironments = useStore(
     useShallow((state) => state.sessionGroupEnvironments[sessionId] || {})
@@ -108,6 +109,10 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   const dmVoiceTargetGroupId = useStore((state) => state.dmVoiceTargetGroupId)
   const setSessionGroups = useStore((state) => state.setSessionGroups)
   const setSessionGroupEnvironment = useStore((state) => state.setSessionGroupEnvironment)
+  const clearSessionGroupEnvironment = useStore((state) => state.clearSessionGroupEnvironment)
+  const setDmVoiceTarget = useStore((state) => (state as any).setDmVoiceTarget)
+  const addRoomMember = useStore((state) => (state as any).addRoomMember)
+  const removeRoomMember = useStore((state) => (state as any).removeRoomMember)
 
   const sessionRooms = liveSessionRooms.length > 0 ? liveSessionRooms : fallbackSessionRooms
   const isGreenroom = isGreenroomSessionState(sessionState)
@@ -139,7 +144,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       return null
     }
 
-    const selfPresence = sessionPresenceByUser[currentUser.id]
+    const selfPresence = dmSelfPresence
     const availableRoomIds = new Set(sessionRooms.map((room) => room.id))
     const greenRoom = sessionRooms.find((room) => isGreenRoomName(room.name))
     const mainRoom = sessionRooms.find((room) => room.type === RoomType.MAIN)
@@ -182,7 +187,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       member: fallbackDmMember,
       targetRoomId,
     }
-  }, [canManageGroups, currentUser, dmVoiceTargetGroupId, sessionPresenceByUser, sessionRooms])
+  }, [canManageGroups, currentUser, dmVoiceTargetGroupId, dmSelfPresence, sessionRooms])
 
   const membersByRoomId = useMemo(() => {
     const next: Record<UUID, (typeof roomMembers)[UUID]> = {}
@@ -206,8 +211,10 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
         next[roomId] = members.filter((member) => member.userId !== resolvedDmMember.userId)
       }
 
-      if (!shouldDetachDmFromRooms && resolvedDmTargetRoomId && next[resolvedDmTargetRoomId]) {
-        next[resolvedDmTargetRoomId] = [resolvedDmMember, ...(next[resolvedDmTargetRoomId] || [])]
+      next[resolvedDmTargetRoomId] = [resolvedDmMember, ...(next[resolvedDmTargetRoomId] || [])]
+    } else if (shouldDetachDmFromRooms && canManageGroups && resolvedDmMember) {
+      for (const roomId of Object.keys(next) as UUID[]) {
+        next[roomId] = next[roomId].filter((member) => member.userId !== resolvedDmMember.userId)
       }
     }
 
@@ -319,6 +326,12 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       return
     }
 
+    const reserved = new Set(['MAIN', 'WHISPER', 'GREENROOM'])
+    if (reserved.has(trimmedName.toUpperCase())) {
+      showToast({ message: `"${trimmedName}" is a reserved room name`, variant: 'error' })
+      return
+    }
+
     try {
       setIsCreating(true)
       const room = await createSessionGroup(sessionId, trimmedName, token, apiUrl)
@@ -366,15 +379,45 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
     }
   }
 
+  const [applyingEnvironments, setApplyingEnvironments] = useState<UUID[]>([])
+
   const handleSetEnvironment = async (groupId: UUID, environmentName: string) => {
     try {
-      await applyGroupEnvironment(sessionId, groupId, environmentName, token, apiUrl)
-
-      setSessionGroupEnvironment(sessionId, groupId, environmentName)
+      await optimisticApplyEnvironment({
+        sessionId,
+        groupId,
+        environmentName,
+        setSessionGroupEnvironment,
+        clearSessionGroupEnvironment,
+        applyGroupEnvironmentFn: applyGroupEnvironment,
+        token,
+        apiUrl,
+        showToast,
+        setApplying: (updater) => setApplyingEnvironments(updater as any),
+        getPrevEnv: () => roomEnvironmentNames[groupId] || fallbackRoomEnvironments[groupId],
+      })
     } catch (err) {
       logger.error('GroupsPanelSession', 'Failed to set environment', err)
-      const errorMsg = err instanceof Error ? err.message : 'Failed to set environment'
-      showToast({ message: errorMsg, variant: 'error' })
+    }
+  }
+
+  const handleMoveMember = async (targetUserId: UUID, targetRoomId: UUID) => {
+    try {
+      await optimisticMoveMember({
+        sessionId,
+        targetUserId,
+        targetRoomId,
+        addRoomMember: addRoomMember as any,
+        removeRoomMember: removeRoomMember as any,
+        fetchSessionGroupsFn: fetchSessionGroups,
+        moveRoomMemberFn: moveRoomMember,
+        setDmVoiceTarget: setDmVoiceTarget as any,
+        token,
+        apiUrl,
+        showToast,
+      })
+    } catch (err) {
+      logger.error('GroupsPanelSession', 'Failed to move member', err)
     }
   }
 
@@ -403,7 +446,7 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
               onClick={() => {
                 void handleCreateGroup()
               }}
-              disabled={isCreating}
+              disabled={isCreating || !newGroupName.trim()}
             >
               <span className="material-symbols-outlined" aria-hidden="true">
                 group_add
@@ -424,11 +467,42 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
                 data-ui-component="SessionGroupsDetachedDM"
               >
                 <div className="session-groups-dm-detached__header">Dungeon Master</div>
-                <div className="session-groups-dm-detached__name">
-                  {detachedDmMember.characterName || detachedDmMember.username}
+                <div className="session-groups-dm-detached__member">
+                  <span
+                    className={`session-groups-member-card__avatar session-groups-member-card__avatar--${detachedDmMember.presenceState === PresenceState.OFFLINE || detachedDmMember.presenceState === PresenceState.IDLE ? 'offline' : 'online'}`}
+                    aria-hidden="true"
+                  >
+                    {detachedDmMember.avatarUrl ? (
+                      <img src={detachedDmMember.avatarUrl} alt="" />
+                    ) : (
+                      (detachedDmMember.characterName || detachedDmMember.username || 'D')
+                        .charAt(0)
+                        .toUpperCase()
+                    )}
+                  </span>
+                  <div className="session-groups-member-card__body">
+                    <div className="session-groups-member-card__info">
+                      <span className="session-groups-member-card__char-name">
+                        {detachedDmMember.characterName || detachedDmMember.username}
+                      </span>
+                      {(detachedDmMember.playerName || detachedDmMember.username) !==
+                      (detachedDmMember.characterName || detachedDmMember.username) ? (
+                        <span className="session-groups-member-card__player-name">
+                          {detachedDmMember.playerName || detachedDmMember.username}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="session-groups-member-card__aside">
+                      <span className="session-groups-member-card__role-pill session-groups-member-card__role-pill--dm">
+                        DM
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="session-groups-dm-detached__target">
-                  Voice target: <strong>{detachedDmVoiceTargetRoomName || 'Main'}</strong>
+                <div className="session-groups-dm-detached__footer">
+                  <span className="session-groups-dm-detached__target">
+                    Voice target: <strong>{detachedDmVoiceTargetRoomName || 'Main'}</strong>
+                  </span>
                 </div>
               </article>
             ) : null}
@@ -452,6 +526,8 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
                   onClose={() => handleCloseGroup(room.id)}
                   onDelete={() => handleDeleteGroup(room.id)}
                   onSetEnvironment={(env) => handleSetEnvironment(room.id, env)}
+                  onMoveMember={handleMoveMember}
+                  isApplyingEnvironment={applyingEnvironments.includes(room.id)}
                 />
               )
             })}
@@ -476,6 +552,8 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
             onClose={() => handleCloseGroup(whisperRoom.id)}
             onDelete={() => handleDeleteGroup(whisperRoom.id)}
             onSetEnvironment={(env) => handleSetEnvironment(whisperRoom.id, env)}
+            onMoveMember={handleMoveMember}
+            isApplyingEnvironment={applyingEnvironments.includes(whisperRoom.id)}
           />
         </div>
       ) : null}

@@ -76,7 +76,25 @@
 
 .session-chat-window__typing-text {
   font-size: 0.72rem;
-  font-weight: 500;
+  font-weight: 470;
+}
+
+.session-chat-window__typing-text--local {
+  color: color-mix(in srgb, var(--color-text-primary) 78%, var(--color-text-secondary) 22%);
+  font-weight: 560;
+}
+
+.session-chat-window__typing-separator {
+  color: color-mix(in srgb, var(--color-text-secondary) 58%, transparent);
+}
+
+.session-chat-window__typing-text--elsewhere {
+  color: color-mix(in srgb, var(--color-text-secondary) 84%, transparent);
+}
+
+.session-chat-window__typing-overlay--elsewhere-only .session-chat-window__typing-dots > span {
+  background: color-mix(in srgb, var(--color-text-secondary) 52%, transparent);
+  opacity: 0.24;
 }
 
 .session-chat-window__typing-dots {

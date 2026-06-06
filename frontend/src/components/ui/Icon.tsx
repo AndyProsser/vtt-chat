@@ -38,6 +38,7 @@ type IconName =
   | 'effects'
   | 'overrides'
   | 'party'
+  | 'restart_alt'
 
 interface IconProps extends HTMLAttributes<HTMLSpanElement> {
   name: IconName
@@ -81,6 +82,7 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   effects: 'tune',
   overrides: 'supervisor_account',
   party: 'groups',
+  restart_alt: 'restart_alt',
 }
 
 export function Icon({ name, className = '', ...props }: IconProps) {

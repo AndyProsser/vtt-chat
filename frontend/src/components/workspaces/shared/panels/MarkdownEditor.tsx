@@ -7,6 +7,10 @@
  *   - rich  (default): Tiptap ProseMirror-backed formatted surface
  *   - raw:  plain textarea showing raw markdown source
  *
+ * Read-only mode delegates to DmdxMarkdownRenderer, which renders DMDX fenced
+ * blocks as structured cards. In edit mode, DMDX fences are editable code blocks
+ * (per the v1 contract — no mandatory block builder).
+ *
  * External links are always stripped from the output and blocked in the toolbar.
  * Internal note/attachment links are allowed.
  *
@@ -22,8 +26,10 @@ import Image from '@tiptap/extension-image'
 import type { Level } from '@tiptap/extension-heading'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
-import { Fragment, useEffect, useState, useCallback, useMemo } from 'react'
+import { Fragment, useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { DmdxMarkdownRenderer } from './dmdx/DmdxMarkdownRenderer'
+import { DmdxInsertMenu } from './dmdx/DmdxInsertMenu'
 import '@/styles/components/workspaces/shared/panels/MarkdownEditor.css'
 
 interface MarkdownStorage {
@@ -41,7 +47,9 @@ export interface MarkdownEditorInsertAction {
   icon: string
   label: string
   dividerBefore?: boolean
-  onSelect: (currentMarkdown: string) => string | Promise<string>
+  /** When present, the action renders as a dropdown containing these child actions. */
+  children?: MarkdownEditorInsertAction[]
+  onSelect?: (currentMarkdown: string) => string | Promise<string>
 }
 
 export interface MarkdownEditorProps {
@@ -73,16 +81,97 @@ function getEditorMarkdown(editor: unknown, fallback: string): string {
   return fallback
 }
 
-export function MarkdownEditor({
+// ---------------------------------------------------------------------------
+// InsertActionDropdown — renders a grouped insert action as a toolbar dropdown
+// ---------------------------------------------------------------------------
+
+function InsertActionDropdown({
+  action,
+  pendingId,
+  onSelect,
+}: {
+  action: MarkdownEditorInsertAction
+  pendingId: string | null
+  onSelect: (child: MarkdownEditorInsertAction) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  return (
+    <div className="md-editor__action-group" ref={ref}>
+      <TooltipProvider delayDuration={140}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className={`md-editor__tool ${open ? 'is-active' : ''}`}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                setOpen((prev) => !prev)
+              }}
+              disabled={Boolean(pendingId)}
+              aria-label={action.label}
+              aria-haspopup="listbox"
+              aria-expanded={open}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {action.icon}
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">{action.label}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      {open && (
+        <div className="md-editor__action-group-dropdown" role="listbox">
+          {action.children!.map((child) => (
+            <button
+              key={child.id}
+              type="button"
+              role="option"
+              aria-selected={false}
+              className="md-editor__action-group-option"
+              disabled={Boolean(pendingId)}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onSelect(child)
+                setOpen(false)
+              }}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {child.icon}
+              </span>
+              {child.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// MarkdownEditorEditable — edit-mode implementation with all hooks
+// ---------------------------------------------------------------------------
+
+function MarkdownEditorEditable({
   value,
   onChange,
   onBlur,
   placeholder = 'Start writing…',
-  readOnly = false,
   variant = 'full',
   insertActions = [],
   className,
-}: MarkdownEditorProps) {
+}: Omit<MarkdownEditorProps, 'readOnly'>) {
   const [mode, setMode] = useState<'rich' | 'raw'>('rich')
   const [rawValue, setRawValue] = useState(value)
   const [pendingInsertActionId, setPendingInsertActionId] = useState<string | null>(null)
@@ -124,9 +213,9 @@ export function MarkdownEditor({
   const editor = useEditor({
     extensions,
     content: value,
-    editable: !readOnly && mode === 'rich',
+    editable: mode === 'rich',
     onUpdate: ({ editor: e }) => {
-      if (readOnly || mode !== 'rich') return
+      if (mode !== 'rich') return
       const md = stripExternalLinks(getEditorMarkdown(e, value))
       onChange?.(md)
     },
@@ -141,11 +230,11 @@ export function MarkdownEditor({
     }
   }, [editor])
 
-  // Keep editor editable flag in sync with readOnly/mode
+  // Keep editor editable flag in sync with mode
   useEffect(() => {
     if (!editor) return
-    editor.setEditable(!readOnly && mode === 'rich')
-  }, [editor, readOnly, mode])
+    editor.setEditable(mode === 'rich')
+  }, [editor, mode])
 
   // Sync incoming value changes into editor when in rich mode
   useEffect(() => {
@@ -191,6 +280,7 @@ export function MarkdownEditor({
       setPendingInsertActionId(action.id)
 
       try {
+        if (!action.onSelect) return
         const insertedText = (await action.onSelect(mode === 'raw' ? rawValue : value)).trim()
         if (!insertedText) {
           return
@@ -211,200 +301,196 @@ export function MarkdownEditor({
     [editor, mode, onChange, pendingInsertActionId, rawValue, value]
   )
 
+  /** Inserts a DMDX block template at the cursor (or end) in either mode. */
+  const handleInsertDmdxTemplate = useCallback(
+    (template: string) => {
+      const block = `\n${template}\n`
+      if (mode === 'raw') {
+        const merged = rawValue.trimEnd() + block
+        setRawValue(merged)
+        onChange?.(merged)
+        return
+      }
+      editor?.chain().focus().insertContent(block).run()
+    },
+    [editor, mode, onChange, rawValue]
+  )
+
   const isActive = (name: string, attrs?: Record<string, unknown>) =>
     editor?.isActive(name, attrs) ?? false
 
-  const toolbar = !readOnly && (
-    <TooltipProvider delayDuration={140}>
-      <div className="md-editor__toolbar" role="toolbar" aria-label="Formatting">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={`md-editor__tool ${isActive('bold') ? 'is-active' : ''}`}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                if (mode === 'rich') editor?.chain().focus().toggleBold().run()
-              }}
-              disabled={mode === 'raw'}
-              aria-label="Bold"
-              aria-pressed={isActive('bold')}
-            >
-              <strong>B</strong>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Bold</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={`md-editor__tool ${isActive('italic') ? 'is-active' : ''}`}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                if (mode === 'rich') editor?.chain().focus().toggleItalic().run()
-              }}
-              disabled={mode === 'raw'}
-              aria-label="Italic"
-              aria-pressed={isActive('italic')}
-            >
-              <em>I</em>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Italic</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={`md-editor__tool ${isActive('bulletList') ? 'is-active' : ''}`}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                if (mode === 'rich') editor?.chain().focus().toggleBulletList().run()
-              }}
-              disabled={mode === 'raw'}
-              aria-label="Bullet list"
-              aria-pressed={isActive('bulletList')}
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                format_list_bulleted
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Bullet list</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={`md-editor__tool ${isActive('orderedList') ? 'is-active' : ''}`}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                if (mode === 'rich') editor?.chain().focus().toggleOrderedList().run()
-              }}
-              disabled={mode === 'raw'}
-              aria-label="Ordered list"
-              aria-pressed={isActive('orderedList')}
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                format_list_numbered
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Ordered list</TooltipContent>
-        </Tooltip>
-
-        {variant === 'full' && (
-          <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className={`md-editor__tool ${isActive('code') ? 'is-active' : ''}`}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    if (mode === 'rich') editor?.chain().focus().toggleCode().run()
-                  }}
-                  disabled={mode === 'raw'}
-                  aria-label="Inline code"
-                  aria-pressed={isActive('code')}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    code
-                  </span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Inline code</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className={`md-editor__tool ${isActive('blockquote') ? 'is-active' : ''}`}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    if (mode === 'rich') editor?.chain().focus().toggleBlockquote().run()
-                  }}
-                  disabled={mode === 'raw'}
-                  aria-label="Blockquote"
-                  aria-pressed={isActive('blockquote')}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    format_quote
-                  </span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Blockquote</TooltipContent>
-            </Tooltip>
-          </>
-        )}
-
-        <span className="md-editor__toolbar-sep" aria-hidden="true" />
-
-        {insertActions.map((action) => (
-          <Fragment key={action.id}>
-            {action.dividerBefore ? (
-              <span className="md-editor__toolbar-sep" aria-hidden="true" />
-            ) : null}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="md-editor__tool"
-                  onClick={() => {
-                    void handleInsertAction(action)
-                  }}
-                  disabled={Boolean(pendingInsertActionId)}
-                  aria-label={action.label}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    {pendingInsertActionId === action.id ? 'hourglass_top' : action.icon}
-                  </span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">{action.label}</TooltipContent>
-            </Tooltip>
-          </Fragment>
-        ))}
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={`md-editor__tool md-editor__tool--mode ${mode === 'raw' ? 'is-active' : ''}`}
-              onClick={mode === 'rich' ? handleSwitchToRaw : handleSwitchToRich}
-              aria-label={mode === 'rich' ? 'View raw markdown' : 'View formatted'}
-              aria-pressed={mode === 'raw'}
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                {mode === 'rich' ? 'code_blocks' : 'wysiwyg'}
-              </span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            {mode === 'rich' ? 'View raw markdown' : 'View formatted'}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    </TooltipProvider>
-  )
-
-  const rootClass = [
-    'md-editor',
-    readOnly ? 'md-editor--readonly' : '',
-    mode === 'raw' ? 'md-editor--raw' : '',
-    className ?? '',
-  ]
+  const rootClass = ['md-editor', mode === 'raw' ? 'md-editor--raw' : '', className ?? '']
     .filter(Boolean)
     .join(' ')
 
   return (
     <div className={rootClass} data-testid="markdown-editor" onBlur={onBlur}>
-      {toolbar}
+      <TooltipProvider delayDuration={140}>
+        <div className="md-editor__toolbar" role="toolbar" aria-label="Formatting">
+          {/* DMDX Insert Block menu — available in full variant only */}
+          {variant === 'full' && <DmdxInsertMenu onInsert={handleInsertDmdxTemplate} />}
+
+          <span className="md-editor__toolbar-sep" aria-hidden="true" />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={`md-editor__tool ${isActive('bold') ? 'is-active' : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  if (mode === 'rich') editor?.chain().focus().toggleBold().run()
+                }}
+                disabled={mode === 'raw'}
+                aria-label="Bold"
+                aria-pressed={isActive('bold')}
+              >
+                <strong>B</strong>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Bold</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={`md-editor__tool ${isActive('italic') ? 'is-active' : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  if (mode === 'rich') editor?.chain().focus().toggleItalic().run()
+                }}
+                disabled={mode === 'raw'}
+                aria-label="Italic"
+                aria-pressed={isActive('italic')}
+              >
+                <em>I</em>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Italic</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={`md-editor__tool ${isActive('bulletList') ? 'is-active' : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  if (mode === 'rich') editor?.chain().focus().toggleBulletList().run()
+                }}
+                disabled={mode === 'raw'}
+                aria-label="Bullet list"
+                aria-pressed={isActive('bulletList')}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  format_list_bulleted
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Bullet list</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={`md-editor__tool ${isActive('orderedList') ? 'is-active' : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  if (mode === 'rich') editor?.chain().focus().toggleOrderedList().run()
+                }}
+                disabled={mode === 'raw'}
+                aria-label="Ordered list"
+                aria-pressed={isActive('orderedList')}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  format_list_numbered
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Ordered list</TooltipContent>
+          </Tooltip>
+
+          {variant === 'full' && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className={`md-editor__tool ${isActive('blockquote') ? 'is-active' : ''}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      if (mode === 'rich') editor?.chain().focus().toggleBlockquote().run()
+                    }}
+                    disabled={mode === 'raw'}
+                    aria-label="Blockquote"
+                    aria-pressed={isActive('blockquote')}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      format_quote
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Blockquote</TooltipContent>
+              </Tooltip>
+            </>
+          )}
+
+          <span className="md-editor__toolbar-sep" aria-hidden="true" />
+
+          {insertActions.map((action) => (
+            <Fragment key={action.id}>
+              {action.dividerBefore ? (
+                <span className="md-editor__toolbar-sep" aria-hidden="true" />
+              ) : null}
+              {action.children ? (
+                <InsertActionDropdown
+                  action={action}
+                  pendingId={pendingInsertActionId}
+                  onSelect={(child) => void handleInsertAction(child)}
+                />
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="md-editor__tool"
+                      onClick={() => void handleInsertAction(action)}
+                      disabled={Boolean(pendingInsertActionId)}
+                      aria-label={action.label}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        {pendingInsertActionId === action.id ? 'hourglass_top' : action.icon}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{action.label}</TooltipContent>
+                </Tooltip>
+              )}
+            </Fragment>
+          ))}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={`md-editor__tool md-editor__tool--mode ${mode === 'raw' ? 'is-active' : ''}`}
+                onClick={mode === 'rich' ? handleSwitchToRaw : handleSwitchToRich}
+                aria-label={mode === 'rich' ? 'View raw markdown' : 'View formatted'}
+                aria-pressed={mode === 'raw'}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  {mode === 'rich' ? 'code_blocks' : 'wysiwyg'}
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {mode === 'rich' ? 'View raw markdown' : 'View formatted'}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
 
       {mode === 'rich' ? (
         <div className="md-editor__surface">
@@ -426,7 +512,6 @@ export function MarkdownEditor({
           value={rawValue}
           onChange={handleRawChange}
           placeholder={placeholder}
-          readOnly={readOnly}
           rows={8}
           aria-label="Raw markdown source"
           spellCheck
@@ -434,4 +519,22 @@ export function MarkdownEditor({
       )}
     </div>
   )
+}
+
+// ---------------------------------------------------------------------------
+// MarkdownEditor — public API, switches between read-only and edit renderers
+// ---------------------------------------------------------------------------
+
+export function MarkdownEditor({ readOnly = false, ...props }: MarkdownEditorProps) {
+  if (readOnly) {
+    return (
+      <DmdxMarkdownRenderer
+        value={props.value}
+        placeholder={props.placeholder}
+        className={props.className}
+      />
+    )
+  }
+
+  return <MarkdownEditorEditable {...props} />
 }

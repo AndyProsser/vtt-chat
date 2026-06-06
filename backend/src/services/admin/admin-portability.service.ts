@@ -82,13 +82,15 @@ function generateInviteCode(): string {
 async function resolveImportedUsers(
   tx: Prisma.TransactionClient,
   actorUserId: string,
-  bundle: CampaignTransferBundle
+  bundle: CampaignTransferBundle,
+  memberEmailMap?: Record<string, string>
 ): Promise<Map<string, string>> {
   const sourceUsers = new Map<
     string,
     {
       username: string
       displayName: string
+      email: string | null
       role: Role
     }
   >()
@@ -97,6 +99,7 @@ async function resolveImportedUsers(
     sourceUsers.set(member.userId, {
       username: member.username,
       displayName: member.displayName,
+      email: member.email ?? null,
       role: member.userRole,
     })
   })
@@ -107,6 +110,7 @@ async function resolveImportedUsers(
         sourceUsers.set(member.userId, {
           username: member.username,
           displayName: member.username,
+          email: null,
           role: member.role,
         })
       }
@@ -117,6 +121,7 @@ async function resolveImportedUsers(
         sourceUsers.set(message.authorId, {
           username: message.authorUsername,
           displayName: message.authorUsername,
+          email: null,
           role: 'PLAYER',
         })
       }
@@ -127,6 +132,7 @@ async function resolveImportedUsers(
         sourceUsers.set(note.authorId, {
           username: note.authorUsername,
           displayName: note.authorUsername,
+          email: null,
           role: 'PLAYER',
         })
       }
@@ -137,6 +143,7 @@ async function resolveImportedUsers(
         sourceUsers.set(entry.userId, {
           username: entry.username,
           displayName: entry.username,
+          email: null,
           role: 'PLAYER',
         })
       }
@@ -148,6 +155,7 @@ async function resolveImportedUsers(
       sourceUsers.set(character.userId, {
         username: `imported-${character.name}`,
         displayName: character.name,
+        email: null,
         role: 'PLAYER',
       })
     }
@@ -161,6 +169,21 @@ async function resolveImportedUsers(
       continue
     }
 
+    // 1. Email map takes priority — admin explicitly linked this source email to a target user.
+    const emailMappedId =
+      memberEmailMap && sourceUser.email ? memberEmailMap[sourceUser.email] : undefined
+    if (emailMappedId) {
+      const emailMapped = await tx.user.findUnique({
+        where: { id: emailMappedId },
+        select: { id: true },
+      })
+      if (emailMapped) {
+        userIdMap.set(sourceUserId, emailMapped.id)
+        continue
+      }
+    }
+
+    // 2. Attempt match by source user ID (same platform instance).
     const existing = await tx.user.findUnique({
       where: { id: sourceUserId },
       select: { id: true },
@@ -171,6 +194,7 @@ async function resolveImportedUsers(
       continue
     }
 
+    // 3. Create a stub user so content authorship is preserved.
     const created = await tx.user.create({
       data: {
         username: `${slugifyUsername(sourceUser.username)}-${randomUUID().slice(0, 8)}`,
@@ -195,7 +219,7 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
       currentDm: { select: { id: true, username: true } },
       members: {
         include: {
-          user: { select: { id: true, username: true, displayName: true, role: true } },
+          user: { select: { id: true, username: true, displayName: true, email: true, role: true } },
         },
         orderBy: { joinedAt: 'asc' },
       },
@@ -235,6 +259,7 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
       userId: membership.userId,
       username: membership.user.username,
       displayName: membership.user.displayName,
+      email: membership.user.email ?? null,
       campaignRole: membership.role,
       userRole: membership.user.role,
     })),
@@ -342,7 +367,8 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
 export async function importCampaignBundle(
   actorUserId: string,
   input: unknown,
-  nameOverride?: string | null
+  nameOverride?: string | null,
+  memberEmailMap?: Record<string, string> | null
 ) {
   if (!isCampaignTransferBundle(input)) {
     return null
@@ -351,7 +377,12 @@ export async function importCampaignBundle(
   const bundle = input
 
   const imported = await prisma.$transaction(async (tx) => {
-    const userIdMap = await resolveImportedUsers(tx, actorUserId, bundle)
+    const userIdMap = await resolveImportedUsers(
+      tx,
+      actorUserId,
+      bundle,
+      memberEmailMap ?? undefined
+    )
     const campaignName = normalizeString(nameOverride) || `${bundle.campaign.name} (Imported)`
 
     const campaign = await tx.campaign.create({

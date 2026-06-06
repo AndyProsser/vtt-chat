@@ -71,8 +71,25 @@ export interface NoteSharedMessageMetadata {
   hashtags: string
 }
 
+export interface NoteHandoutMessageMetadata {
+  kind: 'NOTE_HANDOUT'
+  noteId: UUID
+  title: string
+  excerpt: string
+  excerptSource: 'AUTO' | 'MANUAL'
+}
+
+export interface ConditionMessageMetadata {
+  kind: 'CONDITION'
+  targetUserId: UUID
+  presetName?: string
+  isRemoval: boolean
+}
+
 export interface MessageMetadataEntity {
   noteShared?: NoteSharedMessageMetadata
+  noteHandout?: NoteHandoutMessageMetadata
+  conditionMessage?: ConditionMessageMetadata
 }
 
 export interface MessageEntity {
@@ -105,9 +122,19 @@ export interface NoteEntity {
   visibility: NoteVisibility
   tags: string[]
   allowedUsers?: UUID[]
+  attachments?: NoteAttachmentEntity[]
   publishedAt?: number
   createdAt: number
   updatedAt: number
+}
+
+export interface NoteAttachmentEntity {
+  id: UUID
+  campaignId?: UUID
+  mime: string
+  name: string
+  uri: string
+  createdAt: number
 }
 
 export interface PresenceEntity {

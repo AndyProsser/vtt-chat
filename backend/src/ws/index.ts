@@ -177,8 +177,10 @@ export class WebSocketManager {
       'AUDIO:DM_OVERRIDE_REMOVED',
       audioHandlers.handleDMOverrideRemoved
     )
-    this.dispatcher.registerHandler('AUDIO:USER_MUTED', audioHandlers.handleUserMuted)
-    this.dispatcher.registerHandler('AUDIO:USER_UNMUTED', audioHandlers.handleUserUnmuted)
+    this.dispatcher.registerHandler(
+      'AUDIO:MUTE_STATE_CHANGED',
+      audioHandlers.handleMuteStateChanged
+    )
   }
 
   /**

@@ -73,6 +73,22 @@ describe('session authz service', () => {
     expect(mocks.getSessionUsers).not.toHaveBeenCalled()
   })
 
+  it('enforces campaign membership before session membership checks for campaign sessions', async () => {
+    mocks.sessionFindUnique.mockResolvedValueOnce({
+      campaignId: asUuid('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
+    })
+    mocks.campaignMembershipFindUnique.mockResolvedValueOnce(null)
+
+    const result = await resolveEffectiveSessionRole({ sessionId: SESSION_ID, userId: USER_ID })
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'FORBIDDEN',
+      message: 'You are not a member of this campaign',
+    })
+    expect(mocks.getSessionUsers).not.toHaveBeenCalled()
+  })
+
   it('enforces membership when requireMembershipForDm is true', async () => {
     mocks.getSessionUsers.mockResolvedValueOnce([])
 
@@ -128,6 +144,21 @@ describe('session authz service', () => {
     if (result.ok) {
       expect(result.role).toBe(Role.SPECTATOR)
     }
+  })
+
+  it('requires campaign membership for DM on campaign-backed sessions even when membership is not required', async () => {
+    mocks.sessionFindUnique.mockResolvedValueOnce({
+      campaignId: asUuid('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),
+    })
+    mocks.campaignMembershipFindUnique.mockResolvedValueOnce(null)
+
+    const result = await resolveEffectiveSessionRole({ sessionId: SESSION_ID, userId: DM_ID })
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'FORBIDDEN',
+      message: 'You are not a member of this campaign',
+    })
   })
 
   it('resolves join role with session and campaign guards', async () => {

@@ -285,7 +285,7 @@ describe('admin campaigns routes — rooms endpoint', () => {
     mocks.mockRoomFindMany.mockResolvedValue([
       {
         id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-        name: 'Main Room',
+        name: 'Main',
         type: 'MAIN',
         createdAt: new Date(),
         updatedAt: new Date(),

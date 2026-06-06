@@ -2,9 +2,9 @@ import { memo, useMemo } from 'react'
 import type { RefObject } from 'react'
 import { RoomType } from '@shared'
 import type { UUID } from '@shared'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { isGreenRoomName } from '@/constants/roomPresence.constants'
 import { Icon } from '@/components/ui/Icon'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { resolveEnvironmentGlyph } from '@/constants/voiceGroup.constants'
 import { GroupMemberList } from './GroupMemberList'
 import { GROUP_ENVIRONMENT_OPTIONS, isWhisperGroup } from '@/types/groupPanel'
@@ -12,7 +12,6 @@ import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
 } from '@/types/groupPanel'
-import type { SessionPresence } from '@/types/room'
 
 export interface GroupCardProps {
   room: GroupPanelGroupWithParticipants
@@ -25,6 +24,7 @@ export interface GroupCardProps {
   sessionId: UUID
   currentUserId: UUID
   canManageRooms: boolean
+  isSessionActive: boolean
   isGreenroom: boolean
   isDenseRoomLayout: boolean
   draggedUserId: UUID | null
@@ -52,6 +52,11 @@ export interface GroupCardProps {
   onApplyDistanceOverride: (userId: UUID, distanceName: string) => void
   onApplyConditionOverride: (userId: UUID, conditionName: string) => void
   onApplyMuteOverride: (userId: UUID, nextMuted: boolean) => void
+  onApplyAudioOverride: (
+    userId: UUID,
+    overrideType: 'GAIN' | 'FILTER',
+    parameters: Record<string, unknown> | null
+  ) => void
   onClearMemberEffects: (userId: UUID) => void
   onTakeOverPlayer?: (userId: UUID) => void
   onMemberDragStart: (
@@ -64,7 +69,6 @@ export interface GroupCardProps {
   getResolvedEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
   getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
-  getDeviceSessions: (userId: UUID) => NonNullable<SessionPresence['deviceSessions']>
 }
 
 export type RoomGroupCardProps = GroupCardProps
@@ -126,6 +130,7 @@ function areGroupCardPropsEqual(previous: GroupCardProps, next: GroupCardProps):
     previous.dmUserId === next.dmUserId &&
     previous.sessionId === next.sessionId &&
     previous.currentUserId === next.currentUserId &&
+    previous.isSessionActive === next.isSessionActive &&
     previous.activeTakeoverUserId === next.activeTakeoverUserId &&
     previous.environmentPickerLayerRef === next.environmentPickerLayerRef &&
     previous.distanceTargets === next.distanceTargets &&
@@ -140,6 +145,7 @@ function areGroupCardPropsEqual(previous: GroupCardProps, next: GroupCardProps):
     previous.onApplyDistanceOverride === next.onApplyDistanceOverride &&
     previous.onApplyConditionOverride === next.onApplyConditionOverride &&
     previous.onApplyMuteOverride === next.onApplyMuteOverride &&
+    previous.onApplyAudioOverride === next.onApplyAudioOverride &&
     previous.onClearMemberEffects === next.onClearMemberEffects &&
     previous.onTakeOverPlayer === next.onTakeOverPlayer &&
     previous.onMemberDragStart === next.onMemberDragStart &&
@@ -148,7 +154,6 @@ function areGroupCardPropsEqual(previous: GroupCardProps, next: GroupCardProps):
     previous.getResolvedEnvironmentName === next.getResolvedEnvironmentName &&
     previous.getParticipantMetaLine === next.getParticipantMetaLine &&
     previous.getStatEntries === next.getStatEntries &&
-    previous.getDeviceSessions === next.getDeviceSessions &&
     previous.room.id === next.room.id &&
     previous.room.name === next.room.name &&
     previous.room.type === next.room.type &&
@@ -165,6 +170,7 @@ function RoomGroupCardComponent({
   sessionId,
   currentUserId,
   canManageRooms,
+  isSessionActive,
   isGreenroom,
   isDenseRoomLayout,
   draggedUserId,
@@ -192,6 +198,7 @@ function RoomGroupCardComponent({
   onApplyDistanceOverride,
   onApplyConditionOverride,
   onApplyMuteOverride,
+  onApplyAudioOverride,
   onClearMemberEffects,
   onTakeOverPlayer,
   onMemberDragStart,
@@ -200,7 +207,6 @@ function RoomGroupCardComponent({
   getResolvedEnvironmentName,
   getParticipantMetaLine,
   getStatEntries,
-  getDeviceSessions,
 }: GroupCardProps) {
   const isGreenroomCard = isGreenRoomName(room.name)
   const isWhisperRoomGroup = isWhisperGroup(room)
@@ -302,7 +308,7 @@ function RoomGroupCardComponent({
                       className="room-selector-item__env-icon"
                       aria-label="Change group environment"
                       data-room-env-trigger={room.id}
-                      disabled={isGreenroom}
+                      disabled={!canManageRooms || isGreenroom}
                       onClick={() => onToggleEnvironmentPicker(room.id)}
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">
@@ -447,12 +453,12 @@ function RoomGroupCardComponent({
           sessionId={sessionId}
           currentUserId={currentUserId}
           canManageRooms={canManageRooms}
+          isSessionActive={isSessionActive}
           isGreenroom={isGreenroom}
           touchFeedbackUserId={touchFeedbackUserId}
           setTouchFeedbackUserId={setTouchFeedbackUserId}
           getParticipantMetaLine={getParticipantMetaLine}
           getStatEntries={getStatEntries}
-          getDeviceSessions={getDeviceSessions}
           getResolvedGroupEnvironmentName={getResolvedEnvironmentName}
           distanceTargets={distanceTargets}
           conditionTargets={conditionTargets}
@@ -460,6 +466,7 @@ function RoomGroupCardComponent({
           onApplyDistanceOverride={onApplyDistanceOverride}
           onApplyConditionOverride={onApplyConditionOverride}
           onApplyMuteOverride={onApplyMuteOverride}
+          onApplyAudioOverride={onApplyAudioOverride}
           onClearMemberEffects={onClearMemberEffects}
           onTakeOverPlayer={onTakeOverPlayer}
           onMemberDragStart={onMemberDragStart}

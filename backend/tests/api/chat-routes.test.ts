@@ -105,7 +105,7 @@ describe('chat routes', () => {
     mocks.getRoom.mockResolvedValue({
       id: ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
     })
 
@@ -261,6 +261,32 @@ describe('chat routes', () => {
     expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
   })
 
+  it('returns 400 for non-OOC chat during COOLDOWN', async () => {
+    const app = buildApp()
+    mocks.getSession.mockResolvedValueOnce({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.COOLDOWN,
+    })
+    mocks.prismaSessionFindUnique.mockResolvedValueOnce({
+      campaign: { postSessionChatEnabled: true },
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'in character during cooldown',
+        type: MessageType.IC,
+      })
+
+    expect(response.status).toBe(400)
+    expect(response.body.message).toBe('Cooldown chat only supports OOC messages')
+    expect(mocks.sendMessage).not.toHaveBeenCalled()
+  })
+
   it('returns 403 for spectator cooldown chat when campaign disables post-session chat', async () => {
     const app = buildApp()
     mocks.verifyToken.mockReturnValue({
@@ -310,7 +336,7 @@ describe('chat routes', () => {
     expect(response.body.field).toBe('recipientId')
   })
 
-  it('returns 409 when session is not active', async () => {
+  it('allows OOC chat while session is PAUSED', async () => {
     const app = buildApp()
     mocks.getSession.mockResolvedValue({
       id: SESSION_ID,
@@ -328,7 +354,30 @@ describe('chat routes', () => {
         type: MessageType.OOC,
       })
 
+    expect(response.status).toBe(201)
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns 409 for non-OOC chat while session is PAUSED', async () => {
+    const app = buildApp()
+    mocks.getSession.mockResolvedValue({
+      id: SESSION_ID,
+      dmId: DM_ID,
+      state: SessionState.PAUSED,
+    })
+
+    const response = await request(app)
+      .post('/api/chat/message')
+      .set('Authorization', 'Bearer token')
+      .send({
+        sessionId: SESSION_ID,
+        roomId: ROOM_ID,
+        content: 'in character during pause',
+        type: MessageType.IC,
+      })
+
     expect(response.status).toBe(409)
+    expect(response.body.message).toBe('Only OOC messages are allowed during intermission')
     expect(mocks.sendMessage).not.toHaveBeenCalled()
   })
 
@@ -704,5 +753,104 @@ describe('chat routes', () => {
 
     const [, eventArg] = mocks.broadcastEventToSession.mock.calls[0]
     expect(eventArg.type).toBe('CHAT:MESSAGE_DELETED')
+  })
+
+  describe('campaign membership gates (end-to-end)', () => {
+    it('rejects chat from non-member of campaign-backed session', async () => {
+      const app = buildApp()
+      mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({
+        ok: false,
+        code: 'FORBIDDEN',
+        message: 'You are not a member of this campaign',
+      })
+
+      const response = await request(app)
+        .post('/api/chat/message')
+        .set('Authorization', 'Bearer token')
+        .send({
+          sessionId: SESSION_ID,
+          roomId: ROOM_ID,
+          content: 'trying to chat',
+          type: MessageType.OOC,
+        })
+
+      expect(response.status).toBe(403)
+      expect(response.body.code).toBe('FORBIDDEN')
+      expect(response.body.message).toBe('You are not a member of this campaign')
+      expect(mocks.sendMessage).not.toHaveBeenCalled()
+    })
+
+    it('allows chat from campaign member in ACTIVE session', async () => {
+      const app = buildApp()
+      mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({
+        ok: true,
+        role: 'PLAYER',
+        session: { id: SESSION_ID, dmId: DM_ID, state: SessionState.ACTIVE },
+      })
+
+      const response = await request(app)
+        .post('/api/chat/message')
+        .set('Authorization', 'Bearer token')
+        .send({
+          sessionId: SESSION_ID,
+          roomId: ROOM_ID,
+          content: 'hello from member',
+          type: MessageType.OOC,
+        })
+
+      expect(response.status).toBe(201)
+      expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects spectator IC chat in campaign-backed session during ACTIVE', async () => {
+      const app = buildApp()
+      mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({
+        ok: true,
+        role: 'SPECTATOR',
+        session: { id: SESSION_ID, dmId: DM_ID, state: SessionState.ACTIVE },
+      })
+
+      const response = await request(app)
+        .post('/api/chat/message')
+        .set('Authorization', 'Bearer token')
+        .send({
+          sessionId: SESSION_ID,
+          roomId: ROOM_ID,
+          content: 'spectator trying IC',
+          type: MessageType.IC,
+        })
+
+      expect(response.status).toBe(403)
+      expect(mocks.sendMessage).not.toHaveBeenCalled()
+    })
+
+    it('allows spectator OOC chat in campaign-backed session during COOLDOWN', async () => {
+      const app = buildApp()
+      mocks.getSession.mockResolvedValueOnce({
+        id: SESSION_ID,
+        dmId: DM_ID,
+        state: SessionState.COOLDOWN,
+      })
+      mocks.resolveEffectiveSessionRole.mockResolvedValueOnce({
+        ok: true,
+        role: 'SPECTATOR',
+      })
+      mocks.prismaSessionFindUnique.mockResolvedValueOnce({
+        campaign: { postSessionChatEnabled: true },
+      })
+
+      const response = await request(app)
+        .post('/api/chat/message')
+        .set('Authorization', 'Bearer token')
+        .send({
+          sessionId: SESSION_ID,
+          roomId: ROOM_ID,
+          content: 'spectator during cooldown',
+          type: MessageType.OOC,
+        })
+
+      expect(response.status).toBe(201)
+      expect(mocks.sendMessage).toHaveBeenCalledTimes(1)
+    })
   })
 })

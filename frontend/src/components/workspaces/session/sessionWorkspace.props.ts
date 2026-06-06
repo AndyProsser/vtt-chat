@@ -7,6 +7,7 @@ type BuildSessionWorkspacePropsParams = {
   currentSession: ComponentProps<typeof SessionWorkspace>['currentSession']
   currentPauseStats: ComponentProps<typeof SessionWorkspace>['currentPauseStats']
   configuredCooldownDurationMs: number
+  isTransitioningSession: boolean
   canStartFromGreenroom: boolean
   canPauseFromActive: boolean
   canStopFromActive: boolean
@@ -31,46 +32,35 @@ type BuildSessionWorkspacePropsParams = {
   connectedSpectatorsCount: number
   effectiveSessionRole: ComponentProps<typeof SessionWorkspace>['effectiveSessionRole']
   effectiveSessionUser: ComponentProps<typeof SessionWorkspace>['effectiveSessionUser']
-  visibleRooms: ComponentProps<typeof SessionWorkspace>['visibleRooms']
-  roomMembersByRoomId: ComponentProps<typeof SessionWorkspace>['roomMembersByRoomId']
-  selectedRoomId: UUID | ''
   onSelectRoom: ComponentProps<typeof SessionWorkspace>['onSelectRoom']
-  broadcastModeEnabled: boolean
   onToggleBroadcastMode: ComponentProps<typeof SessionWorkspace>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean
-  dmOverrides: ComponentProps<typeof SessionWorkspace>['dmOverrides']
-  currentConditionName: ComponentProps<typeof SessionWorkspace>['currentConditionName']
-  roomEnvironmentNames: ComponentProps<typeof SessionWorkspace>['roomEnvironmentNames']
   wsState: ComponentProps<typeof SessionWorkspace>['wsState']
   wsRetrySecondsRemaining: ComponentProps<typeof SessionWorkspace>['wsRetrySecondsRemaining']
-  connectionStatus: ComponentProps<typeof SessionWorkspace>['connectionStatus']
+  suppressWsReconnectUi: ComponentProps<typeof SessionWorkspace>['suppressWsReconnectUi']
   rightRailIndicators: ComponentProps<typeof SessionWorkspace>['rightRailIndicators']
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: ComponentProps<typeof SessionWorkspace>['fetchWithAuthGuard']
-  selectedRoom: ComponentProps<typeof SessionWorkspace>['selectedRoom']
   campaignId: UUID | undefined
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof SessionWorkspace>['sendWsEvent']
-  isGreenroomChatMode: boolean
   totalSessionDurationMs: number
   canEditCampaignInfo: boolean
   onSaveCampaignInfo: ComponentProps<typeof SessionWorkspace>['onSaveCampaignInfo']
   campaignIdForSettings: UUID | ''
   sessionSettingsName: string
-  sessionSettingsDescription: string
   sessionSettingsPlannedDurationMinutes: number
+  defaultSessionDurationMinutes: number
+  sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
+  canEditEndedSessionName: boolean
   onSessionNameChange: ComponentProps<typeof SessionWorkspace>['onSessionNameChange']
-  onSessionDescriptionChange: ComponentProps<typeof SessionWorkspace>['onSessionDescriptionChange']
   onPlannedDurationMinutesChange: ComponentProps<
     typeof SessionWorkspace
   >['onPlannedDurationMinutesChange']
   onSaveSessionSettings: ComponentProps<typeof SessionWorkspace>['onSaveSessionSettings']
   isSessionSettingsSaving: boolean
-  onDmAutoTargetChange: ComponentProps<typeof SessionWorkspace>['onDmAutoTargetChange']
-  onSaveDmAutoTarget: ComponentProps<typeof SessionWorkspace>['onSaveDmAutoTarget']
-  isDmVoiceTargetingSettingSaving: boolean
-  isDmVoiceTargetingSettingLoading: boolean
+  sessionCampaignPolicy: ComponentProps<typeof SessionWorkspace>['sessionCampaignPolicy']
   characterDraft: ComponentProps<typeof SessionWorkspace>['characterDraft']
   onCharacterFieldChange: ComponentProps<typeof SessionWorkspace>['onCharacterFieldChange']
   onSaveCharacterSettings: ComponentProps<typeof SessionWorkspace>['onSaveCharacterSettings']
@@ -87,6 +77,7 @@ export function buildSessionWorkspaceProps(
     currentSession: params.currentSession,
     currentPauseStats: params.currentPauseStats,
     configuredCooldownDurationMs: params.configuredCooldownDurationMs,
+    isTransitioningSession: params.isTransitioningSession,
     canStartFromGreenroom: params.canStartFromGreenroom,
     canPauseFromActive: params.canPauseFromActive,
     canStopFromActive: params.canStopFromActive,
@@ -111,44 +102,33 @@ export function buildSessionWorkspaceProps(
     connectedSpectatorsCount: params.connectedSpectatorsCount,
     effectiveSessionRole: params.effectiveSessionRole,
     effectiveSessionUser: params.effectiveSessionUser,
-    visibleRooms: params.visibleRooms,
-    roomMembersByRoomId: params.roomMembersByRoomId,
-    selectedRoomId: params.selectedRoomId,
     onSelectRoom: params.onSelectRoom,
-    broadcastModeEnabled: params.broadcastModeEnabled,
     onToggleBroadcastMode: params.onToggleBroadcastMode,
     dmAutoTargetOnFirstPlayerJoin: params.dmAutoTargetOnFirstPlayerJoin,
-    dmOverrides: params.dmOverrides,
-    currentConditionName: params.currentConditionName,
-    roomEnvironmentNames: params.roomEnvironmentNames,
     wsState: params.wsState,
     wsRetrySecondsRemaining: params.wsRetrySecondsRemaining,
-    connectionStatus: params.connectionStatus,
+    suppressWsReconnectUi: params.suppressWsReconnectUi,
     rightRailIndicators: params.rightRailIndicators,
     partyPresenceRefreshVersion: params.partyPresenceRefreshVersion,
     fetchWithAuthGuard: params.fetchWithAuthGuard,
-    selectedRoom: params.selectedRoom,
     campaignId: params.campaignId,
     messageGroupingWindowMs: params.messageGroupingWindowMs,
     sendWsEvent: params.sendWsEvent,
-    isGreenroomChatMode: params.isGreenroomChatMode,
     totalSessionDurationMs: params.totalSessionDurationMs,
     canEditCampaignInfo: params.canEditCampaignInfo,
     onSaveCampaignInfo: params.onSaveCampaignInfo,
     campaignIdForSettings: params.campaignIdForSettings,
     sessionSettingsName: params.sessionSettingsName,
-    sessionSettingsDescription: params.sessionSettingsDescription,
     sessionSettingsPlannedDurationMinutes: params.sessionSettingsPlannedDurationMinutes,
+    defaultSessionDurationMinutes: params.defaultSessionDurationMinutes,
+    sessionStartedAt: params.sessionStartedAt,
     canEditSessionSettings: params.canEditSessionSettings,
+    canEditEndedSessionName: params.canEditEndedSessionName,
     onSessionNameChange: params.onSessionNameChange,
-    onSessionDescriptionChange: params.onSessionDescriptionChange,
     onPlannedDurationMinutesChange: params.onPlannedDurationMinutesChange,
     onSaveSessionSettings: params.onSaveSessionSettings,
     isSessionSettingsSaving: params.isSessionSettingsSaving,
-    onDmAutoTargetChange: params.onDmAutoTargetChange,
-    onSaveDmAutoTarget: params.onSaveDmAutoTarget,
-    isDmVoiceTargetingSettingSaving: params.isDmVoiceTargetingSettingSaving,
-    isDmVoiceTargetingSettingLoading: params.isDmVoiceTargetingSettingLoading,
+    sessionCampaignPolicy: params.sessionCampaignPolicy,
     characterDraft: params.characterDraft,
     onCharacterFieldChange: params.onCharacterFieldChange,
     onSaveCharacterSettings: params.onSaveCharacterSettings,

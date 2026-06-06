@@ -14,6 +14,7 @@ const RADIX_SHARED_PACKAGES = new Set([
 ])
 
 const TIPTAP_PACKAGES = new Set(['tiptap-markdown'])
+
 const LIVEKIT_CI_OVERFLOW_PACKAGES = new Map<string, string>([
   ['webrtc-adapter', 'vendor-livekit-webrtc-adapter'],
   ['mediasoup-client', 'vendor-livekit-mediasoup'],
@@ -91,7 +92,11 @@ function getVendorChunk(id: string, options: VendorChunkOptions): string | undef
     return 'vendor-tiptap'
   }
 
-  if (packageName === 'clsx' || packageName === 'tailwind-merge') {
+  if (
+    packageName === 'clsx' ||
+    packageName === 'tailwind-merge' ||
+    packageName === 'react-window'
+  ) {
     return 'vendor-utils'
   }
 

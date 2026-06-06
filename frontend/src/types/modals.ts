@@ -1,5 +1,10 @@
 import type { ChangeEvent, SubmitEventHandler } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
+import type {
+  CampaignVisibility,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+} from '@/constants/sessionUi.types'
 import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignSettingsHomeTab, CampaignSettingsPayload } from '@/types/session/campaign'
 
@@ -40,8 +45,8 @@ export type ModalsProps = {
   isInviteReissuing: boolean
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
-  settingsVisibility: 'PUBLIC' | 'PRIVATE'
-  onSettingsVisibilityChange: (value: 'PUBLIC' | 'PRIVATE') => void
+  settingsVisibility: CampaignVisibility
+  onSettingsVisibilityChange: (value: CampaignVisibility) => void
   settingsSpectatorsEnabled: boolean
   onSettingsSpectatorsEnabledChange: (value: boolean) => void
   settingsSpectatorMax: number
@@ -54,10 +59,10 @@ export type ModalsProps = {
   onSettingsPostSessionChatEnabledChange: (value: boolean) => void
   settingsPostSessionChatDurationMinutes: number
   onSettingsPostSessionChatDurationMinutesChange: (value: number) => void
-  settingsExtensionSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
-  onSettingsExtensionSyncPolicyChange: (value: 'ALLOW' | 'DM_ONLY' | 'NONE') => void
-  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
-  onSettingsLateJoinPolicyChange: (value: 'OPEN' | 'SCREENED' | 'BLOCKED') => void
+  settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  onSettingsExtensionSyncPolicyChange: (value: ExtensionSyncPolicy) => void
+  settingsLateJoinPolicy: LateJoinPolicy
+  onSettingsLateJoinPolicyChange: (value: LateJoinPolicy) => void
   settingsLateJoinGraceMinutes: number
   onSettingsLateJoinGraceMinutesChange: (value: number) => void
   showUserSettingsModal: boolean

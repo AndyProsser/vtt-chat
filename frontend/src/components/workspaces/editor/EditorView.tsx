@@ -9,6 +9,7 @@ import { GroupsPanel } from '@/components/workspaces/shared/panels/GroupsPanel'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
 import { EditorWorkspaceToolbar } from '@/components/workspaces/shared/toolbar/EditorWorkspaceToolbar'
+import type { ExtensionSyncPolicy } from '@/constants/sessionUi.types'
 import type { Session } from '@/types/session'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
@@ -52,7 +53,7 @@ type EditorViewProps = {
       name: string
       description: string
       posterUrl: string | null
-      integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+      integrationSyncPolicy: ExtensionSyncPolicy
     }
   ) => Promise<void>
 }

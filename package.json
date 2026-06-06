@@ -22,6 +22,7 @@
     "update": "npm --prefix backend update && npm --prefix frontend update && npm --prefix admin update",
     "qa:voice-of-god": "node scripts/qa/verify-voice-of-god.mjs",
     "qa:request-counts": "node scripts/qa/verify-request-counts.mjs",
+    "qa:har-duplicates": "node scripts/qa/har-duplicate-gate.mjs",
     "ci:lint": "node scripts/qa/lint-linux-gate.mjs",
     "ci:lint:linux": "node scripts/qa/lint-linux-gate.mjs",
     "ci:lint:strict": "npm run ci:lint",

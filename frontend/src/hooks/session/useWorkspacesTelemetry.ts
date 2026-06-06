@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { UUID } from '@shared'
 import { createHttpTelemetryTransport, telemetryClient } from '@/utils/telemetry'
 
@@ -10,7 +10,7 @@ type UseWorkspacesTelemetryParams = {
   token: string
   wsState: WsState
   currentSessionId: UUID | undefined
-  wsTelemetryPrevRef: MutableRefObject<WsState | null>
+  wsTelemetryPrevRef: RefObject<WsState | null>
 }
 
 /**

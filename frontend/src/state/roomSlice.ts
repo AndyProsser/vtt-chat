@@ -11,6 +11,8 @@ import type { SessionState } from '@shared'
 import { PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS } from '@/constants/chatPresence.constants'
 import type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 import type { PresenceSlice } from './presenceSlice'
+import type { UserMuteSlice } from './userMuteSlice'
+import { logger } from '@/utils/logger'
 
 export type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 
@@ -35,6 +37,7 @@ export interface RoomSlice {
   handleRoomClosed: (event: EventEnvelope) => void
   handleUserJoined: (event: EventEnvelope) => void
   handleUserLeft: (event: EventEnvelope) => void
+  handleSessionMemberLeft: (event: EventEnvelope) => void
   handlePresenceStateChanged: (event: EventEnvelope) => void
   handlePresenceGhostModeChanged: (event: EventEnvelope) => void
   handlePresenceProfileUpdated: (event: EventEnvelope) => void
@@ -109,10 +112,12 @@ function replaceMemberInRoom(
   }
 }
 
-export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], RoomSlice> = (
-  set,
-  get
-) => ({
+export const createRoomSlice: StateCreator<
+  RoomSlice & PresenceSlice & UserMuteSlice,
+  [],
+  [],
+  RoomSlice
+> = (set, get) => ({
   rooms: {},
   roomMembers: {},
   sessionTransitionNotice: {},
@@ -391,6 +396,12 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
   },
 
   handleUserJoined: (event) => {
+    logger.info('ws.handlers', 'handleUserJoined', {
+      sessionId: event.sessionId,
+      eventId: event.id,
+      payload: event.payload,
+      timestamp: event.timestamp,
+    })
     const payload = event.payload as {
       roomId: UUID
       userId: UUID
@@ -433,10 +444,13 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       },
     }))
 
+    // SESSION:MEMBER_JOINED always fires before ROOM:USER_JOINED and carries the full
+    // profile snapshot, so existingPresence already has character/player data by this
+    // point. No REST enrichment call is needed.
     get().upsertSessionPresenceOnJoin({
       sessionId: event.sessionId,
       userId: payload.userId,
-      username: payload.username,
+      username: payload.username || '',
       roomId: payload.roomId,
       joinedAt,
       playerName: payload.playerName,
@@ -485,6 +499,41 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     })
   },
 
+  handleSessionMemberLeft: (event) => {
+    const payload = event.payload as {
+      userId: UUID
+      username: string
+      leftAt: number
+      reason: string
+    }
+    const leftAt = payload.leftAt || event.timestamp
+
+    // Remove user from every room in this session (they may be in a private room or
+    // have been moved by the DM without a corresponding ROOM:USER_LEFT).
+    set((state) => {
+      const updatedMembers: Record<UUID, RoomUser[]> = {}
+      let changed = false
+      for (const [roomId, members] of Object.entries(state.roomMembers)) {
+        const filtered = (members as RoomUser[]).filter((m) => m.userId !== payload.userId)
+        if (filtered.length !== (members as RoomUser[]).length) {
+          updatedMembers[roomId as UUID] = filtered
+          changed = true
+        }
+      }
+      return changed ? { roomMembers: { ...state.roomMembers, ...updatedMembers } } : state
+    })
+
+    // Fully purge presence — they are no longer in the session.
+    get().removeUserSessionPresence(event.sessionId as UUID, payload.userId)
+
+    logger.info('roomSlice', 'handleSessionMemberLeft', {
+      sessionId: event.sessionId,
+      userId: payload.userId,
+      reason: payload.reason,
+      leftAt,
+    })
+  },
+
   handlePresenceStateChanged: (event) => {
     const payload = event.payload as {
       roomId?: UUID | null
@@ -527,6 +576,24 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
         payload.userId,
         nextPresence === PresenceState.SPEAKING
       )
+
+      // Keep pure SPEAKING flips out of sessionPresence so transient voice
+      // activity stays in presenceSpeakingBySession and does not fan out
+      // re-renders to top-level workspace subscribers.
+      if (nextPresence !== PresenceState.SPEAKING) {
+        // Preserve ONLINE/IDLE transitions in sessionPresence so non-speaking
+        // presence affordances (online/offline dots, away state) remain correct.
+        get().applySessionPresenceStateChange({
+          sessionId: event.sessionId,
+          userId: payload.userId,
+          username: payload.username,
+          roomId: roomId || undefined,
+          state: nextPresence,
+          changedAt,
+          previousGroupId: payload.previousGroupId || undefined,
+        })
+      }
+
       return
     }
 
@@ -600,6 +667,9 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       roomId: roomId || undefined,
       state: nextPresence,
       changedAt,
+      // Room-change presence events represent active topology movement; clear
+      // transient ghost projection so whisper exit does not leave stale ghost UI.
+      ghost: previousRoomId && previousRoomId !== roomId ? false : undefined,
       previousGroupId: payload.previousGroupId || undefined,
     })
   },
@@ -619,59 +689,10 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
     const roomId = payload.roomId || existingPresence?.primaryRoomId
     const nextGhostMode = payload.ghostMode || false
 
-    set((state) => {
-      if (roomId) {
-        const updated = replaceMemberInRoom(state.roomMembers, roomId, payload.userId, (member) => {
-          if (member.ghost === nextGhostMode) {
-            return member
-          }
-
-          return {
-            ...member,
-            ghost: nextGhostMode,
-          }
-        })
-
-        if (updated) {
-          return {
-            roomMembers: updated,
-          }
-        }
-      }
-
-      let nextRoomMembers: Record<UUID, RoomUser[]> | null = null
-      for (const [memberRoomId, members] of Object.entries(state.roomMembers)) {
-        const memberIndex = members.findIndex((member) => member.userId === payload.userId)
-        if (memberIndex === -1) {
-          continue
-        }
-
-        const currentMember = members[memberIndex]
-        if (currentMember.ghost === nextGhostMode) {
-          return state
-        }
-
-        const nextMembersForRoom = members.slice()
-        nextMembersForRoom[memberIndex] = {
-          ...currentMember,
-          ghost: nextGhostMode,
-        }
-
-        nextRoomMembers = {
-          ...state.roomMembers,
-          [memberRoomId as UUID]: nextMembersForRoom,
-        }
-        break
-      }
-
-      if (!nextRoomMembers) {
-        return state
-      }
-
-      return {
-        roomMembers: nextRoomMembers,
-      }
-    })
+    // Ghost is a high-frequency transient bit. Keep it out of roomMembers
+    // projections so list/card trees are not invalidated by ghost flips.
+    // Leaf components (GhostIndicator, PresenceIndicator) subscribe directly to
+    // sessionPresence[sessionId][userId].ghost.
 
     get().applySessionPresenceStateChange({
       sessionId: event.sessionId,
@@ -680,7 +701,7 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       roomId: roomId || undefined,
       state: existingPresence?.state || PresenceState.IDLE,
       changedAt,
-      ghost: payload.ghostMode || false,
+      ghost: nextGhostMode,
       previousGroupId: payload.previousGroupId || existingPresence?.previousGroupId,
     })
   },
@@ -806,13 +827,20 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       targetState: PresenceState
       mainRoom: { id: UUID; name: string; roomType: RoomType }
       greenRoom: { id: UUID; name: string; roomType: RoomType }
-      users: Array<{ userId: UUID; username: string }>
+      users: Array<{
+        userId: UUID
+        username: string
+        roomId?: UUID
+        roomName?: string
+        previousGroupId?: UUID | null
+      }>
     }
 
     const presenceBySession = get().sessionPresence[event.sessionId] || {}
 
     set((state) => {
       const existingRooms = state.rooms[event.sessionId] || {}
+      const previousMembersByUserId = new Map<UUID, RoomUser>()
       const upsertedRooms: Record<UUID, Room> = {
         ...existingRooms,
         [payload.mainRoom.id]: {
@@ -843,39 +871,53 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
           continue
         }
 
+        for (const member of members) {
+          if (movedUserIds.has(member.userId) && !previousMembersByUserId.has(member.userId)) {
+            previousMembersByUserId.set(member.userId, member)
+          }
+        }
+
         const filteredMembers = members.filter((member) => !movedUserIds.has(member.userId))
         if (filteredMembers.length !== members.length) {
           nextMembers[roomId] = filteredMembers
         }
       }
 
-      const existingTargetMembers = nextMembers[payload.targetRoomId] || []
-      const targetMemberIds = new Set(existingTargetMembers.map((member) => member.userId))
-      const appendedMembers = payload.users
-        .filter((user) => !targetMemberIds.has(user.userId))
-        .map((user) => {
-          const existingPresence = presenceBySession[user.userId]
+      for (const user of payload.users) {
+        const memberRoomId = user.roomId || payload.targetRoomId
+        const existingPresence = presenceBySession[user.userId]
+        const previousMember = previousMembersByUserId.get(user.userId)
+        const existingTargetMembers = nextMembers[memberRoomId] || []
 
-          return {
+        if (existingTargetMembers.some((member) => member.userId === user.userId)) {
+          continue
+        }
+
+        nextMembers[memberRoomId] = [
+          ...existingTargetMembers,
+          {
             userId: user.userId,
             username: user.username,
-            role: existingPresence?.role,
-            playerName: existingPresence?.playerName,
-            avatarUrl: existingPresence?.avatarUrl,
-            characterName: existingPresence?.characterName,
-            characterClass: existingPresence?.characterClass,
-            characterSubclass: existingPresence?.characterSubclass,
-            characterRace: existingPresence?.characterRace,
-            level: existingPresence?.level,
-            characterStats: existingPresence?.characterStats,
+            role: previousMember?.role ?? existingPresence?.role,
+            playerName: previousMember?.playerName ?? existingPresence?.playerName,
+            avatarUrl: previousMember?.avatarUrl ?? existingPresence?.avatarUrl,
+            characterName: previousMember?.characterName ?? existingPresence?.characterName,
+            characterClass: previousMember?.characterClass ?? existingPresence?.characterClass,
+            characterSubclass:
+              previousMember?.characterSubclass ?? existingPresence?.characterSubclass,
+            characterRace: previousMember?.characterRace ?? existingPresence?.characterRace,
+            level: previousMember?.level ?? existingPresence?.level,
+            characterStats: previousMember?.characterStats ?? existingPresence?.characterStats,
             presenceState: payload.targetState,
-            ghost: existingPresence?.ghost,
-            previousGroupId: existingPresence?.previousGroupId,
+            ghost: payload.nextState === 'ACTIVE' ? false : existingPresence?.ghost,
+            previousGroupId:
+              user.previousGroupId !== undefined
+                ? user.previousGroupId || undefined
+                : existingPresence?.previousGroupId,
             joinedAt: event.timestamp,
-          }
-        })
-
-      nextMembers[payload.targetRoomId] = [...existingTargetMembers, ...appendedMembers]
+          },
+        ]
+      }
 
       return {
         rooms: {
@@ -900,12 +942,21 @@ export const createRoomSlice: StateCreator<RoomSlice & PresenceSlice, [], [], Ro
       }
     })
 
+    // Normalize user previousGroupId null -> undefined to satisfy typed contract
+    const normalizedUsers = payload.users.map((u) => ({
+      userId: u.userId,
+      username: u.username,
+      roomId: u.roomId,
+      previousGroupId: u.previousGroupId === null ? undefined : (u.previousGroupId as any),
+    }))
+
     get().applySessionRoomTransitionPresence({
       sessionId: event.sessionId,
-      users: payload.users,
+      users: normalizedUsers,
       targetRoomId: payload.targetRoomId,
       targetState: payload.targetState,
       changedAt: event.timestamp,
+      clearGhostForSession: payload.nextState === 'ACTIVE',
     })
   },
 })

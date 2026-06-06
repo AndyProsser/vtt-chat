@@ -4,12 +4,14 @@ import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/
 import { PartyPanel } from '@/components/workspaces/shared/panels/PartyPanel'
 import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { CampaignSessionPolicyBindings } from '@/components/workspaces/shared/panels/CampaignSessionSettingsPanel'
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
 import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { GroupsPanelSession } from '@/components/workspaces/session/GroupsPanel.session'
 import { RightRailContent } from '@/components/workspaces/session/RightRailContent'
+import type { ExtensionSyncPolicy } from '@/constants/sessionUi.types'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
 
@@ -26,7 +28,7 @@ type SessionWorkspaceRightRailTabProps = {
       name: string
       description: string
       posterUrl: string | null
-      integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+      integrationSyncPolicy: ExtensionSyncPolicy
     }
   ) => Promise<void>
   campaignId: UUID | undefined
@@ -41,19 +43,16 @@ type SessionWorkspaceRightRailTabProps = {
   effectiveSessionRole: Role
   userId: UUID
   sessionSettingsName: string
-  sessionSettingsDescription: string
   sessionSettingsPlannedDurationMinutes: number
+  defaultSessionDurationMinutes: number
+  sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
+  canEditEndedSessionName: boolean
   onSessionNameChange: (value: string) => void
-  onSessionDescriptionChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void
   isSessionSettingsSaving: boolean
-  dmAutoTargetOnFirstPlayerJoin: boolean
-  onDmAutoTargetChange: (value: boolean) => void
-  onSaveDmAutoTarget: () => void
-  isDmVoiceTargetingSettingSaving: boolean
-  isDmVoiceTargetingSettingLoading: boolean
+  sessionCampaignPolicy?: CampaignSessionPolicyBindings
   campaignIdForSettings: UUID | ''
   characterDraft: PlayerSettingsPanel
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
@@ -125,19 +124,6 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
           />
         )
       }
-      audioPanel={
-        <CampaignScaffoldPanel
-          title="Campaign Audio"
-          iconName="voice"
-          subtitle="Audio policy controls are being reduced to a cleaner campaign-first surface."
-          sections={[
-            'Default campaign audio policy',
-            'Environment and override presets',
-            'Broadcast and moderation policy',
-          ]}
-          campaignName={props.selectedCampaign?.name}
-        />
-      }
       notesPanel={
         props.campaignId ? (
           <NotesPanel
@@ -195,20 +181,19 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
           sessionSettings={{
             campaignId: props.campaignIdForSettings || null,
             sessionName: props.sessionSettingsName,
-            sessionDescription: props.sessionSettingsDescription,
             plannedDurationMinutes: props.sessionSettingsPlannedDurationMinutes,
+            defaultSessionDurationMinutes: props.defaultSessionDurationMinutes,
             sessionStateLabel: props.currentSessionState,
+            sessionStartedAt: props.sessionStartedAt,
             canEditSessionSettings: props.canEditSessionSettings,
+            canEditEndedSessionName: props.canEditEndedSessionName,
             onSessionNameChange: props.onSessionNameChange,
-            onSessionDescriptionChange: props.onSessionDescriptionChange,
             onPlannedDurationMinutesChange: props.onPlannedDurationMinutesChange,
             onSaveSessionSettings: props.onSaveSessionSettings,
             isSessionSaving: props.isSessionSettingsSaving,
-            dmAutoTarget: props.dmAutoTargetOnFirstPlayerJoin,
-            onDmAutoTargetChange: props.onDmAutoTargetChange,
-            onSaveDmAutoTarget: props.onSaveDmAutoTarget,
-            isSaving: props.isDmVoiceTargetingSettingSaving,
-            isLoading: props.isDmVoiceTargetingSettingLoading,
+            isSaving: false,
+            isLoading: false,
+            campaignPolicy: props.sessionCampaignPolicy,
           }}
           playerSettings={{
             campaignId: props.campaignIdForSettings || null,

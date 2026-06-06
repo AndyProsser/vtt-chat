@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { EventEnvelope, UUID } from '../../../shared'
+import { SessionState } from '../../../shared'
 import { useStore } from '../../src/state/store'
 import type { Room, RoomUser } from '../../src/types/room'
 
@@ -446,6 +447,8 @@ describe('roomSlice', () => {
       })
       useStore.getState().handleUserJoined(joinEvent)
 
+      const previousRoomMembersRef = useStore.getState().roomMembers[ROOM_ID_1]
+
       const event = makeEvent('PRESENCE:USER_GHOST_MODE_CHANGED', SESSION_A, {
         roomId: ROOM_ID_1,
         userId: USER_ID_1,
@@ -455,6 +458,7 @@ describe('roomSlice', () => {
 
       useStore.getState().handlePresenceGhostModeChanged(event)
       expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.ghost).toBe(true)
+      expect(useStore.getState().roomMembers[ROOM_ID_1]).toBe(previousRoomMembersRef)
     })
 
     it('hydrates previousGroupId from presence payloads', () => {
@@ -511,6 +515,47 @@ describe('roomSlice', () => {
       )
     })
 
+    it('clears stale ghost when presence state change moves user to a new room', () => {
+      const roomOne: Room = { ...SAMPLE_ROOM, id: ROOM_ID_1, name: 'Room One' }
+      const roomTwo: Room = { ...SAMPLE_ROOM, id: ROOM_ID_2, name: 'Room Two' }
+
+      useStore.getState().createRoom(SESSION_A, roomOne)
+      useStore.getState().createRoom(SESSION_A, roomTwo)
+
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+        })
+      )
+
+      useStore.getState().handlePresenceGhostModeChanged(
+        makeEvent('PRESENCE:USER_GHOST_MODE_CHANGED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+          ghostMode: true,
+        })
+      )
+
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.ghost).toBe(true)
+
+      useStore.getState().handlePresenceStateChanged(
+        makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+          roomId: ROOM_ID_2,
+          userId: USER_ID_1,
+          username: 'alice',
+          newState: 'ONLINE',
+        })
+      )
+
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.ghost).toBe(false)
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.primaryRoomId).toBe(
+        ROOM_ID_2
+      )
+    })
+
     it('keeps SPEAKING -> ONLINE transitions on lightweight speaking tracker path', () => {
       useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
       useStore.getState().handleUserJoined(
@@ -548,9 +593,77 @@ describe('roomSlice', () => {
 
       expect(useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]).toBeUndefined()
       expect(useStore.getState().roomMembers[ROOM_ID_1]).toBe(roomMembersBeforeStop)
-      expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]).toBe(
+      expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]).not.toBe(
         sessionPresenceBeforeStop
       )
+      expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('ONLINE')
+    })
+
+    it('keeps speaking and online indicators in sync through IDLE -> ENDED -> CLEANUP sequences', () => {
+      useStore.getState().replaceSessions([
+        {
+          id: SESSION_A,
+          name: 'Session A',
+          dmId: DM_ID,
+          state: SessionState.IDLE,
+          createdAt: NOW,
+        } as any,
+      ])
+      useStore.getState().setCurrentSession(SESSION_A)
+
+      useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+        })
+      )
+
+      const roomMembersRef = useStore.getState().roomMembers[ROOM_ID_1]
+
+      const runCycleForSessionState = (
+        state: SessionState,
+        speakingAt: number,
+        onlineAt: number
+      ) => {
+        useStore.getState().updateSession(SESSION_A, { state })
+
+        useStore.getState().handlePresenceStateChanged(
+          makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+            roomId: ROOM_ID_1,
+            userId: USER_ID_1,
+            username: 'alice',
+            newState: 'SPEAKING',
+            changedAt: speakingAt,
+          })
+        )
+
+        expect(useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]).toBe(true)
+        // SPEAKING is only tracked in presenceSpeakingBySession (fast path); sessionPresence
+        // retains the prior state (ONLINE) to avoid cascading re-renders.
+        expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('ONLINE')
+
+        useStore.getState().handlePresenceStateChanged(
+          makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+            roomId: ROOM_ID_1,
+            userId: USER_ID_1,
+            username: 'alice',
+            newState: 'ONLINE',
+            changedAt: onlineAt,
+          })
+        )
+
+        expect(
+          useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]
+        ).toBeUndefined()
+        expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('ONLINE')
+        expect(useStore.getState().roomMembers[ROOM_ID_1]).toBe(roomMembersRef)
+      }
+
+      runCycleForSessionState(SessionState.IDLE, NOW + 30, NOW + 31)
+      runCycleForSessionState(SessionState.ENDED, NOW + 40, NOW + 41)
+      runCycleForSessionState(SessionState.CLEANUP, NOW + 50, NOW + 51)
     })
   })
 
@@ -585,6 +698,149 @@ describe('roomSlice', () => {
       expect(notice).toBeDefined()
       expect(notice!.movedUsers).toBe(2)
       expect(notice!.nextState).toBe('ACTIVE')
+    })
+
+    it('respects per-user room targets when resuming from pause', () => {
+      const mainRoomId = 'f0000000-0000-4000-8000-000000000001' as UUID
+      const greenRoomId = 'f0000000-0000-4000-8000-000000000002' as UUID
+      const groupRoomId = 'f0000000-0000-4000-8000-000000000003' as UUID
+
+      useStore.setState((state) => ({
+        rooms: {
+          ...state.rooms,
+          [SESSION_A]: {
+            [groupRoomId]: {
+              id: groupRoomId,
+              sessionId: SESSION_A,
+              name: 'Scouts',
+              type: 'GROUP' as RoomType,
+              createdAt: NOW,
+              createdBy: USER_ID_1,
+            },
+          },
+        },
+        roomMembers: {
+          [mainRoomId]: [
+            {
+              userId: USER_ID_1,
+              username: 'alice',
+              presenceState: 'ONLINE',
+              joinedAt: NOW,
+            },
+            {
+              userId: USER_ID_2,
+              username: 'bob',
+              presenceState: 'ONLINE',
+              joinedAt: NOW,
+            },
+          ] as any,
+        },
+      }))
+
+      const event = makeEvent('SESSION:ROOM_TRANSITION_APPLIED', SESSION_A, {
+        previousState: 'PAUSED',
+        nextState: 'ACTIVE',
+        movedUsers: 2,
+        targetRoomId: mainRoomId,
+        targetRoomName: 'Main',
+        targetState: 'ONLINE',
+        mainRoom: { id: mainRoomId, name: 'Main Hall', roomType: 'MAIN' },
+        greenRoom: { id: greenRoomId, name: 'Green Room', roomType: 'GROUP' },
+        users: [
+          {
+            userId: USER_ID_1,
+            username: 'alice',
+            roomId: groupRoomId,
+            previousGroupId: groupRoomId,
+          },
+          { userId: USER_ID_2, username: 'bob', roomId: mainRoomId },
+        ],
+      })
+
+      useStore.getState().handleSessionRoomTransitionApplied(event)
+
+      expect(useStore.getState().roomMembers[groupRoomId]?.map((member) => member.userId)).toEqual([
+        USER_ID_1,
+      ])
+      expect(useStore.getState().roomMembers[mainRoomId]?.map((member) => member.userId)).toEqual([
+        USER_ID_2,
+      ])
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.primaryRoomId).toBe(
+        groupRoomId
+      )
+      expect(useStore.getState().sessionPresence[SESSION_A]![USER_ID_1]!.previousGroupId).toBe(
+        groupRoomId
+      )
+    })
+
+    it('preserves existing member profile fields when session transitions move users between rooms', () => {
+      const mainRoomId = 'f0000000-0000-4000-8000-000000000001' as UUID
+      const greenRoomId = 'f0000000-0000-4000-8000-000000000002' as UUID
+
+      useStore.setState((state) => ({
+        rooms: {
+          ...state.rooms,
+          [SESSION_A]: {
+            [mainRoomId]: {
+              id: mainRoomId,
+              sessionId: SESSION_A,
+              name: 'Main Hall',
+              type: 'MAIN' as RoomType,
+              createdAt: NOW,
+              createdBy: USER_ID_1,
+            },
+            [greenRoomId]: {
+              id: greenRoomId,
+              sessionId: SESSION_A,
+              name: 'Green Room',
+              type: 'GROUP' as RoomType,
+              createdAt: NOW,
+              createdBy: USER_ID_1,
+            },
+          },
+        },
+        roomMembers: {
+          [mainRoomId]: [
+            {
+              userId: USER_ID_1,
+              username: 'dev_mock_nyx',
+              playerName: 'Magnus Gearwright',
+              characterName: 'Magnus Gearwright',
+              characterClass: 'Artificer',
+              characterRace: 'Rock Gnome',
+              level: 10,
+              presenceState: 'ONLINE',
+              joinedAt: NOW,
+            },
+          ] as any,
+        },
+      }))
+
+      const event = makeEvent('SESSION:ROOM_TRANSITION_APPLIED', SESSION_A, {
+        previousState: 'ACTIVE',
+        nextState: 'IDLE',
+        movedUsers: 1,
+        targetRoomId: greenRoomId,
+        targetRoomName: 'Green Room',
+        targetState: 'ONLINE',
+        mainRoom: { id: mainRoomId, name: 'Main Hall', roomType: 'MAIN' },
+        greenRoom: { id: greenRoomId, name: 'Green Room', roomType: 'GROUP' },
+        users: [{ userId: USER_ID_1, username: 'dev_mock_nyx', roomId: greenRoomId }],
+      })
+
+      useStore.getState().handleSessionRoomTransitionApplied(event)
+
+      expect(useStore.getState().roomMembers[greenRoomId]).toEqual([
+        expect.objectContaining({
+          userId: USER_ID_1,
+          username: 'dev_mock_nyx',
+          playerName: 'Magnus Gearwright',
+          characterName: 'Magnus Gearwright',
+          characterClass: 'Artificer',
+          characterRace: 'Rock Gnome',
+          level: 10,
+        }),
+      ])
     })
   })
 })

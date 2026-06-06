@@ -288,8 +288,17 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
   handleSessionStateChanged: (event) => {
     const payload = event.payload as { state: SessionLifecycleState }
     set((state) => {
-      // Guard: only update if session exists (prevent partial shapes from unknown WS events)
+      // AUTO-REBIND pre-check: run BEFORE the session-existence guard so a fresh
+      // ACTIVE start still triggers WS rebind even when SESSION:CREATED was missed
+      // or arrived out of order. The WS client auth is updated via currentSessionId,
+      // so we must not skip this when the session record is absent from the store.
       if (!state.sessions[event.sessionId]) {
+        if (payload.state === 'ACTIVE' && state.currentSessionId !== event.sessionId) {
+          return {
+            currentSessionId: event.sessionId as UUID,
+            isGreenroom: false,
+          }
+        }
         return state
       }
 
@@ -300,6 +309,38 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           existing.state === 'ENDED' ||
           existing.state === 'CLEANUP' ||
           existing.startedAt === undefined)
+
+      // Compute pause stats first so they can be mirrored into the session record.
+      // All timestamps here come from event.timestamp (server-set), so every
+      // connected client accumulates identical values regardless of when the WS
+      // event is locally delivered.
+      const prevStats: SessionPauseStats = state.pauseStats[event.sessionId] ?? {
+        cumulativePauseMs: existing.cumulativePauseMs ?? 0,
+        pauseCount: existing.pauseCount ?? 0,
+        pauseStartedAt: existing.pauseStartedAt,
+      }
+      let nextStats = prevStats
+
+      if (isFreshSessionStart) {
+        nextStats = { cumulativePauseMs: 0, pauseCount: 0, pauseStartedAt: undefined }
+      } else if (payload.state === 'PAUSED') {
+        // Record when this pause began (server timestamp → same for all clients)
+        nextStats = { ...prevStats, pauseStartedAt: event.timestamp }
+      } else if (payload.state === 'ACTIVE' && prevStats.pauseStartedAt !== undefined) {
+        // Resuming from pause — accumulate using the server-provided resume timestamp
+        const pauseSegmentMs = event.timestamp - prevStats.pauseStartedAt
+        nextStats = {
+          cumulativePauseMs: prevStats.cumulativePauseMs + pauseSegmentMs,
+          pauseCount: prevStats.pauseCount + 1,
+          pauseStartedAt: undefined,
+        }
+      } else if (
+        payload.state === 'IDLE' ||
+        payload.state === 'ENDED' ||
+        payload.state === 'CLEANUP'
+      ) {
+        nextStats = { ...prevStats, pauseStartedAt: undefined }
+      }
 
       const nextSessions = {
         ...state.sessions,
@@ -328,6 +369,13 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
                   payload.state === 'CLEANUP'
                 ? undefined
                 : existing.cooldownExpiresAt,
+          // Mirror accumulated pause stats so the session record is always the
+          // single authoritative source for timer anchors.  All values are
+          // derived from server-provided event timestamps and are therefore
+          // identical across every connected client.
+          cumulativePauseMs: nextStats.cumulativePauseMs,
+          pauseCount: nextStats.pauseCount,
+          pauseStartedAt: nextStats.pauseStartedAt,
         },
       }
 
@@ -343,46 +391,21 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         nextCooldownExtensionCounts[event.sessionId] = 0
       }
 
-      const currentSession = state.currentSessionId
-        ? sessionById(nextSessions, state.currentSessionId)
+      // AUTO-REBIND: If a fresh session starts and currentSessionId is different,
+      // force-bind to the new session. This occurs when:
+      // 1. DM creates a new session (IDLE → ACTIVE)
+      // 2. DM resets and starts a new session after ending (ENDED → ACTIVE)
+      // Players must be forced to the new session so WS client auth/binding updates.
+      const shouldRebind = isFreshSessionStart && state.currentSessionId !== event.sessionId
+
+      const nextCurrentSessionId = shouldRebind ? event.sessionId : state.currentSessionId
+      const currentSession = nextCurrentSessionId
+        ? sessionById(nextSessions, nextCurrentSessionId)
         : null
-
-      // Accumulate pause stats client-side for server-synchronized timer
-      const prevStats: SessionPauseStats = state.pauseStats[event.sessionId] ?? {
-        cumulativePauseMs: 0,
-        pauseCount: 0,
-        pauseStartedAt: undefined,
-      }
-      let nextStats = prevStats
-
-      if (isFreshSessionStart) {
-        nextStats = {
-          cumulativePauseMs: 0,
-          pauseCount: 0,
-          pauseStartedAt: undefined,
-        }
-      } else if (payload.state === 'PAUSED') {
-        // Record when this pause began
-        nextStats = { ...prevStats, pauseStartedAt: event.timestamp }
-      } else if (payload.state === 'ACTIVE' && prevStats.pauseStartedAt !== undefined) {
-        // Resuming from pause — accumulate the pause segment
-        const pauseSegmentMs = event.timestamp - prevStats.pauseStartedAt
-        nextStats = {
-          cumulativePauseMs: prevStats.cumulativePauseMs + pauseSegmentMs,
-          pauseCount: prevStats.pauseCount + 1,
-          pauseStartedAt: undefined,
-        }
-      } else if (
-        payload.state === 'IDLE' ||
-        payload.state === 'ENDED' ||
-        payload.state === 'CLEANUP'
-      ) {
-        // Session ended or reset — keep stats until explicit clear
-        nextStats = { ...prevStats, pauseStartedAt: undefined }
-      }
 
       return {
         sessions: nextSessions,
+        currentSessionId: nextCurrentSessionId,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
         pauseStats: { ...state.pauseStats, [event.sessionId]: nextStats },
         cooldownExtensionCounts: nextCooldownExtensionCounts,

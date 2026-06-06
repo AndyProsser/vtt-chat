@@ -95,6 +95,17 @@ vi.mock('@/services/room.service', () => ({
   ensureSessionWhisperRoomForSession: vi.fn(async () => undefined),
   applySessionStateRoomTransition: vi.fn(),
   deletePrivateRoomsForEndedSession: vi.fn(),
+  removePresenceProjection: vi.fn(async () => undefined),
+}))
+
+vi.mock('@/services/session/disconnect-cascade.service', () => ({
+  sessionDisconnectCascadeService: {
+    cancelUserTimers: vi.fn(),
+  },
+}))
+
+vi.mock('@/repositories/session.repository', () => ({
+  getSessionParticipantProfiles: vi.fn(async () => ({})),
 }))
 
 vi.mock('@/services/chat.service', () => ({
@@ -203,7 +214,7 @@ describe('session membership lifecycle authz', () => {
     mocks.getRoom.mockResolvedValue({
       id: ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
     })
 
@@ -223,7 +234,7 @@ describe('session membership lifecycle authz', () => {
       {
         id: ROOM_ID,
         sessionId: SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: 'MAIN',
         createdBy: DM_ID,
         createdAt: Date.now(),
@@ -353,7 +364,7 @@ describe('session membership lifecycle authz', () => {
       {
         id: ROOM_ID,
         sessionId: SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: 'MAIN',
         createdBy: DM_ID,
         createdAt: Date.now(),

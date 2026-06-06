@@ -5,10 +5,31 @@ const SHARED_WITH_PREFIX = 'Shared with:'
 const HASHTAGS_PREFIX = 'Hashtags:'
 
 export interface ParsedNoteSharedMessage {
+  noteId?: string
   title: string
   sharedWith: string | null
   hashtags: string | null
   markdown: string
+  /** Present when the card was surfaced via /surface (excerpt-based). Absent for legacy /publish cards. */
+  excerptSource?: 'AUTO' | 'MANUAL'
+}
+
+function parseNoteHandoutMessageMetadata(
+  metadata?: MessageMetadataEntity | null
+): ParsedNoteSharedMessage | null {
+  const noteHandout = metadata?.noteHandout
+  if (!noteHandout || noteHandout.kind !== 'NOTE_HANDOUT') {
+    return null
+  }
+
+  return {
+    noteId: noteHandout.noteId,
+    title: noteHandout.title.trim() || 'Untitled Handout',
+    sharedWith: null,
+    hashtags: null,
+    markdown: noteHandout.excerpt,
+    excerptSource: noteHandout.excerptSource,
+  }
 }
 
 function parseNoteSharedMessageMetadata(
@@ -20,6 +41,7 @@ function parseNoteSharedMessageMetadata(
   }
 
   return {
+    noteId: noteShared.noteId,
     title: noteShared.title.trim() || 'Untitled Handout',
     sharedWith: noteShared.sharedWith?.trim() || null,
     hashtags: noteShared.hashtags?.trim() || null,
@@ -77,6 +99,8 @@ export function parseNoteSharedMessage(params: {
   metadata?: MessageMetadataEntity | null
 }): ParsedNoteSharedMessage | null {
   return (
-    parseNoteSharedMessageMetadata(params.metadata) ?? parseLegacyNoteSharedMessage(params.content)
+    parseNoteHandoutMessageMetadata(params.metadata) ??
+    parseNoteSharedMessageMetadata(params.metadata) ??
+    parseLegacyNoteSharedMessage(params.content)
   )
 }

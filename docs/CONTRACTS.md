@@ -43,6 +43,49 @@ Players must never be left without a valid room assignment.
 - If any presence record is detected with no valid `primaryRoomId`, reconciliation must move that user to `MAIN`.
 - Group deletion must migrate all remaining members to `MAIN` before final delete completes.
 
+### Campaign Conversation Authority Contract
+
+Conversation authority is campaign-scoped. Session state is policy- and routing-scoped.
+
+- Campaign membership (`CampaignMembership`) is the authoritative gate for whether a user can participate in campaign conversation surfaces (voice eligibility, chat eligibility, handout visibility), subject to role policy.
+- Session membership determines runtime placement (`primaryRoomId`, private-room projection) and lifecycle policy application, but does not by itself grant campaign conversation authority.
+- A session transition may move users between rooms, but must not be treated as a transport/audio identity reset.
+- If a user is not campaign-authorized, session room assignment cannot elevate them into conversation channels.
+
+Required enforcement order for conversational actions:
+
+1. Validate campaign membership + role policy.
+2. Validate session lifecycle policy (state gates, spectator windows, recording rules).
+3. Apply room routing / delivery scope.
+4. Persist + broadcast.
+
+Examples:
+
+- User is in the room but not campaign-authorized: reject chat/voice participation (`403 FORBIDDEN`).
+- User is campaign-authorized but session is paused with policy denying runtime speech: transport may remain connected, but speaking delivery remains policy-muted.
+- Session state changes (`ACTIVE` → `PAUSED` → `COOLDOWN`) remap policy/routing only; they do not imply identity teardown of conversation participants.
+
+### Session Room Assignment Contract
+
+Session state controls where users are assigned, not who is campaign-authorized to converse.
+
+- Session transitions may remap `primaryRoomId` according to lifecycle rules (for example, move to `MAIN`, greenroom, or private whisper handling).
+- `PAUSED` is a temporary staging state: when a pause moves users to `MAIN`, backend must preserve each participant's last valid non-greenroom room (`previousGroupId`), including the room remembered before Whisper.
+- Resume from `PAUSED` must restore each participant to that preserved room when it still exists; if the stored room is missing or invalid, fail back to `MAIN`.
+- Room reassignment must preserve participant identity continuity for transport/presence reconciliation.
+- Room reassignment events (`ROOM:SESSION_TRANSITION_APPLIED`, `ROOM:USER_JOINED`, `ROOM:USER_LEFT`) are topology/routing contracts and must not encode campaign authorization decisions.
+- `ROOM:SESSION_TRANSITION_APPLIED` may carry per-user `roomId` targets when a bulk transition restores different users to different rooms; clients must apply those per-user targets instead of assuming one shared destination.
+- Campaign authorization decisions remain upstream and explicit in API validation and permission checks.
+
+### Audio Runtime Persistence and Session Policy Contract
+
+Audio transport continuity should be decoupled from session lifecycle boundaries.
+
+- Audio runtime identity is campaign-scoped (or campaign-participant scoped) and may survive session state transitions.
+- Session lifecycle controls policy overlays: recording windows, spectator interaction windows, DM override applicability, and room-based mix/routing targets.
+- Whisper/private and spectator privacy constraints remain hard policy boundaries regardless of transport continuity.
+- Recording bookends remain session-authoritative (`[Session Started]`, `[Session Paused]`, `[Session Resumed]`, `[Session Ended]`) even when transport/audio state remains continuous.
+
 ### Audio Broadcast Terminology (Canonical + Legacy Aliases)
 
 Canonical runtime naming for DM session-wide narration is **broadcast**.
@@ -81,7 +124,7 @@ Visibility and editability contract:
 - `ROOMS`: DM-only; hidden (not disabled) for non-DM personas.
 - `NOTES`: readable by all personas; DM edit controls.
 - `NOTES`: current rightbar handouts contain name, markdown content, and hashtags, and the panel search must cover name + content + hashtags.
-- `NOTES`: structured image attachment fields are not yet implemented in the current runtime contract and remain pending roadmap work.
+- `NOTES`: rightbar handouts now support structured image attachments in create/edit/read flows. Attachments persist on the note record, travel through `NOTES:CREATED` and `NOTES:UPDATED`, and render as thumbnail cards alongside markdown content.
 - `NOTES`: DM may share a note to one or more players, and may post a note card to a selected group chat; posting auto-shares to all players in that group.
 - `JOURNAL`: readable by all personas, DM edit controls only, reverse-chronological by session, exactly one markdown entry per session with hashtag list.
 - `HISTORY`: readable by all personas, grouped by session boundaries, and excludes current-session messages.
@@ -93,7 +136,7 @@ Party presence status contract:
 
 - PARTY rows use canonical campaign-context labels: `HERE`, `AWAY`, `LOBBY`, `NOT HERE`, `OFFLINE`.
 - `HERE` means runtime-connected in the same campaign session.
-- `AWAY` maps to runtime presence `IDLE` in the same campaign session.
+- `AWAY` maps to runtime presence `IDLE` only while the selected runtime session is live (`ACTIVE`/`PAUSED`/`COOLDOWN`).
 - `LOBBY` means connected to platform transport but not runtime-bound.
 - `NOT HERE` means runtime-connected in another campaign context.
 - `OFFLINE` means no active runtime/lobby transport presence detected.
@@ -410,6 +453,7 @@ Campaign-model compatibility addendum (2026-05-04 lock):
 - Campaign settings include `postSessionChatEnabled: boolean` (default true) and `postSessionChatDurationMs: integer` (default 300000 ms / 5 minutes, range 60000–3600000 ms).
 - Campaign settings PATCH compatibility: metadata-only saves are valid. Clients may send only changed metadata fields (for example `name`, `description`, `posterUrl`) without resending visibility/spectator policy booleans.
 - For omitted campaign settings fields on PATCH (for example `discoverable`, `spectatorsEnabled`, `lateJoinPolicy`), backend must retain current persisted values rather than rejecting the request.
+- `POST /api/session/:id/join` must enforce campaign `lateJoinPolicy` and `lateJoinGraceMinutes` for brand-new player joins after a session has started; DMs and already-joined reconnects continue to bypass that late-join gate.
 - GREENROOM (via RoomType) persists at campaign scope; shared across all sessions for that campaign.
 
 ---
@@ -513,10 +557,13 @@ Notes visibility/publish sequencing contract:
 - `POST /api/notes` with the reserved journal tag (`_journal`) or canonical journal title (`Session Journal`) is an upsert for that session's journal entry: if a journal note already exists for the session, backend must update it in place, return `200`, and emit `NOTES:UPDATED` instead of creating a duplicate.
 - `POST /api/notes/:noteId/publish` is manual and accepts either `audience: 'EVERYONE'` or `audience: 'ROOM'` with a valid `roomId`.
 - Publish room targets must exclude whisper/private rooms, greenroom, and empty rooms; frontend should offer `Everyone` plus occupied MAIN/GROUP rooms only.
+- If more than one publishable room currently has at least one player, publish must require explicit room selection (`audience: 'ROOM'`); backend must reject `audience: 'EVERYONE'` for that state with `409 CONFLICT`.
 - Publishing to `Everyone` upgrades the note visibility to `PLAYERS_VISIBLE`; publishing to a room upgrades/shares the note to the players currently in that room before emitting chat.
 - Publishing a note emits `NOTES:UPDATED` first and then `CHAT:MESSAGE_SENT`, both using the same visibility audience for that note and the selected room/global destination.
+- `NOTES:CREATED`, `NOTES:UPDATED`, and `NOTES:DELETED` payloads must include `campaignId` so campaign-scoped clients can apply updates without relying on `sessionId` bucket keys; `NOTES:UPDATED` should also include `publishedAt` when present.
 - Published note chat messages must include `message.metadata.noteShared = { kind: 'NOTE_SHARED', noteId, title, markdown, sharedWith, hashtags }` so recipients render a handout card from structured data rather than reparsing the chat text body.
 - Publishing writes both an audit record (`NOTES.PUBLISHED`) and a session-log record for traceability.
+- Note attachments are currently image-only in runtime (`image/*`, max 6 attachments per note, stored as note-scoped attachment objects with `id`, `campaignId`, `mime`, `name`, `uri`, `createdAt`). PDF attachment support remains planned work.
 
 **Audio** (file: `events/audio.ts`)
 
@@ -548,7 +595,7 @@ Notes visibility/publish sequencing contract:
   - Response: deleted groupId
   - Emits: `ROOM:DELETED`
 
-**Environment Application**
+#### Environment Application
 
 - `POST /api/audio/environments/apply` → Set environment for a session group
   - Request: `{ sessionId, groupId, environmentName }`
@@ -561,7 +608,7 @@ Notes visibility/publish sequencing contract:
   - Emits: `AUDIO:ENVIRONMENT_CLEARED`
   - Note: environment still persists at campaign level; this clears session-level override
 
-**Environment Lifecycle**
+#### Environment Lifecycle
 
 - Campaign groups have a `defaultEnvironmentName` that persists across sessions
 - On session start, campaign groups are carried into session; session environment defaults to campaign default
@@ -885,11 +932,12 @@ Private card visual rules for non-members:
 
 - `POST /api/campaigns/:id/join-request` — authenticated full user submits a join request with an optional message (max 300 chars). Returns `201` with the pending request record.
 - If the user already has a pending or approved membership, return `409 Conflict`.
+- `GET /api/campaigns/:id/join-request` — DM-only. Returns the current pending request list for inline lobby review, including requester username, display name, avatar, timestamp, and optional message.
 - `POST /api/campaigns/:id/join-request/:requestId/approve` — DM-only. Converts pending request to `CampaignMembership` with role `PLAYER`.
 - `POST /api/campaigns/:id/join-request/:requestId/reject` — DM-only. Deletes the pending request.
 - WS event `CAMPAIGN:JOIN_REQUEST_RECEIVED` is broadcast to the DM immediately after a request is persisted. Payload: `{ campaignId, requestId, userId, displayName, avatarUrl, requestedAt, message? }`.
 - DM's campaign card in the lobby shows a notification badge with the count of pending join requests. Clicking the badge opens an inline approval panel showing: requester username, avatar, requested-at timestamp, and optional message with approve/reject buttons.
-- On approval, the WS event `CAMPAIGN:JOIN_REQUEST_RESOLVED` is broadcast to the requester so their lobby card updates immediately.
+- On approval, the WS event `CAMPAIGN:JOIN_REQUEST_RESOLVED` is broadcast to the requester so their lobby card updates immediately. Frontend lobby clients also treat join-request received/resolved campaign events as list-refresh signals so DM badge counts converge without a manual reload.
 
 ### WATCH Entry for Full Users
 
@@ -906,6 +954,7 @@ Visibility applies to both PUBLIC and PRIVATE campaigns under these conditions. 
 - Guest users must still enter via a spectator invite link (`/watch/:code`); they cannot use the WATCH button flow.
 - `POST /api/campaigns/:id/watch` returns `403` with a descriptive reason if any condition is unmet (e.g. `"No active session"`, `"Spectators not enabled"`, `"No players currently connected"`).
 - The lobby query that populates campaign cards must include `activeSessionState`, `spectatorsEnabled`, and `activeConnectedCount` so the frontend can determine card treatment without an additional round-trip.
+- Non-member lobby discovery must include PRIVATE campaigns even when they are not currently watchable so the frontend can render the canonical dimmed locked card state instead of hiding them entirely.
 
 ---
 
@@ -984,7 +1033,73 @@ Guests who exit a session are routed to an upgrade screen only — they do not s
 
 ---
 
+## Groups Panel Contracts (W-Groups-Panel)
+
+### Reserved Room Names
+
+The names `MAIN`, `WHISPER`, and `GREENROOM` (case-insensitive) are reserved and cannot be used when creating DM groups. Both the API and frontend enforce this.
+
+### Group Close Contract
+
+`POST /api/rooms/:roomId/close` — DM only.
+
+Empties a group by moving all its members to MAIN. The group record is preserved and appears empty. The Delete action becomes available after Close.
+
+- Only GROUP-type rooms can be closed. MAIN and WHISPER have dedicated flows.
+- Returns `{ ok: true, closedGroupId, movedUsers: [{ userId, username, fromGroupId, toGroupId }] }`.
+- Broadcasts `ROOM:USER_LEFT` (source room) and `ROOM:USER_JOINED` (MAIN) per affected user.
+
+### Group Delete Contract
+
+`DELETE /api/rooms/:roomId` — DM only.
+
+Permanently deletes a group from both the session and the campaign (Postgres). The group will not be available in future sessions.
+
+- Only allowed on empty groups (no current members). Returns `409` if members remain.
+- MAIN, WHISPER, and GREENROOM cannot be deleted.
+- Broadcasts `ROOM:DELETED` after successful deletion.
+
+### Group Environment Contract
+
+`POST /api/audio/environments/apply` — DM only.
+
+Sets the ambient environment for a group. Affects all players currently in that group.
+
+Request body: `{ sessionId, roomId, environmentName }`.
+
+- `environmentName` must be a non-empty string. `"Default"` clears the active environment.
+- Persisted to Redis (`audio:session:{sessionId}:environments`) and Postgres for recovery.
+- Broadcasts `AUDIO:ENVIRONMENT_SET` to all session members after persistence.
+- Environments are **preserved across PAUSED ↔ ACTIVE transitions**. They are only cleared on ENDED/CLEANUP teardown.
+
+### DM Audio Override Contract
+
+`POST /api/audio/overrides/dm/apply` and `POST /api/audio/overrides/dm/remove` — DM only.
+
+Allows the DM to remotely adjust a player's local audio settings.
+
+Apply body: `{ sessionId, targetUserId, overrideType, parameters? }`.
+Remove body: `{ sessionId, targetUserId, overrideType }`.
+
+Supported override types for audio quality adjustment:
+
+| Type     | Purpose                 | Example parameters                                     |
+| -------- | ----------------------- | ------------------------------------------------------ |
+| `GAIN`   | Mic gain multiplier     | `{ factor: 0.5 }` (lower) or `{ factor: 1.5 }` (boost) |
+| `FILTER` | Background noise filter | `{ enabled: true }`                                    |
+| `GATE`   | Noise gate threshold    | `{ threshold: 0.2 }`                                   |
+
+Mute-override constraint:
+
+- A DM may apply a `MUTE` override to silence a player. Removing that override only removes the DM's mute — it does not affect the player's own self-mute (`AUDIO:MUTE_STATE_CHANGED`). A player who self-muted remains muted after a DM `MUTE` override is removed.
+- `GAIN`, `FILTER`, and `GATE` overrides are independent of mute state and can always be applied or removed.
+
+Broadcasts `AUDIO:DM_OVERRIDE_APPLIED` / `AUDIO:DM_OVERRIDE_REMOVED` to all session members after persistence.
+
+---
+
 **Document Version**: 1.1
 **Locked By**: Stage 0 Build Agent
 **Lock Date**: April 17, 2026
 **Amendment Date**: 2026-05-21 — Campaign visibility model, request-to-join, WATCH entry, guest upgrade, campaign retire/resume, admin export/import contracts added.
+**Amendment Date**: 2026-06-04 — Groups panel contracts added: reserved names, group close, group delete, environment apply, DM audio override (GAIN/FILTER/GATE).

@@ -1,7 +1,9 @@
 import type { UUID } from '@shared'
+import { DISTANCE_PRESETS as SHARED_DISTANCE_PRESETS } from '@shared'
 import { DM_FLAVOR_LINES } from './voiceGroup.constants'
 
-export const DISTANCE_PRESETS = ['Default', 'Nearby', 'Visible', 'Far'] as const
+/** Distance names for context menu targets. Derived from the canonical shared catalogue. */
+export const DISTANCE_PRESETS = SHARED_DISTANCE_PRESETS.map((p) => p.name) as string[]
 
 export function getRoomSelectorDmFlavorLine(dmUserId: UUID, sessionId: UUID): string {
   const seed = `${dmUserId}:${sessionId}`

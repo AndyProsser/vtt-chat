@@ -1,5 +1,5 @@
 import { PresenceState, Role, SessionState } from '@shared'
-import type { UUID } from '@shared'
+import type { UUID, EventEnvelope } from '@shared'
 import { config } from '@/infra/config'
 import {
   listCleanupCandidateSessions,
@@ -8,7 +8,11 @@ import {
   campaignHasActiveSessions,
   listEndedSessionIdsByCampaign,
 } from '@/repositories/session.repository'
-import { getRooms, getSessionPresence } from '@/services/room.service'
+import {
+  getRooms,
+  getSessionPresence,
+  applySessionStateRoomTransition,
+} from '@/services/room.service'
 import { updateSessionState, getSessionUsers } from '@/services/session/core.service'
 import { clearRoomMessages } from '@/services/chat.service'
 import {
@@ -21,8 +25,14 @@ import {
   STANDALONE_SESSION_COOLDOWN_MS,
 } from '@/constants/session.constants'
 import { logger, isGreenRoomName } from '@/utils'
+import crypto from 'node:crypto'
+
+interface WsAdapter {
+  broadcastEventToSession: (sessionId: UUID, event: EventEnvelope) => void
+}
 
 const LIFECYCLE_FALLBACK_POLL_INTERVAL_MS = 60_000
+const SYSTEM_ACTOR_ID = '00000000-0000-4000-8000-000000000000' as UUID
 
 function getSessionCooldownDurationMs(session: {
   campaign: {
@@ -142,21 +152,76 @@ async function transitionCooldownToEnded(session: {
 
 /**
  * Transitions a session from ENDED to CLEANUP and purges its greenroom chat.
+ * Broadcasts ROOM:SESSION_TRANSITION_APPLIED so reconnecting clients know everyone is OFFLINE.
  * Uses the session's own dmId for authorization — the job acts on behalf of the DM.
  */
-async function transitionToCleanup(session: {
-  id: string
-  dmId: string
-  name: string
-}): Promise<void> {
+async function transitionToCleanup(
+  session: {
+    id: string
+    dmId: string
+    name: string
+  },
+  wsManager?: WsAdapter
+): Promise<void> {
   await updateSessionState(session.id as UUID, SessionState.CLEANUP, session.dmId as UUID)
   await disableMockSimulationForSessionExit(session.id as UUID)
   await purgeMockSimulationSessionState(session.id as UUID)
   await purgeGreenroomChat(session.id as UUID)
 
+  // If wsManager available, apply room transitions and broadcast event
+  // so reconnecting clients see CLEANUP state with everyone OFFLINE in greenroom
+  if (wsManager) {
+    const sessionId = session.id as UUID
+    const transition = await applySessionStateRoomTransition({
+      sessionId,
+      dmId: session.dmId as UUID,
+      nextState: SessionState.CLEANUP,
+      users: await getSessionUsers(sessionId).then((users) =>
+        users.map((u) => ({ id: u.id, username: u.username }))
+      ),
+    })
+
+    wsManager.broadcastEventToSession(sessionId, {
+      id: crypto.randomUUID() as UUID,
+      type: 'ROOM:SESSION_TRANSITION_APPLIED',
+      version: 1,
+      userId: SYSTEM_ACTOR_ID,
+      userRole: Role.SYSTEM,
+      sessionId,
+      roomId: transition.targetRoomId,
+      timestamp: Date.now(),
+      payload: {
+        previousState: SessionState.ENDED,
+        nextState: SessionState.CLEANUP,
+        movedUsers: transition.movedUsers,
+        targetState: transition.targetState,
+        mainRoom: {
+          id: transition.mainRoomId,
+          name: transition.mainRoomName,
+          roomType: 'MAIN',
+        },
+        greenRoom: {
+          id: transition.greenRoomId,
+          name: transition.greenRoomName,
+          roomType: 'GROUP',
+        },
+        targetRoomId: transition.targetRoomId,
+        targetRoomName: transition.targetRoomName,
+        users: transition.users.map((member) => ({
+          userId: member.id,
+          username: member.username,
+          roomId: member.roomId,
+          roomName: member.roomName,
+          previousGroupId: member.previousGroupId || null,
+        })),
+      },
+    })
+  }
+
   logger.info('session-cleanup-job', 'Transitioned session ENDED → CLEANUP', {
     sessionId: session.id,
     sessionName: session.name,
+    wsEventBroadcast: Boolean(wsManager),
   })
 }
 
@@ -166,6 +231,12 @@ export class SessionCleanupJobService {
   private archiveIntervalId: ReturnType<typeof setInterval> | null = null
   private lifecycleWorkerRunning = false
   private archiveWorkerRunning = false
+  private wsManager: WsAdapter | null = null
+  private bypassEndedDisconnectGraceSessionIds = new Set<UUID>()
+
+  setWebSocketManager(wsManager: WsAdapter): void {
+    this.wsManager = wsManager
+  }
 
   start(): void {
     if (this.archiveIntervalId !== null) {
@@ -199,8 +270,15 @@ export class SessionCleanupJobService {
     await this.runArchiveWorkerOnce()
   }
 
-  notifyLifecycleTrigger(reason: 'COOLDOWN_STARTED' | 'SESSION_ENDED'): void {
+  notifyLifecycleTrigger(
+    reason: 'COOLDOWN_STARTED' | 'SESSION_ENDED' | 'EXPLICIT_SESSION_EXIT'
+  ): void {
     void this.refreshLifecycleScheduler(reason)
+  }
+
+  notifyExplicitSessionExit(sessionId: UUID): void {
+    this.bypassEndedDisconnectGraceSessionIds.add(sessionId)
+    void this.refreshLifecycleScheduler('EXPLICIT_SESSION_EXIT')
   }
 
   private async refreshLifecycleScheduler(reason: string): Promise<void> {
@@ -436,8 +514,13 @@ export class SessionCleanupJobService {
         const fallbackSeenAt = session.endedAt?.getTime() ?? now
         const disconnectedSinceMs = now - (latestSeenAt ?? fallbackSeenAt)
 
-        if (disconnectedSinceMs < config.sessionCleanup.endedDisconnectGraceMs) {
+        const bypassGrace = this.bypassEndedDisconnectGraceSessionIds.has(sessionId)
+        if (disconnectedSinceMs < config.sessionCleanup.endedDisconnectGraceMs && !bypassGrace) {
           continue
+        }
+
+        if (bypassGrace) {
+          this.bypassEndedDisconnectGraceSessionIds.delete(sessionId)
         }
 
         // --- 2. Campaign vs standalone ---
@@ -461,7 +544,7 @@ export class SessionCleanupJobService {
 
           for (const sibling of allEndedForCampaign) {
             try {
-              await transitionToCleanup(sibling)
+              await transitionToCleanup(sibling, this.wsManager ?? undefined)
             } catch (err) {
               logger.warn(
                 'session-cleanup-job',
@@ -478,7 +561,7 @@ export class SessionCleanupJobService {
           processedCampaigns.add(campaignId)
         } else {
           // Standalone session — transition directly.
-          await transitionToCleanup(session)
+          await transitionToCleanup(session, this.wsManager ?? undefined)
         }
       } catch (error) {
         logger.warn(

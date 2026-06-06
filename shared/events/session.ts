@@ -7,7 +7,7 @@
  * Visibility: All state changes are visible to all session participants.
  */
 
-import type { DeviceClass, DeviceSessionEntity, UUID } from '../types'
+import type { DeviceClass, DeviceSessionEntity, PresenceState, Role, UUID } from '../types'
 import type { EventEnvelope } from './base'
 
 export type SessionEventType =
@@ -26,6 +26,8 @@ export type SessionEventType =
   | 'SESSION:DEVICE_SESSION_TRANSFERRED'
   | 'SESSION:DEVICE_MIC_OWNER_CHANGED'
   | 'SESSION:DEVICE_MIC_HARD_UNPUBLISHED'
+  | 'SESSION:MEMBER_JOINED'
+  | 'SESSION:MEMBER_LEFT'
 
 /**
  * SESSION:CREATED
@@ -229,6 +231,56 @@ export interface SessionDeviceMicHardUnpublished {
 export type SessionDeviceMicHardUnpublishedEvent = EventEnvelope<SessionDeviceMicHardUnpublished>
 
 /**
+ * SESSION:MEMBER_JOINED
+ * A user has entered the session (new member or rejoining after ghost expiry via the join
+ * endpoint). Carries a full profile snapshot so all connected clients immediately have the
+ * complete character/presence data — no follow-up REST enrichment call is needed.
+ *
+ * Fires BEFORE the corresponding ROOM:USER_JOINED so that presence is populated by the time
+ * room-membership handlers run.
+ *
+ * Does NOT fire on WS reconnects within the ghost window — use PRESENCE:STATE_CHANGED for those.
+ */
+export interface SessionMemberJoined {
+  userId: UUID
+  username: string
+  role: Role
+  playerName: string | null
+  avatarUrl: string | null
+  characterName: string | null
+  characterClass: string | null
+  characterSubclass: string | null
+  characterRace: string | null
+  level: number | null
+  characterStats: Record<string, unknown> | null
+  primaryRoomId: UUID | null
+  state: PresenceState
+  ghost: boolean
+  joinedAt: number
+}
+
+export type SessionMemberJoinedEvent = EventEnvelope<SessionMemberJoined>
+
+/**
+ * SESSION:MEMBER_LEFT
+ * A user has fully departed the session.
+ *
+ * reason=VOLUNTARY  — user explicitly called the leave endpoint, bypassing the ghost window.
+ * reason=GHOST_EXPIRED — user disconnected, entered ghost mode, and the presence TTL expired.
+ *
+ * Replaces the former ROOM:USER_LEFT reason=DISCONNECT (ghost expiry) and
+ * ROOM:USER_LEFT reason=EXIT_SESSION (voluntary DM exit) patterns.
+ */
+export interface SessionMemberLeft {
+  userId: UUID
+  username: string
+  leftAt: number
+  reason: 'VOLUNTARY' | 'GHOST_EXPIRED'
+}
+
+export type SessionMemberLeftEvent = EventEnvelope<SessionMemberLeft>
+
+/**
  * Union type for all session events.
  */
 export type SessionEvent =
@@ -247,3 +299,5 @@ export type SessionEvent =
   | SessionDeviceSessionTransferredEvent
   | SessionDeviceMicOwnerChangedEvent
   | SessionDeviceMicHardUnpublishedEvent
+  | SessionMemberJoinedEvent
+  | SessionMemberLeftEvent

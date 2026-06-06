@@ -159,8 +159,14 @@
   font-size: 12px;
 }
 
-.campaign-bundle-textarea.compact {
+.campaign-bundle-textarea.compact,
+.campaign-bundle-textarea--short {
   min-height: 100px;
+}
+
+.campaign-form-label-hint {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .campaign-inline-actions {

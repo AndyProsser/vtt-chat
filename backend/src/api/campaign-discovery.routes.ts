@@ -24,6 +24,7 @@ import { getPrismaClient } from '@/infra/db'
 import {
   listDiscoverableCampaigns,
   createJoinRequest,
+  listPendingJoinRequests,
   resolveJoinRequest,
   retireCampaign,
   resumeCampaign,
@@ -92,6 +93,30 @@ router.get('/discover', requireAuth, async (req: Request, res: Response) => {
   const user = getUser(req)
   const campaigns = await listDiscoverableCampaigns(user.userId as UUID)
   return res.status(200).json({ campaigns })
+})
+
+// ---------------------------------------------------------------------------
+// GET /:id/join-request — list pending join requests for the campaign DM
+// ---------------------------------------------------------------------------
+
+router.get('/:id/join-request', requireAuth, async (req: Request, res: Response) => {
+  const user = getUser(req)
+  const campaignId = req.params.id
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaign id' })
+  }
+
+  const dmId = await getCampaignDmId(campaignId)
+  if (dmId !== user.userId) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Only the campaign DM can review join requests.',
+    })
+  }
+
+  const requests = await listPendingJoinRequests(campaignId)
+  return res.status(200).json({ requests })
 })
 
 // ---------------------------------------------------------------------------

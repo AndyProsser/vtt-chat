@@ -251,10 +251,10 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Room not found' })
     }
 
-    if (session.state === SessionState.PAUSED) {
+    if (session.state === SessionState.PAUSED && type !== MessageType.OOC) {
       return res.status(409).json({
         code: ErrorCode.INVALID_SESSION,
-        message: 'Chat is disabled during intermission',
+        message: 'Only OOC messages are allowed during intermission',
       })
     }
 
@@ -289,6 +289,14 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
       postSessionChatEnabled &&
       (room.type === RoomType.MAIN || (room.type === RoomType.GROUP && isGreenRoomName(room.name)))
 
+    if (session.state === SessionState.COOLDOWN && type !== MessageType.OOC) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: 'Cooldown chat only supports OOC messages',
+        field: 'type',
+      })
+    }
+
     if (isGreenRoomName(room.name) && type !== MessageType.OOC) {
       return res.status(400).json({
         code: ErrorCode.INVALID_INPUT,
@@ -314,6 +322,7 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
 
     if (
       session.state !== SessionState.ACTIVE &&
+      session.state !== SessionState.PAUSED &&
       !allowCooldownChat &&
       !allowGreenroomChatOutsideActive
     ) {

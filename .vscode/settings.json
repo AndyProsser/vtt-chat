@@ -109,4 +109,6 @@
   "[caddyfile]": {
     "editor.defaultFormatter": "matthewpi.caddyfile-support"
   },
+  "telemetry.feedback.enabled": false,
+  "telemetry.editStats.enabled": false,
 }

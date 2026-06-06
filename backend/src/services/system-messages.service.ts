@@ -59,8 +59,12 @@ export async function emitSessionRecapMessage(params: {
 
   // Step 2: Find the most recent ENDED session for the same campaign
   const previousSession = await prisma.session.findFirst({
-    where: { campaignId: currentSession.campaignId, state: 'ENDED', NOT: { id: params.sessionId } },
-    orderBy: { endedAt: 'desc' },
+    where: {
+      campaignId: currentSession.campaignId,
+      state: { in: ['ENDED', 'CLEANUP'] },
+      NOT: { id: params.sessionId },
+    },
+    orderBy: [{ endedAt: 'desc' }, { startedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
     select: { id: true, name: true },
   })
   const campaignName = currentSession.campaign?.name?.trim() || 'This campaign'
@@ -217,6 +221,78 @@ export async function emitSessionBoundarySystemMessage(params: {
       const event = buildSystemChatEvent(stored)
       params.wsManager.broadcastEventToSession(params.sessionId, event)
     }
+  }
+}
+
+/**
+ * Emits a system message when the DM applies or clears a condition/distance override
+ * on a player. Message is posted to the session's MAIN room so all players see it.
+ * Best-effort — if the DB lookups fail (e.g. race on session teardown) the error is
+ * swallowed so the calling route still succeeds.
+ */
+export async function emitConditionSystemMessage(params: {
+  sessionId: UUID
+  targetUserId: UUID
+  dmId: UUID
+  overrideType: 'CONDITION' | 'DISTANCE'
+  presetName: string | null
+  isRemoval: boolean
+}): Promise<void> {
+  const prisma = getPrismaClient()
+
+  try {
+    const [targetUser, dmUser, mainRoom] = await Promise.all([
+      prisma.user.findUnique({ where: { id: params.targetUserId }, select: { username: true } }),
+      prisma.user.findUnique({ where: { id: params.dmId }, select: { username: true } }),
+      prisma.room.findFirst({
+        where: { sessionId: params.sessionId, type: 'MAIN' },
+        select: { id: true },
+      }),
+    ])
+
+    if (!targetUser || !mainRoom) return
+
+    const playerName = targetUser.username
+    const dmUsername = dmUser?.username ?? 'DM'
+
+    let content: string
+    if (params.isRemoval) {
+      content =
+        params.overrideType === 'CONDITION'
+          ? `[${playerName}'s condition was cleared]`
+          : `[${playerName}'s distance was cleared]`
+    } else {
+      content =
+        params.overrideType === 'CONDITION'
+          ? `[${playerName} is ${params.presetName}]`
+          : `[${playerName} is ${params.presetName}]`
+    }
+
+    const stored = await sendMessage({
+      sessionId: params.sessionId,
+      roomId: mainRoom.id as UUID,
+      authorId: params.dmId,
+      authorUsername: dmUsername,
+      dmId: params.dmId,
+      content,
+      type: MessageType.SYSTEM,
+      metadata: {
+        conditionMessage: {
+          kind: 'CONDITION',
+          targetUserId: params.targetUserId,
+          presetName: params.isRemoval ? undefined : (params.presetName ?? undefined),
+          isRemoval: params.isRemoval,
+        },
+      },
+    })
+
+    if (stored.sessionId) {
+      const event = buildSystemChatEvent(stored)
+      const { default: eventBroadcaster } = await import('@/ws/event-broadcaster')
+      eventBroadcaster.broadcastToSession(params.sessionId, event)
+    }
+  } catch (err) {
+    logger.warn('Failed to emit condition system message', { err, ...params })
   }
 }
 

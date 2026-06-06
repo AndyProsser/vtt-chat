@@ -153,6 +153,12 @@
   text-transform: uppercase;
 }
 
+.session-audio-device-panel__mode-pill-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
 .session-audio-device-panel__mode-pill-badge {
   width: 0.42rem;
   height: 0.42rem;
@@ -209,7 +215,6 @@
     color-mix(in srgb, var(--color-success, #22c55e) 72%, var(--color-warn, #f59e0b) 28%) 65%,
     color-mix(in srgb, var(--color-error, #ef4444) 68%, var(--color-warn, #f59e0b) 32%) 100%
   );
-  transition: height 70ms linear;
 }
 
 .session-audio-device-panel__controls-spacer {
@@ -258,6 +263,16 @@
   background: var(--color-surface);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
   z-index: 260;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.session-audio-device-panel__control-group:hover .session-audio-device-panel__quick-panel,
+.session-audio-device-panel__control-group:focus-within .session-audio-device-panel__quick-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .session-audio-device-panel__quick-title {
@@ -291,6 +306,15 @@
   padding: 0.28rem 0.35rem;
   border-radius: 0.45rem;
   background: var(--color-surface-subtle);
+}
+
+.session-audio-device-panel__quick-item--primary {
+  background: color-mix(in srgb, var(--color-warn) 14%, var(--color-surface-subtle));
+  border: 1px solid color-mix(in srgb, var(--color-warn) 30%, transparent);
+}
+
+.session-audio-device-panel__quick-item--primary .session-audio-device-panel__quick-name {
+  color: var(--color-warn);
 }
 
 .session-audio-device-panel__detail-icon {

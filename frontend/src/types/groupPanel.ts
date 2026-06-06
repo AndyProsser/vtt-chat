@@ -1,4 +1,4 @@
-import type { UUID } from '@shared'
+import type { UUID, SessionState } from '@shared'
 import { RoomType } from '@shared'
 
 export interface GroupPanelGroup {
@@ -47,6 +47,7 @@ export interface GroupsPanelProps {
   apiUrl: string
   token: string
   sessionId: UUID
+  sessionState: SessionState
   dmUserId: UUID
   isGreenroom?: boolean
   headerModeCopy?: string
@@ -69,16 +70,10 @@ export function isWhisperGroup(group: GroupPanelGroup): boolean {
   return group.type === RoomType.PRIVATE
 }
 
-export const GROUP_ENVIRONMENT_OPTIONS = [
-  'Default',
-  'Forest',
-  'Cave',
-  'Tavern',
-  'City',
-  'Dungeon',
-  'Night',
-  'Storm',
-] as const
+import { ENVIRONMENT_PRESETS } from '@shared'
+
+/** Ordered list of environment names for pickers. Derived from the canonical shared catalogue. */
+export const GROUP_ENVIRONMENT_OPTIONS = ENVIRONMENT_PRESETS.map((p) => p.name) as string[]
 
 // Legacy aliases (Room terminology) kept until migration coverage is complete.
 export type RoomSelectorRoom = GroupPanelGroup

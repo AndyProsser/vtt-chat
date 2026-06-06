@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { type Role, type UUID } from '@shared'
+import { SessionState, type Role, type UUID } from '@shared'
 import {
   JOURNAL_AUTO_SAVE_DEBOUNCE_MS,
   JOURNAL_AI_UNAVAILABLE_COPY,
@@ -43,6 +43,7 @@ import type {
   SessionJournalStatus,
 } from '@/types/journalPanel'
 import type { Session } from '@/types/session'
+import { openJournalPopout } from '@/utils/route-view'
 import {
   appendJournalHashtagInput,
   buildContentHashtagSuggestions,
@@ -96,7 +97,7 @@ function JournalEditor({
   onSaved,
 }: JournalEditorProps) {
   const isDm = role === 'DM'
-  const resolvedJournalTitle = sessionName ? `Journal - ${sessionName}` : 'Session Journal'
+  const resolvedJournalTitle = sessionName ? `${sessionName}` : 'Session Journal'
 
   const [entry, setEntry] = useState<JournalEntry | null>(null)
   const [draft, setDraft] = useState('')
@@ -121,7 +122,7 @@ function JournalEditor({
 
     const load = async () => {
       try {
-        const res = await fetch(`${apiUrl}/api/notes/${sessionId}`, {
+        const res = await fetch(`${apiUrl}/api/journals/${sessionId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
 
@@ -129,14 +130,8 @@ function JournalEditor({
           return
         }
 
-        const data = (await res.json()) as { notes?: RawNote[] }
-        const notes = data.notes ?? []
-        const journalNote = notes.find(
-          (note) =>
-            note.tags?.includes(JOURNAL_TAG) ||
-            note.title === 'Session Journal' ||
-            note.title === resolvedJournalTitle
-        )
+        const data = (await res.json()) as { journal?: RawNote }
+        const journalNote = data.journal
 
         if (cancelled) {
           return
@@ -185,58 +180,32 @@ function JournalEditor({
     setSaveError(null)
 
     try {
-      let res: Response
-
-      if (entry) {
-        res = await fetch(`${apiUrl}/api/notes/${entry.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            title: resolvedJournalTitle,
-            name: resolvedJournalTitle,
-            content: draft,
-            markdown: draft,
-            tags: [JOURNAL_TAG, ...normalizedDraftHashtags],
-          }),
-        })
-      } else {
-        if (!campaignId) {
-          throw new Error('Campaign context is missing for journal creation')
-        }
-
-        res = await fetch(`${apiUrl}/api/notes`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            campaignId,
-            sessionId,
-            title: resolvedJournalTitle,
-            name: resolvedJournalTitle,
-            content: draft,
-            markdown: draft,
-            visibility: 'PLAYERS_VISIBLE',
-            tags: [JOURNAL_TAG, ...normalizedDraftHashtags],
-          }),
-        })
-      }
+      // Use the new /api/journals/:sessionId endpoint for session-specific journal operations
+      const res = await fetch(`${apiUrl}/api/journals/${sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: resolvedJournalTitle,
+          content: draft,
+          markdown: draft,
+          tags: normalizedDraftHashtags,
+        }),
+      })
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error((body as { message?: string }).message ?? `HTTP ${res.status}`)
       }
 
-      const data = (await res.json()) as { note?: RawNote }
-      if (!data.note) {
+      const data = (await res.json()) as { journal?: RawNote }
+      if (!data.journal) {
         return
       }
 
-      const saved = noteToEntry(data.note, sessionName, sessionId)
+      const saved = noteToEntry(data.journal, sessionName, sessionId)
       setEntry(saved)
 
       addNote(sessionId, {
@@ -272,14 +241,12 @@ function JournalEditor({
     apiUrl,
     autoEdit,
     draft,
-    entry,
     hasUnsavedChanges,
     isDm,
     isSaving,
     normalizedDraftHashtags,
     onSaved,
     resolvedJournalTitle,
-    campaignId,
     sessionId,
     sessionName,
     token,
@@ -417,16 +384,23 @@ function JournalEditor({
   const insertActions = useMemo<MarkdownEditorInsertAction[]>(
     () => [
       {
-        id: 'insert-dm-roast',
+        id: 'insert-roast',
         icon: 'theater_comedy',
-        label: 'Insert DM roast',
-        onSelect: handleInsertDmRoast,
-      },
-      {
-        id: 'insert-player-roast',
-        icon: 'mood',
-        label: 'Insert player roast',
-        onSelect: handleInsertPlayerRoast,
+        label: 'Insert roast',
+        children: [
+          {
+            id: 'insert-dm-roast',
+            icon: 'theater_comedy',
+            label: 'Roast DM',
+            onSelect: handleInsertDmRoast,
+          },
+          {
+            id: 'insert-player-roast',
+            icon: 'mood',
+            label: 'Roast Players',
+            onSelect: handleInsertPlayerRoast,
+          },
+        ],
       },
       {
         id: 'ask-ai',
@@ -482,6 +456,61 @@ function JournalEditor({
                 </p>
               ) : null}
             </div>
+          </div>
+          <div className="cip-inline-actions" aria-label="Journal actions">
+            <TooltipProvider delayDuration={140}>
+              {isDm && resolvedIsEditing ? (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="session-icon-action session-icon-action--icon"
+                        aria-label={isSaving ? 'Saving journal' : 'Save journal'}
+                        onClick={() => void handleSave()}
+                        disabled={isSaving}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          {isSaving ? 'hourglass_top' : 'save'}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Save journal</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="session-icon-action session-icon-action--icon"
+                        aria-label="Cancel editing journal"
+                        onClick={handleCancel}
+                        disabled={isSaving}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          undo
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Cancel editing</TooltipContent>
+                  </Tooltip>
+                </>
+              ) : null}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="session-icon-action session-icon-action--icon"
+                    aria-label="Pop out journal"
+                    onClick={() => openJournalPopout(sessionId, token, apiUrl)}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      open_in_new
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Open in separate window</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </header>
       ) : null}
@@ -571,29 +600,6 @@ function JournalEditor({
         )}
       </div>
 
-      {isDm && resolvedIsEditing ? (
-        <div className="knowledge-panel__journal-actions">
-          <button
-            type="button"
-            className="knowledge-panel-action"
-            onClick={() => void handleSave()}
-            disabled={isSaving}
-            aria-label="Save journal"
-          >
-            {isSaving ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            className="knowledge-panel-action"
-            onClick={handleCancel}
-            disabled={isSaving}
-            aria-label="Cancel editing"
-          >
-            Cancel
-          </button>
-        </div>
-      ) : null}
-
       {!isDm && !entry ? <p className="knowledge-panel-copy">{playerFacingRoast}</p> : null}
     </section>
   )
@@ -623,17 +629,18 @@ function JournalBrowser({
   onSessionChange,
 }: JournalBrowserProps) {
   const isDm = role === 'DM'
+  const currentSessionId = useStore((state) => state.currentSessionId)
   const [journalStatusBySession, setJournalStatusBySession] = useState<
     Record<string, SessionJournalStatus>
   >({})
-  const [closingSessionId, setClosingSessionId] = useState<UUID | null>(null)
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
   const [editingSessionId, setEditingSessionId] = useState<UUID | null>(null)
   const [saveRequestVersionBySession, setSaveRequestVersionBySession] = useState<
     Record<string, number>
   >({})
-  const prevEffectiveSessionIdRef = useRef<UUID | null>(null)
-  const lastStatusLoadKeyRef = useRef<string>('')
+  // Track every session whose editor has been mounted; keep it mounted (hidden) thereafter
+  // so re-expanding a card doesn't trigger a second fetch.
+  const [mountedEditorIds, setMountedEditorIds] = useState<Set<string>>(new Set())
 
   const updateJournalStatus = useCallback((sessionId: UUID, nextStatus: SessionJournalStatus) => {
     setJournalStatusBySession((current) => ({
@@ -642,9 +649,18 @@ function JournalBrowser({
     }))
   }, [])
 
+  const eligibleSessions = useMemo(
+    () =>
+      sessions.filter(
+        (session) =>
+          session.id !== currentSessionId &&
+          (session.state === SessionState.ENDED || session.state === SessionState.CLEANUP)
+      ),
+    [currentSessionId, sessions]
+  )
   const sortedSessions = useMemo(
-    () => [...sessions].sort((left, right) => right.createdAt - left.createdAt),
-    [sessions]
+    () => [...eligibleSessions].sort((left, right) => right.createdAt - left.createdAt),
+    [eligibleSessions]
   )
   const fallbackSession = sortedSessions[0] ?? null
   const controlledSessionId = selectedSessionId || fallbackSession?.id || null
@@ -674,15 +690,19 @@ function JournalBrowser({
     [recentSessions]
   )
 
+  // When a session is selected, register its editor for keep-alive mounting.
   useEffect(() => {
-    const prev = prevEffectiveSessionIdRef.current
-    prevEffectiveSessionIdRef.current = effectiveSessionId ?? null
-
-    if (prev && effectiveSessionId && prev !== effectiveSessionId) {
-      setClosingSessionId(prev)
-      const timer = window.setTimeout(() => setClosingSessionId(null), 300)
-      return () => window.clearTimeout(timer)
+    if (!effectiveSessionId) {
+      return
     }
+    setMountedEditorIds((prev) => {
+      if (prev.has(effectiveSessionId)) {
+        return prev
+      }
+      const next = new Set(prev)
+      next.add(effectiveSessionId)
+      return next
+    })
   }, [effectiveSessionId])
 
   const getSessionRunDateLabel = useCallback((session: Session): string => {
@@ -717,6 +737,10 @@ function JournalBrowser({
     setEditingSessionId(effectiveSessionId)
   }, [editingSessionId, effectiveSessionId, isDm])
 
+  const handleCancelEditSelected = useCallback(() => {
+    setEditingSessionId(null)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
 
@@ -726,60 +750,167 @@ function JournalBrowser({
       }
     }
 
-    if (lastStatusLoadKeyRef.current === recentSessionsStatusKey) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    lastStatusLoadKeyRef.current = recentSessionsStatusKey
-
     const loadStatuses = async () => {
-      const entries = await Promise.all(
-        recentSessions.map(async (session) => {
-          try {
-            const response = await fetch(`${apiUrl}/api/notes/${session.id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            })
+      try {
+        const res = await fetch(`${apiUrl}/api/journals/status`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            campaignId,
+            sessionIds: recentSessions.map((s) => s.id),
+          }),
+        })
 
-            if (!response.ok) {
-              return [session.id, { hasJournal: false, hasContent: false }] as const
+        if (!res.ok) {
+          return
+        }
+
+        const data = (await res.json()) as {
+          statuses?: Record<
+            string,
+            {
+              hasJournal: boolean
+              hasContent: boolean
+              hashtags: string[]
+              journalTitle?: string
+              journalUpdatedAt?: number
+              needsRecap?: boolean
+            }
+          >
+          statusList?: Array<{
+            sessionId?: string
+            hasJournal?: boolean
+            hasContent?: boolean
+            hashtags?: string[]
+            tags?: string[]
+            journalTitle?: string
+            title?: string
+            journalUpdatedAt?: number
+            updatedAt?: number
+            needsRecap?: boolean
+          }>
+          journals?: Record<
+            string,
+            {
+              hasJournal?: boolean
+              hasContent?: boolean
+              hashtags?: string[]
+              tags?: string[]
+              journalTitle?: string
+              title?: string
+              journalUpdatedAt?: number
+              updatedAt?: number
+              needsRecap?: boolean
+            }
+          >
+        }
+
+        if (!cancelled) {
+          const incomingStatuses = data.statuses ?? data.journals ?? {}
+          const statusListMap = (data.statusList ?? []).reduce<
+            Record<
+              string,
+              {
+                hasJournal?: boolean
+                hasContent?: boolean
+                hashtags?: string[]
+                tags?: string[]
+                journalTitle?: string
+                title?: string
+                journalUpdatedAt?: number
+                updatedAt?: number
+                needsRecap?: boolean
+              }
+            >
+          >((accumulator, entry) => {
+            const sessionId = entry.sessionId
+            if (!sessionId) {
+              return accumulator
             }
 
-            const data = (await response.json()) as { notes?: RawNote[] }
-            const journalNote = (data.notes ?? []).find(
-              (note) => note.tags?.includes(JOURNAL_TAG) || note.title === 'Session Journal'
-            )
-            const markdown = (journalNote?.markdown ?? journalNote?.content ?? '').trim()
-            const hashtags = (journalNote?.tags ?? []).filter((tag) => tag !== JOURNAL_TAG)
+            accumulator[sessionId] = entry
+            return accumulator
+          }, {})
 
-            return [
-              session.id,
-              {
-                hasJournal: Boolean(journalNote),
-                hasContent: markdown.length > 0,
-                hashtags,
-              },
-            ] as const
-          } catch {
-            return [session.id, { hasJournal: false, hasContent: false, hashtags: [] }] as const
+          const resolvedIncoming = {
+            ...incomingStatuses,
+            ...statusListMap,
           }
-        })
-      )
 
-      if (!cancelled) {
-        setJournalStatusBySession(Object.fromEntries(entries))
+          const normalizeStatus = (rawStatus?: {
+            hasJournal?: boolean
+            hasContent?: boolean
+            hashtags?: string[]
+            tags?: string[]
+            journalTitle?: string
+            title?: string
+            journalUpdatedAt?: number
+            updatedAt?: number
+            needsRecap?: boolean
+          }): SessionJournalStatus => {
+            if (!rawStatus) {
+              return {
+                hasJournal: false,
+                hasContent: false,
+                hashtags: [],
+                journalTitle: undefined,
+                journalUpdatedAt: undefined,
+                needsRecap: true,
+              }
+            }
+
+            const hashtags = Array.isArray(rawStatus.hashtags)
+              ? rawStatus.hashtags
+              : Array.isArray(rawStatus.tags)
+                ? rawStatus.tags
+                : []
+            const hasContent = Boolean(rawStatus.hasContent)
+            const hasJournal =
+              typeof rawStatus.hasJournal === 'boolean'
+                ? rawStatus.hasJournal
+                : hasContent || hashtags.length > 0
+
+            return {
+              hasJournal,
+              hasContent,
+              hashtags,
+              journalTitle: rawStatus.journalTitle ?? rawStatus.title,
+              journalUpdatedAt: rawStatus.journalUpdatedAt ?? rawStatus.updatedAt,
+              needsRecap:
+                typeof rawStatus.needsRecap === 'boolean' ? rawStatus.needsRecap : !hasContent,
+            }
+          }
+
+          // Rebuild status entries for current sessions so stale values cannot linger.
+          setJournalStatusBySession((prev) => {
+            const merged = { ...prev }
+
+            for (const session of recentSessions) {
+              const direct = resolvedIncoming[session.id]
+              const lower = resolvedIncoming[session.id.toLowerCase()]
+              const upper = resolvedIncoming[session.id.toUpperCase()]
+              merged[session.id] = normalizeStatus(direct ?? lower ?? upper)
+            }
+
+            return merged
+          })
+        }
+      } catch {
+        // Non-critical: cards degrade to unknown recap status
       }
     }
 
-    if (recentSessions.length > 0) {
+    if (campaignId && recentSessions.length > 0) {
       void loadStatuses()
     }
 
     return () => {
       cancelled = true
     }
-  }, [apiUrl, recentSessions, recentSessionsStatusKey, token])
+  }, [apiUrl, campaignId, recentSessions, recentSessionsStatusKey, token])
 
   const recapSummary = useMemo(() => {
     const statuses = recentSessions.map((session) => journalStatusBySession[session.id])
@@ -804,7 +935,11 @@ function JournalBrowser({
 
   if (!effectiveSessionId || !effectiveSession) {
     return (
-      <section className="knowledge-panel knowledge-panel--compact" aria-label="Session journal">
+      <section
+        className="knowledge-panel knowledge-panel--compact"
+        aria-label="Session journal"
+        data-testid="journal-panel"
+      >
         <header className="knowledge-panel-header">
           <div>
             <h3 className="knowledge-panel-title">
@@ -817,14 +952,18 @@ function JournalBrowser({
           </div>
         </header>
         <p className="knowledge-panel-empty">
-          No sessions exist yet. Start and complete a session before writing the session journal.
+          No ended sessions found yet. The journal appears after a session reaches ENDED or CLEANUP.
         </p>
       </section>
     )
   }
 
   return (
-    <section className="knowledge-panel knowledge-panel--compact" aria-label="Session journal">
+    <section
+      className="knowledge-panel knowledge-panel--compact"
+      aria-label="Session journal"
+      data-testid="journal-panel"
+    >
       <header className="knowledge-panel-header">
         <div>
           <h3 className="knowledge-panel-title">
@@ -837,23 +976,42 @@ function JournalBrowser({
         </div>
         {isDm ? (
           <TooltipProvider delayDuration={140}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="session-toolbar__icon-btn"
-                  onClick={handleToggleEditSelected}
-                  aria-label={isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    {isSelectedSessionEditing ? 'save' : 'edit'}
-                  </span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                {isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
-              </TooltipContent>
-            </Tooltip>
+            <div className="cip-inline-actions" aria-label="Journal actions">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="session-icon-action session-icon-action--icon"
+                    onClick={handleToggleEditSelected}
+                    aria-label={isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {isSelectedSessionEditing ? 'save' : 'edit'}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  {isSelectedSessionEditing ? 'Save journal' : 'Edit journal'}
+                </TooltipContent>
+              </Tooltip>
+              {isSelectedSessionEditing ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="session-icon-action session-icon-action--icon"
+                      onClick={handleCancelEditSelected}
+                      aria-label="Cancel editing journal"
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        undo
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Cancel editing</TooltipContent>
+                </Tooltip>
+              ) : null}
+            </div>
           </TooltipProvider>
         ) : null}
       </header>
@@ -876,7 +1034,7 @@ function JournalBrowser({
           </div>
         </div>
         <div
-          className="knowledge-panel-session-list workspace-panel-scroll-region"
+          className="knowledge-panel-session-list knowledge-panel-results--scroll"
           role="list"
           aria-label="Recent sessions"
         >
@@ -884,13 +1042,18 @@ function JournalBrowser({
             const isSelected = session.id === effectiveSessionId
             const sessionStatus = journalStatusBySession[session.id]
             const hasContent = Boolean(sessionStatus?.hasContent)
-            const isClosing = session.id === closingSessionId
+            const needsRecap = sessionStatus?.needsRecap ?? !hasContent
+            const isEditorMounted = isSelected || mountedEditorIds.has(session.id)
             const sessionHashtags = sessionStatus?.hashtags ?? []
             const visibleSessionHashtags = sessionHashtags.slice(0, 3)
             const hiddenTagCount = Math.max(
               0,
               sessionHashtags.length - visibleSessionHashtags.length
             )
+            const cardTitle = sessionStatus?.journalTitle || session.name
+            const cardDate = sessionStatus?.journalUpdatedAt
+              ? new Date(sessionStatus.journalUpdatedAt).toLocaleDateString()
+              : getSessionRunDateLabel(session)
             const nextSession = index > 0 ? visibleSessions[index - 1] : undefined
             const missingCopy = buildMissingRecapCopy(session, nextSession)
             const selectedRoastOptions = getDmRoastOptions(`${session.id}:${session.name}`)
@@ -929,94 +1092,94 @@ function JournalBrowser({
                       <TruncatedTextWithTooltip
                         as="h4"
                         className="knowledge-panel-card-title knowledge-panel-card-title--truncate"
-                        text={session.name}
+                        text={cardTitle}
                       />
-                      <p className="knowledge-panel-card-subtitle">
-                        {getSessionRunDateLabel(session)}
-                      </p>
                     </div>
                     <div className="knowledge-panel-card-header__right">
                       <div className="knowledge-panel-chip-row">
                         {index === 0 ? <span className="knowledge-panel-chip">Latest</span> : null}
-                        {!hasContent ? (
+                        {needsRecap ? (
                           <span className="knowledge-panel-chip knowledge-panel-chip--warn">
                             Needs Recap
                           </span>
                         ) : null}
-                        <span
-                          className="material-symbols-outlined knowledge-panel-card__expand-icon"
-                          aria-hidden="true"
-                        >
-                          {isSelected ? 'expand_less' : 'expand_more'}
-                        </span>
                       </div>
-                      {sessionHashtags.length > 0 ? (
-                        <div className="knowledge-panel-chip-row knowledge-panel-chip-row--right">
-                          {visibleSessionHashtags.map((tag) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              className={`knowledge-panel-chip muted ${
-                                activeTagFilter === normalizeCardHashtag(tag)
-                                  ? 'knowledge-panel-chip--active'
-                                  : ''
-                              }`}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                const normalizedTag = normalizeCardHashtag(tag)
-                                setActiveTagFilter((current) =>
-                                  current === normalizedTag ? null : normalizedTag
-                                )
-                                setOptimisticSelection({
-                                  sessionId: session.id,
-                                  baselineControlledSessionId: controlledSessionId,
-                                })
-                                onSessionChange(session.id)
-                              }}
-                              aria-label={`Filter by ${normalizeCardHashtag(tag)}`}
-                            >
-                              {normalizeCardHashtag(tag)}
-                            </button>
-                          ))}
-                          {hiddenTagCount > 0 ? (
-                            <span className="knowledge-panel-card-tags-more muted">
-                              {hiddenTagCount} more...
-                            </span>
-                          ) : null}
-                        </div>
+                      <span
+                        className="material-symbols-outlined knowledge-panel-card__expand-icon"
+                        aria-hidden="true"
+                      >
+                        {isSelected ? 'expand_less' : 'expand_more'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="knowledge-panel-card-subheader">
+                    <p className="knowledge-panel-card-subtitle">{cardDate}</p>
+                    <div className="knowledge-panel-chip-row knowledge-panel-chip-row--right">
+                      {visibleSessionHashtags.map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          className={`knowledge-panel-chip muted ${
+                            activeTagFilter === normalizeCardHashtag(tag)
+                              ? 'knowledge-panel-chip--active'
+                              : ''
+                          }`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            const normalizedTag = normalizeCardHashtag(tag)
+                            setActiveTagFilter((current) =>
+                              current === normalizedTag ? null : normalizedTag
+                            )
+                            setOptimisticSelection({
+                              sessionId: session.id,
+                              baselineControlledSessionId: controlledSessionId,
+                            })
+                            onSessionChange(session.id)
+                          }}
+                          aria-label={`Filter by ${normalizeCardHashtag(tag)}`}
+                        >
+                          {normalizeCardHashtag(tag)}
+                        </button>
+                      ))}
+                      {hiddenTagCount > 0 ? (
+                        <span className="knowledge-panel-card-tags-more muted">
+                          {hiddenTagCount} more...
+                        </span>
                       ) : null}
                     </div>
                   </div>
                 </div>
 
-                {isSelected || isClosing ? (
+                {isEditorMounted ? (
                   <div
-                    className={`knowledge-panel-session-item__editor${isClosing ? ' is-closing' : ''}`}
-                    aria-hidden={isClosing || undefined}
+                    className="knowledge-panel-session-item__editor"
+                    hidden={!isSelected || undefined}
+                    aria-hidden={!isSelected || undefined}
                   >
-                    {isSelected || isClosing ? (
-                      <JournalEditor
-                        key={`journal-editor:${session.id}`}
-                        apiUrl={apiUrl}
-                        token={token}
-                        campaignId={campaignId}
-                        sessionId={session.id}
-                        sessionName={session.name}
-                        role={role}
-                        autoSave={false}
-                        isEditingOverride={editingSessionId === session.id}
-                        saveRequestVersion={saveRequestVersionBySession[session.id] ?? 0}
-                        emptyStateContent={!hasContent ? emptyRecapContent : undefined}
-                        hideHeader
-                        onSaved={({ hasContent: nextHasContent, hasJournal, hashtags }) => {
-                          updateJournalStatus(session.id, {
-                            hasContent: nextHasContent,
-                            hasJournal,
-                            hashtags,
-                          })
-                        }}
-                      />
-                    ) : null}
+                    <JournalEditor
+                      key={`journal-editor:${session.id}`}
+                      apiUrl={apiUrl}
+                      token={token}
+                      campaignId={campaignId}
+                      sessionId={session.id}
+                      sessionName={session.name}
+                      role={role}
+                      autoSave
+                      isEditingOverride={editingSessionId === session.id}
+                      saveRequestVersion={saveRequestVersionBySession[session.id] ?? 0}
+                      emptyStateContent={!hasContent ? emptyRecapContent : undefined}
+                      hideHeader
+                      onSaved={({ hasContent: nextHasContent, hasJournal, hashtags }) => {
+                        updateJournalStatus(session.id, {
+                          hasContent: nextHasContent,
+                          hasJournal,
+                          hashtags,
+                          journalTitle: session.name ? `${session.name}` : 'Session Journal',
+                          journalUpdatedAt: Date.now(),
+                          needsRecap: !nextHasContent,
+                        })
+                      }}
+                    />
                   </div>
                 ) : null}
               </div>

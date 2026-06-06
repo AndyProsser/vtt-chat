@@ -269,6 +269,46 @@ function mergeMembersPreservingReferences(
   return hasAnyChange ? merged : previous
 }
 
+// ─── Grouping helper ─────────────────────────────────────────────────────────────
+
+type GroupedMembers = Array<{
+  groupLabel: string
+  members: MockPartyMember[]
+}>
+
+function groupMembersByStatusAndRole(members: MockPartyMember[]): GroupedMembers {
+  const dmMembers = members.filter((m) => m.role === 'DM')
+  const playersByStatus: Record<MockPlayerStatus, MockPartyMember[]> = {
+    here: [],
+    away: [],
+    lobby: [],
+    'not-here': [],
+    offline: [],
+  }
+
+  members.forEach((member) => {
+    if (member.role !== 'DM') {
+      playersByStatus[member.status]?.push(member)
+    }
+  })
+
+  const groups: GroupedMembers = []
+
+  if (dmMembers.length > 0) {
+    groups.push({ groupLabel: 'DM', members: dmMembers })
+  }
+
+  const statusOrder: MockPlayerStatus[] = ['here', 'away', 'lobby', 'not-here', 'offline']
+  for (const status of statusOrder) {
+    const statusMembers = playersByStatus[status]
+    if (statusMembers.length > 0) {
+      groups.push({ groupLabel: STATUS_LABELS[status] || status, members: statusMembers })
+    }
+  }
+
+  return groups
+}
+
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 function PartyStatusBadge({ status }: { status: MockPlayerStatus }) {
@@ -424,13 +464,6 @@ export function PartyPanel({
   const sessionPresenceByUserRef = useRef<Record<UUID, SessionPresence>>(EMPTY_SESSION_PRESENCE)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const dmOverridesRef = useRef(dmOverrides)
-  const sessionPresenceByUser = useStore((state) => {
-    if (!currentSessionId) {
-      return EMPTY_SESSION_PRESENCE
-    }
-
-    return state.sessionPresence[currentSessionId] || EMPTY_SESSION_PRESENCE
-  })
 
   const currentUserSnapshot = useMemo(
     () => snapshotMembers.find((member) => member.userId === currentUserId) || null,
@@ -444,9 +477,18 @@ export function PartyPanel({
   const isCurrentUserRuntimeVisible =
     currentUserSnapshot?.status === 'HERE' || currentUserSnapshot?.status === 'AWAY'
 
+  // Imperative subscription: presence is read via the ref inside applyMergedMembers, so we
+  // don't need a reactive hook that re-renders this panel on every WS presence event
+  // (including ghost flips). store.subscribe keeps the ref current without triggering renders.
   useEffect(() => {
-    sessionPresenceByUserRef.current = sessionPresenceByUser
-  }, [sessionPresenceByUser])
+    const sync = (state: { sessionPresence: Record<string, Record<string, SessionPresence>> }) => {
+      sessionPresenceByUserRef.current = currentSessionId
+        ? (state.sessionPresence[currentSessionId] ?? EMPTY_SESSION_PRESENCE)
+        : EMPTY_SESSION_PRESENCE
+    }
+    sync(useStore.getState())
+    return useStore.subscribe(sync)
+  }, [currentSessionId])
 
   useEffect(() => {
     dmOverridesRef.current = dmOverrides
@@ -529,8 +571,9 @@ export function PartyPanel({
       return
     }
 
+    // sessionPresence is read from the ref (always current) — no reactive dep needed.
     applyMergedMembers(snapshotMembers)
-  }, [sessionPresenceByUser, snapshotMembers, applyMergedMembers])
+  }, [snapshotMembers, applyMergedMembers])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -750,9 +793,16 @@ export function PartyPanel({
             <span>No party members yet.</span>
           </div>
         ) : (
-          <div className="party-sheet__cards workspace-panel-scroll-region">
-            {members.map((member) => (
-              <PartyMemberCard key={member.id} member={member} />
+          <div className="party-sheet__cards knowledge-panel-results--scroll">
+            {groupMembersByStatusAndRole(members).map((group) => (
+              <div key={group.groupLabel} className="party-sheet__group">
+                <h5 className="party-sheet__group-header">{group.groupLabel}</h5>
+                <div className="party-sheet__group-members">
+                  {group.members.map((member) => (
+                    <PartyMemberCard key={member.id} member={member} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

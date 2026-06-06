@@ -16,7 +16,13 @@ It ensures all AI‑generated output is:
 - Architecturally aligned
 - Safe and predictable
 
-This is the **single source of truth** for AI behaviour within the VTT‑Chat ecosystem.
+> **AI context hierarchy for this project:**
+>
+> - **Claude Code** → primary context is `CLAUDE.md` (repo root). Read that first; it is kept current with the codebase.
+> - **GitHub Copilot / other tools** → use `.github/copilot-instructions.md` for the full product spec.
+> - **This file** (`docs/ai/AI-CONTEXT.md`) → general-purpose onboarding context; may lag behind `CLAUDE.md` on architectural specifics.
+>
+> When `CLAUDE.md` and this file conflict, trust `CLAUDE.md`.
 
 ---
 

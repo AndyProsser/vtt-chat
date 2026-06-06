@@ -231,6 +231,28 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Keyboard accessibility baseline: only show focus ring for keyboard navigation. */
+:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+/* Respect OS-level reduced-motion preference across the app. */
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 #root {
   isolation: isolate;
 }

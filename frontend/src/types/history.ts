@@ -5,6 +5,7 @@ export interface SessionHistoryMessage {
   sessionId: string
   roomId?: string
   authorId: string
+  targetIds?: string[]
   authorUsername: string
   authorCharacterName?: string
   content: string
@@ -16,6 +17,7 @@ export interface SessionHistoryMessage {
 
 export interface SessionHistoryThread {
   sessionId: string
+  dmId?: string
   sessionName: string
   sessionState: string
   createdAt: number

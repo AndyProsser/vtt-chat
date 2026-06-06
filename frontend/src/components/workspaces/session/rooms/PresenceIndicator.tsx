@@ -6,10 +6,8 @@
  * presence flip re-renders only this dot — never the surrounding member card,
  * list, or panel.
  *
- * Variants:
+ * Variant:
  *   - 'dot'        Small coloured dot used inside profile cards / popovers.
- *   - 'none'       Renders nothing visible; still subscribes so callers can
- *                  use this as a side-effect mount (rare; not currently needed).
  */
 import React from 'react'
 import { PresenceState, type UUID } from '@shared'
@@ -28,6 +26,8 @@ const PRESENCE_LABEL: Record<'online' | 'offline', string> = {
   offline: 'Offline',
 }
 
+const GHOST_LABEL = 'Ghost mode'
+
 function PresenceIndicatorImpl({
   sessionId,
   userId,
@@ -37,12 +37,14 @@ function PresenceIndicatorImpl({
   const presenceState = useStore(
     (state) => state.sessionPresence[sessionId]?.[userId]?.state ?? PresenceState.OFFLINE
   )
+  const isGhost = useStore((state) => Boolean(state.sessionPresence[sessionId]?.[userId]?.ghost))
 
   if (variant !== 'dot') return null
 
   const resolved = getResolvedPresenceState(presenceState)
-  const dotState = getPresenceDotState(resolved)
-  const label = PRESENCE_LABEL[dotState]
+  const presenceDotState = getPresenceDotState(resolved)
+  const dotState: 'online' | 'offline' | 'ghost' = isGhost ? 'ghost' : presenceDotState
+  const label = isGhost ? GHOST_LABEL : PRESENCE_LABEL[presenceDotState]
   const baseClass = 'room-selector-presence-dot'
   const composed = className ? `${baseClass} ${className}` : baseClass
 

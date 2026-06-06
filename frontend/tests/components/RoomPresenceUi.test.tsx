@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { PresenceState, RoomType } from '@shared'
+import { PresenceState, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AvatarOverlay } from '../../src/components/workspaces/session/rooms/AvatarOverlay'
@@ -72,14 +72,35 @@ describe('AvatarOverlay', () => {
 })
 
 describe('RoomSelector', () => {
-  it('renders room selection and member status cards', () => {
+  it('renders room selection and member status cards', async () => {
     const onSelectRoom = vi.fn()
+
+    // DM clicking a room triggers voice-mode API; mock it so onSelectRoom fires
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.endsWith('/api/audio/voice-mode')) {
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        if (url.endsWith('/api/presence/session-1')) {
+          return new Response(
+            JSON.stringify({ presence: [{ userId: 'user-2', primaryRoomId: 'room-1' }] }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+        return new Response(JSON.stringify({}), { status: 200 })
+      })
+    )
 
     render(
       <RoomSelector
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -126,13 +147,15 @@ describe('RoomSelector', () => {
 
     expect(screen.getAllByRole('button', { name: /Change group environment/i }).length).toBe(1)
     expect(screen.getAllByText('Whisper Booth').length).toBeGreaterThan(0)
-    expect(screen.queryByText('Main Group')).toBeNull()
+    // DmVoiceTargetIndicator shows "Main" as the default voice target
     expect(screen.getByText('Morgan')).toBeTruthy()
     expect(screen.getByText('Tara')).toBeTruthy()
     expect(screen.getByText('Rogue | Halfling | Level 5')).toBeTruthy()
 
     fireEvent.click(getSelectGroupButton('Tavern'))
-    expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-1'))
+    await waitFor(() => {
+      expect(onSelectRoom).toHaveBeenCalledWith(asUuid('room-1'))
+    })
   })
 
   it('renders empty states when there are no rooms or participants', () => {
@@ -141,6 +164,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={false}
         broadcastModeEnabled={false}
@@ -161,6 +185,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -307,6 +332,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -385,6 +411,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -430,6 +457,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -467,6 +495,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -496,6 +525,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -540,6 +570,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -621,6 +652,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -694,6 +726,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -848,6 +881,7 @@ describe('RoomSelector', () => {
       apiUrl: 'http://localhost:3000',
       token: 'jwt-token',
       sessionId: asUuid('session-1'),
+      sessionState: SessionState.ACTIVE,
       dmUserId: asUuid('user-1'),
       canManageRooms: true,
       broadcastModeEnabled: false,
@@ -961,6 +995,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1114,6 +1149,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1202,6 +1238,13 @@ describe('RoomSelector', () => {
         )
       }
 
+      if (url.endsWith('/api/audio/voice-mode')) {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
       return new Response(JSON.stringify({ message: 'Unexpected request' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -1215,6 +1258,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1284,6 +1328,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1334,6 +1379,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         isGreenroom={true}
         canManageRooms={true}
@@ -1390,6 +1436,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         isGreenroom={true}
         canManageRooms={true}
@@ -1463,6 +1510,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1539,6 +1587,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1643,6 +1692,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1731,6 +1781,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1849,6 +1900,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1921,6 +1973,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -1969,11 +2022,31 @@ describe('RoomSelector', () => {
     const onSelectRoom = vi.fn()
     const onToggleBroadcastMode = vi.fn(async () => {})
 
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.endsWith('/api/audio/voice-mode')) {
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        if (url.endsWith('/api/presence/session-1')) {
+          return new Response(JSON.stringify({ presence: [{ userId: 'user-2', primaryRoomId: 'room-scouts' }] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        return new Response(JSON.stringify({ message: 'Unexpected request' }), { status: 500 })
+      })
+    )
+
     render(
       <RoomSelector
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={true}
@@ -2036,6 +2109,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -2079,6 +2153,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={true}
@@ -2141,6 +2216,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -2211,6 +2287,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -2302,6 +2379,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -2392,6 +2470,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -2494,6 +2573,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -2547,6 +2627,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         isGreenroom={true}
@@ -2642,6 +2723,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}
@@ -2767,6 +2849,7 @@ describe('RoomSelector', () => {
         apiUrl="http://localhost:3000"
         token="jwt-token"
         sessionId={asUuid('session-1')}
+        sessionState={SessionState.ACTIVE}
         dmUserId={asUuid('user-1')}
         canManageRooms={true}
         broadcastModeEnabled={false}

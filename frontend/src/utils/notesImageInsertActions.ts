@@ -1,10 +1,6 @@
 import type { MarkdownEditorInsertAction } from '@/components/workspaces/shared/panels/MarkdownEditor'
+import { pickNoteImageFiles, prepareNoteImage } from '@/utils/noteAttachments'
 import type { ShowToastInput } from '@/state/toastCenter'
-
-const MAX_DATA_URL_LENGTH = 32_000
-const MAX_IMAGE_DIMENSION = 1280
-const INITIAL_QUALITY = 0.82
-const MIN_QUALITY = 0.42
 
 type ShowToast = (input: ShowToastInput) => void
 
@@ -17,102 +13,18 @@ function toMarkdownImage(url: string, altText: string): string {
   return `![${safeAlt}](${url})`
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') {
-        reject(new Error('Unable to read image file.'))
-        return
-      }
-
-      resolve(reader.result)
-    }
-    reader.onerror = () => reject(new Error('Unable to read image file.'))
-    reader.readAsDataURL(file)
-  })
-}
-
-function loadImage(dataUrl: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new Image()
-    image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('Unable to process image file.'))
-    image.src = dataUrl
-  })
-}
-
-async function pickImageFile(): Promise<File | null> {
-  return new Promise((resolve) => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = () => {
-      const file = input.files?.[0] || null
-      resolve(file)
-    }
-    input.click()
-  })
-}
-
 async function uploadImageMarkdown(showToast: ShowToast): Promise<string> {
-  const file = await pickImageFile()
+  const file = (await pickNoteImageFiles(false))[0] || null
   if (!file) {
     return ''
   }
 
-  if (!file.type.startsWith('image/')) {
-    showToast({ variant: 'error', message: 'Handout image must be an image file.' })
+  const prepared = await prepareNoteImage(file, showToast)
+  if (!prepared) {
     return ''
   }
 
-  try {
-    const originalDataUrl = await readFileAsDataUrl(file)
-    const image = await loadImage(originalDataUrl)
-
-    const width = image.naturalWidth || image.width
-    const height = image.naturalHeight || image.height
-    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(width, height))
-    const targetWidth = Math.max(1, Math.round(width * scale))
-    const targetHeight = Math.max(1, Math.round(height * scale))
-
-    const canvas = document.createElement('canvas')
-    canvas.width = targetWidth
-    canvas.height = targetHeight
-
-    const context = canvas.getContext('2d')
-    if (!context) {
-      showToast({ variant: 'error', message: 'Unable to process handout image.' })
-      return ''
-    }
-
-    context.drawImage(image, 0, 0, targetWidth, targetHeight)
-
-    let quality = INITIAL_QUALITY
-    let dataUrl = canvas.toDataURL('image/jpeg', quality)
-    while (dataUrl.length > MAX_DATA_URL_LENGTH && quality > MIN_QUALITY) {
-      quality = Math.max(MIN_QUALITY, quality - 0.08)
-      dataUrl = canvas.toDataURL('image/jpeg', quality)
-    }
-
-    if (dataUrl.length > MAX_DATA_URL_LENGTH) {
-      showToast({
-        variant: 'error',
-        message:
-          'Image is too large for note storage. Use a smaller image or insert an external image URL.',
-      })
-      return ''
-    }
-
-    const altText = file.name.replace(/\.[a-zA-Z0-9]+$/, '') || 'Handout image'
-    return toMarkdownImage(dataUrl, altText)
-  } catch (error) {
-    showToast({
-      variant: 'error',
-      message: error instanceof Error ? error.message : 'Unable to process handout image.',
-    })
-    return ''
-  }
+  return toMarkdownImage(prepared.dataUrl, prepared.name)
 }
 
 function insertImageFromUrl(showToast: ShowToast): string {

@@ -1,9 +1,14 @@
-import type { ComponentProps } from 'react'
-import { type Role } from '@shared'
+import { memo, useMemo, type ComponentProps } from 'react'
+import { Role } from '@shared'
 import type { UUID } from '@shared'
 import { AudioPanel } from '@/components/workspaces/session/audio/AudioPanel'
 import { LeftRailPanel } from '@/components/workspaces/session/LeftRailPanel'
+import { useStore } from '@/hooks/useStore'
+import { useSessionSelectedRoomId } from '@/hooks/session/useSessionSelectedRoomId'
+import { getVisibleRoomsForSessionState } from '@/utils/session/workspaces'
 import type { Room as RoomRecord, RoomUser as RoomMember } from '@/types/room'
+
+const EMPTY_ROOMS_BY_ID = Object.freeze({}) as Record<UUID, RoomRecord>
 
 type SessionWorkspaceLeftRailProps = {
   apiUrl: string
@@ -19,22 +24,42 @@ type SessionWorkspaceLeftRailProps = {
   connectedSpectatorsCount: number
   dmUserId: UUID
   effectiveSessionUserId: UUID
-  visibleRooms: RoomRecord[]
-  roomMembersByRoomId: Record<UUID, RoomMember[]>
-  selectedRoomId: UUID | ''
   onSelectRoom: (roomId: UUID) => void
-  broadcastModeEnabled: boolean
   onToggleBroadcastMode: ComponentProps<typeof LeftRailPanel>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean
-  dmOverrides: ComponentProps<typeof LeftRailPanel>['dmOverrides']
-  currentConditionName?: string
-  roomEnvironmentNames: ComponentProps<typeof LeftRailPanel>['roomEnvironmentNames']
   sessionEndedAt?: number
   configuredCooldownDurationMs: number
   onOpenInfoPanel?: () => void
 }
 
-export function SessionWorkspaceLeftRail(props: SessionWorkspaceLeftRailProps) {
+function SessionWorkspaceLeftRailComponent(props: SessionWorkspaceLeftRailProps) {
+  const selectedRoomId = useSessionSelectedRoomId(props.sessionId)
+
+  const currentSessionRoomsById = useStore((state) => {
+    const roomsBySession = state.rooms as Record<UUID, Record<UUID, RoomRecord>>
+    return roomsBySession[props.sessionId] ?? EMPTY_ROOMS_BY_ID
+  })
+  const roomMembersByRoomId = useStore((state) => state.roomMembers) as Record<UUID, RoomMember[]>
+  const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
+  const dmOverrides = useStore((state) => state.dmOverrides)
+  const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
+  const currentConditionName = useStore((state) => state.currentCondition?.name)
+  const dmVoiceTargetGroupId = useStore((state) => state.dmVoiceTargetGroupId)
+  const visibleRooms = useMemo(
+    () =>
+      getVisibleRoomsForSessionState(Object.values(currentSessionRoomsById), props.sessionState),
+    [currentSessionRoomsById, props.sessionState]
+  )
+  const rooms = useMemo(
+    () =>
+      visibleRooms.map((room) => ({
+        id: room.id,
+        name: room.name,
+        type: room.type,
+      })),
+    [visibleRooms]
+  )
+
   return (
     <div className="session-left-rail-stack" data-ui-component="SessionLeftRailStack">
       <LeftRailPanel
@@ -52,31 +77,31 @@ export function SessionWorkspaceLeftRail(props: SessionWorkspaceLeftRailProps) {
         connectedSpectatorsCount={props.connectedSpectatorsCount}
         dmUserId={props.dmUserId}
         currentUserId={props.effectiveSessionUserId}
-        rooms={props.visibleRooms.map((room) => ({
-          id: room.id,
-          name: room.name,
-          type: room.type,
-        }))}
-        roomMembersByRoomId={props.roomMembersByRoomId}
+        rooms={rooms}
+        roomMembersByRoomId={roomMembersByRoomId}
         sessionEndedAt={props.sessionEndedAt}
         cooldownDurationMs={props.configuredCooldownDurationMs}
-        selectedRoomId={props.selectedRoomId}
+        selectedRoomId={selectedRoomId}
         onSelectRoom={props.onSelectRoom}
-        broadcastModeEnabled={props.broadcastModeEnabled}
+        broadcastModeEnabled={broadcastModeEnabled}
         onToggleBroadcastMode={props.onToggleBroadcastMode}
         dmAutoTargetOnFirstPlayerJoin={props.dmAutoTargetOnFirstPlayerJoin}
-        dmOverrides={props.dmOverrides}
-        currentConditionName={props.currentConditionName}
-        roomEnvironmentNames={props.roomEnvironmentNames}
+        dmOverrides={dmOverrides}
+        currentConditionName={currentConditionName}
+        roomEnvironmentNames={roomEnvironmentNames}
       />
-      {props.selectedRoomId ? (
+      {selectedRoomId ? (
         <aside
           className="session-left-rail-card session-left-rail-card--audio"
           aria-label="Voice panel"
         >
           <AudioPanel
             sessionId={props.sessionId}
-            roomId={props.selectedRoomId}
+            roomId={
+              props.effectiveSessionRole === Role.DM && dmVoiceTargetGroupId
+                ? dmVoiceTargetGroupId
+                : selectedRoomId
+            }
             role={props.effectiveSessionRole}
           />
         </aside>
@@ -84,3 +109,5 @@ export function SessionWorkspaceLeftRail(props: SessionWorkspaceLeftRailProps) {
     </div>
   )
 }
+
+export const SessionWorkspaceLeftRail = memo(SessionWorkspaceLeftRailComponent)

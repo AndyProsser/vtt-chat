@@ -1,4 +1,4 @@
-import type { NoteEntity, NoteVisibility, UUID } from '@shared'
+import type { NoteAttachmentEntity, NoteEntity, NoteVisibility, UUID } from '@shared'
 
 export type Note = NoteEntity
 
@@ -8,4 +8,5 @@ export interface NoteDraft {
   visibility: NoteVisibility
   tags: string[]
   allowedUsers?: UUID[]
+  attachments?: NoteAttachmentEntity[]
 }

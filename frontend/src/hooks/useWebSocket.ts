@@ -4,10 +4,10 @@
  * Integrates with Zustand store through event handlers.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { EventEnvelope } from '@shared'
 import type { UUID } from '@shared'
-import { isGreenroomSessionState, SessionState } from '@shared'
+import { SessionState, findConditionPreset, findDistancePreset } from '@shared'
 import { isGreenRoomName } from '../constants/roomPresence.constants'
 import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
@@ -273,8 +273,17 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('NOTES:DELETED', (event) => {
       useStore.getState().handleNoteDeleted(event)
     })
+    dispatcher.register('NOTES:HANDOUT_SURFACED', (event) => {
+      useStore.getState().handleNoteHandoutSurfaced(event)
+    })
 
     // Room events
+    dispatcher.register('SESSION:MEMBER_JOINED', (event) => {
+      useStore.getState().handleSessionMemberJoined(event)
+    })
+    dispatcher.register('SESSION:MEMBER_LEFT', (event) => {
+      useStore.getState().handleSessionMemberLeft(event)
+    })
     dispatcher.register('ROOM:CREATED', (event) => {
       useStore.getState().handleRoomCreated(event)
     })
@@ -305,22 +314,21 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('ROOM:SESSION_TRANSITION_APPLIED', (event) => {
       const store = useStore.getState()
       store.handleSessionRoomTransitionApplied(event)
-      // Clear per-session audio presets when transitioning to greenroom or session end
-      const payload = event.payload as { nextState?: import('@shared').SessionState | null }
-      if (isGreenroomSessionState(payload.nextState)) {
+
+      const nextState = (event.payload as any)?.nextState
+
+      // Only reset audio state on teardown transitions (IDLE/ENDED/CLEANUP).
+      // ACTIVE, PAUSED, and COOLDOWN transitions are policy remaps — audio
+      // transport identity must be preserved so effects and environments survive
+      // pause/resume cycles. Unconditional reset would break AC3/AC4 of the
+      // W4-Conversation-Authority contract.
+      if (nextState === 'IDLE' || nextState === 'ENDED' || nextState === 'CLEANUP') {
         store.resetSessionAudioState()
         store.clearActiveEffects()
-      }
-
-      if (
-        payload.nextState === SessionState.IDLE ||
-        payload.nextState === SessionState.ENDED ||
-        payload.nextState === SessionState.CLEANUP
-      ) {
         store.markMockSimulationExited(event.sessionId)
       }
 
-      if (payload.nextState === SessionState.ENDED) {
+      if (nextState === 'ENDED') {
         store.clearMessages(event.sessionId)
       }
     })
@@ -340,6 +348,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     })
 
     // Audio events
+    dispatcher.register('AUDIO:DM_VOICE_TARGET_CHANGED', (event) => {
+      useStore.getState().handleDmVoiceTargetChanged(event)
+    })
     dispatcher.register('AUDIO:DM_VOICE_MODE_CHANGED', (event) => {
       useStore.getState().handleDmVoiceModeChanged(event)
     })
@@ -356,26 +367,81 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       useStore.getState().handleEnvironmentSet(event)
     })
     dispatcher.register('AUDIO:DM_OVERRIDE_APPLIED', (event) => {
-      useStore.getState().handleDMOverrideApplied(event)
+      const store = useStore.getState()
+      store.handleDMOverrideApplied(event)
+
+      // Wire condition/distance DSP for the affected player's own audio chain.
+      const payload = event.payload as {
+        targetUserId: UUID
+        overrideType: string
+        parameters?: Record<string, unknown>
+      }
+      const currentUserId = (store as any).currentUser?.id as UUID | undefined
+      if (!currentUserId || payload.targetUserId !== currentUserId) return
+
+      if (payload.overrideType === 'CONDITION') {
+        const presetName =
+          typeof payload.parameters?.conditionName === 'string'
+            ? payload.parameters.conditionName
+            : typeof payload.parameters?.presetName === 'string'
+              ? payload.parameters.presetName
+              : null
+        if (presetName) {
+          const catalogPreset = findConditionPreset(presetName)
+          if (catalogPreset) {
+            store.setCondition({
+              id: `condition-${catalogPreset.name.toLowerCase().replace(/\s+/g, '-')}` as UUID,
+              name: catalogPreset.name,
+              effects: catalogPreset.dsp as Record<string, unknown>,
+            })
+          }
+        }
+      }
+
+      if (payload.overrideType === 'DISTANCE') {
+        const presetName =
+          typeof payload.parameters?.presetName === 'string' ? payload.parameters.presetName : null
+        if (presetName && presetName !== 'Default') {
+          const catalogPreset = findDistancePreset(presetName)
+          if (catalogPreset) {
+            store.setDistance({
+              id: `distance-${catalogPreset.name.toLowerCase().replace(/\s+/g, '-')}` as UUID,
+              name: catalogPreset.name,
+              lowpassFreq: catalogPreset.dsp.lowpassFreq,
+              gainReduction: catalogPreset.dsp.gainReduction,
+              reverbSend: catalogPreset.dsp.reverbSend,
+            })
+          }
+        }
+      }
     })
     dispatcher.register('AUDIO:DM_OVERRIDE_REMOVED', (event) => {
-      useStore.getState().handleDMOverrideRemoved(event)
+      const store = useStore.getState()
+      store.handleDMOverrideRemoved(event)
+
+      // Clear condition/distance preset when DM removes the override for the current user.
+      const payload = event.payload as { targetUserId: UUID; overrideType: string }
+      const currentUserId = (store as any).currentUser?.id as UUID | undefined
+      if (!currentUserId || payload.targetUserId !== currentUserId) return
+
+      if (payload.overrideType === 'CONDITION') store.clearCondition()
+      if (payload.overrideType === 'DISTANCE') store.clearDistance()
     })
     dispatcher.register('AUDIO:BROADCAST_STATE_CHANGED', (event) => {
       useStore.getState().handleBroadcastStateChanged(event)
     })
-    dispatcher.register('AUDIO:VOICE_OF_GOD_CHANGED', (event) => {
-      useStore.getState().handleBroadcastStateChanged(event)
-    })
-    dispatcher.register('AUDIO:USER_MUTED', (event) => {
-      useStore.getState().handleUserMuted(event)
-    })
-    dispatcher.register('AUDIO:USER_UNMUTED', (event) => {
-      useStore.getState().handleUserUnmuted(event)
+    dispatcher.register('AUDIO:MUTE_STATE_CHANGED', (event) => {
+      useStore.getState().handleMuteStateChanged(event)
     })
 
     // Campaign events
     dispatcher.register('CAMPAIGN:LIST_INVALIDATED', (event) => {
+      onCampaignListInvalidatedRef.current?.(event)
+    })
+    dispatcher.register('CAMPAIGN:JOIN_REQUEST_RECEIVED', (event) => {
+      onCampaignListInvalidatedRef.current?.(event)
+    })
+    dispatcher.register('CAMPAIGN:JOIN_REQUEST_RESOLVED', (event) => {
       onCampaignListInvalidatedRef.current?.(event)
     })
     dispatcher.register('CAMPAIGN:LOBBY_STATS_UPDATED', (event) =>
@@ -420,13 +486,13 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     }
   }, [enabled, sessionId, token, url])
 
-  const send = (event: EventEnvelope) => {
+  const send = useCallback((event: EventEnvelope) => {
     if (clientRef.current) {
       clientRef.current.send(event)
     }
-  }
+  }, [])
 
-  const retryConnection = async () => {
+  const retryConnection = useCallback(async () => {
     const client = clientRef.current
     if (!client) {
       return
@@ -440,7 +506,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)))
     }
-  }
+  }, [])
 
   return {
     state,

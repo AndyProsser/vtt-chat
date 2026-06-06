@@ -286,7 +286,9 @@
 .room-selector .room-selector-header__create-wrap > .group-popover[data-popover='create-group'] {
   position: absolute !important;
   top: calc(100% + 0.45rem) !important;
-  right: 0 !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
   z-index: 1300 !important;
   display: grid !important;
   gap: 0 !important;
@@ -302,7 +304,9 @@
 .room-selector .room-selector-header__create-wrap > [role='dialog'][aria-label='Create group'] {
   position: absolute !important;
   top: calc(100% + 0.45rem) !important;
-  right: 0 !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
   z-index: 1300 !important;
   display: grid !important;
   gap: 0 !important;

@@ -4,6 +4,7 @@ import { ErrorCode, Role, type EventEnvelope, type UUID, isValidUUID } from '@sh
 import { extractTokenFromHeader, verifyToken, type TokenPayload } from '@/services/auth.service'
 import {
   applyDMOverrideState,
+  getServerMuteEnforcementState,
   getSessionAudioState,
   removeDMOverrideState,
   setBroadcastState,
@@ -13,12 +14,19 @@ import {
 import { setDmVoiceMode } from '@/services/audio/effects.service'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import {
+  AUDIO_CONDITION_PRESET_NAMES,
+  AUDIO_DISTANCE_PRESET_NAMES,
   AUDIO_DM_OVERRIDE_TYPES,
   AUDIO_EVENT_TYPES,
   AUDIO_PRESETS,
+  AUDIO_VOICE_PRESET_NAMES,
 } from '@/constants/audio.constants'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
-import { logger } from '@/utils'
+import { emitConditionSystemMessage } from '@/services/system-messages.service'
+import { listAudioDMOverridesBySession } from '@/repositories/audio.repository'
+import { getRoom, getSessionPresence } from '@/services/room.service'
+import { enforceParticipantPublishPermission } from '@/infra/livekit/room.service'
+import { logger, isGreenRoomName } from '@/utils'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 
 const router = Router()
@@ -183,6 +191,15 @@ async function handleSetEnvironment(req: Request, res: Response) {
     return res.status(authz.status).json({ code: authz.code, message: authz.message })
   }
 
+  // Greenroom environment is always neutral — DM cannot set it.
+  const targetRoom = await getRoom(roomId as UUID)
+  if (targetRoom && isGreenRoomName(targetRoom.name)) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Greenroom environment cannot be modified',
+    })
+  }
+
   const setAt = Date.now()
   const persisted = await setRoomEnvironmentState({
     sessionId: sessionId as UUID,
@@ -264,6 +281,34 @@ async function handleApplyDmOverride(req: Request, res: Response) {
     })
   }
 
+  // Validate preset names for typed override categories.
+  if (overrideType === 'DISTANCE') {
+    const presetName = typeof parameters?.presetName === 'string' ? parameters.presetName : null
+    if (!presetName || !AUDIO_DISTANCE_PRESET_NAMES.has(presetName)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: `Invalid distance preset "${presetName}". Valid values: ${[...AUDIO_DISTANCE_PRESET_NAMES].join(', ')}`,
+        field: 'parameters.presetName',
+      })
+    }
+  }
+
+  if (overrideType === 'CONDITION') {
+    const presetName =
+      typeof parameters?.conditionName === 'string'
+        ? parameters.conditionName
+        : typeof parameters?.presetName === 'string'
+          ? parameters.presetName
+          : null
+    if (!presetName || !AUDIO_CONDITION_PRESET_NAMES.has(presetName)) {
+      return res.status(400).json({
+        code: ErrorCode.INVALID_INPUT,
+        message: `Invalid condition preset "${presetName}". Valid values: ${[...AUDIO_CONDITION_PRESET_NAMES].join(', ')}`,
+        field: 'parameters.presetName',
+      })
+    }
+  }
+
   const authz = await validateDmControl(sessionId as UUID, user)
   if (!authz.ok) {
     return res.status(authz.status).json({ code: authz.code, message: authz.message })
@@ -314,6 +359,80 @@ async function handleApplyDmOverride(req: Request, res: Response) {
     overrideType,
     actorUserId: user.userId,
   })
+
+  if (overrideType === 'CONDITION' || overrideType === 'DISTANCE') {
+    const presetName =
+      typeof persisted.parameters?.conditionName === 'string'
+        ? persisted.parameters.conditionName
+        : typeof persisted.parameters?.presetName === 'string'
+          ? persisted.parameters.presetName
+          : null
+    void emitConditionSystemMessage({
+      sessionId: sessionId as UUID,
+      targetUserId: targetUserId as UUID,
+      dmId: user.userId as UUID,
+      overrideType: overrideType as 'CONDITION' | 'DISTANCE',
+      presetName,
+      isRemoval: false,
+    })
+  }
+
+  // When a CONDITION is applied, clear any active DISTANCE override for the same player.
+  if (overrideType === 'CONDITION') {
+    const sessionOverrides = await listAudioDMOverridesBySession(sessionId as string)
+    const distanceOverride = sessionOverrides.find(
+      (o) => o.targetUserId === (targetUserId as string) && o.overrideType === 'DISTANCE'
+    )
+    if (distanceOverride) {
+      await removeDMOverrideState({
+        sessionId: sessionId as UUID,
+        targetUserId: targetUserId as UUID,
+        overrideType: 'DISTANCE',
+      })
+      const distanceRemovedAt = Date.now()
+      const distanceRemovedEvent = createEvent({
+        type: AUDIO_EVENT_TYPES.DM_OVERRIDE_REMOVED,
+        user,
+        userRole: authz.role,
+        sessionId: sessionId as UUID,
+        roomId: null,
+        payload: {
+          targetUserId,
+          dmId: user.userId,
+          overrideType: 'DISTANCE',
+          removedAt: distanceRemovedAt,
+        },
+      })
+      eventBroadcaster.broadcastToSession(sessionId as UUID, distanceRemovedEvent)
+      void emitConditionSystemMessage({
+        sessionId: sessionId as UUID,
+        targetUserId: targetUserId as UUID,
+        dmId: user.userId as UUID,
+        overrideType: 'DISTANCE',
+        presetName: null,
+        isRemoval: true,
+      })
+    }
+
+    // SILENCED: server-side LiveKit mute prevents the player from publishing audio mid-session.
+    const appliedConditionName =
+      typeof persisted.parameters?.conditionName === 'string'
+        ? persisted.parameters.conditionName
+        : typeof persisted.parameters?.presetName === 'string'
+          ? persisted.parameters.presetName
+          : null
+    if (appliedConditionName === 'Silenced') {
+      const sessionPresence = await getSessionPresence(sessionId as UUID)
+      const playerPresence = sessionPresence.find((p) => p.userId === (targetUserId as string))
+      if (playerPresence?.primaryRoomId) {
+        void enforceParticipantPublishPermission({
+          livekitRoomName: playerPresence.primaryRoomId,
+          userId: targetUserId as string,
+          canPublish: false,
+        })
+      }
+    }
+  }
 
   return res.status(200).json({ ok: true, eventId: event.id })
 }
@@ -382,6 +501,36 @@ async function handleRemoveDmOverride(req: Request, res: Response) {
     overrideType,
     actorUserId: user.userId,
   })
+
+  if (overrideType === 'CONDITION' || overrideType === 'DISTANCE') {
+    void emitConditionSystemMessage({
+      sessionId: sessionId as UUID,
+      targetUserId: targetUserId as UUID,
+      dmId: user.userId as UUID,
+      overrideType: overrideType as 'CONDITION' | 'DISTANCE',
+      presetName: null,
+      isRemoval: true,
+    })
+  }
+
+  // When a CONDITION is removed, restore publish permission unless the player is DM-muted.
+  if (overrideType === 'CONDITION') {
+    const muteState = await getServerMuteEnforcementState({
+      sessionId: sessionId as UUID,
+      userId: targetUserId as UUID,
+    })
+    if (!muteState.enforcedMuted) {
+      const sessionPresence = await getSessionPresence(sessionId as UUID)
+      const playerPresence = sessionPresence.find((p) => p.userId === (targetUserId as string))
+      if (playerPresence?.primaryRoomId) {
+        void enforceParticipantPublishPermission({
+          livekitRoomName: playerPresence.primaryRoomId,
+          userId: targetUserId as string,
+          canPublish: true,
+        })
+      }
+    }
+  }
 
   return res.status(200).json({ ok: true, eventId: event.id })
 }
@@ -478,23 +627,7 @@ async function handleSetBroadcastState(req: Request, res: Response) {
     },
   })
 
-  const legacyEvent = createEvent({
-    type: 'AUDIO:VOICE_OF_GOD_CHANGED',
-    user,
-    userRole: authz.role,
-    sessionId: sessionId as UUID,
-    roomId: null,
-    payload: {
-      dmId: state.dmId,
-      enabled: state.enabled,
-      broadcastRoomId: state.broadcastRoomId,
-      changedAt: state.changedAt,
-    },
-  })
-
   eventBroadcaster.broadcastToSession(sessionId as UUID, event)
-  // Compatibility shim for older clients listening to legacy event name.
-  eventBroadcaster.broadcastToSession(sessionId as UUID, legacyEvent)
 
   await appendSessionAuditEvent({
     sessionId: sessionId as UUID,
@@ -521,8 +654,6 @@ async function handleSetBroadcastState(req: Request, res: Response) {
   return res.status(200).json({
     ok: true,
     broadcast: state,
-    // Backward compatibility for older clients.
-    voiceOfGod: state,
     eventId: event.id,
   })
 }
@@ -597,16 +728,15 @@ async function handleSetUserMute(req: Request, res: Response) {
     mutedAt,
   })
 
-  const eventType = muted ? 'AUDIO:USER_MUTED' : 'AUDIO:USER_UNMUTED'
   const event = createEvent({
-    type: eventType as any,
+    type: 'AUDIO:MUTE_STATE_CHANGED' as any,
     user,
     userRole: authz.role,
     sessionId: sessionId as UUID,
     roomId: null,
     payload: {
       userId: state.userId,
-      userMuted: state.userMuted,
+      muted: state.userMuted,
       mutedAt: state.mutedAt,
     },
   })
@@ -623,7 +753,7 @@ async function handleSetUserMute(req: Request, res: Response) {
     visibilityClass: 'ROLE_SCOPED',
     timestamp: state.mutedAt,
     metadata: {
-      userMuted: state.userMuted,
+      muted: state.userMuted,
     },
   })
 
@@ -702,18 +832,117 @@ async function handleSetDmVoiceMode(req: Request, res: Response) {
     changedAt,
   })
 
+  const isBroadcast = voiceMode === 'BROADCAST'
   const event = createEvent({
-    type: 'AUDIO:DM_VOICE_MODE_CHANGED',
+    type: isBroadcast
+      ? AUDIO_EVENT_TYPES.BROADCAST_STATE_CHANGED
+      : AUDIO_EVENT_TYPES.DM_VOICE_TARGET_CHANGED,
     user,
     userRole: authz.role,
     sessionId: sessionId as UUID,
-    roomId: (targetGroupId as UUID | undefined) ?? null,
+    roomId: isBroadcast ? null : ((targetGroupId as UUID | undefined) ?? null),
+    payload: isBroadcast
+      ? {
+          dmId: state.dmId,
+          enabled: true,
+          broadcastRoomId: `dm-broadcast:${sessionId}`,
+          changedAt: state.changedAt,
+        }
+      : {
+          dmId: state.dmId,
+          targetGroupId: state.targetGroupId ?? null,
+          backgroundVolume: state.backgroundVolume,
+          changedAt: state.changedAt,
+        },
+  })
+
+  eventBroadcaster.broadcastToSession(sessionId as UUID, event)
+
+  await appendSessionAuditEvent({
+    sessionId: sessionId as UUID,
+    actorUserId: user.userId as UUID,
+    actorRole: authz.role,
+    actionType: isBroadcast ? 'AUDIO.BROADCAST_STATE_CHANGED' : 'AUDIO.DM_VOICE_TARGET_CHANGED',
+    targetType: 'USER',
+    targetId: state.dmId,
+    roomId: state.targetGroupId || undefined,
+    visibilityClass: 'PUBLIC',
+    timestamp: state.changedAt,
+    metadata: isBroadcast
+      ? { enabled: true }
+      : { targetGroupId: state.targetGroupId, backgroundVolume: state.backgroundVolume },
+  })
+
+  logger.info('audio', isBroadcast ? 'DM broadcast mode enabled' : 'DM voice target changed', {
+    sessionId,
+    dmId: user.userId,
+    targetGroupId: state.targetGroupId,
+  })
+
+  return res.status(200).json({
+    ok: true,
+    voiceMode,
+    targetGroupId: state.targetGroupId,
+    backgroundVolume: state.backgroundVolume,
+    eventId: event.id,
+  })
+}
+
+router.post('/voice-mode', requireAuth, async (req: Request, res: Response) => {
+  return handleSetDmVoiceMode(req, res)
+})
+
+async function handleSetDmVoicePreset(req: Request, res: Response) {
+  const user = getAuthUser(req)
+  const { sessionId, presetName } = req.body
+
+  if (!isValidUUID(sessionId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Invalid sessionId',
+      field: 'sessionId',
+    })
+  }
+
+  if (presetName !== null && presetName !== undefined && typeof presetName !== 'string') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'presetName must be a string or null',
+      field: 'presetName',
+    })
+  }
+
+  if (
+    typeof presetName === 'string' &&
+    presetName.trim() &&
+    !AUDIO_VOICE_PRESET_NAMES.has(presetName.trim())
+  ) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Unknown voice preset: "${presetName}". Valid presets: ${[...AUDIO_VOICE_PRESET_NAMES].join(', ')}`,
+      field: 'presetName',
+    })
+  }
+
+  const authz = await validateDmControl(sessionId as UUID, user)
+  if (!authz.ok) {
+    return res.status(authz.status).json({ code: authz.code, message: authz.message })
+  }
+
+  const changedAt = Date.now()
+  const resolvedPresetName =
+    typeof presetName === 'string' && presetName.trim() ? presetName.trim() : null
+
+  const event = createEvent({
+    type: AUDIO_EVENT_TYPES.DM_VOICE_MODE_CHANGED,
+    user,
+    userRole: authz.role,
+    sessionId: sessionId as UUID,
+    roomId: null,
     payload: {
-      dmId: state.dmId,
-      voiceMode: state.voiceMode,
-      targetGroupId: state.targetGroupId,
-      backgroundVolume: state.backgroundVolume,
-      changedAt: state.changedAt,
+      dmId: user.userId,
+      presetName: resolvedPresetName,
+      changedAt,
     },
   })
 
@@ -723,37 +952,25 @@ async function handleSetDmVoiceMode(req: Request, res: Response) {
     sessionId: sessionId as UUID,
     actorUserId: user.userId as UUID,
     actorRole: authz.role,
-    actionType: 'AUDIO.DM_VOICE_MODE_CHANGED',
+    actionType: 'AUDIO.DM_VOICE_PRESET_CHANGED',
     targetType: 'USER',
-    targetId: state.dmId,
-    roomId: state.targetGroupId || undefined,
+    targetId: user.userId as UUID,
     visibilityClass: 'PUBLIC',
-    timestamp: state.changedAt,
-    metadata: {
-      voiceMode: state.voiceMode,
-      targetGroupId: state.targetGroupId,
-      backgroundVolume: state.backgroundVolume,
-    },
+    timestamp: changedAt,
+    metadata: { presetName: resolvedPresetName },
   })
 
-  logger.info('audio', 'DM voice mode changed', {
+  logger.info('audio', 'DM voice preset changed', {
     sessionId,
     dmId: user.userId,
-    voiceMode,
-    backgroundVolume: state.backgroundVolume,
+    presetName: resolvedPresetName,
   })
 
-  return res.status(200).json({
-    ok: true,
-    voiceMode: state.voiceMode,
-    targetGroupId: state.targetGroupId,
-    backgroundVolume: state.backgroundVolume,
-    eventId: event.id,
-  })
+  return res.status(200).json({ ok: true, presetName: resolvedPresetName, eventId: event.id })
 }
 
-router.post('/voice-mode', requireAuth, async (req: Request, res: Response) => {
-  return handleSetDmVoiceMode(req, res)
+router.post('/voice-preset', requireAuth, async (req: Request, res: Response) => {
+  return handleSetDmVoicePreset(req, res)
 })
 
 export default router

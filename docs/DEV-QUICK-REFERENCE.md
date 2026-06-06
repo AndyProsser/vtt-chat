@@ -230,11 +230,40 @@ Related legacy store update debug toggle (still supported):
 VITE_DEBUG_STORE_UPDATES=1
 ```
 
+Memory-pressure recovery guard toggles:
+
+```bash
+VITE_MEMORY_PRESSURE_THRESHOLD_MB=1000
+VITE_MEMORY_PRESSURE_POLL_MS=30000
+VITE_MEMORY_PRESSURE_RELOAD_GRACE_MS=15000
+VITE_MEMORY_PRESSURE_RELOAD_COOLDOWN_MS=300000
+```
+
+Dev-only simulator options:
+
+```bash
+VITE_DEBUG_MEMORY_PRESSURE=warn
+```
+
+Runtime console override:
+
+```js
+window.__VTT_DEBUG_MEMORY_PRESSURE__ = 'warn'
+window.__VTT_DEBUG_MEMORY_PRESSURE__ = 'reload'
+window.__VTT_DEBUG_MEMORY_PRESSURE__ = 'off'
+```
+
+Simulator semantics:
+
+- `warn`: simulates sustained memory pressure so the toast path and telemetry can be tested without actually consuming ~1 GB.
+- `reload`: simulates sustained memory pressure and enables the guarded forced-refresh path after the grace window.
+
 ### 2) Capture Signal
 
 - Reproduce the freeze path (usually ACTIVE session with heavy WS churn).
 - Collect Firefox Performance profile (or equivalent).
 - Correlate with `store.churn` logs from frontend logger output.
+- If you need to test the beta recovery path directly, enable the memory-pressure simulator and watch for client telemetry events `UI_MEMORY_PRESSURE_WARNING_SHOWN` and `UI_MEMORY_PRESSURE_REFRESH_TRIGGERED`.
 
 `store.churn` snapshots report totals + deltas for:
 

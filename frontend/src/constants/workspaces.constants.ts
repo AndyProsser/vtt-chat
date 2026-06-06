@@ -18,6 +18,14 @@ export const SESSION_SUMMARY_TAG = 'session-summary'
 export const SESSION_SUMMARY_TITLE = 'Session Summary'
 export const WS_ERROR_TOAST_ID = 'workspaces:ws-error'
 export const WS_AUTO_RETRY_WINDOW_MS = 30_000
+export const WS_RESET_RECONNECT_UI_SUPPRESS_MS = 3_000
+export const WORKSPACES_MEMORY_PRESSURE_TOAST_ID = 'workspaces:memory-pressure'
+export const WORKSPACES_MEMORY_PRESSURE_THRESHOLD_BYTES = 1_000_000_000
+export const WORKSPACES_MEMORY_PRESSURE_POLL_MS = 30_000
+export const WORKSPACES_MEMORY_PRESSURE_RELOAD_GRACE_MS = 15_000
+export const WORKSPACES_MEMORY_PRESSURE_RELOAD_COOLDOWN_MS = 5 * 60 * 1000
+export const WORKSPACES_MEMORY_PRESSURE_RELOAD_STORAGE_KEY =
+  'vtt-chat:memory-pressure-last-reload-at'
 export const DEFAULT_GREENROOM_CACHE_TTL_MS = 60 * 60 * 1000
 export const SESSION_BOOKEND_PREFIXES = [
   'Session Start:',

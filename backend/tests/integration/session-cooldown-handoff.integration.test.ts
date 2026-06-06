@@ -174,13 +174,13 @@ describe('cooldown extend handoff', () => {
 
     mocks.mockApplySessionStateRoomTransition.mockResolvedValue({
       mainRoomId: '44444444-4444-4444-8444-444444444444',
-      mainRoomName: 'Main Room',
+      mainRoomName: 'Main',
       greenRoomId: '55555555-5555-4555-8555-555555555555',
       greenRoomName: 'Green Room',
       targetRoomId: '55555555-5555-4555-8555-555555555555',
       targetRoomName: 'Green Room',
       movedUsers: 2,
-      targetState: 'OFFLINE',
+      targetState: 'ONLINE',
       users: [
         { id: DM_ID, username: 'dm-user' },
         { id: PLAYER_ID, username: 'player-user' },

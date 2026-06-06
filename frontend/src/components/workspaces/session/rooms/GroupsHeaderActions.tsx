@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
+import { RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { CreateGroupModal } from './CreateGroupModal'
 import { MockTestingPanel } from '../dev/MockTestingPanel'
+import { DmVoicePanel } from './DmVoicePanel'
 
 export interface GroupsHeaderActionsProps {
   headerModeCopy?: string
@@ -22,6 +24,8 @@ export interface GroupsHeaderActionsProps {
   token?: string
   sessionId?: UUID
   activeTakeoverUserId?: UUID | null
+  /** Active DM voice preset name, or null when normal voice is active. */
+  dmVoicePreset?: string | null
   onBroadcastToggle: () => void
   onDevReset: () => void
   onReturnToUser: () => Promise<void>
@@ -29,9 +33,11 @@ export interface GroupsHeaderActionsProps {
   onCloseCreateGroupModal: () => void
   onCreateGroup: (name: string, type: import('@shared').RoomType) => Promise<void>
   onEndWhisper: () => void
+  /** Called when DM selects a voice preset (or null to restore normal voice). */
+  onSelectVoicePreset?: (presetName: string | null) => void
 }
 
-export function GroupsHeaderActions({
+export const GroupsHeaderActions = memo(function GroupsHeaderActions({
   headerModeCopy,
   canManageRooms,
   isGreenroom,
@@ -48,6 +54,7 @@ export function GroupsHeaderActions({
   token,
   sessionId,
   activeTakeoverUserId,
+  dmVoicePreset = null,
   onBroadcastToggle,
   onDevReset,
   onReturnToUser,
@@ -55,6 +62,7 @@ export function GroupsHeaderActions({
   onCloseCreateGroupModal,
   onCreateGroup,
   onEndWhisper,
+  onSelectVoicePreset,
 }: GroupsHeaderActionsProps) {
   void onDevReset
   const MOCK_PANEL_ANIMATION_MS = 160
@@ -63,6 +71,44 @@ export function GroupsHeaderActions({
   const [mockPanelOpen, setMockPanelOpen] = useState(false)
   const mockPanelRef = useRef<HTMLDivElement | null>(null)
   const takeoverActive = Boolean(activeTakeoverUserId)
+
+  const [showVoicePanel, setShowVoicePanel] = useState(false)
+  const [renderVoicePanel, setRenderVoicePanel] = useState(false)
+  const [voicePanelOpen, setVoicePanelOpen] = useState(false)
+  const voicePanelRef = useRef<HTMLDivElement | null>(null)
+
+  const hasActivePreset = Boolean(dmVoicePreset)
+
+  const closeVoicePanel = useCallback(() => {
+    setVoicePanelOpen(false)
+    setShowVoicePanel(false)
+  }, [])
+
+  const handleVoiceButtonClick = () => {
+    if (hasActivePreset && !showVoicePanel) {
+      // One-click dismiss: clear the active preset immediately without opening panel
+      onSelectVoicePreset?.(null)
+      return
+    }
+
+    setShowVoicePanel((current) => {
+      const next = !current
+      if (next) {
+        setRenderVoicePanel(true)
+        window.requestAnimationFrame(() => {
+          setVoicePanelOpen(true)
+        })
+      } else {
+        setVoicePanelOpen(false)
+      }
+      return next
+    })
+  }
+
+  const handleSelectVoicePreset = (presetName: string | null) => {
+    onSelectVoicePreset?.(presetName)
+    closeVoicePanel()
+  }
 
   const closeMockPanel = useCallback(() => {
     setMockPanelOpen(false)
@@ -131,6 +177,46 @@ export function GroupsHeaderActions({
     }
   }, [closeMockPanel, showMockPanel])
 
+  useEffect(() => {
+    if (showVoicePanel) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setRenderVoicePanel(false)
+    }, MOCK_PANEL_ANIMATION_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [showVoicePanel])
+
+  useEffect(() => {
+    if (!showVoicePanel) {
+      return
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      if (voicePanelRef.current && !voicePanelRef.current.contains(target)) {
+        closeVoicePanel()
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeVoicePanel()
+    }
+
+    document.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [closeVoicePanel, showVoicePanel])
+
   return (
     <div className="room-selector-header__meta room-selector-header__meta--actions">
       {headerModeCopy ? <span>{headerModeCopy}</span> : null}
@@ -160,7 +246,46 @@ export function GroupsHeaderActions({
           </TooltipContent>
         </Tooltip>
       ) : null}
-      {import.meta.env.DEV && (canManageRooms || takeoverActive) ? (
+      {canManageRooms && !isGreenroom ? (
+        <div className="room-selector-header__voice-wrap" ref={voicePanelRef}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={`room-selector-header__broadcast-icon ${
+                  hasActivePreset || showVoicePanel ? 'voice-target-active' : ''
+                }`}
+                aria-label={
+                  hasActivePreset
+                    ? `Voice preset: ${dmVoicePreset} — tap to restore normal voice`
+                    : 'Change DM voice'
+                }
+                onClick={handleVoiceButtonClick}
+                aria-haspopup="dialog"
+                aria-expanded={showVoicePanel}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  record_voice_over
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {hasActivePreset
+                ? `${dmVoicePreset} — tap to restore normal voice`
+                : 'Change DM voice'}
+            </TooltipContent>
+          </Tooltip>
+          {renderVoicePanel ? (
+            <div className={`dm-voice-panel-shell ${voicePanelOpen ? 'is-open' : 'is-closing'}`}>
+              <DmVoicePanel
+                activePreset={dmVoicePreset ?? null}
+                onSelect={handleSelectVoicePreset}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {import.meta.env.DEV && canManageRooms ? (
         <div className="room-selector-header__mock-wrap" ref={mockPanelRef}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -253,7 +378,7 @@ export function GroupsHeaderActions({
       ) : null}
     </div>
   )
-}
+})
 
 // Legacy compatibility aliases
 export { GroupsHeaderActions as RoomHeaderActions }

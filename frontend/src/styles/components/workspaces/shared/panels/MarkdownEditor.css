@@ -95,12 +95,12 @@
 
 .md-editor__surface {
   position: relative;
-  min-height: 132px;
+  min-height: 300px;
   background: color-mix(in srgb, var(--color-surface-default) 96%, transparent);
 }
 
 .md-editor__content {
-  min-height: 132px;
+  min-height: 300px;
   padding: 14px 14px 12px;
   font-size: 0.9rem;
   line-height: 1.6;
@@ -234,13 +234,19 @@
   background: transparent;
 }
 
+.md-editor--readonly .md-editor__surface {
+  min-height: 0;
+}
+
 .md-editor--readonly .md-editor__content {
+  min-height: 0;
   padding: 0;
   cursor: default;
 }
 
 .md-editor--readonly .md-editor__content .ProseMirror {
   pointer-events: none;
+  min-height: 0;
 }
 
 /* ── Focus ring ────────────────────────────────────────────────────── */
@@ -250,4 +256,143 @@
   box-shadow:
     0 0 0 2px var(--color-accent-ring, rgba(99, 102, 241, 0.15)),
     0 8px 24px rgba(15, 23, 42, 0.18);
+}
+
+/* ── DMDX Insert Menu ──────────────────────────────────────────────── */
+
+.dmdx-insert-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.dmdx-insert-menu__trigger {
+  color: var(--color-accent-text, #818cf8);
+}
+
+.dmdx-insert-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  min-width: 150px;
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dmdx-insert-menu__option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: var(--color-text-primary);
+  transition: background 100ms;
+}
+
+.dmdx-insert-menu__option:hover {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.06));
+}
+
+.dmdx-insert-menu__option-icon {
+  font-size: 1rem;
+  color: var(--color-accent-text, #818cf8);
+  flex-shrink: 0;
+}
+
+.dmdx-insert-menu__option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.dmdx-insert-menu__option-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.dmdx-insert-menu__option-desc {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+
+/* ── DMDX read-only renderer ───────────────────────────────────────── */
+
+.dmdx-renderer {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.dmdx-renderer .md-editor__surface {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Insert action group dropdown ──────────────────────────────────── */
+
+.md-editor__action-group {
+  position: relative;
+  display: inline-flex;
+}
+
+.md-editor__action-group-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  min-width: 142px;
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.md-editor__action-group-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: var(--color-text-primary);
+  font-size: 0.82rem;
+  transition: background 100ms;
+}
+
+.md-editor__action-group-option:hover:not(:disabled) {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.06));
+}
+
+.md-editor__action-group-option:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.md-editor__action-group-option .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--color-accent-text, #818cf8);
+  flex-shrink: 0;
 }

@@ -5,6 +5,7 @@ import { verifyToken, extractTokenFromHeader } from '@/services/auth.service'
 import { validateUserAuthState } from '@/services/auth/user-context.service'
 import { AuthToken, AdminAuthToken, AuthError, AppError } from '@/types'
 import { logger } from '@/utils/logger'
+import { createRequestMetricsContext, runWithRequestMetrics } from '@/infra/db/observability'
 
 // ============================================================================
 // Extended Express Types
@@ -181,6 +182,11 @@ export const requestLoggingMiddleware = (req: Request, res: Response, next: Next
   const startTime = Date.now()
   req.requestId = req.headers['x-request-id']?.toString() || randomUUID()
   res.setHeader('X-Request-Id', req.requestId)
+  const metrics = createRequestMetricsContext({
+    requestId: req.requestId,
+    method: req.method,
+    path: req.path,
+  })
 
   res.on('finish', () => {
     const duration = Date.now() - startTime
@@ -190,10 +196,15 @@ export const requestLoggingMiddleware = (req: Request, res: Response, next: Next
 
     logger.debug('http', `${method} ${path} [${status}] ${duration}ms`, {
       requestId: req.requestId,
+      queryCount: metrics.queryCount,
+      dbDurationMs: metrics.totalQueryDurationMs,
+      slowQueryCount: metrics.slowQueryCount,
     })
   })
 
-  next()
+  runWithRequestMetrics(metrics, () => {
+    next()
+  })
 }
 
 // ============================================================================

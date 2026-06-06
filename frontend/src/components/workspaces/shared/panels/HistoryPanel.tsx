@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import * as TabsPrimitive from '@radix-ui/react-tabs'
 import type { MessageMetadataEntity } from '@shared'
-import { MessageType, type Role, type UUID } from '@shared'
+import { type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
-import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
-import type { HistorySortOrder, SessionHistoryMessage, SessionHistoryThread } from '@/types/history'
-import { parseNoteSharedMessage } from '@/utils/noteSharedMessage'
+import type { SessionHistoryMessage, SessionHistoryThread } from '@/types/history'
 import {
-  DEFAULT_HISTORY_SORT_ORDER,
-  getHistoryControlStorageKey,
-  parsePersistedHistoryControls,
-} from '@/utils/history'
+  HISTORY_MESSAGE_LIMIT,
+  formatBoundaryDate,
+  matchesQuery,
+  toSessionLabel,
+  toTimestamp,
+} from './HistoryPanel.helpers'
+import {
+  HistoryPanelVirtualList,
+  flattenHistoryGroupsToRows,
+  type HistoryGroup,
+} from './HistoryPanel.virtualized'
 import '@/styles/components/workspaces/session/chat/MessageList.messages.css'
 import '@/styles/components/workspaces/session/chat/MessageList.timeline.css'
 import '@/styles/components/workspaces/session/chat/MessageList.whisper-routes.css'
@@ -25,141 +29,19 @@ interface HistoryPanelProps {
   userId?: UUID
 }
 
-const HISTORY_MESSAGE_LIMIT = 180
-const GROUPING_WINDOW_MS = 5 * 60 * 1000
-const SESSION_RECAP_PREFIX = '[Last Session]'
-const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
-const SESSION_BOOKEND_PREFIXES = [
-  'Session Start:',
-  'Session End:',
-  '[Session Started]',
-  '[Session Ended]',
-  '[Session Paused]',
-  '[Session Resumed]',
-  '[Session Cooldown]',
-]
-
-function toTimestamp(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === 'string') {
-    const numeric = Number(value)
-    if (Number.isFinite(numeric)) {
-      return numeric
-    }
-
-    const parsed = Date.parse(value)
-    if (Number.isFinite(parsed)) {
-      return parsed
-    }
-  }
-
-  return Date.now()
-}
-
-function toDayLabel(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function toSessionLabel(thread: SessionHistoryThread): string {
-  const baseDate = thread.startedAt || thread.createdAt
-  return `${thread.sessionName} · ${toDayLabel(baseDate)}`
-}
-
-function matchesQuery(message: SessionHistoryMessage, query: string): boolean {
-  if (!query) {
-    return true
-  }
-
-  const haystack = [
-    message.authorCharacterName,
-    message.authorUsername,
-    message.content,
-    String(message.type || ''),
-    message.isDmOnly ? 'dm only' : '',
-  ]
-    .join(' ')
-    .toLowerCase()
-
-  return haystack.includes(query)
-}
-
-function toMessageVariant(type: string): 'ic' | 'ooc' | 'whisper' | 'dm' | 'system' {
-  if (type === MessageType.IC) return 'ic'
-  if (type === MessageType.WHISPER) return 'whisper'
-  if (type === MessageType.DM) return 'dm'
-  if (type === MessageType.SYSTEM) return 'system'
-  return 'ooc'
-}
-
-function toTypeIcon(variant: 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'): string {
-  if (variant === 'ic') return 'swords'
-  if (variant === 'whisper') return 'visibility_off'
-  if (variant === 'dm') return 'mail'
-  if (variant === 'system') return 'info'
-  return 'chat_bubble'
-}
-
-function getAuthorInitial(username: string): string {
-  return username.trim().charAt(0).toUpperCase() || '?'
-}
-
-function formatBoundaryDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
 export function HistoryPanel({
   apiUrl,
   token,
   campaignId,
   sessionId,
-  role,
+  role: _role,
   userId,
 }: HistoryPanelProps) {
   const [threads, setThreads] = useState<SessionHistoryThread[]>([])
   const searchInputRef = useRef<HTMLInputElement | null>(null)
-  const storageKey = useMemo(
-    () => getHistoryControlStorageKey(sessionId, role, userId),
-    [sessionId, role, userId]
-  )
-  const [sortOrder, setSortOrder] = useState<HistorySortOrder>(() => {
-    if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
-      return DEFAULT_HISTORY_SORT_ORDER
-    }
-    return parsePersistedHistoryControls(window.localStorage.getItem(storageKey)).sortOrder
-  })
   const [query, setQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.localStorage?.getItem !== 'function') {
-      return
-    }
-
-    const persisted = parsePersistedHistoryControls(window.localStorage.getItem(storageKey))
-    queueMicrotask(() => {
-      setSortOrder(persisted.sortOrder)
-    })
-  }, [storageKey])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.localStorage?.setItem !== 'function') {
-      return
-    }
-
-    window.localStorage.setItem(storageKey, JSON.stringify({ sortOrder }))
-  }, [storageKey, sortOrder])
 
   useEffect(() => {
     let isDisposed = false
@@ -186,6 +68,7 @@ export function HistoryPanel({
         const sessionData = (await sessionResponse.json()) as {
           sessions?: Array<{
             id: UUID
+            dmId?: UUID
             name: string
             state: string
             createdAt?: number | string
@@ -227,6 +110,7 @@ export function HistoryPanel({
                 sessionId: string
                 roomId?: string
                 authorId: string
+                targetIds?: string[]
                 authorUsername?: string
                 authorCharacterName?: string | null
                 content: string
@@ -247,6 +131,7 @@ export function HistoryPanel({
                 sessionId: message.sessionId,
                 roomId: message.roomId,
                 authorId: message.authorId,
+                targetIds: Array.isArray(message.targetIds) ? message.targetIds : undefined,
                 authorUsername: message.authorUsername || 'Unknown',
                 authorCharacterName: message.authorCharacterName ?? undefined,
                 content: message.content,
@@ -258,6 +143,7 @@ export function HistoryPanel({
 
             return {
               sessionId: session.id,
+              dmId: session.dmId,
               sessionName: session.name,
               sessionState: session.state,
               createdAt: toTimestamp(session.createdAt),
@@ -298,15 +184,13 @@ export function HistoryPanel({
     }
   }, [apiUrl, campaignId, sessionId, token])
 
-  const groupedHistory = useMemo(() => {
+  const groupedHistory = useMemo<HistoryGroup[]>(() => {
     const normalizedQuery = query.trim().toLowerCase()
 
     const filteredThreads = threads
       .map((thread) => {
-        const sortedMessages = [...thread.messages].sort((left, right) =>
-          sortOrder === 'newest'
-            ? right.createdAt - left.createdAt
-            : left.createdAt - right.createdAt
+        const sortedMessages = [...thread.messages].sort(
+          (left, right) => left.createdAt - right.createdAt
         )
         const filteredMessages = sortedMessages.filter((message) =>
           matchesQuery(message, normalizedQuery)
@@ -323,17 +207,23 @@ export function HistoryPanel({
     const sortedThreads = [...filteredThreads].sort((left, right) => {
       const leftAnchor = left.startedAt || left.createdAt
       const rightAnchor = right.startedAt || right.createdAt
-      return sortOrder === 'newest' ? rightAnchor - leftAnchor : leftAnchor - rightAnchor
+      return leftAnchor - rightAnchor
     })
 
     return sortedThreads.map((thread) => ({
       label: toSessionLabel(thread),
-      sessionId: thread.sessionId,
+      sessionId: thread.sessionId as UUID,
+      sessionDmId: thread.dmId as UUID | undefined,
       sessionName: thread.sessionName,
       startedAtLabel: thread.startedAtLabel,
       items: thread.messages,
     }))
-  }, [query, sortOrder, threads])
+  }, [query, threads])
+
+  const virtualRows = useMemo(
+    () => flattenHistoryGroupsToRows(groupedHistory, userId),
+    [groupedHistory, userId]
+  )
 
   if (isLoading) {
     return (
@@ -414,191 +304,15 @@ export function HistoryPanel({
             ) : null}
           </div>
         </label>
-
-        <div className="knowledge-panel-filter-field">
-          <span>Sort</span>
-          <TabsPrimitive.Root
-            value={sortOrder}
-            onValueChange={(value) => setSortOrder(value as HistorySortOrder)}
-            className="knowledge-panel-tabs knowledge-panel-history__sort-tabs"
-          >
-            <TabsPrimitive.List
-              className="knowledge-panel-tabs__list knowledge-panel-history__sort-list"
-              aria-label="History sort order"
-            >
-              <TabsPrimitive.Trigger
-                value="newest"
-                className="knowledge-panel-tabs__trigger knowledge-panel-history__sort-trigger"
-                title="Newest first"
-                aria-label="Sort by newest first"
-              >
-                <Icon name="south" />
-              </TabsPrimitive.Trigger>
-              <TabsPrimitive.Trigger
-                value="oldest"
-                className="knowledge-panel-tabs__trigger knowledge-panel-history__sort-trigger"
-                title="Oldest first"
-                aria-label="Sort by oldest first"
-              >
-                <Icon name="north" />
-              </TabsPrimitive.Trigger>
-            </TabsPrimitive.List>
-          </TabsPrimitive.Root>
-        </div>
       </div>
 
-      <div className="knowledge-panel__content knowledge-panel-history__content workspace-panel-scroll-region">
-        {groupedHistory.length === 0 ? (
+      <div className="knowledge-panel__content knowledge-panel-history__content knowledge-panel-results--scroll">
+        {virtualRows.length === 0 ? (
           <div className="knowledge-panel-empty" role="status">
             No results for that search.
           </div>
-        ) : null}
-
-        {groupedHistory.map(
-          ({ label, items, sessionId: groupSessionId, sessionName, startedAtLabel }) => (
-            <div key={label} className="knowledge-panel__day-group">
-              <div
-                className="knowledge-panel-history__boundary"
-                aria-label={`Session boundary ${label}`}
-              >
-                <div className="knowledge-panel-history__boundary-title-row">
-                  <span className="knowledge-panel-history__boundary-side-icon">
-                    <Icon name="keyboard_double_arrow_left" />
-                  </span>
-                  <span className="knowledge-panel-history__boundary-text">
-                    <span className="knowledge-panel-history__boundary-session">{sessionName}</span>
-                    <span className="knowledge-panel-history__boundary-date">{startedAtLabel}</span>
-                  </span>
-                  <span className="knowledge-panel-history__boundary-side-icon">
-                    <Icon name="keyboard_double_arrow_right" />
-                  </span>
-                </div>
-              </div>
-              <ul className="knowledge-panel-history__message-list">
-                {items.map((message, index) => {
-                  const previous = index > 0 ? items[index - 1] : undefined
-                  const isSystem = message.type === MessageType.SYSTEM
-                  const recapPrefix = message.content.startsWith(CAMPAIGN_BRIEF_PREFIX)
-                    ? CAMPAIGN_BRIEF_PREFIX
-                    : SESSION_RECAP_PREFIX
-                  const isSessionRecap = isSystem && message.content.startsWith(recapPrefix)
-                  const isSessionBookend =
-                    isSystem &&
-                    SESSION_BOOKEND_PREFIXES.some((prefix) => message.content.startsWith(prefix))
-                  const noteShared = isSystem
-                    ? parseNoteSharedMessage({
-                        content: message.content,
-                        metadata: message.metadata,
-                      })
-                    : null
-
-                  if (isSessionBookend) {
-                    return null
-                  }
-
-                  const isGroupedWithPrevious = Boolean(
-                    previous &&
-                    previous.authorId === message.authorId &&
-                    Math.abs(message.createdAt - previous.createdAt) <= GROUPING_WINDOW_MS
-                  )
-                  const isSelf = message.authorId === userId
-                  const variant = toMessageVariant(message.type)
-                  const authorLabel = message.authorCharacterName || message.authorUsername
-
-                  if (isSessionRecap) {
-                    const recapBody = message.content.slice(recapPrefix.length).trim()
-                    const recapLabel =
-                      recapPrefix === CAMPAIGN_BRIEF_PREFIX ? 'Campaign Brief' : 'Last Session'
-
-                    return (
-                      <li key={`${groupSessionId}:${message.id}`}>
-                        <article className="session-message-list__session-recap">
-                          <span
-                            className="session-message-list__session-recap-icon material-symbols-outlined"
-                            aria-hidden="true"
-                          >
-                            menu_book
-                          </span>
-                          <div className="session-message-list__session-recap-body">
-                            <span className="session-message-list__session-recap-label">
-                              {recapLabel}
-                            </span>
-                            <p className="session-message-list__session-recap-text">{recapBody}</p>
-                          </div>
-                        </article>
-                      </li>
-                    )
-                  }
-
-                  if (noteShared) {
-                    return (
-                      <li key={`${groupSessionId}:${message.id}`}>
-                        <NoteSharedCard
-                          note={noteShared}
-                          timestampLabel={new Date(message.createdAt).toLocaleTimeString()}
-                          timestampDateTime={new Date(message.createdAt).toISOString()}
-                        />
-                      </li>
-                    )
-                  }
-
-                  return (
-                    <li key={`${groupSessionId}:${message.id}`}>
-                      <article
-                        className={`session-message-list__message ${isSelf ? 'session-message-list__message--self' : ''} ${isGroupedWithPrevious ? 'session-message-list__message--grouped' : ''}`}
-                      >
-                        <div className="session-message-list__message-row">
-                          {!isSelf && !isGroupedWithPrevious ? (
-                            <span
-                              className={`session-message-list__message-avatar ${variant === 'system' ? 'session-message-list__message-avatar--system' : ''}`}
-                              aria-hidden="true"
-                            >
-                              {getAuthorInitial(authorLabel)}
-                            </span>
-                          ) : (
-                            <span
-                              className="session-message-list__message-avatar session-message-list__message-avatar--spacer"
-                              aria-hidden="true"
-                            />
-                          )}
-
-                          <div className="session-message-list__message-content">
-                            {!isGroupedWithPrevious ? (
-                              <div className="session-message-list__message-meta">
-                                <span className="session-message-list__message-author">
-                                  {authorLabel}
-                                </span>
-                              </div>
-                            ) : null}
-
-                            <div
-                              className={`session-message-list__message-bubble session-message-list__message-bubble--${variant} ${isSelf ? 'session-message-list__message-bubble--self' : ''}`}
-                            >
-                              <span
-                                className={`session-message-list__message-type-icon session-message-list__message-type-icon--${variant} material-symbols-outlined`}
-                                aria-hidden="true"
-                              >
-                                {toTypeIcon(variant)}
-                              </span>
-                              <span className="session-message-list__message-bubble-text">
-                                {message.content}
-                              </span>
-                            </div>
-
-                            <div className="session-message-list__message-footer">
-                              <span className="session-message-list__message-timestamp">
-                                {new Date(message.createdAt).toLocaleTimeString()}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </article>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          )
+        ) : (
+          <HistoryPanelVirtualList rows={virtualRows} autoScrollToLastRow />
         )}
       </div>
     </section>

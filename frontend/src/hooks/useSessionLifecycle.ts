@@ -13,12 +13,12 @@ interface UseSessionLifecycleState {
 }
 
 interface UseSessionLifecycleRefs {
-  prevWsStateRef: React.MutableRefObject<ConnectionState>
-  wsTelemetryPrevRef: React.MutableRefObject<ConnectionState | null>
-  lastHydratedSessionFingerprintRef: React.MutableRefObject<string | null>
-  wsRetryWindowStartRef: React.MutableRefObject<number | null>
-  wsRetryToastTimerRef: React.MutableRefObject<number | null>
-  wsErrorMessageRef: React.MutableRefObject<string | null>
+  prevWsStateRef: React.RefObject<ConnectionState>
+  wsTelemetryPrevRef: React.RefObject<ConnectionState | null>
+  lastHydratedSessionFingerprintRef: React.RefObject<string | null>
+  wsRetryWindowStartRef: React.RefObject<number | null>
+  wsRetryToastTimerRef: React.RefObject<number | null>
+  wsErrorMessageRef: React.RefObject<string | null>
 }
 
 interface UseSessionLifecycleActions {

@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { SystemToasts } from '../../src/components/session/SystemToasts'
+import { SystemToasts } from '../../src/components/workspaces/session/SystemToasts'
 import { clearToasts, getToastItems } from '../../src/state/toastCenter'
 
 describe('SystemToasts', () => {

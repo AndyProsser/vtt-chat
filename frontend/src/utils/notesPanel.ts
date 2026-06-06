@@ -7,9 +7,9 @@ export const NOTE_SHARE_AUDIENCE_META: Record<
   NoteShareAudienceMode,
   { icon: string; label: string }
 > = {
-  NONE: { icon: 'visibility_off', label: 'None' },
-  EVERYONE: { icon: 'groups', label: 'Everyone' },
-  LIMITED: { icon: 'group', label: 'Limited' },
+  NONE: { icon: 'visibility_off', label: 'Private' },
+  EVERYONE: { icon: 'groups', label: 'Party' },
+  LIMITED: { icon: 'group', label: 'Selected' },
 }
 
 export interface NoteShareStatus {

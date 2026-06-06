@@ -3,136 +3,10 @@ import { getPrismaClient } from '@/infra/db'
 
 const prisma = getPrismaClient()
 
-export async function createNoteRecord(params: {
+export interface NoteRow {
   id: string
-  sessionId: string
-  authorId: string
-  authorUsername: string
-  title: string
-  content: string
-  visibility: 'DM_ONLY' | 'PLAYERS_VISIBLE' | 'CUSTOM'
-  tags: string[]
-  allowedUsers: string[]
-  createdAt: Date
-  updatedAt: Date
-}): Promise<void> {
-  await prisma.note.create({
-    data: {
-      id: params.id,
-      sessionId: params.sessionId,
-      authorId: params.authorId,
-      authorUsername: params.authorUsername,
-      title: params.title,
-      content: params.content,
-      visibility: params.visibility,
-      tags: params.tags as Prisma.InputJsonValue,
-      allowedUsers: params.allowedUsers as Prisma.InputJsonValue,
-      createdAt: params.createdAt,
-      updatedAt: params.updatedAt,
-    },
-  })
-}
-
-export async function listSessionNotes(sessionId: string): Promise<
-  Array<{
-    id: string
-    campaignId: string | null
-    sessionId: string
-    authorId: string
-    authorUsername: string
-    title: string
-    content: string
-    visibility: 'DM_ONLY' | 'PLAYERS_VISIBLE' | 'CUSTOM'
-    tags: unknown
-    allowedUsers: unknown
-    publishedAt: Date | null
-    createdAt: Date
-    updatedAt: Date
-  }>
-> {
-  const rows = await prisma.note.findMany({
-    where: { sessionId },
-    orderBy: { updatedAt: 'desc' },
-    include: {
-      session: {
-        select: {
-          campaignId: true,
-        },
-      },
-    },
-  })
-
-  return rows.map((row: any) => ({
-    id: row.id,
-    campaignId: row.session.campaignId,
-    sessionId: row.sessionId,
-    authorId: row.authorId,
-    authorUsername: row.authorUsername,
-    title: row.title,
-    content: row.content,
-    visibility: row.visibility,
-    tags: row.tags,
-    allowedUsers: row.allowedUsers,
-    publishedAt: row.publishedAt,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  }))
-}
-
-export async function listCampaignNotes(campaignId: string): Promise<
-  Array<{
-    id: string
-    campaignId: string | null
-    sessionId: string
-    authorId: string
-    authorUsername: string
-    title: string
-    content: string
-    visibility: 'DM_ONLY' | 'PLAYERS_VISIBLE' | 'CUSTOM'
-    tags: unknown
-    allowedUsers: unknown
-    publishedAt: Date | null
-    createdAt: Date
-    updatedAt: Date
-  }>
-> {
-  const rows = await prisma.note.findMany({
-    where: {
-      session: {
-        campaignId,
-      },
-    },
-    orderBy: { updatedAt: 'desc' },
-    include: {
-      session: {
-        select: {
-          campaignId: true,
-        },
-      },
-    },
-  })
-
-  return rows.map((row: any) => ({
-    id: row.id,
-    campaignId: row.session.campaignId,
-    sessionId: row.sessionId,
-    authorId: row.authorId,
-    authorUsername: row.authorUsername,
-    title: row.title,
-    content: row.content,
-    visibility: row.visibility,
-    tags: row.tags,
-    allowedUsers: row.allowedUsers,
-    publishedAt: row.publishedAt,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  }))
-}
-
-export async function findNoteById(noteId: string): Promise<{
-  id: string
-  campaignId: string | null
-  sessionId: string
+  campaignId: string
+  sessionId: string | null
   authorId: string
   authorUsername: string
   title: string
@@ -140,26 +14,16 @@ export async function findNoteById(noteId: string): Promise<{
   visibility: 'DM_ONLY' | 'PLAYERS_VISIBLE' | 'CUSTOM'
   tags: unknown
   allowedUsers: unknown
+  attachments: unknown
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date
-} | null> {
-  const row = await prisma.note.findUnique({
-    where: { id: noteId },
-    include: {
-      session: {
-        select: {
-          campaignId: true,
-        },
-      },
-    },
-  })
+}
 
-  if (!row) return null
-
+function mapNoteRow(row: any): NoteRow {
   return {
     id: row.id,
-    campaignId: row.session.campaignId,
+    campaignId: row.campaignId,
     sessionId: row.sessionId,
     authorId: row.authorId,
     authorUsername: row.authorUsername,
@@ -168,10 +32,72 @@ export async function findNoteById(noteId: string): Promise<{
     visibility: row.visibility,
     tags: row.tags,
     allowedUsers: row.allowedUsers,
+    attachments: row.attachments,
     publishedAt: row.publishedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
+}
+
+export async function createNoteRecord(params: {
+  id: string
+  campaignId: string
+  sessionId?: string | null
+  authorId: string
+  authorUsername: string
+  title: string
+  content: string
+  visibility: 'DM_ONLY' | 'PLAYERS_VISIBLE' | 'CUSTOM'
+  tags: string[]
+  allowedUsers: string[]
+  attachments: Prisma.InputJsonValue
+  createdAt: Date
+  updatedAt: Date
+}): Promise<void> {
+  await prisma.note.create({
+    data: {
+      id: params.id,
+      campaignId: params.campaignId,
+      sessionId: params.sessionId ?? undefined,
+      authorId: params.authorId,
+      authorUsername: params.authorUsername,
+      title: params.title,
+      content: params.content,
+      visibility: params.visibility,
+      tags: params.tags as Prisma.InputJsonValue,
+      allowedUsers: params.allowedUsers as Prisma.InputJsonValue,
+      attachments: params.attachments,
+      createdAt: params.createdAt,
+      updatedAt: params.updatedAt,
+    },
+  })
+}
+
+export async function listSessionNotes(sessionId: string): Promise<NoteRow[]> {
+  const rows = await prisma.note.findMany({
+    where: { sessionId },
+    orderBy: { updatedAt: 'desc' },
+  })
+
+  return rows.map(mapNoteRow)
+}
+
+export async function listCampaignNotes(campaignId: string): Promise<NoteRow[]> {
+  const rows = await prisma.note.findMany({
+    where: { campaignId },
+    orderBy: { updatedAt: 'desc' },
+  })
+
+  return rows.map(mapNoteRow)
+}
+
+export async function findNoteById(noteId: string): Promise<NoteRow | null> {
+  const row = await prisma.note.findUnique({
+    where: { id: noteId },
+  })
+
+  if (!row) return null
+  return mapNoteRow(row)
 }
 
 export async function updateNoteRecord(params: {
@@ -181,6 +107,7 @@ export async function updateNoteRecord(params: {
   visibility: 'DM_ONLY' | 'PLAYERS_VISIBLE' | 'CUSTOM'
   tags: string[]
   allowedUsers: string[]
+  attachments: Prisma.InputJsonValue
   updatedAt: Date
   publishedAt?: Date | null
 }): Promise<void> {
@@ -192,6 +119,7 @@ export async function updateNoteRecord(params: {
       visibility: params.visibility,
       tags: params.tags as Prisma.InputJsonValue,
       allowedUsers: params.allowedUsers as Prisma.InputJsonValue,
+      attachments: params.attachments,
       updatedAt: params.updatedAt,
       publishedAt: params.publishedAt,
     },

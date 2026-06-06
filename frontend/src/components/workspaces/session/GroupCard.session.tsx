@@ -5,7 +5,7 @@
  */
 
 import React, { useMemo, useState } from 'react'
-import { PresenceState, RoomType } from '@shared'
+import { PresenceState, RoomType, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
 import type { Room, RoomUser } from '@/types/room'
@@ -89,6 +89,8 @@ interface SessionGroupCardProps {
   onClose: () => void
   onDelete: () => void
   onSetEnvironment: (env: string) => void
+  onMoveMember?: (targetUserId: UUID, targetRoomId: UUID) => void
+  isApplyingEnvironment?: boolean
 }
 
 /**
@@ -108,12 +110,14 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
   onClose,
   onDelete,
   onSetEnvironment,
+  onMoveMember,
+  isApplyingEnvironment = false,
 }) => {
   const { tooltipLabelsEnabled } = useTooltipLabelsPreference()
   const isWhisper = room.type === RoomType.PRIVATE
   const isMain = room.type === RoomType.MAIN
   const isGreenRoom = isGreenRoomCard || isGreenRoomName(room.name)
-  const canChangeEnvironment = canManage && !isWhisper && !isGreenRoom
+  const canChangeEnvironment = canManage && !isWhisper && !isGreenRoom && !isApplyingEnvironment
   const canDrainOrDelete = canManage && !isMain && !isGreenRoom
   const showDrainOrDeleteAction = canDrainOrDelete && (!isWhisper || !isEmpty)
   const actionIcon = isWhisper || !isEmpty ? 'reply' : 'delete'
@@ -134,8 +138,33 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
     [members]
   )
 
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault()
+    const data = event.dataTransfer.getData('text/plain')
+    if (!data) return
+    try {
+      const parsed = JSON.parse(data)
+      const targetUserId = parsed?.targetUserId
+      if (!canManage) return
+      if (targetUserId && onMoveMember) {
+        onMoveMember(targetUserId as UUID, room.id as UUID)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault()
+  }
+
   return (
-    <article className="session-groups-room-card" data-ui-component="SessionGroupCard">
+    <article
+      className="session-groups-room-card"
+      data-ui-component="SessionGroupCard"
+      onDragOver={canManage ? handleDragOver : undefined}
+      onDrop={canManage ? handleDrop : undefined}
+    >
       <header className="session-groups-room-card__header">
         <div className="session-groups-room-card__header-copy">
           <h4 className="session-groups-room-card__title">{room.name}</h4>
@@ -145,6 +174,9 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
           {!isWhisper ? (
             <p className="session-groups-room-card__environment">
               Environment: {environment || 'Default'}
+              {isApplyingEnvironment ? (
+                <span className="session-groups-room-card__spinner" aria-hidden="true" />
+              ) : null}
             </p>
           ) : null}
         </div>
@@ -179,6 +211,7 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                       className="session-groups-room-card__icon-button"
                       aria-label="Change environment"
                       onClick={() => setShowEnvironmentPicker((current) => !current)}
+                      disabled={isApplyingEnvironment}
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">
                         {environmentGlyph}
@@ -235,6 +268,7 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                   className="session-groups-room-card__icon-button"
                   aria-label="Change environment"
                   onClick={() => setShowEnvironmentPicker((current) => !current)}
+                  disabled={isApplyingEnvironment}
                 >
                   <span className="material-symbols-outlined" aria-hidden="true">
                     {environmentGlyph}
@@ -275,9 +309,11 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                 type="button"
                 className={isSelected ? 'is-active' : ''}
                 onClick={() => {
+                  if (isApplyingEnvironment) return
                   onSetEnvironment(option)
                   setShowEnvironmentPicker(false)
                 }}
+                disabled={isApplyingEnvironment}
               >
                 <span className="material-symbols-outlined" aria-hidden="true">
                   {resolveEnvironmentGlyph(option)}
@@ -296,6 +332,18 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
               key={member.userId}
               className={`session-groups-member-card session-groups-member-card--${presenceDotState}`}
               data-ui-component="SessionGroupMemberCard"
+              draggable={canManage && member.role !== 'DM'}
+              onDragStart={(e) => {
+                try {
+                  e.dataTransfer.setData(
+                    'text/plain',
+                    JSON.stringify({ targetUserId: member.userId })
+                  )
+                  e.dataTransfer.effectAllowed = 'move'
+                } catch {
+                  // ignore
+                }
+              }}
             >
               <span
                 className={`session-groups-member-card__avatar session-groups-member-card__avatar--${presenceDotState}`}

@@ -2,7 +2,11 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SessionState } from '@shared'
 import type { ToolbarActionModel } from '@/types/toolbar'
+import type { UUID } from '@shared'
 import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
+import { useStore } from '@/hooks/useStore'
+
+const TEST_SESSION_ID = '11111111-1111-4111-8111-111111111111' as UUID
 
 function buildActions(): ToolbarActionModel {
   return {
@@ -179,7 +183,8 @@ describe('SessionToolbar cooldown controls', () => {
       vi.advanceTimersByTime(1000)
     })
 
-    expect(screen.getByRole('button', { name: 'Start' })).toBeTruthy()
+    // When session is in ENDED state, the button label is 'Reset' (to start fresh session)
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeTruthy()
   })
 
   it('invokes cancel and extend callbacks when enabled', () => {
@@ -233,9 +238,25 @@ describe('SessionToolbar cooldown controls', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-15T12:00:00.000Z'))
 
+    // Set up Zustand store with the session data including backend-authoritative cooldownExpiresAt
+    act(() => {
+      useStore.getState().createSession({
+        id: TEST_SESSION_ID,
+        name: 'Test Session',
+        dmId: 'dm-user-id' as UUID,
+        campaignId: 'campaign-id' as UUID,
+        state: SessionState.COOLDOWN,
+        startedAt: Date.now() - 30 * 60_000,
+        endedAt: Date.now() - 5_000,
+        cooldownExpiresAt: Date.now() + 90_000,
+        createdAt: Date.now() - 60 * 60_000,
+      } as any)
+    })
+
     render(
       <SessionToolbar
         actions={buildActions()}
+        sessionId={TEST_SESSION_ID}
         statusColorKey="GREEN"
         statusLabel="Healthy"
         coreWsState="CONNECTED"
@@ -243,7 +264,6 @@ describe('SessionToolbar cooldown controls', () => {
         sessionState={SessionState.COOLDOWN}
         sessionStartedAt={Date.now() - 30 * 60_000}
         sessionEndedAt={Date.now() - 5_000}
-        cooldownEndsAt={Date.now() + 90_000}
         cumulativePauseMs={0}
         pauseCount={0}
         cooldownDurationMs={60_000}
@@ -268,7 +288,7 @@ describe('SessionToolbar cooldown controls', () => {
     })
 
     // If fallback math were used (endedAt + 60s), remaining would be ~55s.
-    // Backend anchor should show ~90s remaining instead.
-    expect(screen.getByText('00:01:29')).toBeTruthy()
+    // Backend anchor (cooldownExpiresAt) should show ~90s remaining instead.
+    expect(screen.getByText('00:01:30')).toBeTruthy()
   })
 })

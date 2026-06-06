@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { SessionState } from '@shared'
 import type { UUID } from '@shared'
 import type {
   GroupPanelGroupWithParticipants,
@@ -11,6 +12,7 @@ interface UseWhisperFlowOptions {
   apiUrl: string
   token: string
   sessionId: UUID
+  sessionState: SessionState
   dmUserId: UUID
   allRooms: GroupPanelGroupWithParticipants[]
   displayedParticipantsByRoom: Record<string, GroupParticipantWithGroupId[]>
@@ -29,6 +31,7 @@ export function useWhisperFlow({
   apiUrl,
   token,
   sessionId,
+  sessionState,
   dmUserId,
   allRooms,
   displayedParticipantsByRoom,
@@ -46,6 +49,11 @@ export function useWhisperFlow({
   const whisperContextRef = useRef<WhisperGroupContextSnapshot | null>(null)
   const previousDmVoiceRoomIdRef = useRef<UUID | ''>('')
   const endWhisperInFlightRef = useRef(false)
+  const sessionStateRef = useRef(sessionState)
+
+  useEffect(() => {
+    sessionStateRef.current = sessionState
+  }, [sessionState])
 
   const whisperRoom = useMemo(() => allRooms.find((room) => isWhisperGroup(room)), [allRooms])
   const whisperRooms = useMemo(
@@ -72,6 +80,8 @@ export function useWhisperFlow({
   }, [pendingRoomMoves, whisperRoom])
   const whisperEndBlockedByPendingMoves = pendingMovesToWhisperCount > 0
   const whisperModeLocked = whisperActive || hasWhisperContext
+  const canAutoReconcileWhisper =
+    sessionState === SessionState.ACTIVE || sessionState === SessionState.PAUSED
 
   const rememberDmVoiceRoom = useCallback((roomId: UUID | '') => {
     previousDmVoiceRoomIdRef.current = roomId
@@ -166,6 +176,13 @@ export function useWhisperFlow({
       }
 
       const endWhisperOnce = async () => {
+        if (
+          sessionStateRef.current !== SessionState.ACTIVE &&
+          sessionStateRef.current !== SessionState.PAUSED
+        ) {
+          return
+        }
+
         const response = await fetch(`${apiUrl}/api/rooms/${whisperRoomId}/end-whisper`, {
           method: 'POST',
           headers: {
@@ -246,7 +263,7 @@ export function useWhisperFlow({
   }, [endWhisperWithReconcile, onSelectRoom, onToggleBroadcastMode, setMoveError, whisperRoom])
 
   useEffect(() => {
-    if (!canManageRooms || !whisperRoom) {
+    if (!canManageRooms || !whisperRoom || !canAutoReconcileWhisper) {
       return
     }
 
@@ -263,6 +280,7 @@ export function useWhisperFlow({
     }
   }, [
     canManageRooms,
+    canAutoReconcileWhisper,
     handleEndWhisper,
     whisperEndBlockedByPendingMoves,
     whisperModeLocked,
@@ -270,17 +288,32 @@ export function useWhisperFlow({
     whisperRoom,
   ])
 
-  return {
-    whisperRoom,
-    whisperRooms,
-    whisperActive,
-    whisperModeLocked,
-    whisperDisplayedPlayerCount,
-    whisperEndBlockedByPendingMoves,
-    noteWhisperEntry,
-    handleEndWhisper,
-    rememberDmVoiceRoom,
-    getRememberedDmVoiceRoom,
-    setWhisperExitVoiceRoom,
-  }
+  return useMemo(
+    () => ({
+      whisperRoom,
+      whisperRooms,
+      whisperActive,
+      whisperModeLocked,
+      whisperDisplayedPlayerCount,
+      whisperEndBlockedByPendingMoves,
+      noteWhisperEntry,
+      handleEndWhisper,
+      rememberDmVoiceRoom,
+      getRememberedDmVoiceRoom,
+      setWhisperExitVoiceRoom,
+    }),
+    [
+      getRememberedDmVoiceRoom,
+      handleEndWhisper,
+      noteWhisperEntry,
+      rememberDmVoiceRoom,
+      setWhisperExitVoiceRoom,
+      whisperActive,
+      whisperDisplayedPlayerCount,
+      whisperEndBlockedByPendingMoves,
+      whisperModeLocked,
+      whisperRoom,
+      whisperRooms,
+    ]
+  )
 }

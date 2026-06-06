@@ -106,6 +106,50 @@ type CampaignGroupDto = {
   updatedAt: number
 }
 
+type PartyPresenceStatus = 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE'
+
+function isAwayEligibleSessionState(state: SessionState | null | undefined): boolean {
+  return (
+    state === SessionState.ACTIVE ||
+    state === SessionState.PAUSED ||
+    state === SessionState.COOLDOWN
+  )
+}
+
+function derivePartyPresenceStatus(params: {
+  hasRuntimeHere: boolean
+  hasRuntimeElsewhere: boolean
+  hasUnassignedConnection: boolean
+  runtimeState?: PresenceState
+  latestRuntimeSessionState?: SessionState | null
+}): { status: PartyPresenceStatus; manualAway: boolean } {
+  const runtimeState = params.runtimeState
+  const hasLiveRuntimeHere =
+    params.hasRuntimeHere ||
+    (runtimeState !== undefined && runtimeState !== null && runtimeState !== PresenceState.OFFLINE)
+
+  const awayByIdle =
+    runtimeState === PresenceState.IDLE &&
+    isAwayEligibleSessionState(params.latestRuntimeSessionState || null)
+
+  if (hasLiveRuntimeHere) {
+    return {
+      status: awayByIdle ? 'AWAY' : 'HERE',
+      manualAway: awayByIdle,
+    }
+  }
+
+  if (params.hasRuntimeElsewhere) {
+    return { status: 'NOT_HERE', manualAway: false }
+  }
+
+  if (params.hasUnassignedConnection) {
+    return { status: 'LOBBY', manualAway: false }
+  }
+
+  return { status: 'OFFLINE', manualAway: false }
+}
+
 function isReservedCampaignGroupName(name: string): boolean {
   const normalized = normalizeRoomName(name)
   return (
@@ -150,7 +194,7 @@ async function getCampaignGroupsReferenceSession(params: {
     return null
   }
 
-  const dateLabel = new Date().toLocaleDateString('en-CA')
+  const dateLabel = new Date().toLocaleDateString('en-AU')
   const session = await createSession(
     `Session 1 - ${dateLabel}`,
     params.dmUserId,
@@ -188,9 +232,18 @@ async function listCampaignGroupsForReferenceSession(campaignId: UUID, sessionId
 }
 
 router.get('/', requireAuth, async (req: Request, res: Response) => {
-  const user = (req as any).user
-  const campaigns = await listCampaignsForUser(user.userId as UUID)
-  res.status(200).json({ campaigns })
+  try {
+    const user = (req as any).user
+    const campaigns = await listCampaignsForUser(user.userId as UUID)
+    logger.debug('campaign.routes', 'listCampaignsForUser response', {
+      userId: user.userId,
+      campaignsCount: Array.isArray(campaigns) ? campaigns.length : 0,
+    })
+    res.status(200).json({ campaigns })
+  } catch (err) {
+    logger.error('campaign.routes', 'Failed to list campaigns for user', err)
+    res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to retrieve campaigns' })
+  }
 })
 
 router.get('/invite/:code/validate', async (req: Request, res: Response) => {
@@ -669,15 +722,13 @@ router.get('/:campaignId/party-presence', requireAuth, async (req: Request, res:
 
       const runtimeEntry = runtimePresenceByUser.get(member.userId as UUID)
       const runtimeState = runtimeEntry?.state
-
-      let status: 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFLINE' = 'OFFLINE'
-      if (hasRuntimeHere || runtimeState) {
-        status = runtimeState === PresenceState.IDLE ? 'AWAY' : 'HERE'
-      } else if (hasRuntimeElsewhere) {
-        status = 'NOT_HERE'
-      } else if (unassignedConnectedUsers.has(member.userId as UUID)) {
-        status = 'LOBBY'
-      }
+      const { status, manualAway } = derivePartyPresenceStatus({
+        hasRuntimeHere,
+        hasRuntimeElsewhere,
+        hasUnassignedConnection: unassignedConnectedUsers.has(member.userId as UUID),
+        runtimeState,
+        latestRuntimeSessionState: (latestRuntimeSession?.state as SessionState | null) || null,
+      })
 
       return {
         userId: member.userId,
@@ -694,7 +745,7 @@ router.get('/:campaignId/party-presence', requireAuth, async (req: Request, res:
         runtimePresenceState: runtimeState || null,
         lastSeenAt: runtimeEntry?.lastSeenAt || null,
         currentRuntimeSessionId: hasRuntimeHere ? latestRuntimeSession?.id || null : null,
-        manualAway: runtimeState === PresenceState.IDLE,
+        manualAway,
       }
     })
 

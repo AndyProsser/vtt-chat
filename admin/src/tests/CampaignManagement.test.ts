@@ -64,7 +64,7 @@ const ROOMS_RESPONSE = {
   rooms: [
     {
       id: 'room-1',
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -112,7 +112,7 @@ const RECORDINGS_RESPONSE = {
       },
       room: {
         id: 'room-1',
-        name: 'Main Room',
+        name: 'Main',
       },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

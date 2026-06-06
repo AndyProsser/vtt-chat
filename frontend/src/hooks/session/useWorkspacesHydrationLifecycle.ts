@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import { useEffect, useRef } from 'react'
+import type { RefObject } from 'react'
 import type { ConnectionState } from '@/ws/client'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, SessionPresence as PresenceRecord } from '@/types/room'
@@ -12,6 +12,7 @@ import type {
   ApiTakeoverIdentitySnapshot,
 } from '@/types/session/workspaces'
 import type { UUID } from '@shared'
+import { useStore } from '@/state/store'
 
 type DmOverridePayload = {
   userId: UUID
@@ -40,13 +41,11 @@ type UseWorkspacesHydrationLifecycleParams = {
   wsState: ConnectionState
   currentSession: SessionRecord | null
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-  setSelectedRoomIdOverride: Dispatch<SetStateAction<UUID | ''>>
+  setSelectedRoomIdOverride: (sessionId: UUID, roomId: UUID | '') => void
   replaceSessionTopology: (sessionId: UUID, rooms: RoomRecord[], presence: PresenceRecord[]) => void
   replaceSessionStatsSnapshot: (sessionId: UUID, stats: ApiSessionStats) => void
   setMockTakeoverUserId: (sessionId: UUID, userId: UUID | null) => void
   restoreSessionBookendsFromHistory: (sessionId: UUID, nextRooms: RoomRecord[]) => Promise<void>
-  resetSessionAudioState: () => void
-  clearActiveEffects: () => void
   setEnvironment: (environment: {
     id: UUID
     name: string
@@ -62,9 +61,11 @@ type UseWorkspacesHydrationLifecycleParams = {
     dmId?: UUID
     changedAt?: number
   }) => void
-  lastHydratedSessionFingerprintRef: MutableRefObject<string | null>
-  prevWsStateRef: MutableRefObject<ConnectionState>
+  lastHydratedSessionFingerprintRef: RefObject<string | null>
+  prevWsStateRef: RefObject<ConnectionState>
 }
+
+const RECENT_SESSION_CHANGE_RECONNECT_SUPPRESS_MS = 500
 
 /**
  * Rehydrates session topology and audio state whenever the active session changes
@@ -84,8 +85,6 @@ export function useWorkspacesHydrationLifecycle(
     replaceSessionStatsSnapshot,
     setMockTakeoverUserId,
     restoreSessionBookendsFromHistory,
-    resetSessionAudioState,
-    clearActiveEffects,
     setEnvironment,
     replaceRoomEnvironmentNames,
     replaceDMOverrides,
@@ -93,6 +92,8 @@ export function useWorkspacesHydrationLifecycle(
     lastHydratedSessionFingerprintRef,
     prevWsStateRef,
   } = params
+  const inFlightHydrationFingerprintRef = useRef<string | null>(null)
+  const recentSessionChangeHydratedAtRef = useRef<number | null>(null)
 
   useEffect(() => {
     const prev = prevWsStateRef.current
@@ -111,9 +112,30 @@ export function useWorkspacesHydrationLifecycle(
       return
     }
 
+    if (!sessionChanged && isReconnect) {
+      // Only suppress if the reconnect did not go through an explicit 'reconnecting' state.
+      // A genuine reconnect (prev === 'reconnecting') must always rehydrate.
+      const recentSessionChangeHydratedAt = recentSessionChangeHydratedAtRef.current
+      if (
+        prev !== 'reconnecting' &&
+        recentSessionChangeHydratedAt !== null &&
+        Date.now() - recentSessionChangeHydratedAt < RECENT_SESSION_CHANGE_RECONNECT_SUPPRESS_MS
+      ) {
+        return
+      }
+    }
+
+    if (inFlightHydrationFingerprintRef.current === sessionFingerprint) {
+      return
+    }
+
     lastHydratedSessionFingerprintRef.current = sessionFingerprint
+    inFlightHydrationFingerprintRef.current = sessionFingerprint
+
+    const hydrationTriggeredBySessionChange = sessionChanged
 
     const loadPresenceAndRooms = async () => {
+      let hydrationApplied = false
       try {
         const [roomsResponse, presenceResponse, audioStateResponse] = await Promise.all([
           fetchWithAuthGuard(`${apiUrl}/api/rooms/session/${currentSession.id}`, {
@@ -170,14 +192,24 @@ export function useWorkspacesHydrationLifecycle(
           primaryRoomId: entry.primaryRoomId,
           privateRoomId: entry.privateRoomId,
           lastSeenAt: entry.lastSeenAt,
+          userMuted: entry.userMuted,
         }))
 
-        setSelectedRoomIdOverride('')
+        setSelectedRoomIdOverride(currentSession.id, '')
 
         replaceSessionTopology(currentSession.id, nextRooms, nextPresence)
         if (presencePayload.stats) {
           replaceSessionStatsSnapshot(currentSession.id, presencePayload.stats)
         }
+
+        // Recover user mute state from presence
+        const userMuteMap: Record<UUID, boolean> = {}
+        for (const entry of presencePayload.presence || []) {
+          if (entry.userMuted) {
+            userMuteMap[entry.userId as UUID] = true
+          }
+        }
+        useStore.getState().setUserMuteBySession(currentSession.id as UUID, userMuteMap)
 
         if (import.meta.env.DEV) {
           const identity = presencePayload.identity
@@ -188,9 +220,6 @@ export function useWorkspacesHydrationLifecycle(
         }
 
         await restoreSessionBookendsFromHistory(currentSession.id, nextRooms)
-
-        resetSessionAudioState()
-        clearActiveEffects()
 
         const recoveredEnv = audioStatePayload.environment
         if (recoveredEnv) {
@@ -232,15 +261,22 @@ export function useWorkspacesHydrationLifecycle(
         }).catch(() => {
           // Non-critical: snapshot recovery failure does not block UI updates.
         })
+
+        hydrationApplied = true
       } catch {
         // Websocket updates can continue to converge state after hydration errors.
+      } finally {
+        inFlightHydrationFingerprintRef.current = null
+
+        if (hydrationTriggeredBySessionChange && hydrationApplied) {
+          recentSessionChangeHydratedAtRef.current = Date.now()
+        }
       }
     }
 
     void loadPresenceAndRooms()
   }, [
     apiUrl,
-    clearActiveEffects,
     currentSession,
     fetchWithAuthGuard,
     lastHydratedSessionFingerprintRef,
@@ -249,7 +285,6 @@ export function useWorkspacesHydrationLifecycle(
     replaceRoomEnvironmentNames,
     replaceSessionStatsSnapshot,
     replaceSessionTopology,
-    resetSessionAudioState,
     restoreSessionBookendsFromHistory,
     setBroadcastState,
     setEnvironment,

@@ -122,8 +122,7 @@ describe('useWebSocket', () => {
       handleDMOverrideApplied: vi.fn(),
       handleDMOverrideRemoved: vi.fn(),
       handleBroadcastStateChanged: vi.fn(),
-      handleUserMuted: vi.fn(),
-      handleUserUnmuted: vi.fn(),
+      handleMuteStateChanged: vi.fn(),
       handleConnectionEstablished: vi.fn(),
     })
   })
@@ -660,9 +659,8 @@ describe('useWebSocket', () => {
       clientInstances[0].options.onEvent?.(makeEvent('PRESENCE:USER_GHOST_MODE_CHANGED'))
       clientInstances[0].options.onEvent?.(makeEvent('PRESENCE:PROFILE_UPDATED'))
       clientInstances[0].options.onEvent?.(makeEvent('AUDIO:DM_VOICE_MODE_CHANGED'))
-      clientInstances[0].options.onEvent?.(makeEvent('AUDIO:VOICE_OF_GOD_CHANGED'))
-      clientInstances[0].options.onEvent?.(makeEvent('AUDIO:USER_MUTED'))
-      clientInstances[0].options.onEvent?.(makeEvent('AUDIO:USER_UNMUTED'))
+      clientInstances[0].options.onEvent?.(makeEvent('AUDIO:BROADCAST_STATE_CHANGED'))
+      clientInstances[0].options.onEvent?.(makeEvent('AUDIO:MUTE_STATE_CHANGED'))
       clientInstances[0].options.onEvent?.(makeEvent('WS:CONNECTED'))
     })
 
@@ -670,8 +668,7 @@ describe('useWebSocket', () => {
     expect(store.handlePresenceProfileUpdated).toHaveBeenCalledTimes(1)
     expect(store.handleDmVoiceModeChanged).toHaveBeenCalledTimes(1)
     expect(store.handleBroadcastStateChanged).toHaveBeenCalledTimes(1)
-    expect(store.handleUserMuted).toHaveBeenCalledTimes(1)
-    expect(store.handleUserUnmuted).toHaveBeenCalledTimes(1)
+    expect(store.handleMuteStateChanged).toHaveBeenCalledTimes(1)
     expect(store.handleConnectionEstablished).toHaveBeenCalledTimes(1)
   })
 

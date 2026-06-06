@@ -1,5 +1,6 @@
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
+import { findEnvironmentPreset } from '@shared'
 import type { StateCreator } from 'zustand'
 import type {
   ConditionPreset,
@@ -140,30 +141,34 @@ export const createAudioPresetsSlice: StateCreator<AudioPresetsSlice, [], [], Au
       parameters?: Record<string, any>
     }
 
-    if (!payload.parameters) {
-      set((state) => ({
-        roomEnvironmentNames: {
-          ...state.roomEnvironmentNames,
-          [payload.roomId]: payload.environmentName,
-        },
-      }))
-      return
-    }
-
-    const environmentPreset: EnvironmentPreset = {
-      id: payload.environmentId,
-      name: payload.environmentName,
-      reverbSend: payload.parameters.reverbSend || 0.3,
-      lowpassFreq: payload.parameters.lowpassFreq || 8000,
-      roomGain: payload.parameters.roomGain || 0,
-    }
-
+    // Always update the room→name map (drives Groups Panel icons and SessionInit restore).
     set((state) => ({
-      currentEnvironment: environmentPreset,
       roomEnvironmentNames: {
         ...state.roomEnvironmentNames,
         [payload.roomId]: payload.environmentName,
       },
     }))
+
+    // Only update currentEnvironment if the affected room is the current user's primary room.
+    const state = get()
+    const currentUserId = (state as any).currentUser?.id as UUID | undefined
+    if (!currentUserId || !event.sessionId) return
+
+    const userPresence = (state as any).sessionPresence?.[event.sessionId]?.[currentUserId]
+    if (userPresence?.primaryRoomId !== payload.roomId) return
+
+    // Resolve DSP from the shared catalog — the WS payload may not carry parameters.
+    const catalogPreset = findEnvironmentPreset(payload.environmentName)
+    if (!catalogPreset) return
+
+    const environmentPreset: EnvironmentPreset = {
+      id: payload.environmentId || (`env-${payload.environmentName}` as UUID),
+      name: payload.environmentName,
+      reverbSend: catalogPreset.dsp.reverbSend,
+      lowpassFreq: catalogPreset.dsp.lowpassFreq,
+      roomGain: catalogPreset.dsp.roomGainDb,
+    }
+
+    set(() => ({ currentEnvironment: environmentPreset }))
   },
 })

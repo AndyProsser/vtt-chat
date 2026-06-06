@@ -1,0 +1,8 @@
+{
+  "telemetryRetentionDays": 30,
+  "telemetryMaxFileSizeMb": 10,
+  "telemetryMaxFiles": 7,
+  "diagnosticRetentionDays": 14,
+  "diagnosticMaxFileSizeMb": 10,
+  "diagnosticMaxFiles": 7
+}

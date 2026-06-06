@@ -38,6 +38,14 @@ const { loggerMock, mockUseStore, MockRoom, roomInstances } = vi.hoisted(() => {
       this.handlers.set(event, handlers)
     }
 
+    off(event: string, handler: RoomHandler) {
+      const handlers = this.handlers.get(event) ?? []
+      this.handlers.set(
+        event,
+        handlers.filter((candidate) => candidate !== handler)
+      )
+    }
+
     emit(event: string, ...args: unknown[]) {
       for (const handler of this.handlers.get(event) ?? []) {
         handler(...args)
@@ -47,7 +55,9 @@ const { loggerMock, mockUseStore, MockRoom, roomInstances } = vi.hoisted(() => {
 
   return {
     loggerMock: {
+      debug: vi.fn(),
       info: vi.fn(),
+      warn: vi.fn(),
       error: vi.fn(),
     },
     mockUseStore: vi.fn(),
@@ -84,7 +94,13 @@ vi.mock('livekit-client', () => ({
   },
   RoomEvent: {
     Connected: 'Connected',
+    ConnectionStateChanged: 'ConnectionStateChanged',
     Disconnected: 'Disconnected',
+    Reconnecting: 'Reconnecting',
+    SignalReconnecting: 'SignalReconnecting',
+    Reconnected: 'Reconnected',
+    LocalTrackPublished: 'LocalTrackPublished',
+    LocalTrackUnpublished: 'LocalTrackUnpublished',
     ParticipantConnected: 'ParticipantConnected',
     ParticipantDisconnected: 'ParticipantDisconnected',
     TrackSubscribed: 'TrackSubscribed',
@@ -107,12 +123,18 @@ describe('useLiveKit', () => {
     const currentUser = { id: 'user-1', username: 'andy', role: 'DM' }
     const upsertLiveKitConnection = vi.fn()
     const clearLiveKitConnection = vi.fn()
+    const device = {
+      microphoneOn: true,
+      pttEnabled: false,
+    }
 
     roomInstances.length = 0
     mockUseStore.mockImplementation((selector) =>
-      selector({ currentUser, upsertLiveKitConnection, clearLiveKitConnection })
+      selector({ currentUser, upsertLiveKitConnection, clearLiveKitConnection, device })
     )
     loggerMock.info.mockReset()
+    loggerMock.debug.mockReset()
+    loggerMock.warn.mockReset()
     loggerMock.error.mockReset()
     vi.stubGlobal(
       'fetch',
@@ -128,6 +150,10 @@ describe('useLiveKit', () => {
       clear: vi.fn(),
       key: vi.fn(),
       length: 0,
+    })
+    Object.defineProperty(globalThis.navigator, 'userActivation', {
+      configurable: true,
+      value: { hasBeenActive: true },
     })
   })
 
@@ -155,6 +181,36 @@ describe('useLiveKit', () => {
     expect(result.current.isConnecting).toBe(false)
     expect(result.current.room).toBeNull()
     expect(room.disconnect).toHaveBeenCalled()
+  })
+
+  it('suppresses late connect transport failures after disconnect invalidates the attempt', async () => {
+    const { useLiveKit } = await import('../../src/hooks/useLiveKit')
+
+    const { result } = renderHook(() => useLiveKit('session-1', 'room-1'))
+
+    await waitFor(() => {
+      expect(roomInstances).toHaveLength(1)
+    })
+
+    const room = roomInstances[0]
+    room.connect.mockImplementationOnce(async () => {
+      await room.connectDeferred.promise
+      throw new Error('WebSocket is closed before the connection is established')
+    })
+
+    await act(async () => {
+      await result.current.disconnect()
+    })
+
+    await act(async () => {
+      room.connectDeferred.resolve()
+      await room.connect.mock.results[0]?.value?.catch(() => undefined)
+    })
+
+    expect(result.current.isConnected).toBe(false)
+    expect(result.current.isConnecting).toBe(false)
+    expect(result.current.error).toBeNull()
+    expect(loggerMock.error).not.toHaveBeenCalled()
   })
 
   it('keeps the latest room when an earlier connect resolves late', async () => {

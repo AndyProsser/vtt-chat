@@ -1,5 +1,6 @@
 import { SessionState } from '@shared'
 import { useEffect, useState } from 'react'
+import { SPECTATOR_WAIT_SCREEN_COPY } from '@/constants/sessionUi.constants'
 import '@/styles/components/workspaces/session/SpectatorWaitScreen.css'
 
 interface SpectatorWaitScreenProps {
@@ -51,14 +52,32 @@ export function SpectatorWaitScreen({
   const remainingMs = computeRemaining(sessionEndedAt, cooldownDurationMs, nowMs)
 
   useEffect(() => {
-    if (sessionState !== SessionState.COOLDOWN) return
+    if (sessionState !== SessionState.COOLDOWN) {
+      return
+    }
 
-    const id = setInterval(() => {
+    setNowMs(Date.now())
+
+    if (!sessionEndedAt || sessionEndedAt === 0 || cooldownDurationMs <= 0) {
+      return
+    }
+
+    const expiresAtMs = sessionEndedAt + cooldownDurationMs
+    const remaining = expiresAtMs - Date.now()
+
+    if (remaining <= 0) {
       setNowMs(Date.now())
-    }, 1000)
+      return
+    }
 
-    return () => clearInterval(id)
-  }, [sessionState])
+    const timeoutId = window.setTimeout(() => {
+      setNowMs(Date.now())
+    }, remaining)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [cooldownDurationMs, sessionEndedAt, sessionState])
 
   if (sessionState === SessionState.IDLE || sessionState === SessionState.PAUSED) {
     return (
@@ -66,11 +85,13 @@ export function SpectatorWaitScreen({
         <div className="spectator-wait-screen__icon" aria-hidden="true">
           <span className="material-symbols-outlined">theaters</span>
         </div>
-        <h2 className="spectator-wait-screen__title">Please wait</h2>
+        <h2 className="spectator-wait-screen__title">
+          {SPECTATOR_WAIT_SCREEN_COPY[sessionState === SessionState.IDLE ? 'idle' : 'paused'].title}
+        </h2>
         <p className="spectator-wait-screen__body">
           {sessionState === SessionState.IDLE
-            ? 'The DM is setting the stage. Spectator view will open once the session starts.'
-            : 'The DM has paused the session for intermission. The curtain will rise again shortly.'}
+            ? SPECTATOR_WAIT_SCREEN_COPY.idle.body
+            : SPECTATOR_WAIT_SCREEN_COPY.paused.body}
         </p>
       </div>
     )
@@ -86,19 +107,19 @@ export function SpectatorWaitScreen({
         <div className="spectator-wait-screen__icon" aria-hidden="true">
           <span className="material-symbols-outlined">celebration</span>
         </div>
-        <h2 className="spectator-wait-screen__title">That&apos;s a wrap!</h2>
+        <h2 className="spectator-wait-screen__title">
+          {SPECTATOR_WAIT_SCREEN_COPY.cooldown.title}
+        </h2>
         <p className="spectator-wait-screen__body">
-          The session has ended. Post-session chat is open for{' '}
+          {SPECTATOR_WAIT_SCREEN_COPY.cooldown.bodyPrefix}{' '}
           <span
             className="spectator-wait-screen__countdown"
-            aria-label={`${formatCountdown(remainingMs)} remaining`}
+            aria-label={`${formatCountdown(remainingMs)} ${SPECTATOR_WAIT_SCREEN_COPY.cooldown.countdownSuffix}`}
           >
             {formatCountdown(remainingMs)}
           </span>
         </p>
-        <p className="spectator-wait-screen__hint">
-          Use the chat panel to say farewell to the table.
-        </p>
+        <p className="spectator-wait-screen__hint">{SPECTATOR_WAIT_SCREEN_COPY.cooldown.hint}</p>
       </div>
     )
   }
@@ -113,10 +134,8 @@ export function SpectatorWaitScreen({
         <div className="spectator-wait-screen__icon" aria-hidden="true">
           <span className="material-symbols-outlined">history</span>
         </div>
-        <h2 className="spectator-wait-screen__title">Session Closed</h2>
-        <p className="spectator-wait-screen__body">
-          Thanks for watching. This session is closed and spectator viewing is no longer available.
-        </p>
+        <h2 className="spectator-wait-screen__title">{SPECTATOR_WAIT_SCREEN_COPY.ended.title}</h2>
+        <p className="spectator-wait-screen__body">{SPECTATOR_WAIT_SCREEN_COPY.ended.body}</p>
       </div>
     )
   }

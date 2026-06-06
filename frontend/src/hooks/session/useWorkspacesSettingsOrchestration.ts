@@ -1,6 +1,16 @@
 import { useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { UUID } from '@shared'
+import {
+  normalizeExtensionSyncPolicy,
+  serializeExtensionSyncPolicy,
+} from '@/constants/sessionUi.normalizers'
+import type {
+  CampaignVisibility,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 import type { UseCampaignSettingsActions } from '../../hooks/useCampaignSettings'
 import {
   applyCampaignSettingsPayload,
@@ -21,27 +31,26 @@ type UseWorkspacesSettingsOrchestrationParams = {
   campaignSettingsActions: UseCampaignSettingsActions
   currentSession: SessionRecord | null
   sessionSettingsName: string
-  sessionSettingsDescription: string
   sessionSettingsPlannedDurationMinutes: number
   setIsSessionSettingsSaving: Dispatch<SetStateAction<boolean>>
   updateSession: (sessionId: UUID, session: SessionRecord) => void
-  settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsCampaignId: UUID | ''
   settingsName: string
   settingsDescription: string
   settingsPosterUrl: string
-  settingsVisibility: 'PUBLIC' | 'PRIVATE'
+  settingsVisibility: CampaignVisibility
   settingsSpectatorsEnabled: boolean
   settingsSpectatorMax: number
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
-  settingsExtensionSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+  settingsExtensionSyncPolicy: ExtensionSyncPolicy
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
-  settingsLateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  settingsLateJoinPolicy: LateJoinPolicy
   settingsLateJoinGraceMinutes: number
   settingsDefaultSessionDurationMins: number
-  settingsSupportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  settingsDmAutoTargetOnFirstPlayerJoin: boolean
+  settingsSupportedPlatforms: SupportedPlatform[]
   settingsData: CampaignSettingsPayload | null
   setCampaigns: Dispatch<SetStateAction<CampaignSummary[]>>
   setSelectedCampaignId: Dispatch<SetStateAction<UUID | ''>>
@@ -61,7 +70,6 @@ export function useWorkspacesSettingsOrchestration(
     campaignSettingsActions,
     currentSession,
     sessionSettingsName,
-    sessionSettingsDescription,
     sessionSettingsPlannedDurationMinutes,
     setIsSessionSettingsSaving,
     updateSession,
@@ -163,7 +171,6 @@ export function useWorkspacesSettingsOrchestration(
         },
         body: JSON.stringify({
           name: sessionSettingsName,
-          description: sessionSettingsDescription,
           plannedDurationMinutes: sessionSettingsPlannedDurationMinutes,
         }),
       })
@@ -188,7 +195,7 @@ export function useWorkspacesSettingsOrchestration(
     apiUrl,
     currentSession,
     fetchWithAuthGuard,
-    sessionSettingsDescription,
+
     sessionSettingsName,
     sessionSettingsPlannedDurationMinutes,
     setError,
@@ -337,7 +344,7 @@ export function useWorkspacesSettingsOrchestration(
         name: string
         description: string
         posterUrl: string | null
-        integrationSyncPolicy: 'ALLOW' | 'DM_ONLY' | 'NONE'
+        integrationSyncPolicy: ExtensionSyncPolicy
       }
     ) => {
       setError(null)
@@ -352,7 +359,7 @@ export function useWorkspacesSettingsOrchestration(
           name: updates.name,
           description: updates.description,
           posterUrl: updates.posterUrl,
-          extensionSyncPolicy: updates.integrationSyncPolicy,
+          extensionSyncPolicy: serializeExtensionSyncPolicy(updates.integrationSyncPolicy),
         }),
       })
 
@@ -371,9 +378,7 @@ export function useWorkspacesSettingsOrchestration(
         campaignSettingsActions.setSettingsDescription(payload.campaign.description || '')
         campaignSettingsActions.setSettingsPosterUrl(payload.campaign.posterUrl || '')
         campaignSettingsActions.setSettingsExtensionSyncPolicy(
-          payload.campaign.extensionSyncPolicy === 'DM_AND_PLAYERS'
-            ? 'ALLOW'
-            : payload.campaign.extensionSyncPolicy
+          normalizeExtensionSyncPolicy(payload.campaign.extensionSyncPolicy)
         )
       }
 

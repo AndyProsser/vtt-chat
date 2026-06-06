@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type { UUID } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord } from '@/types/room'
@@ -9,7 +9,7 @@ import { isGreenRoom } from '@/utils/session/workspaces'
 type UseWorkspacesGreenroomCarryLifecycleParams = {
   currentSession: SessionRecord | null
   currentRooms: RoomRecord[]
-  pendingGreenroomCarryBySessionIdRef: MutableRefObject<Map<UUID, UUID>>
+  pendingGreenroomCarryBySessionIdRef: RefObject<Map<UUID, UUID>>
 }
 
 /**

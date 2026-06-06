@@ -67,7 +67,7 @@ describe('App shell', () => {
     })
     mockUseStore.mockClear()
     sessionStorage.clear()
-    if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== 'undefined' && typeof localStorage.clear === 'function') {
       localStorage.clear()
     }
     window.history.pushState({}, '', '/')

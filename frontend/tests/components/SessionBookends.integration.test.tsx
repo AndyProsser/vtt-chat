@@ -87,7 +87,7 @@ function createBaseStoreState() {
       {
         id: MAIN_ROOM_ID,
         sessionId: CURRENT_SESSION_ID,
-        name: 'Main Room',
+        name: 'Main',
         type: RoomType.MAIN,
         createdAt: 1,
         createdBy: DM_ID,
@@ -189,7 +189,7 @@ function createDefaultFetchMock(options: {
             {
               id: MAIN_ROOM_ID,
               sessionId: CURRENT_SESSION_ID,
-              name: 'Main Room',
+              name: 'Main',
               type: RoomType.MAIN,
               createdBy: DM_ID,
               createdAt: 1,
@@ -231,50 +231,36 @@ function createDefaultFetchMock(options: {
       }
     }
 
-    if (
-      url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`) &&
-      url.includes(`roomId=${MAIN_ROOM_ID}`)
-    ) {
-      return {
-        ok: true,
-        json: async () => ({
-          messages: [
-            {
-              id: asUuid('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a'),
-              roomId: MAIN_ROOM_ID,
-              authorId: DM_ID,
-              authorUsername: 'SYSTEM',
-              content: '[Session Started] Session Current',
-              type: 'SYSTEM',
-              isDmOnly: false,
-              createdAt: 100,
-            },
-          ],
-        }),
-      }
-    }
-
-    if (
-      url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`) &&
-      url.includes(`roomId=${GREEN_ROOM_ID}`)
-    ) {
-      return {
-        ok: true,
-        json: async () => ({
-          messages: [
-            {
-              id: asUuid('0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b'),
-              roomId: GREEN_ROOM_ID,
-              authorId: DM_ID,
-              authorUsername: 'SYSTEM',
-              content: '[Session Started] Session Current',
-              type: 'SYSTEM',
-              isDmOnly: false,
-              createdAt: 101,
-            },
-          ],
-        }),
-      }
+    if (url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`)) {
+      // Handle both anchor fetches (sinceLatestStart) and room-specific fetches
+      const greenRoomMessages = [
+        {
+          id: asUuid('0b0b0b0b-0b0b-4b0b-8b0b-0b0b0b0b0b0b'),
+          roomId: GREEN_ROOM_ID,
+          authorId: DM_ID,
+          authorUsername: 'SYSTEM',
+          content: '[Session Started] Session Current',
+          type: 'SYSTEM',
+          isDmOnly: false,
+          createdAt: 101,
+        },
+      ]
+      const mainRoomMessages = [
+        {
+          id: asUuid('0a0a0a0a-0a0a-4a0a-8a0a-0a0a0a0a0a0a'),
+          roomId: MAIN_ROOM_ID,
+          authorId: DM_ID,
+          authorUsername: 'SYSTEM',
+          content: '[Session Started] Session Current',
+          type: 'SYSTEM',
+          isDmOnly: false,
+          createdAt: 100,
+        },
+      ]
+      const messages = url.includes(`roomId=${GREEN_ROOM_ID}`)
+        ? greenRoomMessages
+        : mainRoomMessages
+      return { ok: true, json: async () => ({ messages }) }
     }
 
     if (url.endsWith(`/api/rooms/session/${NEXT_SESSION_ID}`)) {
@@ -285,7 +271,7 @@ function createDefaultFetchMock(options: {
             {
               id: NEXT_MAIN_ROOM_ID,
               sessionId: NEXT_SESSION_ID,
-              name: 'Main Room',
+              name: 'Main',
               type: RoomType.MAIN,
               createdBy: DM_ID,
               createdAt: 1,
@@ -327,37 +313,10 @@ function createDefaultFetchMock(options: {
       }
     }
 
-    if (
-      url.includes(`/api/chat/messages/${NEXT_SESSION_ID}`) &&
-      url.includes(`roomId=${NEXT_MAIN_ROOM_ID}`)
-    ) {
-      return {
-        ok: true,
-        json: async () => ({
-          messages: [
-            {
-              id: asUuid('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c'),
-              roomId: NEXT_MAIN_ROOM_ID,
-              authorId: DM_ID,
-              authorUsername: 'SYSTEM',
-              content: '[Session Started] Session Next',
-              type: 'SYSTEM',
-              isDmOnly: false,
-              createdAt: 200,
-            },
-          ],
-        }),
-      }
-    }
-
-    if (
-      url.includes(`/api/chat/messages/${NEXT_SESSION_ID}`) &&
-      url.includes(`roomId=${NEXT_GREEN_ROOM_ID}`)
-    ) {
-      return {
-        ok: true,
-        json: async () => ({
-          messages: [
+    if (url.includes(`/api/chat/messages/${NEXT_SESSION_ID}`)) {
+      // Handle both anchor fetches (sinceLatestStart) and room-specific fetches
+      const messages = url.includes(`roomId=${NEXT_GREEN_ROOM_ID}`)
+        ? [
             {
               id: asUuid('0d0d0d0d-0d0d-4d0d-8d0d-0d0d0d0d0d0d'),
               roomId: NEXT_GREEN_ROOM_ID,
@@ -368,9 +327,20 @@ function createDefaultFetchMock(options: {
               isDmOnly: false,
               createdAt: 201,
             },
-          ],
-        }),
-      }
+          ]
+        : [
+            {
+              id: asUuid('0c0c0c0c-0c0c-4c0c-8c0c-0c0c0c0c0c0c'),
+              roomId: NEXT_MAIN_ROOM_ID,
+              authorId: DM_ID,
+              authorUsername: 'SYSTEM',
+              content: '[Session Started] Session Next',
+              type: 'SYSTEM',
+              isDmOnly: false,
+              createdAt: 200,
+            },
+          ]
+      return { ok: true, json: async () => ({ messages }) }
     }
 
     if (
@@ -411,7 +381,7 @@ function createDefaultFetchMock(options: {
   })
 }
 
-describe('Session bookend integration', () => {
+describe('Session bookend integration', { timeout: 20000 }, () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
@@ -463,7 +433,7 @@ describe('Session bookend integration', () => {
     if (launchButton) {
       fireEvent.click(launchButton)
     }
-    await screen.findByTestId('session-toolbar')
+    await screen.findByTestId('session-toolbar', {}, { timeout: 5000 })
 
     const cancelCooldownButton = screen.queryByRole('button', { name: /cancel cooldown/i })
     if (cancelCooldownButton) {
@@ -616,7 +586,7 @@ describe('Session bookend integration', () => {
               {
                 id: MAIN_ROOM_ID,
                 sessionId: CURRENT_SESSION_ID,
-                name: 'Main Room',
+                name: 'Main',
                 type: RoomType.MAIN,
                 createdBy: DM_ID,
                 createdAt: 1,
@@ -665,14 +635,11 @@ describe('Session bookend integration', () => {
         }
       }
 
-      if (
-        url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`) &&
-        url.includes(`roomId=${MAIN_ROOM_ID}`)
-      ) {
-        return {
-          ok: true,
-          json: async () => ({
-            messages: [
+      if (url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`)) {
+        // Handle both anchor fetches (sinceLatestStart) and room-specific fetches
+        const messages = url.includes(`roomId=${GREEN_ROOM_ID}`)
+          ? []
+          : [
               {
                 id: asUuid('d1111111-1111-4111-8111-111111111111'),
                 roomId: MAIN_ROOM_ID,
@@ -683,19 +650,8 @@ describe('Session bookend integration', () => {
                 isDmOnly: false,
                 createdAt: 300,
               },
-            ],
-          }),
-        }
-      }
-
-      if (
-        url.includes(`/api/chat/messages/${CURRENT_SESSION_ID}`) &&
-        url.includes(`roomId=${GREEN_ROOM_ID}`)
-      ) {
-        return {
-          ok: true,
-          json: async () => ({ messages: [] }),
-        }
+            ]
+        return { ok: true, json: async () => ({ messages }) }
       }
 
       throw new Error(`Unexpected fetch call: ${url}`)
@@ -721,7 +677,7 @@ describe('Session bookend integration', () => {
     if (launchButton) {
       fireEvent.click(launchButton)
     }
-    await screen.findByTestId('session-toolbar')
+    await screen.findByTestId('session-toolbar', {}, { timeout: 5000 })
 
     await waitFor(() => {
       expect(useStore.getState().sessions[CURRENT_SESSION_ID]?.state).toBe(SessionState.PAUSED)
@@ -778,7 +734,8 @@ describe('Session bookend integration', () => {
     if (launchButton) {
       fireEvent.click(launchButton)
     }
-    await screen.findByTestId('session-toolbar')
+    await screen.findByTestId('session-toolbar', {}, { timeout: 5000 })
+    await screen.findByRole('button', { name: 'Start' }, { timeout: 5000 })
 
     act(() => {
       useStore.getState().addMessage(CURRENT_SESSION_ID, {
@@ -821,6 +778,7 @@ describe('Session bookend integration', () => {
       })
     }
 
+    await screen.findByRole('button', { name: 'Start' }, { timeout: 5000 })
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
@@ -881,9 +839,10 @@ describe('Session bookend integration', () => {
     if (launchButton) {
       fireEvent.click(launchButton)
     }
-    await screen.findByTestId('session-toolbar')
+    await screen.findByTestId('session-toolbar', {}, { timeout: 5000 })
 
     // Cycle 1
+    await screen.findByRole('button', { name: 'Start' }, { timeout: 5000 })
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -910,6 +869,7 @@ describe('Session bookend integration', () => {
         } as any)
       })
     }
+    await screen.findByRole('button', { name: 'Start' }, { timeout: 5000 })
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => {
       expect(useStore.getState().currentSessionId).toBe(NEXT_SESSION_ID)

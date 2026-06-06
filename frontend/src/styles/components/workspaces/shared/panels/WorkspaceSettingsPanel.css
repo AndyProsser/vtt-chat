@@ -1,5 +1,5 @@
 .crbs-panel {
-  padding: 0.75rem;
+  padding: 0.18rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -178,6 +178,44 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.crbs-attributes-row {
+  display: grid;
+  grid-template-columns: minmax(3.75rem, 4.75rem) minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: end;
+}
+.crbs-attributes-row .crbs-field--level:first-child {
+  padding-bottom: 0.5rem;
+}
+
+.crbs-field--level {
+  min-width: 0;
+}
+
+.crbs-field--level .vsi-wrapper,
+.crbs-field--level .crbs-input {
+  width: 100%;
+}
+
+.crbs-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
+  padding: 0.38rem;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 82%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-surface-subtle) 88%, transparent);
+  text-align: center;
+}
+
+.crbs-stats-strip .crbs-field--stat {
+  padding: 0 0.28rem;
+}
+
+.crbs-stats-strip .crbs-field--stat + .crbs-field--stat {
+  border-left: 1px solid color-mix(in srgb, var(--color-border-soft) 65%, transparent);
+}
+
 .crbs-field--avatar {
   grid-column: 1 / -1;
 }
@@ -283,13 +321,20 @@
   width: 100%;
 }
 
-.crbs-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.4rem;
-}
-
 @media (max-width: 720px) {
+  .crbs-attributes-row {
+    grid-template-columns: 1fr;
+  }
+
+  .crbs-stats-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.32rem;
+  }
+
+  .crbs-stats-strip .crbs-field--stat + .crbs-field--stat {
+    border-left: 0;
+  }
+
   .crbs-avatar-field {
     grid-template-columns: 1fr;
   }
@@ -328,6 +373,11 @@
 .vsi-wrapper {
   position: relative;
   display: block;
+  text-align: left;
+}
+
+.vsi-wrapper input[readonly] {
+  cursor: pointer;
 }
 
 .vsi-slider-popover {
@@ -368,7 +418,7 @@
 .vsi-track {
   position: relative;
   flex-grow: 1;
-  border-radius: 9999px;
+  border-radius: 5px;
   background: var(--color-border-soft);
   width: 3px;
   height: 100%;
@@ -377,7 +427,7 @@
 .vsi-range {
   position: absolute;
   /* Square top edge, rounded bottom to match track cap */
-  border-radius: 0 0 9999px 9999px;
+  border-radius: 0 0 5px 5px;
   background: var(--color-brand);
   width: 100%;
   bottom: 0;
@@ -419,4 +469,110 @@
   padding: 0.1rem 0.3rem;
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* ── In-session single-column layout ─────────────────────────────────── */
+.csp-single-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.csp-session-duration-slider {
+  position: relative;
+}
+
+.csp-session-duration-slider::after {
+  content: '';
+  position: absolute;
+  left: var(--csp-default-marker-position, 50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-muted) 80%, white 20%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-surface) 65%, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ── Collapsible (card-styled, matches Session card) ─────────────────── */
+.csp-card--collapsible {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.csp-card-collapsible-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  /* Match .csp-card inner horizontal padding so heading underline aligns with card edge */
+  padding: 0.45rem 0;
+  background: transparent;
+  border: none;
+  border-radius: inherit;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.csp-card-collapsible-header:hover {
+  box-shadow: none !important;
+}
+
+.csp-card-collapsible-header:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: -2px;
+}
+
+.csp-card-collapsible-header-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.csp-card-collapsible-chevron {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+}
+
+/* Heading inside collapsible header: drop its own underline/padding (header carries it) */
+.csp-card-heading.csp-card-heading--inline {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  width: auto;
+}
+
+.csp-card-collapsible-body {
+  border-top: 1px solid var(--color-border-soft);
+  padding: 0.6rem 0;
+}
+
+/* ── ON/OFF status pill ──────────────────────────────────────────────── */
+.csp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-soft);
+}
+
+.csp-status-pill--on {
+  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
+  color: var(--color-brand);
+  border-color: color-mix(in srgb, var(--color-brand) 45%, transparent);
+}
+
+.csp-status-pill--off {
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
 }

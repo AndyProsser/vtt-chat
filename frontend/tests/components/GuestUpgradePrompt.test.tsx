@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { GuestUpgradePrompt } from '../../src/components/auth/GuestUpgradePrompt'
+import { GuestUpgradePrompt } from '../../src/components/guest/GuestUpgradePrompt'
 
 describe('GuestUpgradePrompt', () => {
   beforeEach(() => {

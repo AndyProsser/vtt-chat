@@ -67,7 +67,7 @@ const INVALID_UUID = 'not-a-uuid'
 const ROOM_FIXTURE = {
   id: ROOM_ID,
   sessionId: SESSION_ID,
-  name: 'Main Room',
+  name: 'Main',
   type: 'MAIN',
   createdBy: DM_ID,
   createdAt: 1700000000000,
@@ -470,7 +470,7 @@ describe('rooms routes', () => {
   })
 
   describe('DELETE /:roomId', () => {
-    it('moves members to main room before deleting', async () => {
+    it('moves members to Main before deleting', async () => {
       mocks.mockGetRoom.mockResolvedValue(GROUP_ROOM_FIXTURE)
       mocks.mockGetRooms.mockResolvedValue([ROOM_FIXTURE, GROUP_ROOM_FIXTURE])
       mocks.mockRoomMemberIds.mockResolvedValue([PLAYER_ID])

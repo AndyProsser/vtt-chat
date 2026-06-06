@@ -31,7 +31,7 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
           </div>
           <button
             type="button"
-            className="session-icon-action"
+            className="session-icon-action session-icon-action--icon"
             aria-label={props.isSaving ? 'Saving settings' : 'Save settings'}
             disabled={props.isSaving || !props.settingsName.trim()}
             onClick={props.onSave}

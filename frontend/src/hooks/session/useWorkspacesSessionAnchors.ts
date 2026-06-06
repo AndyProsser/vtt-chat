@@ -13,6 +13,8 @@ import {
   SESSION_TIMER_SYNC_POLL_MS,
 } from '@/utils/session/workspaces'
 
+const DISCONNECTED_ANCHOR_POLL_GRACE_MS = 1000
+
 type UseWorkspacesSessionAnchorsParams = {
   apiUrl: string
   token: string
@@ -40,6 +42,8 @@ export function useWorkspacesSessionAnchors(params: UseWorkspacesSessionAnchorsP
   } = params
   const previousWsStateRef = useRef<ConnectionState>(wsState)
   const previousSessionStateRef = useRef<SessionState | null>(currentSessionState)
+  const disconnectedSinceRef = useRef<number | null>(null)
+  const isSyncInFlightRef = useRef(false)
 
   useEffect(() => {
     if (!currentSessionId) {
@@ -49,17 +53,25 @@ export function useWorkspacesSessionAnchors(params: UseWorkspacesSessionAnchorsP
     }
 
     let cancelled = false
+    if (wsState !== 'connected') {
+      disconnectedSinceRef.current = disconnectedSinceRef.current ?? Date.now()
+    } else {
+      disconnectedSinceRef.current = null
+    }
+
     const shouldPollWhileDisconnected = wsState !== 'connected'
     const enteredCooldownNow =
       previousSessionStateRef.current !== SessionState.COOLDOWN &&
       currentSessionState === SessionState.COOLDOWN
-    const shouldMaintainInterval = shouldPollWhileDisconnected
     const shouldRefreshImmediately =
-      enteredCooldownNow ||
-      shouldPollWhileDisconnected ||
-      (previousWsStateRef.current !== 'connected' && wsState === 'connected')
+      enteredCooldownNow || (previousWsStateRef.current !== 'connected' && wsState === 'connected')
 
     const syncSessionAnchors = async () => {
+      if (isSyncInFlightRef.current) {
+        return
+      }
+
+      isSyncInFlightRef.current = true
       try {
         const response = await fetchWithAuthGuard(`${apiUrl}/api/session/${currentSessionId}`, {
           headers: {
@@ -79,6 +91,8 @@ export function useWorkspacesSessionAnchors(params: UseWorkspacesSessionAnchorsP
         updateSession(payload.id, normalizeSessionRecord(payload))
       } catch {
         // Timer drift correction polling is best-effort and should not disrupt session UX.
+      } finally {
+        isSyncInFlightRef.current = false
       }
     }
 
@@ -89,19 +103,43 @@ export function useWorkspacesSessionAnchors(params: UseWorkspacesSessionAnchorsP
       void syncSessionAnchors()
     }
 
-    if (!shouldMaintainInterval) {
-      return () => {
-        cancelled = true
+    let intervalId: number | null = null
+    let graceTimeoutId: number | null = null
+
+    const startDisconnectedPolling = () => {
+      if (cancelled) {
+        return
+      }
+
+      void syncSessionAnchors()
+      intervalId = window.setInterval(() => {
+        void syncSessionAnchors()
+      }, SESSION_TIMER_SYNC_POLL_MS)
+    }
+
+    if (shouldPollWhileDisconnected) {
+      const disconnectedSince = disconnectedSinceRef.current
+      const disconnectedForMs = disconnectedSince ? Date.now() - disconnectedSince : 0
+
+      if (disconnectedForMs >= DISCONNECTED_ANCHOR_POLL_GRACE_MS) {
+        startDisconnectedPolling()
+      } else {
+        graceTimeoutId = window.setTimeout(
+          startDisconnectedPolling,
+          DISCONNECTED_ANCHOR_POLL_GRACE_MS - disconnectedForMs
+        )
       }
     }
 
-    const timerId = window.setInterval(() => {
-      void syncSessionAnchors()
-    }, SESSION_TIMER_SYNC_POLL_MS)
-
     return () => {
       cancelled = true
-      window.clearInterval(timerId)
+      if (graceTimeoutId !== null) {
+        window.clearTimeout(graceTimeoutId)
+      }
+
+      if (intervalId !== null) {
+        window.clearInterval(intervalId)
+      }
     }
   }, [
     apiUrl,
@@ -123,82 +161,85 @@ export function useWorkspacesSessionAnchors(params: UseWorkspacesSessionAnchorsP
         return
       }
 
-      const historyByRoom = await Promise.all(
-        targetRoomIds.map(async (roomId) => {
-          try {
-            const params = new URLSearchParams({
-              roomId,
-              sinceLatestStart: '1',
-              systemOnly: '1',
-              limit: '24',
-            })
-            const response = await fetchWithAuthGuard(
-              `${apiUrl}/api/chat/messages/${sessionId}?${params.toString()}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            )
+      const targetRoomIdSet = new Set(targetRoomIds)
 
-            if (!response.ok) {
-              return [] as Message[]
+      const historyByRoom = await (async () => {
+        try {
+          const params = new URLSearchParams({
+            sinceLatestStart: '1',
+            systemOnly: '1',
+            limit: '48',
+          })
+          const response = await fetchWithAuthGuard(
+            `${apiUrl}/api/chat/messages/${sessionId}?${params.toString()}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             }
+          )
 
-            const payload = (await response.json().catch(() => ({}))) as {
-              messages?: Array<{
-                id?: UUID
-                roomId?: UUID
-                authorId?: UUID
-                authorUsername?: string
-                content?: string
-                type?: MessageType
-                isDmOnly?: boolean
-                createdAt?: number | string
-                editedAt?: number
-              }>
-            }
-
-            const rawMessages = Array.isArray(payload.messages) ? payload.messages : []
-
-            return rawMessages
-              .map((entry) => {
-                const createdAtRaw = entry.createdAt
-                const createdAt =
-                  typeof createdAtRaw === 'number'
-                    ? createdAtRaw
-                    : typeof createdAtRaw === 'string'
-                      ? new Date(createdAtRaw).getTime()
-                      : Number.NaN
-
-                if (
-                  !entry.authorId ||
-                  !entry.authorUsername ||
-                  !entry.content ||
-                  !entry.type ||
-                  !Number.isFinite(createdAt)
-                ) {
-                  return null
-                }
-
-                return {
-                  id: (entry.id || generateClientId('message')) as UUID,
-                  roomId: (entry.roomId || roomId) as UUID,
-                  authorId: entry.authorId,
-                  authorUsername: entry.authorUsername,
-                  content: entry.content,
-                  type: entry.type,
-                  isDmOnly: Boolean(entry.isDmOnly),
-                  createdAt,
-                  editedAt: entry.editedAt,
-                } as Message
-              })
-              .filter((message): message is Message => Boolean(message))
-          } catch {
-            return [] as Message[]
+          if (!response.ok) {
+            return [] as Message[][]
           }
-        })
-      )
+
+          const payload = (await response.json().catch(() => ({}))) as {
+            messages?: Array<{
+              id?: UUID
+              roomId?: UUID
+              authorId?: UUID
+              authorUsername?: string
+              content?: string
+              type?: MessageType
+              isDmOnly?: boolean
+              createdAt?: number | string
+              editedAt?: number
+            }>
+          }
+
+          const rawMessages = Array.isArray(payload.messages) ? payload.messages : []
+
+          const normalizedMessages = rawMessages
+            .map((entry) => {
+              const createdAtRaw = entry.createdAt
+              const createdAt =
+                typeof createdAtRaw === 'number'
+                  ? createdAtRaw
+                  : typeof createdAtRaw === 'string'
+                    ? new Date(createdAtRaw).getTime()
+                    : Number.NaN
+
+              if (
+                !entry.authorId ||
+                !entry.authorUsername ||
+                !entry.content ||
+                !entry.type ||
+                !entry.roomId ||
+                !targetRoomIdSet.has(entry.roomId) ||
+                !Number.isFinite(createdAt)
+              ) {
+                return null
+              }
+
+              return {
+                id: (entry.id || generateClientId('message')) as UUID,
+                roomId: entry.roomId,
+                authorId: entry.authorId,
+                authorUsername: entry.authorUsername,
+                content: entry.content,
+                type: entry.type,
+                isDmOnly: Boolean(entry.isDmOnly),
+                createdAt,
+                editedAt: entry.editedAt,
+              } as Message
+            })
+            .filter((message): message is Message => Boolean(message))
+
+          return [normalizedMessages]
+        } catch {
+          return [] as Message[][]
+        }
+      })()
 
       const recoveredBookends = historyByRoom
         .flat()

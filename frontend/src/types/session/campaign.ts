@@ -1,5 +1,10 @@
 import { Role, SessionState, deriveCampaignDisplayState } from '@shared'
 import type { UUID } from '@shared'
+import type {
+  LateJoinPolicy,
+  PersistedExtensionSyncPolicy,
+  SupportedPlatform,
+} from '@/constants/sessionUi.types'
 
 export interface CampaignSummary {
   id: UUID
@@ -8,7 +13,7 @@ export interface CampaignSummary {
   createdAt?: number | string
   updatedAt?: number | string
   posterUrl?: string | null
-  extensionSyncPolicy?: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
+  extensionSyncPolicy?: PersistedExtensionSyncPolicy
   inviteCode?: string
   spectatorInviteCode?: string | null
   spectatorInviteActive?: boolean
@@ -33,6 +38,16 @@ export interface CampaignSummary {
   isMember?: boolean
 }
 
+export interface CampaignJoinRequestSummary {
+  id: UUID
+  userId: UUID
+  username: string
+  displayName: string
+  avatarUrl: string | null
+  message: string | null
+  requestedAt: number | string
+}
+
 export type CampaignMembershipRole = CampaignSummary['memberRole']
 
 export type CampaignSettingsHomeTab = 'home' | 'notes' | 'journal'
@@ -50,8 +65,8 @@ export type CampaignSettingsPayload = {
   spectatorMax: number | null
   spectatorWaitlistEnabled: boolean
   spectatorReconnectGraceSecs: number
-  extensionSyncPolicy: 'NONE' | 'DM_ONLY' | 'DM_AND_PLAYERS'
-  lateJoinPolicy: 'OPEN' | 'SCREENED' | 'BLOCKED'
+  extensionSyncPolicy: PersistedExtensionSyncPolicy
+  lateJoinPolicy: LateJoinPolicy
   lateJoinGraceMinutes: number
   inviteCode: string
   inviteActive: boolean
@@ -61,7 +76,7 @@ export type CampaignSettingsPayload = {
   postSessionChatDurationMs: number
   dmAutoTargetOnFirstPlayerJoin: boolean
   defaultSessionDurationMins: number
-  supportedPlatforms: ('ANY' | 'DDB' | 'ROLL20' | 'FOUNDRY')[]
+  supportedPlatforms: SupportedPlatform[]
 }
 
 export type CampaignEntryAction =
@@ -89,7 +104,7 @@ export type CampaignEntryAction =
       disabled: boolean
       reason?: string
       action: 'watch'
-      showLock: true
+      showLock?: boolean
       dimmed?: boolean
     }
   | {
@@ -127,13 +142,10 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
 
   // Non-member paths
   if (campaign.isMember === false || campaign.memberRole === undefined) {
-    // PRIVATE campaign with spectators enabled + active session + people online
     const isWatchable =
       campaign.spectatorsEnabled &&
       campaign.latestSessionState === 'ACTIVE' &&
-      (campaign.activeConnectedCount ?? 0) > 0 &&
-      Boolean(campaign.spectatorInviteCode?.trim()) &&
-      campaign.spectatorInviteActive !== false
+      (campaign.activeConnectedCount ?? 0) > 0
 
     if (isWatchable) {
       return {
@@ -141,7 +153,7 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
         icon: 'visibility',
         disabled: false,
         action: 'watch',
-        showLock: true,
+        showLock: campaign.discoverable === false,
       }
     }
 

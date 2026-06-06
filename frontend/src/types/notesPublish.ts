@@ -11,3 +11,10 @@ export interface NotesPublishTarget {
   roomId?: UUID | null
   roomIds?: UUID[] // For ALL_ROOMS: list of all room IDs to publish to
 }
+
+/** Target for the /surface endpoint — excerpt-based, scope-based handout delivery. */
+export interface NotesSurfaceTarget {
+  scope: 'PARTY' | 'SELECTED'
+  selectedUserIds?: UUID[]
+  manualExcerpt?: string
+}

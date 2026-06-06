@@ -44,16 +44,16 @@ export function CampaignInformationHeader({
               <button
                 type="button"
                 className="session-icon-action session-icon-action--icon"
-                aria-label="Undo campaign edits"
+                aria-label="Cancel editing campaign information"
                 onClick={onCancel}
-                disabled={isSaving || !isDirty}
+                disabled={isSaving}
               >
                 <span className="material-symbols-outlined" aria-hidden="true">
                   undo
                 </span>
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top">Undo unsaved edits</TooltipContent>
+            <TooltipContent side="top">Cancel editing</TooltipContent>
           </Tooltip>
         </div>
       ) : canEdit && !isEditing ? (

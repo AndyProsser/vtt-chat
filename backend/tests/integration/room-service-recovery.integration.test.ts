@@ -156,22 +156,60 @@ describe('room service recovery integration', () => {
     expect(presence[0].primaryRoomId).toBe('55555555-5555-4555-8555-555555555555')
   })
 
-  it('keeps transition sequencing stable under repeated state flips', async () => {
+  it('restores pre-pause group assignments when resuming from PAUSED', async () => {
     const users = [
       { id: USER_A as any, username: 'alice' },
       { id: USER_B as any, username: 'bob' },
     ]
 
-    const toActive = await applySessionStateRoomTransition({
+    seedRoom({
+      id: MAIN_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Main',
+      type: 'MAIN',
+      createdBy: DM_ID,
+    })
+    seedRoom({
+      id: GROUP_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Scouts',
+      type: 'GROUP',
+      createdBy: DM_ID,
+    })
+    seedRoom({
+      id: WHISPER_ROOM_ID,
+      sessionId: SESSION_ID,
+      name: 'Whisper',
+      type: 'PRIVATE',
+      createdBy: DM_ID,
+    })
+
+    await joinRoom({
       sessionId: SESSION_ID as any,
-      dmId: DM_ID as any,
-      nextState: 'ACTIVE' as any,
-      users,
+      roomId: GROUP_ROOM_ID as any,
+      userId: USER_A as any,
+      username: 'alice',
+      state: 'ONLINE' as any,
+    })
+    await joinRoom({
+      sessionId: SESSION_ID as any,
+      roomId: GROUP_ROOM_ID as any,
+      userId: USER_B as any,
+      username: 'bob',
+      state: 'ONLINE' as any,
+    })
+    await joinRoom({
+      sessionId: SESSION_ID as any,
+      roomId: WHISPER_ROOM_ID as any,
+      userId: USER_B as any,
+      username: 'bob',
+      state: 'ONLINE' as any,
     })
 
     const toPaused = await applySessionStateRoomTransition({
       sessionId: SESSION_ID as any,
       dmId: DM_ID as any,
+      previousState: 'ACTIVE' as any,
       nextState: 'PAUSED' as any,
       users,
     })
@@ -179,31 +217,28 @@ describe('room service recovery integration', () => {
     const backToActive = await applySessionStateRoomTransition({
       sessionId: SESSION_ID as any,
       dmId: DM_ID as any,
+      previousState: 'PAUSED' as any,
       nextState: 'ACTIVE' as any,
       users,
     })
 
-    expect(toActive.movedUsers).toBe(2)
     expect(toPaused.movedUsers).toBe(2)
     expect(backToActive.movedUsers).toBe(2)
+    expect(toPaused.users.every((user) => user.roomId === toPaused.mainRoomId)).toBe(true)
+    expect(backToActive.users.every((user) => user.roomId === GROUP_ROOM_ID)).toBe(true)
 
     const finalPresence = await getSessionPresence(SESSION_ID as any)
     for (const user of finalPresence) {
       expect(user.state).toBe('ONLINE')
-      expect(user.primaryRoomId).toBe(backToActive.mainRoomId)
+      expect(user.primaryRoomId).toBe(GROUP_ROOM_ID)
+      expect(user.previousGroupId).toBe(GROUP_ROOM_ID)
     }
 
-    const mainRoomMembers = await getRoomMemberIds(
-      SESSION_ID as any,
-      backToActive.mainRoomId as any
-    )
-    const greenRoomMembers = await getRoomMemberIds(
-      SESSION_ID as any,
-      backToActive.greenRoomId as any
-    )
+    const mainRoomMembers = await getRoomMemberIds(SESSION_ID as any, MAIN_ROOM_ID as any)
+    const groupRoomMembers = await getRoomMemberIds(SESSION_ID as any, GROUP_ROOM_ID as any)
 
-    expect(mainRoomMembers.sort()).toEqual([USER_A, USER_B].sort())
-    expect(greenRoomMembers).toEqual([])
+    expect(mainRoomMembers).toEqual([])
+    expect(groupRoomMembers.sort()).toEqual([USER_A, USER_B].sort())
   })
 
   it('includes live presence users omitted from the explicit transition user list', async () => {
@@ -240,7 +275,7 @@ describe('room service recovery integration', () => {
     seedRoom({
       id: MAIN_ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdBy: DM_ID,
     })
@@ -292,7 +327,7 @@ describe('room service recovery integration', () => {
     seedRoom({
       id: MAIN_ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdBy: DM_ID,
     })
@@ -337,7 +372,7 @@ describe('room service recovery integration', () => {
     seedRoom({
       id: MAIN_ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdBy: DM_ID,
     })
@@ -413,7 +448,7 @@ describe('room service recovery integration', () => {
     seedRoom({
       id: MAIN_ROOM_ID,
       sessionId: SESSION_ID,
-      name: 'Main Room',
+      name: 'Main',
       type: 'MAIN',
       createdBy: DM_ID,
     })

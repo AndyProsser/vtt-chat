@@ -2,7 +2,7 @@ import { PresenceState, RoomType } from '@shared'
 
 export const ROOM_NAMES = {
   greenRoom: 'Green Room',
-  mainRoom: 'Main Room',
+  mainRoom: 'Main',
 } as const
 
 export const ROOM_ROLE_LABELS = {
@@ -17,7 +17,7 @@ export const DEFAULT_AVATAR_META_LINES = {
 } as const
 
 export const ROOM_PRESENCE_COPY = {
-  mainGroup: 'Main Group',
+  mainGroup: 'Main',
   otherGroups: 'Other Groups',
   noMembersInGroup: 'No members in this group.',
   noGroupsAvailable: 'No groups available.',

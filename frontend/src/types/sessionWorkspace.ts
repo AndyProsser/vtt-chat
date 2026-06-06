@@ -5,9 +5,9 @@ import { AudioPanel } from '@/components/workspaces/session/audio/AudioPanel'
 import { ChatWindow } from '@/components/workspaces/session/chat/ChatWindow'
 import { ReconnectBanner } from '@/components/ui/ReconnectBanner'
 import type { Session as SessionRecord } from '@/types/session'
-import type { Room as RoomRecord, RoomUser as RoomMember } from '@/types/room'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
+import type { CampaignSessionPolicyBindings } from '@/components/workspaces/shared/panels/CampaignSessionSettingsPanel'
 import { LeftRailPanel } from '@/components/workspaces/session/LeftRailPanel'
 import { SessionWorkspaceFrame } from '@/components/workspaces/session/WorkspaceFrame'
 import { SessionToolbar } from '@/components/workspaces/shared/toolbar/SessionToolbar'
@@ -22,6 +22,7 @@ export type SessionWorkspaceProps = {
     pauseCount: number
   }
   configuredCooldownDurationMs: number
+  isTransitioningSession: boolean
   canStartFromGreenroom: boolean
   canPauseFromActive: boolean
   canStopFromActive: boolean
@@ -51,49 +52,33 @@ export type SessionWorkspaceProps = {
     role: Role
     authType?: 'FULL' | 'GUEST'
   }
-  visibleRooms: RoomRecord[]
-  roomMembersByRoomId: Record<UUID, RoomMember[]>
-  selectedRoomId: UUID | ''
   onSelectRoom: (roomId: UUID) => void
-  broadcastModeEnabled: boolean
   onToggleBroadcastMode: ComponentProps<typeof LeftRailPanel>['onToggleBroadcastMode']
   dmAutoTargetOnFirstPlayerJoin: boolean
-  dmOverrides: ComponentProps<typeof LeftRailPanel>['dmOverrides']
-  currentConditionName: string | undefined
-  roomEnvironmentNames: ComponentProps<typeof LeftRailPanel>['roomEnvironmentNames']
   wsState: ComponentProps<typeof ReconnectBanner>['wsState']
   wsRetrySecondsRemaining: number | null
-  connectionStatus: {
-    statusColorKey: ComponentProps<typeof SessionToolbar>['statusColorKey']
-    label: string
-    coreWsState: ComponentProps<typeof SessionToolbar>['coreWsState']
-    livekitState: ComponentProps<typeof SessionToolbar>['livekitState']
-  }
+  suppressWsReconnectUi: boolean
   rightRailIndicators: ComponentProps<typeof SessionWorkspaceFrame>['rightRailIndicators']
   partyPresenceRefreshVersion: number
   fetchWithAuthGuard: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
-  selectedRoom: RoomRecord | null
   campaignId: UUID | undefined
   messageGroupingWindowMs: number
   sendWsEvent: ComponentProps<typeof ChatWindow>['sendWsEvent']
-  isGreenroomChatMode: boolean
   totalSessionDurationMs: number
   canEditCampaignInfo: boolean
   onSaveCampaignInfo: ComponentProps<typeof CampaignInformationPanel>['onSaveCampaignInfo']
   campaignIdForSettings: UUID | ''
   sessionSettingsName: string
-  sessionSettingsDescription: string
   sessionSettingsPlannedDurationMinutes: number
+  defaultSessionDurationMinutes: number
+  sessionStartedAt: number | undefined
   canEditSessionSettings: boolean
+  canEditEndedSessionName: boolean
   onSessionNameChange: (value: string) => void
-  onSessionDescriptionChange: (value: string) => void
   onPlannedDurationMinutesChange: (value: number) => void
   onSaveSessionSettings: () => void
   isSessionSettingsSaving: boolean
-  onDmAutoTargetChange: (value: boolean) => void
-  onSaveDmAutoTarget: () => void
-  isDmVoiceTargetingSettingSaving: boolean
-  isDmVoiceTargetingSettingLoading: boolean
+  sessionCampaignPolicy?: CampaignSessionPolicyBindings
   characterDraft: PlayerSettingsPanel
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
   onSaveCharacterSettings: () => void

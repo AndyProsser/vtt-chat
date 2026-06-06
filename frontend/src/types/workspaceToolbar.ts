@@ -21,7 +21,10 @@ export type WorkspaceToolbarProps = {
   exitIcon: 'logout' | 'arrow_back'
   exitAriaLabel: string
   exitTooltipLabel: string
-  connectionStatusColorKey: string
-  connectionStatusLabel: string
-  connectionStatusRows: WorkspaceToolbarStatusRow[]
+  // Connection status leaf (preferred) — isolated from parent re-renders
+  connectionStatusLeaf?: ReactNode
+  // Legacy connection status props (used only if connectionStatusLeaf not provided)
+  connectionStatusColorKey?: string
+  connectionStatusLabel?: string
+  connectionStatusRows?: WorkspaceToolbarStatusRow[]
 }

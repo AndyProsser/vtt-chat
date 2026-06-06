@@ -9,11 +9,13 @@ export interface UISlice {
   toolbarCenterPaneView: ToolbarCenterPaneView
   toolbarRightRailOpen: boolean
   mockTakeoverUserIdBySession: Record<string, UUID | null>
+  selectedRoomIdOverrideBySessionId: Record<UUID, UUID | ''>
 
   setToolbarCenterPaneView: (view: ToolbarCenterPaneView) => void
   setToolbarRightRailOpen: (open: boolean) => void
   toggleToolbarRightRail: () => void
   setMockTakeoverUserId: (sessionId: UUID, userId: UUID | null) => void
+  setSelectedRoomIdOverride: (sessionId: UUID, roomId: UUID | '') => void
   resetToolbarActionsState: () => void
 }
 
@@ -24,6 +26,7 @@ export const createUISlice: StateCreator<UISlice> = (set) => ({
   toolbarCenterPaneView: DEFAULT_CENTER_PANE_VIEW,
   toolbarRightRailOpen: DEFAULT_RIGHT_RAIL_OPEN,
   mockTakeoverUserIdBySession: {},
+  selectedRoomIdOverrideBySessionId: {},
 
   setToolbarCenterPaneView: (view) => set({ toolbarCenterPaneView: view }),
 
@@ -42,10 +45,19 @@ export const createUISlice: StateCreator<UISlice> = (set) => ({
       },
     })),
 
+  setSelectedRoomIdOverride: (sessionId, roomId) =>
+    set((state) => ({
+      selectedRoomIdOverrideBySessionId: {
+        ...state.selectedRoomIdOverrideBySessionId,
+        [sessionId]: roomId,
+      },
+    })),
+
   resetToolbarActionsState: () =>
     set({
       toolbarCenterPaneView: DEFAULT_CENTER_PANE_VIEW,
       toolbarRightRailOpen: DEFAULT_RIGHT_RAIL_OPEN,
       mockTakeoverUserIdBySession: {},
+      selectedRoomIdOverrideBySessionId: {},
     }),
 })
