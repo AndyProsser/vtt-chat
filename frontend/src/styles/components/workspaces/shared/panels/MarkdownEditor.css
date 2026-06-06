@@ -396,3 +396,109 @@
   color: var(--color-accent-text, #818cf8);
   flex-shrink: 0;
 }
+
+/* ── DMDX code blocks in edit mode ─────────────────────────────────── */
+/*
+ * In Tiptap, DMDX fenced blocks render as <pre><code class="language-{type}">.
+ * These rules give them the same card-frame visual as read-mode DMDX blocks,
+ * with a per-type header band via ::before and a matching border/background.
+ */
+
+/* Shared card frame */
+.md-editor__content .ProseMirror pre:has(
+  code.language-npc,
+  code.language-monster,
+  code.language-encounter,
+  code.language-loot,
+  code.language-spell,
+  code.language-session,
+  code.language-roll,
+  code.language-map,
+  code.language-timeline
+) {
+  --dmdx-accent: #60a5fa;
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 40%, var(--color-border-soft));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dmdx-accent) 4%, var(--color-surface));
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 color-mix(in srgb, var(--dmdx-accent) 10%, transparent);
+  padding: 0;
+  overflow: hidden;
+  margin: 0.6rem 0;
+}
+
+/* Per-type accent colors */
+.md-editor__content .ProseMirror pre:has(code.language-npc)       { --dmdx-accent: #818cf8; }
+.md-editor__content .ProseMirror pre:has(code.language-monster)   { --dmdx-accent: #f87171; }
+.md-editor__content .ProseMirror pre:has(code.language-encounter) { --dmdx-accent: #fb923c; }
+.md-editor__content .ProseMirror pre:has(code.language-loot)      { --dmdx-accent: #facc15; }
+.md-editor__content .ProseMirror pre:has(code.language-spell)     { --dmdx-accent: #a78bfa; }
+.md-editor__content .ProseMirror pre:has(code.language-session)   { --dmdx-accent: #34d399; }
+.md-editor__content .ProseMirror pre:has(code.language-roll)      { --dmdx-accent: #f472b6; }
+.md-editor__content .ProseMirror pre:has(code.language-map)       { --dmdx-accent: #38bdf8; }
+.md-editor__content .ProseMirror pre:has(code.language-timeline)  { --dmdx-accent: #a3e635; }
+
+/* Colored header banner via ::before — one per type for the label */
+.md-editor__content .ProseMirror pre:has(
+  code.language-npc,
+  code.language-monster,
+  code.language-encounter,
+  code.language-loot,
+  code.language-spell,
+  code.language-session,
+  code.language-roll,
+  code.language-map,
+  code.language-timeline
+)::before {
+  display: block;
+  padding: 0.38rem 0.7rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--dmdx-accent) 24%, rgba(0, 0, 0, 0.1)),
+    color-mix(in srgb, var(--dmdx-accent) 14%, rgba(0, 0, 0, 0.25))
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--dmdx-accent) 45%, transparent);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--dmdx-accent) 90%, white);
+  /* Override pre's white-space so the label renders as a normal block */
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.md-editor__content .ProseMirror pre:has(code.language-npc)::before       { content: "✦  NPC — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-monster)::before   { content: "✦  Monster — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-encounter)::before { content: "✦  Encounter — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-loot)::before      { content: "✦  Loot — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-spell)::before     { content: "✦  Spell — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-session)::before   { content: "✦  Session — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-roll)::before      { content: "✦  Roll — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-map)::before       { content: "✦  Map — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-timeline)::before  { content: "✦  Timeline — editing"; }
+
+/* Reset the <code> element inside DMDX blocks — override the inline-code defaults */
+.md-editor__content .ProseMirror pre:has(
+  code.language-npc,
+  code.language-monster,
+  code.language-encounter,
+  code.language-loot,
+  code.language-spell,
+  code.language-session,
+  code.language-roll,
+  code.language-map,
+  code.language-timeline
+) > code {
+  display: block;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  color: var(--color-text-primary);
+}
