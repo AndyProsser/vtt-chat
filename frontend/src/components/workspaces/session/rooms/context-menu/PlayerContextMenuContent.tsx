@@ -1,7 +1,14 @@
 import { memo } from 'react'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import type { UUID } from '@shared'
+import { findConditionPreset, findDistancePreset } from '@shared'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
+
+const DISTANCE_ICON_COLOURS: Record<string, string> = {
+  Nearby: '#34d399',
+  Visible: '#facc15',
+  Far: '#fb923c',
+}
 
 interface PlayerContextMenuContentProps {
   canManageRooms: boolean

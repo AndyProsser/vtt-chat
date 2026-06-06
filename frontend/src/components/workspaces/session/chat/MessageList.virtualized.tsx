@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import type { CSSProperties, RefObject, UIEventHandler, WheelEventHandler } from 'react'
+import type { CSSProperties, ReactNode, RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import {
   List,
   type DynamicRowHeight,
@@ -7,7 +7,7 @@ import {
   useDynamicRowHeight,
   useListCallbackRef,
 } from 'react-window'
-import { MessageType, findConditionPreset } from '@shared'
+import { MessageType, findConditionPreset, findDistancePreset } from '@shared'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { MessageListProps, PreparedMessage } from './MessageList'
@@ -260,15 +260,25 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
   }
 
   if (prepared.conditionMessage) {
-    const conditionPreset = prepared.conditionMessage.presetName
-      ? findConditionPreset(prepared.conditionMessage.presetName)
-      : undefined
-    const iconName = prepared.conditionMessage.isRemoval
-      ? 'check_circle'
-      : (conditionPreset?.icon ?? 'psychology')
-    const conditionText = prepared.conditionMessage.isRemoval
-      ? `${prepared.authorName}'s condition was cleared`
-      : `${prepared.authorName} is ${conditionPreset?.label ?? prepared.conditionMessage.presetName ?? 'affected'}`
+    const { isRemoval, presetName, overrideType = 'CONDITION' } = prepared.conditionMessage
+    const isDistance = overrideType === 'DISTANCE'
+    const conditionPreset = !isDistance && presetName ? findConditionPreset(presetName) : undefined
+    const distancePreset = isDistance && presetName ? findDistancePreset(presetName) : undefined
+    const preset = conditionPreset ?? distancePreset
+
+    let iconName: string
+    let markerText: ReactNode
+
+    if (isRemoval) {
+      iconName = isDistance ? 'person' : 'check_circle'
+      markerText = isDistance
+        ? <><strong>{prepared.authorName}</strong> has returned to the party</>
+        : <><strong>{prepared.authorName}</strong>{`'s condition was cleared`}</>
+    } else {
+      iconName = preset?.icon ?? (isDistance ? 'social_distance' : 'psychology')
+      const label = preset?.label ?? presetName ?? (isDistance ? 'distant' : 'affected')
+      markerText = <>{prepared.authorName} is <strong>{label}</strong></>
+    }
 
     return (
       <Fragment>
@@ -299,50 +309,34 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
         ) : null}
 
         <article
-          className={`session-message-list__message ${msg.type === MessageType.WHISPER ? 'session-message-list__message--whisper' : ''} ${isSelf ? 'session-message-list__message--self' : ''} ${isGroupedWithPrevious ? 'session-message-list__message--grouped' : ''}`}
+          className={`session-message-list__condition-marker ${isDistance ? 'session-message-list__condition-marker--distance' : 'session-message-list__condition-marker--condition'} ${isRemoval ? 'session-message-list__condition-marker--removal' : ''}`}
+          role="status"
         >
-          <div className="session-message-list__message-row">
-            <span
-              className={`session-message-list__message-avatar ${isSystem ? 'session-message-list__message-avatar--system' : ''}`}
-              aria-hidden="true"
-            >
-              {authorAvatarUrl ? (
-                <img src={authorAvatarUrl} alt="" />
-              ) : (
-                getAuthorInitial(authorName)
-              )}
-            </span>
-
-            <div className="session-message-list__message-content session-message-list__message-content--condition">
-              <div className="session-message-list__message-bubble session-message-list__message-bubble--condition">
-                <TooltipProvider delayDuration={300}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span
-                        className="session-message-list__message-condition-icon material-symbols-outlined"
-                        aria-hidden="true"
-                        style={{ cursor: 'help' }}
-                      >
-                        {iconName}
-                      </span>
-                    </TooltipTrigger>
-                    {conditionPreset?.description ? (
-                      <TooltipContent side="top" className="max-w-xs">
-                        {conditionPreset.description}
-                      </TooltipContent>
-                    ) : null}
-                  </Tooltip>
-                </TooltipProvider>
-                <span className="session-message-list__message-bubble-text">{conditionText}</span>
-              </div>
-              <div className="session-message-list__message-footer">
-                <div className="session-message-list__message-timestamp">
-                  {msg.editedAt ? 'edited · ' : ''}
-                  {relativeTime}
-                </div>
-              </div>
-            </div>
-          </div>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="session-message-list__condition-marker-icon material-symbols-outlined"
+                  aria-hidden="true"
+                >
+                  {iconName}
+                </span>
+              </TooltipTrigger>
+              {preset?.description ? (
+                <TooltipContent side="top" className="max-w-xs">
+                  {preset.description}
+                </TooltipContent>
+              ) : null}
+            </Tooltip>
+          </TooltipProvider>
+          <span className="session-message-list__condition-marker-text">{markerText}</span>
+          <span className="session-message-list__condition-marker-line" aria-hidden="true" />
+          <time
+            className="session-message-list__condition-marker-time"
+            dateTime={new Date(msg.createdAt).toISOString()}
+          >
+            {relativeTime}
+          </time>
         </article>
       </Fragment>
     )

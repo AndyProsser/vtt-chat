@@ -89,8 +89,8 @@ export async function removeDMOverrideState(params: {
   sessionId: UUID
   targetUserId: UUID
   overrideType: string
-}): Promise<void> {
-  await removeAudioDMOverrideRecord({
+}): Promise<boolean> {
+  const deleted = await removeAudioDMOverrideRecord({
     sessionId: params.sessionId,
     targetUserId: params.targetUserId,
     overrideType: params.overrideType,
@@ -110,6 +110,8 @@ export async function removeDMOverrideState(params: {
       error: error instanceof Error ? error.message : String(error),
     })
   }
+
+  return deleted > 0
 }
 
 export async function clearSessionDMOverrideState(sessionId: UUID): Promise<void> {

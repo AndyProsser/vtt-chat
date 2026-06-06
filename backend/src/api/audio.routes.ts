@@ -462,7 +462,7 @@ async function handleRemoveDmOverride(req: Request, res: Response) {
     return res.status(authz.status).json({ code: authz.code, message: authz.message })
   }
 
-  await removeDMOverrideState({
+  const wasActive = await removeDMOverrideState({
     sessionId: sessionId as UUID,
     targetUserId: targetUserId as UUID,
     overrideType: typeof overrideType === 'string' ? overrideType : 'UNKNOWN',
@@ -502,7 +502,7 @@ async function handleRemoveDmOverride(req: Request, res: Response) {
     actorUserId: user.userId,
   })
 
-  if (overrideType === 'CONDITION' || overrideType === 'DISTANCE') {
+  if (wasActive && (overrideType === 'CONDITION' || overrideType === 'DISTANCE')) {
     void emitConditionSystemMessage({
       sessionId: sessionId as UUID,
       targetUserId: targetUserId as UUID,

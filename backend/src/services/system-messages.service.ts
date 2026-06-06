@@ -163,6 +163,7 @@ function buildSystemChatEvent(message: {
   type: MessageType
   isDmOnly: boolean
   createdAt: number
+  metadata?: Record<string, unknown>
 }): EventEnvelope {
   return {
     id: crypto.randomUUID() as UUID,
@@ -182,6 +183,7 @@ function buildSystemChatEvent(message: {
       type: message.type,
       isDmOnly: message.isDmOnly,
       isOffTheRecord: false,
+      metadata: message.metadata,
     },
   }
 }
@@ -260,12 +262,9 @@ export async function emitConditionSystemMessage(params: {
       content =
         params.overrideType === 'CONDITION'
           ? `[${playerName}'s condition was cleared]`
-          : `[${playerName}'s distance was cleared]`
+          : `[${playerName} has returned to the party]`
     } else {
-      content =
-        params.overrideType === 'CONDITION'
-          ? `[${playerName} is ${params.presetName}]`
-          : `[${playerName} is ${params.presetName}]`
+      content = `[${playerName} is ${params.presetName}]`
     }
 
     const stored = await sendMessage({
@@ -282,6 +281,7 @@ export async function emitConditionSystemMessage(params: {
           targetUserId: params.targetUserId,
           presetName: params.isRemoval ? undefined : (params.presetName ?? undefined),
           isRemoval: params.isRemoval,
+          overrideType: params.overrideType,
         },
       },
     })

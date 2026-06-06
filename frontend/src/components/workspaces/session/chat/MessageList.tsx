@@ -19,6 +19,7 @@ interface ConditionMessageMetadata {
   targetUserId: UUID
   presetName?: string
   isRemoval: boolean
+  overrideType?: 'CONDITION' | 'DISTANCE'
 }
 export interface MessageListProps {
   sessionId: UUID
@@ -386,6 +387,8 @@ function MessageListComponent({
           const stripped = content.replace(/^[\[]|[\]]$/g, '').trim()
           const removalMatch = stripped.match(/^(.+?)'s condition was cleared$/)
           if (removalMatch) return removalMatch[1]
+          const distanceRemovalMatch = stripped.match(/^(.+?) has returned to the party$/)
+          if (distanceRemovalMatch) return distanceRemovalMatch[1]
           const applyMatch = stripped.match(/^(.+?) is /)
           return applyMatch?.[1] ?? null
         }

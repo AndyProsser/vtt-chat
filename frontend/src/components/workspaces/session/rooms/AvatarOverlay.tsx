@@ -4,6 +4,8 @@ import { DEFAULT_AVATAR_META_LINES, ROOM_ROLE_LABELS } from '@/constants/roomPre
 import { SpeakingIndicator } from './SpeakingIndicator'
 import { GhostIndicator } from './GhostIndicator'
 import { MicMutedIndicator } from './MicMutedIndicator'
+import { ConditionBadge } from './ConditionBadge'
+import { DistanceBadge } from './DistanceBadge'
 import '@/styles/components/workspaces/session/rooms/AvatarOverlay.css'
 
 interface AvatarOverlayProps {
@@ -84,6 +86,8 @@ function AvatarOverlayComponent({
               variant="avatar"
             />
             <GhostIndicator sessionId={presence.sessionId} userId={presence.userId} />
+            <ConditionBadge userId={presence.userId} />
+            <DistanceBadge userId={presence.userId} />
           </>
         ) : null}
       </div>

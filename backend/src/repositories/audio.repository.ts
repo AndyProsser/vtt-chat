@@ -105,14 +105,15 @@ export async function removeAudioDMOverrideRecord(params: {
   sessionId: string
   targetUserId: string
   overrideType: string
-}): Promise<void> {
-  await prisma.audioDMOverride.deleteMany({
+}): Promise<number> {
+  const result = await prisma.audioDMOverride.deleteMany({
     where: {
       sessionId: params.sessionId,
       targetUserId: params.targetUserId,
       overrideType: params.overrideType,
     },
   })
+  return result.count
 }
 
 export async function removeAudioDMOverridesBySession(sessionId: string): Promise<void> {
