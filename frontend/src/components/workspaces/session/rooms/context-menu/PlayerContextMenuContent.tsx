@@ -102,64 +102,8 @@ export function PlayerContextMenuContent({
 
         {canManageRooms ? (
           <>
-            <MuteContextMenuItem
-              sessionId={sessionId}
-              userId={userId}
-              isSelf={isSelf}
-              onToggleMute={onToggleMute}
-            />
-
             {!isGreenroom ? (
               <>
-                <ContextMenu.Sub>
-                  <ContextMenu.SubTrigger className="room-context-menu__item">
-                    Adjust Audio
-                    <span aria-hidden>›</span>
-                  </ContextMenu.SubTrigger>
-                  <ContextMenu.Portal>
-                    <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('GAIN', { factor: 1.5 })}
-                      >
-                        Boost Mic
-                      </ContextMenu.Item>
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('GAIN', null)}
-                      >
-                        Normal Mic
-                      </ContextMenu.Item>
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('GAIN', { factor: 0.5 })}
-                      >
-                        Lower Mic
-                      </ContextMenu.Item>
-                      <ContextMenu.Separator className="room-context-menu__separator" />
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('FILTER', { enabled: true })}
-                      >
-                        Enable Noise Filter
-                      </ContextMenu.Item>
-                      <ContextMenu.Item
-                        className="room-context-menu__item"
-                        disabled={!onAudioAdjust}
-                        onSelect={() => onAudioAdjust?.('FILTER', null)}
-                      >
-                        Disable Noise Filter
-                      </ContextMenu.Item>
-                    </ContextMenu.SubContent>
-                  </ContextMenu.Portal>
-                </ContextMenu.Sub>
-
-                <ContextMenu.Separator className="room-context-menu__separator" />
-
                 <ContextMenu.Item
                   className="room-context-menu__item"
                   disabled={!onClearEffects}
@@ -175,16 +119,33 @@ export function PlayerContextMenuContent({
                   </ContextMenu.SubTrigger>
                   <ContextMenu.Portal>
                     <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
-                      {distanceTargets.map((distanceOption) => (
-                        <ContextMenu.Item
-                          key={distanceOption}
-                          className="room-context-menu__item"
-                          disabled={!onDistanceSelect}
-                          onSelect={() => onDistanceSelect?.(distanceOption)}
-                        >
-                          {distanceOption}
-                        </ContextMenu.Item>
-                      ))}
+                      {distanceTargets.map((distanceOption) => {
+                        const distPreset = findDistancePreset(distanceOption)
+                        const distColour =
+                          distPreset && distPreset.name !== 'Default'
+                            ? (DISTANCE_ICON_COLOURS[distPreset.name] ??
+                              'var(--color-text-secondary)')
+                            : 'var(--color-text-secondary)'
+                        return (
+                          <ContextMenu.Item
+                            key={distanceOption}
+                            className="room-context-menu__item"
+                            disabled={!onDistanceSelect}
+                            onSelect={() => onDistanceSelect?.(distanceOption)}
+                          >
+                            <span className="room-context-menu__item-label">
+                              <span
+                                className="material-symbols-outlined room-context-menu__item-icon"
+                                style={{ color: distColour }}
+                                aria-hidden="true"
+                              >
+                                {distPreset?.icon ?? 'person'}
+                              </span>
+                              {distanceOption}
+                            </span>
+                          </ContextMenu.Item>
+                        )
+                      })}
                     </ContextMenu.SubContent>
                   </ContextMenu.Portal>
                 </ContextMenu.Sub>
@@ -196,21 +157,88 @@ export function PlayerContextMenuContent({
                   </ContextMenu.SubTrigger>
                   <ContextMenu.Portal>
                     <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
-                      {conditionTargets.map((conditionName) => (
-                        <ContextMenu.Item
-                          key={conditionName}
-                          className="room-context-menu__item"
-                          disabled={!onConditionSelect}
-                          onSelect={() => onConditionSelect?.(conditionName)}
-                        >
-                          {conditionName}
-                        </ContextMenu.Item>
-                      ))}
+                      {conditionTargets.map((conditionName) => {
+                        const condPreset = findConditionPreset(conditionName)
+                        return (
+                          <ContextMenu.Item
+                            key={conditionName}
+                            className="room-context-menu__item"
+                            disabled={!onConditionSelect}
+                            onSelect={() => onConditionSelect?.(conditionName)}
+                          >
+                            <span className="room-context-menu__item-label">
+                              <span
+                                className="material-symbols-outlined room-context-menu__item-icon room-context-menu__item-icon--condition"
+                                aria-hidden="true"
+                              >
+                                {condPreset?.icon ?? 'psychology'}
+                              </span>
+                              {conditionName}
+                            </span>
+                          </ContextMenu.Item>
+                        )
+                      })}
                     </ContextMenu.SubContent>
                   </ContextMenu.Portal>
                 </ContextMenu.Sub>
+
+                <ContextMenu.Separator className="room-context-menu__separator" />
               </>
             ) : null}
+
+            <MuteContextMenuItem
+              sessionId={sessionId}
+              userId={userId}
+              isSelf={isSelf}
+              onToggleMute={onToggleMute}
+            />
+
+            <ContextMenu.Sub>
+              <ContextMenu.SubTrigger className="room-context-menu__item">
+                Adjust Audio
+                <span aria-hidden>›</span>
+              </ContextMenu.SubTrigger>
+              <ContextMenu.Portal>
+                <ContextMenu.SubContent className="room-context-menu room-context-menu--sub">
+                  <ContextMenu.Item
+                    className="room-context-menu__item"
+                    disabled={!onAudioAdjust}
+                    onSelect={() => onAudioAdjust?.('GAIN', { factor: 1.5 })}
+                  >
+                    Boost Mic
+                  </ContextMenu.Item>
+                  <ContextMenu.Item
+                    className="room-context-menu__item"
+                    disabled={!onAudioAdjust}
+                    onSelect={() => onAudioAdjust?.('GAIN', null)}
+                  >
+                    Normal Mic
+                  </ContextMenu.Item>
+                  <ContextMenu.Item
+                    className="room-context-menu__item"
+                    disabled={!onAudioAdjust}
+                    onSelect={() => onAudioAdjust?.('GAIN', { factor: 0.5 })}
+                  >
+                    Lower Mic
+                  </ContextMenu.Item>
+                  <ContextMenu.Separator className="room-context-menu__separator" />
+                  <ContextMenu.Item
+                    className="room-context-menu__item"
+                    disabled={!onAudioAdjust}
+                    onSelect={() => onAudioAdjust?.('FILTER', { enabled: true })}
+                  >
+                    Enable Noise Filter
+                  </ContextMenu.Item>
+                  <ContextMenu.Item
+                    className="room-context-menu__item"
+                    disabled={!onAudioAdjust}
+                    onSelect={() => onAudioAdjust?.('FILTER', null)}
+                  >
+                    Disable Noise Filter
+                  </ContextMenu.Item>
+                </ContextMenu.SubContent>
+              </ContextMenu.Portal>
+            </ContextMenu.Sub>
 
             <ContextMenu.Separator className="room-context-menu__separator" />
 
