@@ -95,6 +95,7 @@ export function NoteCard({
   const [attachments, setAttachments] = useState<NoteAttachmentEntity[]>(noteAttachments)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [surfaceError, setSurfaceError] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [sharePopoverOpen, setSharePopoverOpen] = useState(false)
   const [surfaceDialogOpen, setSurfaceDialogOpen] = useState(false)
@@ -231,13 +232,13 @@ export function NoteCard({
     }
 
     setIsSaving(true)
-    setError(null)
+    setSurfaceError(null)
     try {
       await onSurface(note.id, target)
       setHasPublishedThisSession(true)
       setSurfaceDialogOpen(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send handout')
+      setSurfaceError(err instanceof Error ? err.message : 'Failed to send handout')
     } finally {
       setIsSaving(false)
     }
@@ -289,11 +290,14 @@ export function NoteCard({
             ) : null}
 
             {canPublish && !isEditing ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
+              <NoteSurfaceDialog
+                open={surfaceDialogOpen}
+                isSubmitting={isSaving}
+                shareUsers={shareUsers}
+                error={surfaceError}
+                trigger={
                   <button
                     type="button"
-                    onClick={() => setSurfaceDialogOpen(true)}
                     disabled={isSaving || isPublishDisabled}
                     className={`notes-note-header-action notes-note-header-action--publish${hasPublishedThisSession ? ' is-published' : ''}`}
                     aria-label="Publish handout to chat"
@@ -302,15 +306,20 @@ export function NoteCard({
                       publish
                     </span>
                   </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {isPublishDisabled
+                }
+                triggerTooltip={
+                  isPublishDisabled
                     ? 'Unavailable in greenroom'
                     : hasPublishedThisSession
                       ? 'Sent this session (click to send again)'
-                      : 'Send handout to chat'}
-                </TooltipContent>
-              </Tooltip>
+                      : 'Send handout to chat'
+                }
+                onOpenChange={(open) => {
+                  setSurfaceDialogOpen(open)
+                  if (!open) setSurfaceError(null)
+                }}
+                onConfirmSurface={handleConfirmSurface}
+              />
             ) : null}
 
             {canManageShare && !isEditing ? (
@@ -441,14 +450,6 @@ export function NoteCard({
           }
         }}
         onConfirmDelete={handleDelete}
-      />
-
-      <NoteSurfaceDialog
-        open={surfaceDialogOpen}
-        isSubmitting={isSaving}
-        shareUsers={shareUsers}
-        onOpenChange={setSurfaceDialogOpen}
-        onConfirmSurface={handleConfirmSurface}
       />
     </TooltipProvider>
   )

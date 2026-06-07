@@ -77,6 +77,8 @@ export interface NoteHandoutMessageMetadata {
   title: string
   excerpt: string
   excerptSource: 'AUTO' | 'MANUAL'
+  /** Full note content — present on messages created after this field was added. */
+  fullContent?: string
 }
 
 export interface ConditionMessageMetadata {

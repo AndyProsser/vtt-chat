@@ -299,13 +299,9 @@ export function NotesPanel({
       const body = await res.json().catch(() => ({}))
       throw new Error(body.message ?? `HTTP ${res.status}`)
     }
-
-    // Rehydrate so published indicators converge immediately without a page refresh.
-    const refreshedNotes = await fetchCampaignNotesOnce(apiUrl, campaignId, token)
-    clearNotes(campaignId)
-    for (const refreshedNote of refreshedNotes) {
-      addNote(campaignId, refreshedNote)
-    }
+    // The backend broadcasts NOTES:UPDATED via WS, which updates publishedAt in the store.
+    // Do not clearNotes here — that unmounts the active NoteCard mid-operation, silently
+    // discarding the setSurfaceDialogOpen/setHasPublishedThisSession calls in NoteCard.
   }
 
   const handleDelete = async (noteId: string) => {

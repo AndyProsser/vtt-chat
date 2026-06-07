@@ -27,8 +27,10 @@ function parseNoteHandoutMessageMetadata(
     title: noteHandout.title.trim() || 'Untitled Handout',
     sharedWith: null,
     hashtags: null,
-    markdown: noteHandout.excerpt,
-    excerptSource: noteHandout.excerptSource,
+    // Use full content when available (new messages). Fall back to excerpt for
+    // messages created before fullContent was added to the metadata.
+    markdown: noteHandout.fullContent ?? noteHandout.excerpt,
+    excerptSource: noteHandout.fullContent ? undefined : noteHandout.excerptSource,
   }
 }
 

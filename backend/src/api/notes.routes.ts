@@ -967,6 +967,7 @@ router.post('/:noteId/surface', requireAuth, async (req: Request, res: Response)
         title: published.title,
         excerpt,
         excerptSource,
+        fullContent: published.content,
       },
     },
   })

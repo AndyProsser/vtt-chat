@@ -6,7 +6,7 @@
   padding: 0.65rem 0.8rem;
   border: 1px solid color-mix(in srgb, var(--color-border-soft) 58%, transparent);
   border-left: 3px solid color-mix(in srgb, #38bdf8 54%, transparent);
-  border-radius: 0.9rem;
+  border-radius: 6px;
   background: linear-gradient(
     180deg,
     color-mix(in srgb, #102235 88%, var(--color-surface) 12%),
