@@ -14,9 +14,8 @@ import type { NotesSurfaceTarget } from '@/types/notesPublish'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { useNotesShareContext } from '@/hooks/notes/useNotesShareContext'
 import { isJournalNote, parseNoteHashtags } from '../../../../../utils/notesPanel'
-import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
-import { NotesListWidget } from './NotesListWidget'
+import { NotesBrowserCard } from './NotesBrowserCard'
 import { NotesPanelCompact } from './NotesPanel.compact'
 import { NotesPanelToolbar, type NotesPublishFilter } from './NotesPanelToolbar'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
@@ -72,10 +71,24 @@ export function NotesPanel({
   const [isCreating, setIsCreating] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [publishFilter, setPublishFilter] = useState<NotesPublishFilter>('ALL')
-  const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
+  const [expandedNoteId, setExpandedNoteId] = useState<UUID | null>(null)
+  // Keep editor subtrees mounted once opened so re-expanding doesn't re-fetch.
+  const [mountedEditorIds, setMountedEditorIds] = useState<Set<UUID>>(new Set())
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const canMutateNotes = user.role === Role.DM
+
+  const allHashtags = useMemo(() => {
+    const set = new Set<string>()
+    for (const note of notes) {
+      for (const tag of note.tags) {
+        const normalized = tag.startsWith('#') ? tag.toLowerCase() : `#${tag.toLowerCase()}`
+        if (normalized.length > 1) set.add(normalized)
+      }
+    }
+    return [...set].sort()
+  }, [notes])
+
   const displayedNotes = useMemo(() => {
     const byPublishFilter =
       publishFilter === 'SHARED'
@@ -121,21 +134,19 @@ export function NotesPanel({
     !currentSessionState || isGreenroomSessionState(currentSessionState)
 
   const handleToggleCreateForm = () => {
-    if (!canMutateNotes) {
-      return
-    }
-
-    if (!showCreateForm) {
-      // New notes always start DM-only and become shared only after an explicit save.
-    }
-
+    if (!canMutateNotes) return
     setShowCreateForm((current) => !current)
   }
 
-  const selectedNote = useMemo(
-    () => displayedNotes.find((note) => note.id === selectedNoteId) ?? displayedNotes[0] ?? null,
-    [displayedNotes, selectedNoteId]
-  )
+  const expandNote = (noteId: UUID) => {
+    setExpandedNoteId(noteId)
+    setMountedEditorIds((prev) => {
+      if (prev.has(noteId)) return prev
+      const next = new Set(prev)
+      next.add(noteId)
+      return next
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -216,7 +227,7 @@ export function NotesPanel({
         createdAt: note.createdAt,
         updatedAt: note.updatedAt,
       })
-      setSelectedNoteId(createdNoteId)
+      expandNote(createdNoteId)
       setShowCreateForm(false)
 
       setTitle('')
@@ -314,16 +325,19 @@ export function NotesPanel({
       addNote(campaignId, refreshedNote)
     }
 
-    if (selectedNoteId === (noteId as UUID) && refreshedNotes.length > 0) {
-      setSelectedNoteId(refreshedNotes[0]?.id ?? null)
-    } else if (selectedNoteId === (noteId as UUID)) {
-      setSelectedNoteId(null)
+    if (expandedNoteId === (noteId as UUID)) {
+      setExpandedNoteId(null)
     }
+    setMountedEditorIds((prev) => {
+      if (!prev.has(noteId as UUID)) return prev
+      const next = new Set(prev)
+      next.delete(noteId as UUID)
+      return next
+    })
   }
 
   // Compact (in-session) mode: dense stacked title list → full NoteCard overlay on tap.
   if (compactPicker) {
-    // Show the create form as a full overlay when the DM requests it.
     if (showCreateForm) {
       return (
         <div className="notes-compact">
@@ -419,9 +433,10 @@ export function NotesPanel({
         publishFilter={publishFilter}
         searchQuery={searchQuery}
         activeHashtagFilter={activeHashtagFilter}
+        allHashtags={allHashtags}
         onSetPublishFilter={setPublishFilter}
         onSetSearchQuery={setSearchQuery}
-        onClearHashtagFilter={() => setActiveHashtagFilter(null)}
+        onSetHashtagFilter={setActiveHashtagFilter}
       />
 
       {canMutateNotes && showCreateForm ? (
@@ -449,20 +464,29 @@ export function NotesPanel({
             <span>{emptyStateMessage}</span>
           </div>
         ) : (
-          <div className="notes-workspace-grid">
-            <NotesListWidget
-              notes={displayedNotes}
-              selectedNoteId={selectedNote?.id || null}
-              onSelectNote={setSelectedNoteId}
-              activeHashtagFilter={activeHashtagFilter}
-              onTagSelect={setActiveHashtagFilter}
-            />
-
-            <section className="notes-detail-widget" aria-label="Selected note">
-              {selectedNote ? (
-                <NoteCard
-                  key={selectedNote.id}
-                  note={selectedNote}
+          <div
+            className="knowledge-panel-session-list"
+            role="list"
+            aria-label="Handouts"
+          >
+            {displayedNotes.map((note) => {
+              const isExpanded = expandedNoteId === note.id
+              const isMounted = isExpanded || mountedEditorIds.has(note.id)
+              return (
+                <NotesBrowserCard
+                  key={note.id}
+                  note={note}
+                  isExpanded={isExpanded}
+                  isMounted={isMounted}
+                  activeHashtagFilter={activeHashtagFilter}
+                  onToggle={() => {
+                    if (isExpanded) {
+                      setExpandedNoteId(null)
+                    } else {
+                      expandNote(note.id)
+                    }
+                  }}
+                  onTagSelect={setActiveHashtagFilter}
                   apiUrl={apiUrl}
                   token={token}
                   shareUsers={shareUsers}
@@ -477,8 +501,8 @@ export function NotesPanel({
                   onDelete={handleDelete}
                   onSurface={handleSurface}
                 />
-              ) : null}
-            </section>
+              )
+            })}
           </div>
         )}
       </div>

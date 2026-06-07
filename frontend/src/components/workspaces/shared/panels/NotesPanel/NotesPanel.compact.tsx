@@ -1,11 +1,9 @@
 /**
  * NotesPanelCompact
  *
- * In-session compact notes view. Shows a dense stacked list of note titles.
- * Tapping any card slides in a full NoteCard (edit / share / surface enabled).
- *
- * Used when the notes panel is in the session right rail (limited vertical space).
- * The lobby/editor view uses the full two-column NotesPanel instead.
+ * In-session compact notes view for the right rail.
+ * Shows a searchable, hashtag-filterable card list using the same
+ * NotesBrowserCard inline-expand pattern as the full lobby panel.
  */
 
 import { useState, useMemo } from 'react'
@@ -13,7 +11,8 @@ import type { UUID } from '@shared'
 import type { Note } from '@/types/notes'
 import type { NotesShareRoom, NotesShareUser } from '@/types/notesShare'
 import type { NotesSurfaceTarget } from '@/types/notesPublish'
-import { NoteCard } from './NoteCard'
+import { Icon } from '@/components/ui/Icon'
+import { NotesBrowserCard } from './NotesBrowserCard'
 import '@/styles/components/workspaces/shared/panels/NotesPanel.compact.css'
 
 interface NotesPanelCompactProps {
@@ -39,58 +38,6 @@ interface NotesPanelCompactProps {
   onSurface: (noteId: string, target: NotesSurfaceTarget) => Promise<void>
 }
 
-// ---------------------------------------------------------------------------
-// NoteStackCard — a single title card in the list
-// ---------------------------------------------------------------------------
-
-interface NoteStackCardProps {
-  note: Note
-  index: number
-  total: number
-  onSelect: (id: UUID) => void
-}
-
-function NoteStackCard({ note, index, total, onSelect }: NoteStackCardProps) {
-  const stackOffset = Math.min(index * 1.5, 6)
-  const displayTags = note.tags
-    .filter((t) => !t.startsWith('_'))
-    .slice(0, 2)
-    .map((t) => (t.startsWith('#') ? t : `#${t}`))
-
-  const isLast = index === total - 1
-
-  return (
-    <button
-      type="button"
-      className="notes-stack-card"
-      style={{ '--stack-offset': `${stackOffset}px` } as React.CSSProperties}
-      onClick={() => onSelect(note.id)}
-      aria-label={`Open note: ${note.title}`}
-      data-last={isLast || undefined}
-    >
-      <span className="notes-stack-card__title">{note.title}</span>
-
-      <div className="notes-stack-card__footer">
-        <div className="notes-stack-card__tags">
-          {displayTags.map((tag) => (
-            <span key={tag} className="notes-stack-card__tag">
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        <span className="material-symbols-outlined notes-stack-card__arrow" aria-hidden="true">
-          chevron_right
-        </span>
-      </div>
-    </button>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// NotesPanelCompact — public component
-// ---------------------------------------------------------------------------
-
 export function NotesPanelCompact({
   notes,
   isLoading,
@@ -98,8 +45,8 @@ export function NotesPanelCompact({
   canPublish,
   isPublishDisabled,
   isSharingDisabled,
-  apiUrl,
-  token,
+  apiUrl = '',
+  token = '',
   shareUsers = [],
   shareRooms = [],
   roomMemberIdsByRoomId = {},
@@ -108,55 +55,67 @@ export function NotesPanelCompact({
   onDelete,
   onSurface,
 }: NotesPanelCompactProps) {
-  const [selectedId, setSelectedId] = useState<UUID | null>(null)
+  const [expandedNoteId, setExpandedNoteId] = useState<UUID | null>(null)
+  const [mountedEditorIds, setMountedEditorIds] = useState<Set<UUID>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
 
-  const selectedNote = useMemo(
-    () => (selectedId ? (notes.find((n) => n.id === selectedId) ?? null) : null),
-    [notes, selectedId]
-  )
+  const allHashtags = useMemo(() => {
+    const set = new Set<string>()
+    for (const note of notes) {
+      for (const tag of note.tags) {
+        const normalized = tag.startsWith('#') ? tag.toLowerCase() : `#${tag.toLowerCase()}`
+        if (normalized.length > 1) set.add(normalized)
+      }
+    }
+    return [...set].sort()
+  }, [notes])
 
-  if (selectedNote) {
-    return (
-      <div className="notes-compact__overlay" aria-label={`Note: ${selectedNote.title}`}>
-        <div className="notes-compact__overlay-header">
-          <button
-            type="button"
-            className="notes-compact__back-btn"
-            onClick={() => setSelectedId(null)}
-            aria-label="Back to notes list"
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              arrow_back
-            </span>
-            <span>Notes</span>
-          </button>
-        </div>
+  const displayedNotes = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase()
+    const bySearch = normalizedQuery
+      ? notes.filter((note) =>
+          [note.title, note.content, ...note.tags].join(' ').toLowerCase().includes(normalizedQuery)
+        )
+      : notes
 
-        <div className="notes-compact__overlay-body">
-          <NoteCard
-            key={selectedNote.id}
-            note={selectedNote}
-            apiUrl={apiUrl}
-            token={token}
-            canEdit={canEdit}
-            canManageShare={canEdit}
-            canPublish={canPublish}
-            isPublishDisabled={isPublishDisabled}
-            isSharingDisabled={isSharingDisabled}
-            shareUsers={shareUsers}
-            shareRooms={shareRooms}
-            roomMemberIdsByRoomId={roomMemberIdsByRoomId}
-            onSave={onSave}
-            onDelete={async (noteId) => {
-              await onDelete(noteId)
-              setSelectedId(null)
-            }}
-            onSurface={onSurface}
-          />
-        </div>
-      </div>
+    if (!activeHashtagFilter) return bySearch
+    return bySearch.filter((note) =>
+      note.tags.some((tag) => {
+        const normalized = tag.startsWith('#') ? tag : `#${tag}`
+        return normalized.toLowerCase() === activeHashtagFilter.toLowerCase()
+      })
     )
+  }, [notes, searchQuery, activeHashtagFilter])
+
+  const expandNote = (noteId: UUID) => {
+    setExpandedNoteId(noteId)
+    setMountedEditorIds((prev) => {
+      if (prev.has(noteId)) return prev
+      const next = new Set(prev)
+      next.add(noteId)
+      return next
+    })
   }
+
+  const handleDelete = async (noteId: string) => {
+    await onDelete(noteId)
+    if (expandedNoteId === (noteId as UUID)) {
+      setExpandedNoteId(null)
+    }
+    setMountedEditorIds((prev) => {
+      if (!prev.has(noteId as UUID)) return prev
+      const next = new Set(prev)
+      next.delete(noteId as UUID)
+      return next
+    })
+  }
+
+  const emptyMessage = searchQuery.trim()
+    ? `No handouts match "${searchQuery.trim()}".`
+    : activeHashtagFilter
+      ? `No handouts tagged ${activeHashtagFilter}.`
+      : 'No handouts yet.'
 
   return (
     <div className="notes-compact">
@@ -181,26 +140,95 @@ export function NotesPanelCompact({
         ) : null}
       </div>
 
-      <div className="notes-compact__stack" role="list" aria-label="Handouts">
+      <div className="notes-compact__toolbar">
+        <div className="knowledge-panel-history__search-input-wrap">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search handouts"
+            autoComplete="off"
+            className="notes-compact__search"
+          />
+          {searchQuery.length > 0 ? (
+            <button
+              type="button"
+              className="knowledge-panel-history__search-clear"
+              aria-label="Clear search"
+              onClick={() => setSearchQuery('')}
+            >
+              <Icon name="close" />
+            </button>
+          ) : null}
+        </div>
+
+        {allHashtags.length > 0 ? (
+          <div className="notes-toolbar-hashtags" aria-label="Filter by hashtag">
+            {allHashtags.map((tag) => {
+              const isActive = activeHashtagFilter === tag
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  className={`knowledge-panel-chip muted${isActive ? ' knowledge-panel-chip--active' : ''}`}
+                  onClick={() => setActiveHashtagFilter(isActive ? null : tag)}
+                  aria-pressed={isActive}
+                >
+                  {tag}
+                </button>
+              )
+            })}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="notes-compact__list" role="list" aria-label="Handouts">
         {isLoading ? (
           <p className="notes-compact__empty">Loading handouts…</p>
-        ) : notes.length === 0 ? (
+        ) : displayedNotes.length === 0 ? (
           <div className="ui-empty-panel" role="status">
             <span className="material-symbols-outlined" aria-hidden="true">
               auto_awesome
             </span>
-            <span>No handouts yet.</span>
+            <span>{emptyMessage}</span>
           </div>
         ) : (
-          notes.map((note, index) => (
-            <NoteStackCard
-              key={note.id}
-              note={note}
-              index={index}
-              total={notes.length}
-              onSelect={setSelectedId}
-            />
-          ))
+          <div className="knowledge-panel-session-list">
+            {displayedNotes.map((note) => {
+              const isExpanded = expandedNoteId === note.id
+              const isMounted = isExpanded || mountedEditorIds.has(note.id)
+              return (
+                <NotesBrowserCard
+                  key={note.id}
+                  note={note}
+                  isExpanded={isExpanded}
+                  isMounted={isMounted}
+                  activeHashtagFilter={activeHashtagFilter}
+                  onToggle={() => {
+                    if (isExpanded) {
+                      setExpandedNoteId(null)
+                    } else {
+                      expandNote(note.id)
+                    }
+                  }}
+                  onTagSelect={setActiveHashtagFilter}
+                  apiUrl={apiUrl}
+                  token={token}
+                  canEdit={canEdit}
+                  canManageShare={canEdit}
+                  canPublish={canPublish}
+                  isPublishDisabled={isPublishDisabled}
+                  isSharingDisabled={isSharingDisabled}
+                  shareUsers={shareUsers}
+                  shareRooms={shareRooms}
+                  roomMemberIdsByRoomId={roomMemberIdsByRoomId}
+                  onSave={onSave}
+                  onDelete={handleDelete}
+                  onSurface={onSurface}
+                />
+              )
+            })}
+          </div>
         )}
       </div>
     </div>

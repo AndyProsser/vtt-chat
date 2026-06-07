@@ -97,6 +97,7 @@
 .knowledge-panel-search-label {
   margin: 0;
   color: var(--color-text-secondary);
+  font-size: 0.78rem;
 }
 
 .knowledge-panel-copy--meta-inline {
@@ -1259,10 +1260,23 @@
 
 .notes-workspace-toolbar {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
   padding: 0 0.2rem 0.5rem;
   border-bottom: 1px solid var(--color-border-soft);
+}
+
+.notes-workspace-toolbar__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.notes-toolbar-hashtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding-top: 0.1rem;
 }
 
 .notes-toolbar-segment,
