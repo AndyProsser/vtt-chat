@@ -11,7 +11,7 @@ import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { GroupsPanelSession } from '@/components/workspaces/session/GroupsPanel.session'
 import { RightRailContent } from '@/components/workspaces/session/RightRailContent'
-import type { ExtensionSyncPolicy } from '@/constants/sessionUi.types'
+import type { ExtensionSyncPolicy } from '@/types/sessionUi'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
 

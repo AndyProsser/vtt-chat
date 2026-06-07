@@ -1,16 +1,13 @@
 import { useCallback } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { UUID } from '@shared'
-import {
-  normalizeExtensionSyncPolicy,
-  serializeExtensionSyncPolicy,
-} from '@/constants/sessionUi.normalizers'
+import { normalizeExtensionSyncPolicy, serializeExtensionSyncPolicy } from '@/utils/sessionUi'
 import type {
   CampaignVisibility,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
-} from '@/constants/sessionUi.types'
+} from '@/types/sessionUi'
 import type { UseCampaignSettingsActions } from '../../hooks/useCampaignSettings'
 import {
   applyCampaignSettingsPayload,

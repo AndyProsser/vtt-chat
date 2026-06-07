@@ -4,7 +4,7 @@ import type {
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
-} from '@/constants/sessionUi.types'
+} from '@/types/sessionUi'
 import type { CampaignSettingsPayload } from '@/types/session/campaign'
 
 export type CampaignSettingsPanelProps = {

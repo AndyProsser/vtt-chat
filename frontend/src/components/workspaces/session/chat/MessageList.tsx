@@ -14,15 +14,17 @@ import { useStore } from '@/hooks/useStore'
 import { MessageListVirtualized } from './MessageList.virtualized'
 import type { ConditionMessageMetadata, PreparedMessage } from './MessageList.types'
 import {
-  DEFAULT_GROUPING_WINDOW_MS,
-  EMPTY_PARTICIPANT_DIRECTORY,
-  EMPTY_SESSION_PRESENCE,
-  SYSTEM_USER_ID,
+  DEFAULT_CHAT_GROUPING_WINDOW_MS,
   SESSION_BOOKEND_PREFIXES,
   SESSION_NOTE_PREFIX,
   SESSION_RECAP_PREFIX,
   CAMPAIGN_BRIEF_PREFIX,
   SESSION_SUMMARY_PREFIX,
+} from '@/constants/workspaces.constants'
+import {
+  EMPTY_PARTICIPANT_DIRECTORY,
+  EMPTY_SESSION_PRESENCE,
+  SYSTEM_USER_ID,
   TYPE_VARIANTS,
   TYPE_ICON_BY_VARIANT,
   countOwnKeys,
@@ -80,7 +82,7 @@ function MessageListComponent({
   currentUserId,
   currentUserRole,
   sessionDmId,
-  groupingWindowMs = DEFAULT_GROUPING_WINDOW_MS,
+  groupingWindowMs = DEFAULT_CHAT_GROUPING_WINDOW_MS,
   listRef,
   topSentinelRef,
   onListScroll,

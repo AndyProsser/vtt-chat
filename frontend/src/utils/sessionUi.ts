@@ -1,4 +1,4 @@
-import type { ExtensionSyncPolicy, PersistedExtensionSyncPolicy } from '@/constants/sessionUi.types'
+import type { ExtensionSyncPolicy, PersistedExtensionSyncPolicy } from '@/types/sessionUi'
 
 /**
  * Normalizes backend and UI extension-sync policy values into the editor-facing policy.

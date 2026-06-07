@@ -1,20 +1,8 @@
 import { MessageType, findDistancePreset } from '@shared'
 import type { UUID } from '@shared'
 import type { SessionHistoryMessage, SessionHistoryThread } from '@/types/history'
-
 export const HISTORY_MESSAGE_LIMIT = 180
 export const HISTORY_GROUPING_WINDOW_MS = 5 * 60 * 1000
-export const SESSION_RECAP_PREFIX = '[Last Session]'
-export const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
-export const SESSION_BOOKEND_PREFIXES = [
-  'Session Start:',
-  'Session End:',
-  '[Session Started]',
-  '[Session Ended]',
-  '[Session Paused]',
-  '[Session Resumed]',
-  '[Session Cooldown]',
-]
 
 export type HistoryMessageVariant = 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'
 
@@ -91,10 +79,6 @@ export function toTypeIcon(variant: HistoryMessageVariant): string {
   if (variant === 'dm') return 'mail'
   if (variant === 'system') return 'info'
   return 'chat_bubble'
-}
-
-export function getAuthorInitial(username: string): string {
-  return username.trim().charAt(0).toUpperCase() || '?'
 }
 
 export function resolveHistoryWhisperRouteEntries(

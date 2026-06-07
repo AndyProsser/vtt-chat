@@ -11,7 +11,7 @@ import type {
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
-} from '@/constants/sessionUi.types'
+} from '@/types/sessionUi'
 import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignSettingsPayload, CampaignSettingsHomeTab } from '@/types/session/campaign'
 import { toValidPostSessionDurationMinutes } from '@/utils/session/sessionController'

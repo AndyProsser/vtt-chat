@@ -1,10 +1,6 @@
 import type { ChangeEvent, SubmitEventHandler } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
-import type {
-  CampaignVisibility,
-  ExtensionSyncPolicy,
-  LateJoinPolicy,
-} from '@/constants/sessionUi.types'
+import type { CampaignVisibility, ExtensionSyncPolicy, LateJoinPolicy } from '@/types/sessionUi'
 import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignSettingsHomeTab, CampaignSettingsPayload } from '@/types/session/campaign'
 

@@ -4,7 +4,7 @@ import type {
   LateJoinPolicy,
   PersistedExtensionSyncPolicy,
   SupportedPlatform,
-} from '@/constants/sessionUi.types'
+} from '@/types/sessionUi'
 
 export interface CampaignSummary {
   id: UUID

@@ -1,5 +1,6 @@
 import type { SessionHistoryMessage } from '@/types/history'
-import { getAuthorInitial, toMessageVariant, toTypeIcon } from '../HistoryPanel.helpers'
+import { getAuthorInitial } from '@/utils/format'
+import { toMessageVariant, toTypeIcon } from '../HistoryPanel.helpers'
 
 interface HistoryMessageRowProps {
   message: SessionHistoryMessage

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '@/components/ui/Icon'
 import { TooltipProvider } from '@/components/ui'
-import { normalizeExtensionSyncPolicy } from '@/constants/sessionUi.normalizers'
+import { normalizeExtensionSyncPolicy } from '@/utils/sessionUi'
 import { useToast } from '@/hooks/useToast'
 import type { CampaignInformationPanelProps } from '@/types/campaignInformationPanel'
 import { CampaignInformationStatusLine } from './StatusLine'

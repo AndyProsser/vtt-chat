@@ -13,9 +13,11 @@ import type { HistoryGroup, SessionHistoryMessage } from '@/types/history'
 import { type ParsedNoteSharedMessage, parseNoteSharedMessage } from '@/utils/noteSharedMessage'
 import {
   CAMPAIGN_BRIEF_PREFIX,
-  HISTORY_GROUPING_WINDOW_MS,
   SESSION_BOOKEND_PREFIXES,
   SESSION_RECAP_PREFIX,
+} from '@/constants/workspaces.constants'
+import {
+  HISTORY_GROUPING_WINDOW_MS,
   isHistoryDmWhisper,
   parseConditionTargetName,
   parseHistoryConditionMessage,

@@ -1,10 +1,7 @@
 import type { UUID } from '@shared'
 import { MessageType, findDistancePreset } from '@shared'
 import type { SessionBookendState, SessionSummaryStats } from '@/types/chat'
-
-export function getAuthorInitial(username: string): string {
-  return username.trim().charAt(0).toUpperCase() || '?'
-}
+import { SESSION_SUMMARY_PREFIX } from '@/constants/workspaces.constants'
 
 export function formatDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000)
@@ -13,8 +10,6 @@ export function formatDuration(ms: number): string {
   if (hours > 0) return `${hours}h ${minutes}m`
   return `${minutes}m`
 }
-
-export const DEFAULT_GROUPING_WINDOW_MS = 5 * 60 * 1000
 
 export const EMPTY_PARTICIPANT_DIRECTORY: Record<
   UUID,
@@ -27,21 +22,6 @@ export const EMPTY_SESSION_PRESENCE: Record<
 > = {}
 
 export const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000'
-
-export const SESSION_BOOKEND_PREFIXES = [
-  'Session Start:',
-  'Session End:',
-  '[Session Started]',
-  '[Session Ended]',
-  '[Session Paused]',
-  '[Session Resumed]',
-  '[Session Cooldown]',
-]
-
-export const SESSION_NOTE_PREFIX = 'Session Note:'
-export const SESSION_RECAP_PREFIX = '[Last Session]'
-export const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
-export const SESSION_SUMMARY_PREFIX = '[Session Summary]'
 
 export const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'> = {
   [MessageType.IC]: 'ic',

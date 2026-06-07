@@ -7,7 +7,7 @@ import {
   getLateJoinPolicyLabel,
   LATE_JOIN_POLICY_OPTIONS,
 } from '@/constants/sessionUi.constants'
-import type { LateJoinPolicy } from '@/constants/sessionUi.types'
+import type { LateJoinPolicy } from '@/types/sessionUi'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 /**

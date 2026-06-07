@@ -11,7 +11,7 @@ import {
   LATE_JOIN_POLICY_OPTIONS,
   SUPPORTED_PLATFORM_OPTIONS,
 } from '@/constants/sessionUi.constants'
-import type { SupportedPlatform } from '@/constants/sessionUi.types'
+import type { SupportedPlatform } from '@/types/sessionUi'
 import type { CampaignSettingsPanelPolicyProps } from '@/types/campaignSettingsPanel'
 
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */

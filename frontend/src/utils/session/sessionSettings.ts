@@ -4,13 +4,13 @@ import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/
 import {
   normalizeExtensionSyncPolicy,
   serializeExtensionSyncPolicy,
-} from '@/constants/sessionUi.normalizers'
+} from '@/utils/sessionUi'
 import type {
   CampaignVisibility,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
-} from '@/constants/sessionUi.types'
+} from '@/types/sessionUi'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { UserCharacterRecord } from '@/types/session/workspaces'
 import {

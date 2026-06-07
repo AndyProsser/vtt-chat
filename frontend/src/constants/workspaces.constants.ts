@@ -37,6 +37,11 @@ export const SESSION_BOOKEND_PREFIXES = [
   '[Session Cooldown]',
 ] as const
 
+export const SESSION_NOTE_PREFIX = 'Session Note:'
+export const SESSION_RECAP_PREFIX = '[Last Session]'
+export const CAMPAIGN_BRIEF_PREFIX = '[Campaign Brief]'
+export const SESSION_SUMMARY_PREFIX = '[Session Summary]'
+
 export const ROOM_ENVIRONMENT_PRESET_FALLBACKS: Record<
   string,
   { reverbSend: number; lowpassFreq: number; roomGain: number }

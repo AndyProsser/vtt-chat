@@ -1,6 +1,6 @@
 import type { ChangeEvent, ReactNode } from 'react'
 import type { SessionLifecycleState, UUID } from '@shared'
-import type { ExtensionSyncPolicy, PersistedExtensionSyncPolicy } from '@/constants/sessionUi.types'
+import type { ExtensionSyncPolicy, PersistedExtensionSyncPolicy } from '@/types/sessionUi'
 
 export type IntegrationSyncPolicy = ExtensionSyncPolicy
 

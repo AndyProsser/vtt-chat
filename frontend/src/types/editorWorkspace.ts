@@ -5,7 +5,7 @@ import type {
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
-} from '@/constants/sessionUi.types'
+} from '@/types/sessionUi'
 import type { CampaignSettingsPayload, CampaignSummary } from '@/types/session/campaign'
 import type { Session } from '@/types/session'
 import type { EditorWorkspaceView } from '@/types/workspaces'

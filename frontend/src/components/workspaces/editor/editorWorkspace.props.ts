@@ -6,7 +6,7 @@ import type {
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
-} from '@/constants/sessionUi.types'
+} from '@/types/sessionUi'
 import type { Session } from '@/types/session'
 import { getCampaignEntryAction } from '@/types/session/campaign'
 

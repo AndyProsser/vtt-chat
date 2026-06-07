@@ -4,7 +4,7 @@ import type {
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
-} from '@/constants/sessionUi.types'
+} from '@/types/sessionUi'
 
 export const SESSION_STATE_LABELS: Record<SessionState, string> = {
   [SessionState.IDLE]: 'Greenroom',
