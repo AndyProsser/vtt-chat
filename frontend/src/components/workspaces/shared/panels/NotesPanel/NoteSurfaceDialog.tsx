@@ -33,8 +33,6 @@ export function NoteSurfaceDialog({
 }: NoteSurfacePopoverProps) {
   const [scope, setScope] = useState<'PARTY' | 'SELECTED'>('PARTY')
   const [selectedIds, setSelectedIds] = useState<Set<UUID>>(new Set())
-  const [showExcerpt, setShowExcerpt] = useState(false)
-  const [manualExcerpt, setManualExcerpt] = useState('')
 
   const players = shareUsers.filter((u) => u.role === 'PLAYER' || u.role === 'player')
 
@@ -58,7 +56,6 @@ export function NoteSurfaceDialog({
     const target: NotesSurfaceTarget = {
       scope,
       selectedUserIds: scope === 'SELECTED' ? Array.from(selectedIds) : undefined,
-      manualExcerpt: manualExcerpt.trim() || undefined,
     }
     await onConfirmSurface(target)
   }
@@ -68,8 +65,6 @@ export function NoteSurfaceDialog({
     if (!next) {
       setScope('PARTY')
       setSelectedIds(new Set())
-      setShowExcerpt(false)
-      setManualExcerpt('')
     }
     onOpenChange(next)
   }
@@ -93,9 +88,7 @@ export function NoteSurfaceDialog({
           className="notes-surface-popover"
         >
           <p className="notes-surface-popover__title">Send Handout to Chat</p>
-          <p className="notes-surface-popover__desc">
-            Recipients see an excerpt in chat. The full handout is always visible in the Notes tab.
-          </p>
+          <p className="notes-surface-popover__desc">Recipients see a handout in chat.</p>
 
           <div
             className="notes-surface-popover__scopes"
@@ -140,55 +133,34 @@ export function NoteSurfaceDialog({
           {scope === 'SELECTED' && players.length > 0 ? (
             <div className="notes-surface-popover__players">
               {players.map((player) => {
-                const checked = selectedIds.has(player.id)
-                const displayName = player.characterName || player.playerName || player.username
+                const isSelected = selectedIds.has(player.id)
+                const characterName = player.characterName || player.username
+                const playerDisplayName = player.playerName || player.username
                 return (
-                  <label
+                  <button
                     key={player.id}
-                    className={`notes-surface-popover__player${checked ? ' is-selected' : ''}`}
+                    type="button"
+                    onClick={() => togglePlayer(player.id)}
+                    disabled={isSubmitting}
+                    className={`notes-share-popover__player${isSelected ? ' is-selected' : ''}`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={isSubmitting}
-                      onChange={() => togglePlayer(player.id)}
-                      className="accent-brand"
-                    />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {displayName}
+                    <span className="notes-share-popover__player-avatar" aria-hidden="true">
+                      {player.avatarUrl ? (
+                        <img src={player.avatarUrl} alt="" />
+                      ) : (
+                        playerDisplayName.slice(0, 1).toUpperCase()
+                      )}
                     </span>
-                    {player.status === 'OFFLINE' || player.status === 'NOT_HERE' ? (
-                      <span className="notes-surface-popover__player-offline">offline</span>
-                    ) : null}
-                  </label>
+                    <span className="notes-share-popover__player-copy">
+                      <span className="notes-share-popover__player-character">{characterName}</span>
+                      <span className="notes-share-popover__player-name">{playerDisplayName}</span>
+                    </span>
+                  </button>
                 )
               })}
             </div>
           ) : scope === 'SELECTED' && players.length === 0 ? (
             <p className="notes-surface-popover__desc">No players in this session.</p>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={() => setShowExcerpt((v) => !v)}
-            disabled={isSubmitting}
-            className="notes-surface-popover__excerpt-toggle"
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              {showExcerpt ? 'expand_less' : 'expand_more'}
-            </span>
-            {showExcerpt ? 'Hide custom excerpt' : 'Add custom excerpt (optional)'}
-          </button>
-          {showExcerpt ? (
-            <textarea
-              value={manualExcerpt}
-              onChange={(e) => setManualExcerpt(e.target.value)}
-              disabled={isSubmitting}
-              maxLength={220}
-              rows={3}
-              placeholder="Leave blank to auto-generate from note content…"
-              className="notes-surface-popover__excerpt"
-            />
           ) : null}
 
           {error ? (

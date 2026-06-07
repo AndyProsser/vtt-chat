@@ -85,7 +85,7 @@
   min-width: 0;
 }
 
-.session-note-shared-card__markdown.md-editor--readonly {
+.session-note-shared-card__markdown .md-editor {
   border: 0;
   background: transparent;
   padding: 0;

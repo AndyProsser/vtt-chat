@@ -1,5 +1,5 @@
-import { useMemo, type ReactNode } from 'react'
-import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
+import { useMemo } from 'react'
+import { DmdxMarkdownRenderer } from '@/components/workspaces/shared/panels/dmdx/DmdxMarkdownRenderer'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
 import '@/styles/components/workspaces/shared/panels/NoteSharedCard.css'
 
@@ -81,61 +81,8 @@ export function NoteSharedCard({
       ) : null}
 
       {hasBody ? (
-        // Lightweight renderer: convert inline image markdown with data: URLs
-        // into <img> elements while keeping the rest as pre-wrapped text.
-        // This avoids mounting the full editor while still supporting
-        // embedded base64 images in history/handouts.
         <div className="session-note-shared-card__markdown">
-          <div className="session-note-shared-card__markdown-pre">
-            {(() => {
-              const parts: Array<string | ReactNode> = []
-              const md = note.markdown || ''
-              // Match image markdown: ![alt](url)
-              const imgRe = /!\[([^\]]*)\]\(([^)]+)\)/g
-              let lastIndex = 0
-              let match: RegExpExecArray | null
-
-              while ((match = imgRe.exec(md))) {
-                const before = md.slice(lastIndex, match.index)
-                if (before) parts.push(before)
-
-                const alt = match[1] || ''
-                const url = match[2] || ''
-
-                // Only render data: image URLs here for safety
-                if (/^data:image\/(png|jpeg|jpg|gif|webp);base64,/i.test(url)) {
-                  parts.push(
-                    <img
-                      key={parts.length}
-                      src={url}
-                      alt={alt}
-                      className="session-note-shared-card__inline-image"
-                      loading="lazy"
-                    />
-                  )
-                } else {
-                  // Leave non-data URLs as literal markdown text
-                  parts.push(match[0])
-                }
-
-                lastIndex = imgRe.lastIndex
-              }
-
-              const rest = md.slice(lastIndex)
-              if (rest) parts.push(rest)
-
-              // Render array with preserved line breaks
-              return parts.map((p, i) =>
-                typeof p === 'string' ? (
-                  <span key={i} style={{ whiteSpace: 'pre-wrap' }}>
-                    {p}
-                  </span>
-                ) : (
-                  p
-                )
-              )
-            })()}
-          </div>
+          <DmdxMarkdownRenderer value={note.markdown} />
         </div>
       ) : null}
       {timestampLabel ? (
