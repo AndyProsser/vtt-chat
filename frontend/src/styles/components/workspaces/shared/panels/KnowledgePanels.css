@@ -1524,7 +1524,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.35rem;
+  margin: 0.35rem 0;
 }
 
 .notes-note-header__title-wrap {
