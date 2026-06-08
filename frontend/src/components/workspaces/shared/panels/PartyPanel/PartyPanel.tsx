@@ -3,7 +3,7 @@
  * Presence is fetched from backend snapshot API and refreshed periodically.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { SessionState, type UUID } from '@shared'
+import { PresenceState, SessionState, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { useStore } from '@/state/store'
@@ -158,6 +158,29 @@ export function PartyPanel({
         const payload = (await response.json()) as PartyPresenceResponse
         setSnapshotMembers(payload.members)
         applyMergedMembers(payload.members)
+
+        // Backfill sessionPresence with IDLE (AWAY) state from the authoritative backend
+        // snapshot. Clients who joined after a player went AWAY will have ONLINE in their
+        // sessionPresence (hardcoded by the ROOM:USER_JOINED hydration path), so the
+        // SpeakingIndicator's isAway selector would return false without this sync.
+        if (currentSessionId) {
+          const store = useStore.getState()
+          for (const member of payload.members) {
+            if (member.runtimePresenceState === 'IDLE') {
+              const current = store.sessionPresence[currentSessionId]?.[member.userId]
+              if (current && current.state !== 'IDLE') {
+                store.applySessionPresenceStateChange({
+                  sessionId: currentSessionId,
+                  userId: member.userId,
+                  username: member.username,
+                  roomId: current.primaryRoomId,
+                  state: PresenceState.IDLE,
+                  changedAt: member.lastSeenAt ?? Date.now(),
+                })
+              }
+            }
+          }
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to load party presence'
         setRefreshError(message)

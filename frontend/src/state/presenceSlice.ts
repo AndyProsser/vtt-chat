@@ -433,8 +433,12 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
               level: payload.level ?? existing?.level ?? null,
               characterStats: payload.characterStats ?? existing?.characterStats ?? null,
               primaryRoomId: payload.primaryRoomId ?? existing?.primaryRoomId,
-              state: PresenceState.ONLINE,
-              ghost: false,
+              // Use the backend-authoritative state from the payload (can be IDLE for AWAY players).
+              // ROOM:USER_JOINED (upsertSessionPresenceOnJoin) hardcodes ONLINE because active room
+              // joins are an explicit presence signal; SESSION:MEMBER_JOINED is an announcement of
+              // current state, so we must preserve it.
+              state: payload.state ?? PresenceState.ONLINE,
+              ghost: payload.ghost ?? false,
               lastSeenAt: payload.joinedAt,
             } as SessionPresence,
           },

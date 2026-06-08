@@ -64,8 +64,8 @@ export function SpeakingIndicator({ sessionId, userId, isSelf, roomType }: Speak
 
   // AWAY detection: IDLE presence state means the player has gone away.
   // Ring colour switches to yellow to signal "speaking but not fully present".
-  const isAway = useStore((state) =>
-    !isSelf && state.sessionPresence[sessionId]?.[userId]?.state === PresenceState.IDLE
+  const isAway = useStore(
+    (state) => !isSelf && state.sessionPresence[sessionId]?.[userId]?.state === PresenceState.IDLE
   )
 
   if (roomType === RoomType.PRIVATE) return null

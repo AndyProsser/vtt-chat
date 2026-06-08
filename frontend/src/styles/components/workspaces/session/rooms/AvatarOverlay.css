@@ -44,6 +44,14 @@
   z-index: 1;
 }
 
+.avatar-glyph__speaking-ring--away {
+  border-color: color-mix(in srgb, var(--color-warn, #f59e0b) 56%, #ffffff 44%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-warn, #f59e0b) 26%, transparent),
+    0 0 8px color-mix(in srgb, var(--color-warn, #f59e0b) 24%, transparent),
+    0 4px 10px color-mix(in srgb, var(--color-warn, #f59e0b) 16%, transparent);
+}
+
 @keyframes avatar-speaking-pulse {
   0% {
     transform: scale(0.985);
