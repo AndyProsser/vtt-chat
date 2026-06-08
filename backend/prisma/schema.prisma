@@ -86,6 +86,7 @@ model User {
   role                     Role                   @default(PLAYER)
   adminRole                AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
   isActive                 Boolean                @default(true)
+  bannedAt                 DateTime?
   tokenInvalidBefore       DateTime?
   dmVoiceMode              DmVoiceMode            @default(TARGET_GROUP)
   dmBackgroundVolume       Float                  @default(0.3)
