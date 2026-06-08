@@ -194,7 +194,7 @@
 
 .session-campaign-join-requests__panel {
   position: absolute;
-  right: 0;
+  right: -9.85rem;
   top: calc(100% + 0.5rem);
   z-index: 8;
   width: min(22rem, calc(100vw - 3rem));

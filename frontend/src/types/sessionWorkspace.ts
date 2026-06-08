@@ -67,6 +67,13 @@ export type SessionWorkspaceProps = {
   totalSessionDurationMs: number
   canEditCampaignInfo: boolean
   onSaveCampaignInfo: ComponentProps<typeof CampaignInformationPanel>['onSaveCampaignInfo']
+  joinUrl?: string
+  watchUrl?: string
+  spectatorsEnabled?: boolean
+  canRefreshInvites?: boolean
+  isInviteReissuing?: boolean
+  onCopyInviteUrl?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
+  onReissueInvite?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   campaignIdForSettings: UUID | ''
   sessionSettingsName: string
   sessionSettingsPlannedDurationMinutes: number

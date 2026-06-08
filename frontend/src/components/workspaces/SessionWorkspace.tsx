@@ -246,6 +246,13 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           totalSessionDurationMs={props.totalSessionDurationMs}
           canEditCampaignInfo={props.canEditCampaignInfo}
           onSaveCampaignInfo={props.onSaveCampaignInfo}
+          joinUrl={props.joinUrl}
+          watchUrl={props.watchUrl}
+          spectatorsEnabled={props.spectatorsEnabled}
+          canRefreshInvites={props.canRefreshInvites}
+          isInviteReissuing={props.isInviteReissuing}
+          onCopyInviteUrl={props.onCopyInviteUrl}
+          onReissueInvite={props.onReissueInvite}
           campaignId={props.campaignId}
           apiUrl={props.apiUrl}
           token={props.token}
@@ -305,6 +312,13 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.partyPresenceRefreshVersion,
       props.selectedCampaign,
       props.sessionCampaignPolicy,
+      props.joinUrl,
+      props.watchUrl,
+      props.spectatorsEnabled,
+      props.canRefreshInvites,
+      props.isInviteReissuing,
+      props.onCopyInviteUrl,
+      props.onReissueInvite,
       props.sessionCount,
       props.sessionSettingsName,
       props.sessionSettingsPlannedDurationMinutes,

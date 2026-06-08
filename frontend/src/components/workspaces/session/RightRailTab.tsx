@@ -61,6 +61,13 @@ type SessionWorkspaceRightRailTabProps = {
   isCharacterSettingsSaving: boolean
   onRequestOpenPlayerSettings: () => void
   playerSettingsFocusRequestKey: number
+  joinUrl?: string
+  watchUrl?: string
+  spectatorsEnabled?: boolean
+  canRefreshInvites?: boolean
+  isInviteReissuing?: boolean
+  onCopyInviteUrl?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
+  onReissueInvite?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
 }
 
 export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTabProps) {
@@ -74,6 +81,13 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
           totalSessionDurationMs={props.totalSessionDurationMs}
           canEdit={props.canEditCampaignInfo}
           onSaveCampaignInfo={props.onSaveCampaignInfo}
+          joinUrl={props.joinUrl}
+          watchUrl={props.watchUrl}
+          spectatorsEnabled={props.spectatorsEnabled}
+          canRefreshInvites={props.canRefreshInvites}
+          isInviteReissuing={props.isInviteReissuing}
+          onCopyInviteUrl={props.onCopyInviteUrl}
+          onReissueInvite={props.onReissueInvite}
         />
       }
       partyPanel={

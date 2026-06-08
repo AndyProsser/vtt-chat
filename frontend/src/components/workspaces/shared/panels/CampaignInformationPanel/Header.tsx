@@ -1,5 +1,6 @@
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
+import { InvitePopoverWidget } from '@/components/workspaces/shared/toolbar/InvitePopoverWidget'
 import type { CampaignInformationHeaderProps } from '@/types/campaignInformationPanel'
 
 /**
@@ -14,6 +15,13 @@ export function CampaignInformationHeader({
   onSave,
   onCancel,
   onStartEditing,
+  joinUrl,
+  watchUrl,
+  spectatorsEnabled,
+  canRefreshInvites,
+  isInviteReissuing,
+  onCopyInviteUrl,
+  onReissueInvite,
 }: CampaignInformationHeaderProps) {
   return (
     <div className="cip-header-row">
@@ -58,6 +66,16 @@ export function CampaignInformationHeader({
         </div>
       ) : canEdit && !isEditing ? (
         <div className="cip-inline-actions" aria-label="Campaign information actions">
+          <InvitePopoverWidget
+            show={Boolean(joinUrl && onCopyInviteUrl)}
+            joinUrl={joinUrl ?? ''}
+            watchUrl={watchUrl ?? ''}
+            spectatorsEnabled={spectatorsEnabled ?? false}
+            canRefreshInvites={canRefreshInvites}
+            isInviteReissuing={isInviteReissuing}
+            onCopyInviteUrl={onCopyInviteUrl ?? (() => {})}
+            onReissueInvite={onReissueInvite ?? (() => {})}
+          />
           <Tooltip>
             <TooltipTrigger asChild>
               <button

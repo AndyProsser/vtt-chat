@@ -924,6 +924,21 @@ export function WorkspaceInitialization({
         totalSessionDurationMs: settingsCampaignTotalDurationMs,
         canEditCampaignInfo: Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id),
         onSaveCampaignInfo: handleSaveCampaignInfoPanel,
+        joinUrl: selectedCampaign?.inviteCode
+          ? `${window.location.origin}/join/${encodeURIComponent(selectedCampaign.inviteCode)}`
+          : '',
+        watchUrl: selectedCampaign?.spectatorInviteCode
+          ? `${window.location.origin}/watch/${encodeURIComponent(selectedCampaign.spectatorInviteCode)}`
+          : '',
+        spectatorsEnabled: Boolean(selectedCampaign?.spectatorsEnabled),
+        canRefreshInvites: Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id),
+        isInviteReissuing,
+        onCopyInviteUrl: (inviteType) => {
+          void copyInviteUrl(inviteType)
+        },
+        onReissueInvite: (inviteType) => {
+          requestInviteReissue(inviteType)
+        },
         campaignIdForSettings: selectedCampaignId,
         sessionSettingsName,
         sessionSettingsPlannedDurationMinutes,
@@ -989,6 +1004,9 @@ export function WorkspaceInitialization({
       user,
       wsRetrySecondsRemaining,
       wsState,
+      copyInviteUrl,
+      isInviteReissuing,
+      requestInviteReissue,
     ]
   )
 

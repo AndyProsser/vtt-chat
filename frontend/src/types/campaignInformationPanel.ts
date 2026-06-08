@@ -39,6 +39,13 @@ export type CampaignInformationPanelProps = {
       integrationSyncPolicy: ExtensionSyncPolicy
     }
   ) => Promise<void>
+  joinUrl?: string
+  watchUrl?: string
+  spectatorsEnabled?: boolean
+  canRefreshInvites?: boolean
+  isInviteReissuing?: boolean
+  onCopyInviteUrl?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
+  onReissueInvite?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
 }
 
 export type CampaignInformationHeaderProps = {
@@ -50,6 +57,13 @@ export type CampaignInformationHeaderProps = {
   onSave: () => void
   onCancel: () => void
   onStartEditing: () => void
+  joinUrl?: string
+  watchUrl?: string
+  spectatorsEnabled?: boolean
+  canRefreshInvites?: boolean
+  isInviteReissuing?: boolean
+  onCopyInviteUrl?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
+  onReissueInvite?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
 }
 
 export type CampaignInformationEditBodyProps = {

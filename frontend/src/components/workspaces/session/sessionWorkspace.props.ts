@@ -67,6 +67,13 @@ type BuildSessionWorkspacePropsParams = {
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean
   userId: UUID
+  joinUrl?: string
+  watchUrl?: string
+  spectatorsEnabled?: boolean
+  canRefreshInvites?: boolean
+  isInviteReissuing?: boolean
+  onCopyInviteUrl?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
+  onReissueInvite?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
 }
 
 export function buildSessionWorkspaceProps(
@@ -135,5 +142,12 @@ export function buildSessionWorkspaceProps(
     isCharacterSettingsLoading: params.isCharacterSettingsLoading,
     isCharacterSettingsSaving: params.isCharacterSettingsSaving,
     userId: params.userId,
+    joinUrl: params.joinUrl,
+    watchUrl: params.watchUrl,
+    spectatorsEnabled: params.spectatorsEnabled,
+    canRefreshInvites: params.canRefreshInvites,
+    isInviteReissuing: params.isInviteReissuing,
+    onCopyInviteUrl: params.onCopyInviteUrl,
+    onReissueInvite: params.onReissueInvite,
   }
 }

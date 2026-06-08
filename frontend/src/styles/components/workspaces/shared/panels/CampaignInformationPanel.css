@@ -521,6 +521,11 @@
   gap: 0.35rem;
 }
 
+.cip-inline-actions .session-toolbar__icon-btn {
+  border-radius: var(--radius-md);
+  height: 2rem;
+}
+
 .cip-poster-controls {
   display: grid;
   gap: 0.5rem;

@@ -17,6 +17,13 @@ export function CampaignInformationPanel({
   canEdit,
   workspaceMode = false,
   onSaveCampaignInfo,
+  joinUrl,
+  watchUrl,
+  spectatorsEnabled,
+  canRefreshInvites,
+  isInviteReissuing,
+  onCopyInviteUrl,
+  onReissueInvite,
 }: CampaignInformationPanelProps) {
   const showToast = useToast()
   const [isEditing, setIsEditing] = useState(false)
@@ -147,6 +154,13 @@ export function CampaignInformationPanel({
           }}
           onCancel={handleCancel}
           onStartEditing={() => setIsEditing(true)}
+          joinUrl={joinUrl}
+          watchUrl={watchUrl}
+          spectatorsEnabled={spectatorsEnabled}
+          canRefreshInvites={canRefreshInvites}
+          isInviteReissuing={isInviteReissuing}
+          onCopyInviteUrl={onCopyInviteUrl}
+          onReissueInvite={onReissueInvite}
         />
 
         <div className="cip-copy">
