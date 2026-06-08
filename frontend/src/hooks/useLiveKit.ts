@@ -147,6 +147,7 @@ export function useLiveKit(
   const connectionKeyRef = useRef<string | null>(null)
   const hasLocalPublicationRef = useRef(false)
   const publishAudioInFlightRef = useRef<Promise<void> | null>(null)
+  const unpublishAudioInFlightRef = useRef<Promise<void> | null>(null)
   const publishGenerationRef = useRef(0)
   const trackSubscriptionsRef = useRef<TrackSubscription[]>([])
   const teardownRoomListenersRef = useRef<(() => void) | null>(null)
@@ -400,6 +401,7 @@ export function useLiveKit(
   const invalidatePendingPublish = useCallback(() => {
     publishGenerationRef.current += 1
     publishAudioInFlightRef.current = null
+    unpublishAudioInFlightRef.current = null
   }, [])
 
   const isPublishSuperseded = useCallback(
@@ -1505,10 +1507,18 @@ export function useLiveKit(
    * Unpublish local audio track
    */
   const unpublishAudio = useCallback(async () => {
+    if (unpublishAudioInFlightRef.current) {
+      return unpublishAudioInFlightRef.current
+    }
+
     const activeRoom = roomRef.current
     const activeAudioTrack = localAudioRef.current
 
-    if (activeRoom && activeAudioTrack) {
+    if (!activeRoom || !activeAudioTrack) {
+      return
+    }
+
+    const unpublishPromise = (async () => {
       await activeRoom.localParticipant.unpublishTrack(activeAudioTrack)
       activeAudioTrack.stop()
       setLocalAudioTrackState(null)
@@ -1526,6 +1536,15 @@ export function useLiveKit(
         error: null,
       })
       logger.info('useLiveKit', 'Audio track unpublished')
+    })()
+
+    unpublishAudioInFlightRef.current = unpublishPromise
+    try {
+      await unpublishPromise
+    } finally {
+      if (unpublishAudioInFlightRef.current === unpublishPromise) {
+        unpublishAudioInFlightRef.current = null
+      }
     }
   }, [
     connectionKey,
