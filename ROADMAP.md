@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-05
+**Last Updated**: 2026-06-08
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -14,9 +14,9 @@
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🟢 Done        |
-| Phase 4: Future Enhancements           |      5 |       0 |              0 |              5 | ⚪ Not Started |
+| Phase 4: Future Enhancements           |      5 |       0 |              1 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **29** |  **14** |          **0** |         **15** |                |
+| **Total**                              | **29** |  **14** |          **1** |         **14** |                |
 
 **MVP-blocking items remaining**: Phase 3 (Notes & Journal Foundation) — all items ⚪ Not Started.
 
@@ -926,7 +926,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Extension-MVP: Guest Login and Campaign Access via Extension
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 Medium (post-MVP, MVP distribution channel)
 **Depends on**: Core Reliability + W0-UI complete
 
@@ -934,11 +934,32 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Extension can launch app via POST to `/api/auth/extension/guest-login`
-- [ ] Guest DM/Player/Spectator accounts are created on first launch
-- [ ] Campaign membership is auto-granted via invite link or code
-- [ ] Guest account can be upgraded to full account later without losing campaign history
-- [ ] Extension stays synced with app state during session
+- [x] Extension can launch app via POST to `/api/auth/extension/guest-login`
+- [x] Guest DM/Player/Spectator accounts are created on first launch
+- [x] Campaign membership is auto-granted via invite link or code
+- [x] Guest account can be upgraded to full account later without losing campaign history
+- [ ] Extension reconnects persistently via device credential — contract locked (see `docs/CONTRACTS.md`); backend endpoints not yet implemented
+- [ ] Extension stays synced with app state during session — join-time sync only; active-session sync deferred to Stage E2
+
+**Evidence snapshot (2026-06-08 — backend audit)**:
+
+Backend is production-ready for extension integration. All guest auth contracts, account lifecycle, and invite flows are implemented and tested.
+
+- `POST /api/auth/extension/guest-login` — fully implemented in `backend/src/api/auth.routes.ts`; service logic in `backend/src/services/guest-auth/extension.service.ts`. Accepts inviteCode, externalSystem, externalUserId, character data, campaignPacket; creates or updates guest User with `authType=GUEST`, ExternalIdentity link, Character, and CampaignMembership; assigns DM or PLAYER role from `campaignPacket.dmExternalUserId`; returns JWT with guest claims.
+- `POST /api/auth/extension/preflight` — pre-flight validation endpoint; returns accountStatus (`none`/`guest`/`full`) and suggestedFlow before the guest login call; covered by `backend/tests/api/guest-auth-routes.test.ts`.
+- Guest Spectator join via `POST /api/auth/spectator/guest-join`; spectator capacity, waitlist, reconnect grace, and slot promotion all implemented in `backend/src/services/guest-auth/spectator.service.ts`.
+- Campaign membership auto-granted on first connect; role assignment is server-side; existing membership upserted on reconnect.
+- `POST /api/auth/upgrade` upgrades guest → full account without changing UUID or losing campaign data; covered by `backend/src/services/guest-auth/account-upgrade.service.ts`.
+- `GuestUpgradePrompt.tsx` — frontend upgrade banner component implemented in `frontend/src/components/guest/GuestUpgradePrompt.tsx`.
+- Frontend non-extension invite join flow: `InviteJoinPage.tsx`, `useInviteValidation.ts`, `useEmailPrecheck.ts`, `inviteJoin.ts`.
+- Integration test coverage: `backend/tests/integration/guest-auth-flows.integration.test.ts`.
+- Extension frontend (background script, content script, popup) resides in a separate repository per `docs/extension/EXTENSION-ROADMAP.md` Stage E1. Active-session character/state sync is Stage E2 and not yet scoped.
+
+**Remaining work**:
+
+- Extension Device Credential backend endpoints — `POST /api/auth/extension/credential/exchange`, `GET /api/auth/extension/credentials`, `DELETE /api/auth/extension/credentials/:credentialId`; `POST /api/auth/extension/guest-login` response must include `deviceCredential` field. Contract locked in `docs/CONTRACTS.md`.
+- Extension frontend implementation (separate repo, Stage E1) — page detection, background script, popup UI, credential storage replacing invite URL storage; see updated `docs/extension/EXTENSION-ROADMAP.md`.
+- Active-session state sync (Stage E2) — character update propagation during an active session
 
 **Related Docs**:
 
