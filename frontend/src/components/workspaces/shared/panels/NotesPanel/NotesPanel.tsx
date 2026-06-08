@@ -13,11 +13,11 @@ import type { Note } from '@/types/notes'
 import type { NotesSurfaceTarget } from '@/types/notesPublish'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { useNotesShareContext } from '@/hooks/notes/useNotesShareContext'
-import { isJournalNote, parseNoteHashtags } from '../../../../../utils/notesPanel'
+import { getNoteShareStatus, isJournalNote, parseNoteHashtags } from '@/utils/notesPanel'
 import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
 import { NotesPanelCompact } from './NotesPanel.compact'
-import { NotesPanelToolbar, type NotesPublishFilter } from './NotesPanelToolbar'
+import { NotesPanelToolbar } from './NotesPanelToolbar'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
 
 interface NotesPanelProps {
@@ -70,7 +70,6 @@ export function NotesPanel({
   })
   const [isCreating, setIsCreating] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [publishFilter, setPublishFilter] = useState<NotesPublishFilter>('ALL')
   const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -88,20 +87,13 @@ export function NotesPanel({
   }, [notes])
 
   const displayedNotes = useMemo(() => {
-    const byPublishFilter =
-      publishFilter === 'SHARED'
-        ? notes.filter((note) => Boolean(note.publishedAt))
-        : publishFilter === 'UNSHARED'
-          ? notes.filter((note) => !note.publishedAt)
-          : notes
-
     const normalizedSearchQuery = searchQuery.trim().toLowerCase()
     const bySearchQuery = normalizedSearchQuery
-      ? byPublishFilter.filter((note) => {
+      ? notes.filter((note) => {
           const searchableFields = [note.title, note.content, ...note.tags].join(' ').toLowerCase()
           return searchableFields.includes(normalizedSearchQuery)
         })
-      : byPublishFilter
+      : notes
 
     if (!activeHashtagFilter) {
       return bySearchQuery
@@ -113,7 +105,7 @@ export function NotesPanel({
         return normalized.toLowerCase() === activeHashtagFilter.toLowerCase()
       })
     )
-  }, [activeHashtagFilter, notes, publishFilter, searchQuery])
+  }, [activeHashtagFilter, notes, searchQuery])
 
   const selectedNote = selectedNoteId ? (notesByCampaign?.[selectedNoteId] ?? null) : null
 
@@ -121,11 +113,7 @@ export function NotesPanel({
     ? `No handouts match "${searchQuery.trim()}".`
     : activeHashtagFilter
       ? `No handouts tagged ${activeHashtagFilter}.`
-      : publishFilter === 'SHARED'
-        ? 'No shared handouts yet.'
-        : publishFilter === 'UNSHARED'
-          ? 'No unshared handouts yet.'
-          : 'No handouts yet.'
+      : 'No handouts yet.'
 
   const isPublishDisabledInCurrentState =
     !currentSessionState || isGreenroomSessionState(currentSessionState)
@@ -385,6 +373,27 @@ export function NotesPanel({
             <Icon name="notes" />
             Handouts
           </h3>
+          {canMutateNotes ? (
+            <TooltipProvider delayDuration={140}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="notes-note-header-action"
+                    onClick={handleToggleCreateForm}
+                    aria-label={showCreateForm ? 'Cancel new handout' : 'New handout'}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {showCreateForm ? 'close' : 'note_add'}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {showCreateForm ? 'Cancel' : 'New handout'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
         </div>
         <p className="notes-workspace-header__subtitle">
           Draft handouts, organize references, and share player-ready notes.
@@ -392,11 +401,9 @@ export function NotesPanel({
       </header>
 
       <NotesPanelToolbar
-        publishFilter={publishFilter}
         searchQuery={searchQuery}
         activeHashtagFilter={activeHashtagFilter}
         allHashtags={allHashtags}
-        onSetPublishFilter={setPublishFilter}
         onSetSearchQuery={setSearchQuery}
         onSetHashtagFilter={setActiveHashtagFilter}
       />
@@ -411,27 +418,6 @@ export function NotesPanel({
               <span>
                 {displayedNotes.length} {displayedNotes.length === 1 ? 'handout' : 'handouts'}
               </span>
-              {canMutateNotes ? (
-                <TooltipProvider delayDuration={140}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="notes-note-header-action"
-                        onClick={handleToggleCreateForm}
-                        aria-label={showCreateForm ? 'Cancel new handout' : 'New handout'}
-                      >
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          {showCreateForm ? 'close' : 'note_add'}
-                        </span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      {showCreateForm ? 'Cancel' : 'New handout'}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : null}
             </div>
 
             <div className="notes-list-widget-body" role="list" aria-label="Handouts">
@@ -450,19 +436,40 @@ export function NotesPanel({
                   const displayTags = note.tags
                     .map((t) => (t.startsWith('#') ? t : `#${t}`))
                     .slice(0, 3)
+                  const shareStatus = getNoteShareStatus(note.visibility, note.allowedUsers)
                   return (
                     <button
                       key={note.id}
                       type="button"
                       role="listitem"
                       className={`notes-list-item${isSelected ? ' is-selected' : ''}`}
-                      onClick={() => selectNote(note.id)}
+                      onClick={(e) => {
+                        const chip = (e.target as HTMLElement).closest('[data-hashtag-filter]')
+                        if (chip) {
+                          setActiveHashtagFilter(chip.getAttribute('data-hashtag-filter'))
+                          return
+                        }
+                        selectNote(note.id)
+                      }}
                       aria-pressed={isSelected}
                     >
+                      <span
+                        className={`notes-list-item-status notes-list-item-status--tone-${shareStatus.tone}`}
+                        aria-label={shareStatus.tooltip}
+                        title={shareStatus.tooltip}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          {shareStatus.icon}
+                        </span>
+                      </span>
                       <span className="notes-list-item-title">{note.title || 'Untitled'}</span>
                       <div className="notes-list-item-tags">
                         {displayTags.map((tag) => (
-                          <span key={tag} className="knowledge-panel-chip muted">
+                          <span
+                            key={tag}
+                            className="knowledge-panel-chip muted notes-list-item-hashtag"
+                            data-hashtag-filter={tag.toLowerCase()}
+                          >
                             {tag}
                           </span>
                         ))}
@@ -515,7 +522,9 @@ export function NotesPanel({
               </div>
             ) : (
               <div className="ui-empty-panel ui-empty-panel--fill" role="status">
-                <span className="material-symbols-outlined" aria-hidden="true">article</span>
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  article
+                </span>
                 <span>Select a handout to view or edit it.</span>
               </div>
             )}
