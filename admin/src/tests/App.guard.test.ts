@@ -104,7 +104,7 @@ describe('admin app guard behavior', () => {
     await flushEffects()
 
     expect(container.textContent).toContain('LoginPage')
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3000/api/admin/setup-status')
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost/api/admin/setup-status')
   })
 
   it('shows setup wizard when setup is required', async () => {
@@ -293,7 +293,7 @@ describe('admin app guard behavior', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      'http://localhost:3000/api/admin/auth/handoff/exchange',
+      'http://localhost/api/admin/auth/handoff/exchange',
       expect.objectContaining({ method: 'POST' })
     )
     expect(container.textContent).toContain('Invalid handoff token')
@@ -372,7 +372,7 @@ describe('admin app guard behavior', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
-      'http://localhost:3000/api/admin/handoff/app',
+      'http://localhost/api/admin/handoff/app',
       expect.objectContaining({ method: 'POST' })
     )
     expect(openAppButton.textContent).toContain('Open App')

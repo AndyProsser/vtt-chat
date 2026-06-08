@@ -26,7 +26,7 @@ import Login from './pages/Login'
 import InviteOnboarding from './pages/InviteOnboarding'
 import { useAuthStore } from './store'
 import { getAdminTheme } from './theme'
-import { ADMIN_SESSION_EXPIRED_EVENT, SessionExpiredError, getJson } from './utils/api'
+import { ADMIN_SESSION_EXPIRED_EVENT, SessionExpiredError, getJson, API_BASE } from './utils/api'
 import type { AdminPage, NavItem } from '@/types/nav'
 import './styles/App.css'
 
@@ -40,8 +40,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'settings', label: 'Settings' },
   { key: 'integrations', label: 'Integrations' },
 ]
-
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api'
 
 export default function App() {
   const [page, setPage] = useState<AdminPage>('dashboard')

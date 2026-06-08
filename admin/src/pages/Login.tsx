@@ -1,11 +1,10 @@
 import React, { useState } from 'react'
+import { API_BASE } from '../utils/api'
 
 interface LoginProps {
   onLoginSuccess: (token: string, admin: { id: string; username: string; email: string }) => void
   onError: (error: string) => void
 }
-
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api'
 
 export default function Login({ onLoginSuccess, onError }: LoginProps) {
   const [loading, setLoading] = useState(false)

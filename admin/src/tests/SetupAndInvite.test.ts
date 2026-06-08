@@ -143,7 +143,7 @@ describe('Setup page', () => {
     })
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:3000/api/admin/setup',
+      'http://localhost/api/admin/setup',
       expect.objectContaining({ method: 'POST' })
     )
     expect(container.textContent).toContain('Account Created Successfully')

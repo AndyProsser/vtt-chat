@@ -19,7 +19,7 @@ describe('admin utils api', () => {
   })
 
   it('uses default admin api base path', () => {
-    expect(adminApiBase()).toBe('/admin/api')
+    expect(adminApiBase()).toBe(`${window.location.origin}/api/admin`)
   })
 
   it('adds auth header from session storage and default content-type', async () => {

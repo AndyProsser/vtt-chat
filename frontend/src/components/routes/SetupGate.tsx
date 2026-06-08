@@ -1,30 +1,34 @@
+import { useEffect } from 'react'
+
 interface SetupGateProps {
   adminUrl: string
 }
 
 /**
- * Shown when the backend reports no admin account exists yet.
- * Blocks all app routes until initial setup is completed via the admin panel.
+ * Redirects immediately to the admin setup wizard when no admin account exists.
+ * Shows a brief styled screen while the redirect navigates.
  */
 export function SetupGate({ adminUrl }: SetupGateProps) {
+  useEffect(() => {
+    const url = adminUrl.endsWith('/') ? adminUrl : `${adminUrl}/`
+    window.location.replace(url)
+  }, [adminUrl])
+
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 p-8 text-center">
-      <div className="flex flex-col items-center gap-2">
-        <h1 className="text-2xl font-semibold text-ui-primary">First-time setup required</h1>
-        <p className="max-w-sm text-sm text-ui-secondary">
-          No admin account has been created yet. Complete the setup wizard in the admin panel to
-          unlock the platform.
+    <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="size-10 animate-spin rounded-full border-2 border-ui-border border-t-brand-primary" />
+        <h1 className="text-lg font-semibold text-ui-primary">Opening setup wizard…</h1>
+        <p className="max-w-xs text-sm text-ui-secondary">
+          Redirecting you to the admin panel to complete first-time setup.
         </p>
       </div>
       <a
         href={adminUrl}
-        className="rounded-ui-md bg-brand-primary px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="mt-2 text-xs text-ui-tertiary underline underline-offset-2 hover:text-ui-secondary"
       >
-        Open Admin Setup
+        Click here if you are not redirected
       </a>
-      <p className="text-xs text-ui-tertiary">
-        After completing setup, refresh this page to continue.
-      </p>
     </div>
   )
 }

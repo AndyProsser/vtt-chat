@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import SetupForm from '../features/setup/SetupForm'
+import { API_BASE } from '../utils/api'
 
 interface SetupWizardProps {
   onComplete: (token: string, admin: { id: string; username: string; email: string }) => void
@@ -12,8 +13,6 @@ interface PasswordValidation {
   feedback: string[]
   suggestions: string[]
 }
-
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api'
 
 export default function SetupWizard({ onComplete, onError }: SetupWizardProps) {
   const [step, setStep] = useState<'welcome' | 'form' | 'confirm'>('welcome')

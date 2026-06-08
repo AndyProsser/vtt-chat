@@ -1,4 +1,6 @@
-const DEFAULT_BASE = '/admin/api'
+export const API_BASE =
+  (import.meta.env.VITE_API_URL as string | undefined) || `${window.location.origin}/api`
+
 export const ADMIN_SESSION_EXPIRED_EVENT = 'vtt-admin:session-expired'
 
 export class SessionExpiredError extends Error {
@@ -9,7 +11,7 @@ export class SessionExpiredError extends Error {
 }
 
 export function adminApiBase(): string {
-  return import.meta.env.VITE_ADMIN_API_BASE || DEFAULT_BASE
+  return `${API_BASE}/admin`
 }
 
 function getAdminToken(): string | null {

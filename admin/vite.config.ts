@@ -34,11 +34,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5174,
     proxy: {
-      '/admin/api': {
+      '/api': {
         target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/admin\/api/, '/api/admin'),
       },
     },
   },

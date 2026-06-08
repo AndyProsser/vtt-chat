@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { requestJson } from '../../utils/api'
+import { API_BASE, requestJson } from '../../utils/api'
 import type {
   AdminUserRow,
   InviteRole,
@@ -110,10 +110,10 @@ export function useUserManagement() {
     setError(null)
     try {
       const response = await fetch(
-        `${(window as any).__ADMIN_API_BASE__ || ''}/api/admin/users/export?format=${format}`,
+        `${API_BASE}/admin/users/export?format=${format}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}`,
+            Authorization: `Bearer ${localStorage.getItem('admin-token') || sessionStorage.getItem('admin-token') || ''}`,
           },
         }
       )

@@ -577,7 +577,7 @@ label {
   font-size: 12px;
   font-weight: 500;
   margin: 0 0 8px;
-  background: transparent;
+  background: transparent !important;
 }
 
 .password-help-text {

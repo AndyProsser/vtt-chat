@@ -1,9 +1,8 @@
 import { create } from 'zustand'
 import type { AdminUser, AuthState } from '@/types/auth'
+import { API_BASE } from './utils/api'
 
 export type { AdminUser, AuthState }
-
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api'
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: null,
