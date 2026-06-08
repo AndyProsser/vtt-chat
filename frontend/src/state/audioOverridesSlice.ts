@@ -32,6 +32,8 @@ export interface AudioOverridesSlice {
   replaceDMOverrides: (
     overrides: Array<AudioDMOverride | (AudioDMOverride & { targetUserId?: UUID })>
   ) => void
+  /** Sets the DM voice target room and switches mode to TARGET_GROUP. */
+  setDmVoiceTarget: (groupId?: UUID) => void
   setBroadcastState: (params: {
     enabled: boolean
     broadcastRoomId?: string

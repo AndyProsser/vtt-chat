@@ -87,9 +87,9 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
   const setSessionGroups = useStore((state) => state.setSessionGroups)
   const setSessionGroupEnvironment = useStore((state) => state.setSessionGroupEnvironment)
   const clearSessionGroupEnvironment = useStore((state) => state.clearSessionGroupEnvironment)
-  const setDmVoiceTarget = useStore((state) => (state as any).setDmVoiceTarget)
-  const addRoomMember = useStore((state) => (state as any).addRoomMember)
-  const removeRoomMember = useStore((state) => (state as any).removeRoomMember)
+  const setDmVoiceTarget = useStore((state) => state.setDmVoiceTarget)
+  const addRoomMember = useStore((state) => state.addRoomMember)
+  const removeRoomMember = useStore((state) => state.removeRoomMember)
 
   const sessionRooms = liveSessionRooms.length > 0 ? liveSessionRooms : fallbackSessionRooms
   const isGreenroom = isGreenroomSessionState(sessionState)
@@ -384,11 +384,11 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
         sessionId,
         targetUserId,
         targetRoomId,
-        addRoomMember: addRoomMember as any,
-        removeRoomMember: removeRoomMember as any,
+        addRoomMember,
+        removeRoomMember,
         fetchSessionGroupsFn: fetchSessionGroups,
         moveRoomMemberFn: moveRoomMember,
-        setDmVoiceTarget: setDmVoiceTarget as any,
+        setDmVoiceTarget,
         token,
         apiUrl,
         showToast,

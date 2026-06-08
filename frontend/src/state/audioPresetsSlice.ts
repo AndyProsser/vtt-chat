@@ -10,12 +10,26 @@ import type {
   VoicePreset,
 } from '@/types/audio'
 
+/**
+ * Minimal cross-slice fields accessed by handleEnvironmentSet.
+ * Avoids a circular import with store.ts while preserving type safety.
+ */
+interface AudioPresetsCrossSlice {
+  currentUser?: { id: UUID } | null
+  sessionPresence: Record<UUID, Record<UUID, { primaryRoomId?: UUID }>>
+}
+
 export interface AudioPresetsSlice {
   currentEnvironment?: EnvironmentPreset
   currentDistance?: DistancePreset
   currentCondition?: ConditionPreset
   currentVoicePreset?: VoicePreset
   currentICPreset?: ICPreset
+  /**
+   * Maps roomId → environment name. Campaign-scoped: survives session boundaries
+   * and is intentionally excluded from resetSessionAudioState. SessionInit.tsx
+   * reads this map on session hydration to restore group environment icons.
+   */
   roomEnvironmentNames: Record<UUID, string>
 
   setEnvironment: (preset: EnvironmentPreset) => void
@@ -31,7 +45,11 @@ export interface AudioPresetsSlice {
   clearVoicePreset: () => void
   setICPreset: (preset: ICPreset) => void
   clearICPreset: () => void
-  /** Clears all per-session audio presets (env, condition, distance, voice, IC). Preserves roomEnvironmentNames. */
+  /**
+   * Clears per-session audio presets (env, condition, distance, voice, IC).
+   * Does NOT clear roomEnvironmentNames — that map is campaign-scoped and drives
+   * environment icon restore in SessionInit on next session start.
+   */
   resetSessionAudioState: () => void
 
   handleEnvironmentSet: (event: EventEnvelope) => void
@@ -151,10 +169,11 @@ export const createAudioPresetsSlice: StateCreator<AudioPresetsSlice, [], [], Au
 
     // Only update currentEnvironment if the affected room is the current user's primary room.
     const state = get()
-    const currentUserId = (state as any).currentUser?.id as UUID | undefined
+    const crossSlice = state as AudioPresetsSlice & AudioPresetsCrossSlice
+    const currentUserId = crossSlice.currentUser?.id
     if (!currentUserId || !event.sessionId) return
 
-    const userPresence = (state as any).sessionPresence?.[event.sessionId]?.[currentUserId]
+    const userPresence = crossSlice.sessionPresence?.[event.sessionId]?.[currentUserId]
     if (userPresence?.primaryRoomId !== payload.roomId) return
 
     // Resolve DSP from the shared catalog — the WS payload may not carry parameters.
