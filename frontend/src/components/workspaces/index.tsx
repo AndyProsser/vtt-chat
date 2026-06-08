@@ -58,6 +58,7 @@ import { useConnectionStatus } from '@/hooks/useConnectionStatus'
 import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
 import { useSpeakingPresenceSync } from '@/hooks/useSpeakingPresenceSync'
+import { useMuteOnConnectSync } from '@/hooks/useMuteOnConnectSync'
 import { useToast } from '@/hooks/useToast'
 import { isJournalNote } from '@/utils/notesPanel'
 import type { Session as SessionRecord } from '@/types/session'
@@ -298,6 +299,7 @@ export function WorkspaceInitialization({
     error: wsError,
     send,
     retryConnection,
+    isConnected: isWsConnected,
   } = useWebSocket({
     url: wsUrl,
     token,
@@ -315,6 +317,13 @@ export function WorkspaceInitialization({
     username: user.username,
     userRole: user.role,
     send,
+  })
+
+  useMuteOnConnectSync({
+    sessionId: currentSessionId ?? null,
+    isWsConnected,
+    apiUrl,
+    token,
   })
 
   const selectedCharacter = useMemo(
