@@ -14,8 +14,8 @@ import type { NotesSurfaceTarget } from '@/types/notesPublish'
 import { fetchCampaignNotesOnce } from '@/utils/notesFetch'
 import { useNotesShareContext } from '@/hooks/notes/useNotesShareContext'
 import { isJournalNote, parseNoteHashtags } from '../../../../../utils/notesPanel'
+import { NoteCard } from './NoteCard'
 import { NotesCreateForm } from './NotesCreateForm'
-import { NotesBrowserCard } from './NotesBrowserCard'
 import { NotesPanelCompact } from './NotesPanel.compact'
 import { NotesPanelToolbar, type NotesPublishFilter } from './NotesPanelToolbar'
 import '@/styles/components/workspaces/shared/panels/KnowledgePanels.css'
@@ -71,9 +71,7 @@ export function NotesPanel({
   const [isCreating, setIsCreating] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [publishFilter, setPublishFilter] = useState<NotesPublishFilter>('ALL')
-  const [expandedNoteId, setExpandedNoteId] = useState<UUID | null>(null)
-  // Keep editor subtrees mounted once opened so re-expanding doesn't re-fetch.
-  const [mountedEditorIds, setMountedEditorIds] = useState<Set<UUID>>(new Set())
+  const [selectedNoteId, setSelectedNoteId] = useState<UUID | null>(null)
   const [activeHashtagFilter, setActiveHashtagFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const canMutateNotes = user.role === Role.DM
@@ -117,6 +115,8 @@ export function NotesPanel({
     )
   }, [activeHashtagFilter, notes, publishFilter, searchQuery])
 
+  const selectedNote = selectedNoteId ? (notesByCampaign?.[selectedNoteId] ?? null) : null
+
   const emptyStateMessage = searchQuery.trim()
     ? `No handouts match "${searchQuery.trim()}".`
     : activeHashtagFilter
@@ -135,17 +135,15 @@ export function NotesPanel({
 
   const handleToggleCreateForm = () => {
     if (!canMutateNotes) return
-    setShowCreateForm((current) => !current)
+    setShowCreateForm((current) => {
+      if (!current) setSelectedNoteId(null)
+      return !current
+    })
   }
 
-  const expandNote = (noteId: UUID) => {
-    setExpandedNoteId(noteId)
-    setMountedEditorIds((prev) => {
-      if (prev.has(noteId)) return prev
-      const next = new Set(prev)
-      next.add(noteId)
-      return next
-    })
+  const selectNote = (noteId: UUID) => {
+    setSelectedNoteId(noteId)
+    setShowCreateForm(false)
   }
 
   useEffect(() => {
@@ -227,8 +225,7 @@ export function NotesPanel({
         createdAt: note.createdAt,
         updatedAt: note.updatedAt,
       })
-      expandNote(createdNoteId)
-      setShowCreateForm(false)
+      selectNote(createdNoteId)
 
       setTitle('')
       setContent('')
@@ -300,8 +297,6 @@ export function NotesPanel({
       throw new Error(body.message ?? `HTTP ${res.status}`)
     }
     // The backend broadcasts NOTES:UPDATED via WS, which updates publishedAt in the store.
-    // Do not clearNotes here — that unmounts the active NoteCard mid-operation, silently
-    // discarding the setSurfaceDialogOpen/setHasPublishedThisSession calls in NoteCard.
   }
 
   const handleDelete = async (noteId: string) => {
@@ -321,15 +316,9 @@ export function NotesPanel({
       addNote(campaignId, refreshedNote)
     }
 
-    if (expandedNoteId === (noteId as UUID)) {
-      setExpandedNoteId(null)
+    if (selectedNoteId === (noteId as UUID)) {
+      setSelectedNoteId(null)
     }
-    setMountedEditorIds((prev) => {
-      if (!prev.has(noteId as UUID)) return prev
-      const next = new Set(prev)
-      next.delete(noteId as UUID)
-      return next
-    })
   }
 
   // Compact (in-session) mode: dense stacked title list → full NoteCard overlay on tap.
@@ -396,34 +385,11 @@ export function NotesPanel({
             <Icon name="notes" />
             Handouts
           </h3>
-          {canMutateNotes ? (
-            <TooltipProvider delayDuration={140}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="session-icon-action session-icon-action--icon"
-                    onClick={handleToggleCreateForm}
-                    aria-label={showCreateForm ? 'Hide handout creator' : 'Create handout'}
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      {showCreateForm ? 'visibility_off' : 'note_add'}
-                    </span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {showCreateForm ? 'Hide handout creator' : 'Create handout'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : null}
         </div>
         <p className="notes-workspace-header__subtitle">
           Draft handouts, organize references, and share player-ready notes.
         </p>
       </header>
-
-      {error ? <p className="m-3 text-sm text-ui-error-text">{error}</p> : null}
 
       <NotesPanelToolbar
         publishFilter={publishFilter}
@@ -435,72 +401,126 @@ export function NotesPanel({
         onSetHashtagFilter={setActiveHashtagFilter}
       />
 
-      {canMutateNotes && showCreateForm ? (
-        <NotesCreateForm
-          title={title}
-          content={content}
-          tagsText={tagsText}
-          isCreating={isCreating}
-          campaignId={campaignId}
-          onSubmit={handleCreate}
-          onTitleChange={setTitle}
-          onContentChange={setContent}
-          onTagsTextChange={setTagsText}
-        />
-      ) : null}
+      <div className="notes-workspace-content">
+        {error ? <p className="m-3 text-sm text-ui-error-text">{error}</p> : null}
 
-      <div className="notes-workspace-content knowledge-panel-results--scroll">
-        {isLoading ? (
-          <p className="text-sm text-ui-secondary">Loading handouts...</p>
-        ) : displayedNotes.length === 0 ? (
-          <div className="ui-empty-panel ui-empty-panel--fill" role="status">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              auto_awesome
-            </span>
-            <span>{emptyStateMessage}</span>
+        <div className="notes-workspace-grid">
+          {/* Left: scrollable note list */}
+          <div className="notes-list-widget">
+            <div className="notes-list-widget-header">
+              <span>
+                {displayedNotes.length} {displayedNotes.length === 1 ? 'handout' : 'handouts'}
+              </span>
+              {canMutateNotes ? (
+                <TooltipProvider delayDuration={140}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="notes-note-header-action"
+                        onClick={handleToggleCreateForm}
+                        aria-label={showCreateForm ? 'Cancel new handout' : 'New handout'}
+                      >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                          {showCreateForm ? 'close' : 'note_add'}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {showCreateForm ? 'Cancel' : 'New handout'}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : null}
+            </div>
+
+            <div className="notes-list-widget-body" role="list" aria-label="Handouts">
+              {isLoading ? (
+                <p className="text-sm text-ui-secondary">Loading handouts…</p>
+              ) : displayedNotes.length === 0 ? (
+                <div className="ui-empty-panel" role="status">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    auto_awesome
+                  </span>
+                  <span>{emptyStateMessage}</span>
+                </div>
+              ) : (
+                displayedNotes.map((note) => {
+                  const isSelected = selectedNoteId === note.id
+                  const displayTags = note.tags
+                    .map((t) => (t.startsWith('#') ? t : `#${t}`))
+                    .slice(0, 3)
+                  return (
+                    <button
+                      key={note.id}
+                      type="button"
+                      role="listitem"
+                      className={`notes-list-item${isSelected ? ' is-selected' : ''}`}
+                      onClick={() => selectNote(note.id)}
+                      aria-pressed={isSelected}
+                    >
+                      <span className="notes-list-item-title">{note.title || 'Untitled'}</span>
+                      <div className="notes-list-item-tags">
+                        {displayTags.map((tag) => (
+                          <span key={tag} className="knowledge-panel-chip muted">
+                            {tag}
+                          </span>
+                        ))}
+                        {note.tags.length > 3 ? (
+                          <span className="knowledge-panel-card-tags-more muted">
+                            +{note.tags.length - 3}
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
           </div>
-        ) : (
-          <div
-            className="knowledge-panel-session-list"
-            role="list"
-            aria-label="Handouts"
-          >
-            {displayedNotes.map((note) => {
-              const isExpanded = expandedNoteId === note.id
-              const isMounted = isExpanded || mountedEditorIds.has(note.id)
-              return (
-                <NotesBrowserCard
-                  key={note.id}
-                  note={note}
-                  isExpanded={isExpanded}
-                  isMounted={isMounted}
-                  activeHashtagFilter={activeHashtagFilter}
-                  onToggle={() => {
-                    if (isExpanded) {
-                      setExpandedNoteId(null)
-                    } else {
-                      expandNote(note.id)
-                    }
-                  }}
-                  onTagSelect={setActiveHashtagFilter}
+
+          {/* Right: note detail or create form */}
+          <div className="notes-detail-widget">
+            {canMutateNotes && showCreateForm ? (
+              <NotesCreateForm
+                title={title}
+                content={content}
+                tagsText={tagsText}
+                isCreating={isCreating}
+                campaignId={campaignId}
+                onSubmit={handleCreate}
+                onTitleChange={setTitle}
+                onContentChange={setContent}
+                onTagsTextChange={setTagsText}
+              />
+            ) : selectedNote ? (
+              <div className="notes-detail-card">
+                <NoteCard
+                  key={selectedNote.id}
+                  note={selectedNote}
                   apiUrl={apiUrl}
                   token={token}
-                  shareUsers={shareUsers}
-                  shareRooms={shareRooms}
-                  roomMemberIdsByRoomId={roomMemberIdsByRoomId}
                   canEdit={canMutateNotes}
                   canManageShare={canMutateNotes}
                   canPublish={canMutateNotes}
                   isPublishDisabled={isPublishDisabledInCurrentState}
                   isSharingDisabled={isSharingDisabledInCurrentState}
+                  shareUsers={shareUsers}
+                  shareRooms={shareRooms}
+                  roomMemberIdsByRoomId={roomMemberIdsByRoomId}
                   onSave={handleSave}
                   onDelete={handleDelete}
                   onSurface={handleSurface}
                 />
-              )
-            })}
+              </div>
+            ) : (
+              <div className="ui-empty-panel ui-empty-panel--fill" role="status">
+                <span className="material-symbols-outlined" aria-hidden="true">article</span>
+                <span>Select a handout to view or edit it.</span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </section>
   )
