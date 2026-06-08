@@ -23,7 +23,7 @@
  *     to parents — parents do not re-render when speaking changes.
  */
 
-import { PresenceState, RoomType, type UUID } from '@shared'
+import { RoomType, type UUID } from '@shared'
 import { useStore } from '@/state/store'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
 import { getUserDMOverride } from '@/utils/audioOverrides'
@@ -62,12 +62,6 @@ export function SpeakingIndicator({ sessionId, userId, isSelf, roomType }: Speak
   // so we read the local device VAD instead.
   const deviceSpeaking = useStore((state) => (isSelf ? state.device.isSpeaking : false))
 
-  // AWAY detection: IDLE presence state means the player has gone away.
-  // Ring colour switches to yellow to signal "speaking but not fully present".
-  const isAway = useStore(
-    (state) => !isSelf && state.sessionPresence[sessionId]?.[userId]?.state === PresenceState.IDLE
-  )
-
   if (roomType === RoomType.PRIVATE) return null
   // Self: suppress ring when mic is off or DM-muted — full isMuted check.
   // Remote: only suppress for DM overrides; ownMuted can lag behind the actual
@@ -77,6 +71,5 @@ export function SpeakingIndicator({ sessionId, userId, isSelf, roomType }: Speak
   const speaking = isSelf ? deviceSpeaking : isWsSpeaking || isLkSpeaking
   if (!speaking) return null
 
-  const cls = `avatar-glyph__speaking-ring${isAway ? ' avatar-glyph__speaking-ring--away' : ''}`
-  return <span className={cls} aria-hidden="true" />
+  return <span className="avatar-glyph__speaking-ring" aria-hidden="true" />
 }

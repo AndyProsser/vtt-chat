@@ -44,12 +44,17 @@
   z-index: 1;
 }
 
-.avatar-glyph__speaking-ring--away {
-  border-color: color-mix(in srgb, var(--color-warn, #f59e0b) 56%, #ffffff 44%);
+.avatar-glyph__away-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--color-warn, #f59e0b) 56%, #ffffff 44%);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--color-warn, #f59e0b) 26%, transparent),
     0 0 8px color-mix(in srgb, var(--color-warn, #f59e0b) 24%, transparent),
     0 4px 10px color-mix(in srgb, var(--color-warn, #f59e0b) 16%, transparent);
+  z-index: 0;
 }
 
 @keyframes avatar-speaking-pulse {

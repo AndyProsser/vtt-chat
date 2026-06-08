@@ -53,6 +53,8 @@ export function PartyPanel({
   onOpenCharacterSettings,
 }: PartyPanelProps) {
   const awayStorageKey = `vtt:presence:manual-away:${campaignId}:${currentUserId}:${currentSessionId || 'none'}`
+  // Tracks that AWAY muted the mic so returning from AWAY can restore it.
+  const awayMutedKey = `vtt:presence:muted-by-away:${currentSessionId || 'none'}`
 
   const [members, setMembers] = useState<MockPartyMember[]>([])
   const [snapshotMembers, setSnapshotMembers] = useState<PartyPresenceMemberSnapshot[]>([])
@@ -72,6 +74,12 @@ export function PartyPanel({
   const sessionPresenceByUserRef = useRef<Record<UUID, SessionPresence>>(EMPTY_SESSION_PRESENCE)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const dmOverridesRef = useRef(dmOverrides)
+  // Reactive selector for own presence state — used to detect AWAY cleared externally
+  // (e.g., the user clicks Go Live in AudioPanel while AWAY, which calls the presence API).
+  const selfPresenceState = useStore(
+    (state) =>
+      currentSessionId ? state.sessionPresence[currentSessionId]?.[currentUserId]?.state : undefined
+  )
 
   const currentUserSnapshot = useMemo(
     () => snapshotMembers.find((member) => member.userId === currentUserId) || null,
@@ -298,13 +306,70 @@ export function PartyPanel({
 
     if (nextManualAway) {
       setAutoAway(false)
+
+      // Auto-mute mic when going AWAY so the player doesn't broadcast ambient noise.
+      // Save a flag so returning from AWAY can restore the live state.
+      const wasMicOn = useStore.getState().device.microphoneOn
+      if (wasMicOn && currentSessionId) {
+        window.localStorage.setItem(awayMutedKey, '1')
+        useStore.getState().setDevice({ microphoneOn: false })
+        try {
+          await fetch(`${apiUrl}/api/audio/mute`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+            body: JSON.stringify({ sessionId: currentSessionId, muted: true }),
+          })
+        } catch {
+          // Non-critical: mute state self-corrects on reconnect
+        }
+      }
+
       await setPresenceState('IDLE')
       return
     }
 
     lastActivityAtRef.current = Date.now()
+
+    // Restore mic if AWAY had muted it.
+    if (currentSessionId && window.localStorage.getItem(awayMutedKey) === '1') {
+      window.localStorage.removeItem(awayMutedKey)
+      useStore.getState().setDevice({ microphoneOn: true })
+      try {
+        await fetch(`${apiUrl}/api/audio/unmute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ sessionId: currentSessionId, muted: false }),
+        })
+      } catch {
+        // Non-critical
+      }
+    }
+
     await setPresenceState('ONLINE')
-  }, [awayStorageKey, canManageAway, isCurrentUserRuntimeVisible, manualAway, setPresenceState])
+  }, [
+    awayStorageKey,
+    awayMutedKey,
+    apiUrl,
+    authToken,
+    currentSessionId,
+    canManageAway,
+    isCurrentUserRuntimeVisible,
+    manualAway,
+    setPresenceState,
+  ])
+
+  // When sessionPresence for the current user transitions to ONLINE while AWAY flags are set,
+  // it means AWAY was cleared externally (e.g., user clicked Go Live in AudioPanel).
+  // Sync local away state so the "Set Here" button and auto-away timer reflect reality.
+  useEffect(() => {
+    if ((!manualAway && !autoAway) || selfPresenceState !== PresenceState.ONLINE) return
+    setManualAway(false)
+    setAutoAway(false)
+    window.localStorage.removeItem(awayStorageKey)
+    if (currentSessionId) {
+      window.localStorage.removeItem(`vtt:presence:muted-by-away:${currentSessionId}`)
+    }
+  }, [selfPresenceState, manualAway, autoAway, awayStorageKey, currentSessionId])
 
   const handleRefresh = useCallback(() => {
     void refreshSnapshot()

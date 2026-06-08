@@ -2,6 +2,7 @@ import { memo, type PointerEvent } from 'react'
 import { RoomType, type UUID } from '@shared'
 import { DEFAULT_AVATAR_META_LINES, ROOM_ROLE_LABELS } from '@/constants/roomPresence.constants'
 import { SpeakingIndicator } from './SpeakingIndicator'
+import { AwayIndicator } from './AwayIndicator'
 import { GhostIndicator } from './GhostIndicator'
 import { MicMutedIndicator } from './MicMutedIndicator'
 import { ConditionBadge } from './ConditionBadge'
@@ -73,6 +74,11 @@ function AvatarOverlayComponent({
         )}
         {presence ? (
           <>
+            <AwayIndicator
+              sessionId={presence.sessionId}
+              userId={presence.userId}
+              roomType={presence.roomType ?? RoomType.GROUP}
+            />
             <SpeakingIndicator
               sessionId={presence.sessionId}
               userId={presence.userId}

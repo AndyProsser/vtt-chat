@@ -118,6 +118,27 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     // effect publish once transport is connected.
     setDevice({ microphoneOn: true })
 
+    // If AWAY had auto-muted the player, going live should also clear their AWAY state.
+    // The flag is set by PartyPanel when AWAY is triggered with a live mic.
+    // PartyPanel's selfPresenceState watcher cleans up its own local state when it
+    // receives the resulting PRESENCE:STATE_CHANGED broadcast.
+    const awayMutedKey = `vtt:presence:muted-by-away:${sessionId}`
+    if (window.localStorage.getItem(awayMutedKey) === '1') {
+      window.localStorage.removeItem(awayMutedKey)
+      try {
+        const token = sessionStorage.getItem('authToken')
+        if (token) {
+          await fetch(`/api/presence/${sessionId}/state`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ state: 'ONLINE' }),
+          })
+        }
+      } catch {
+        // Non-critical: PartyPanel re-syncs on next snapshot fetch
+      }
+    }
+
     // Ensure backend mute gate is cleared before attempting publish.
     // LiveKit token issuance uses backend mute enforcement to set canPublish.
     try {
