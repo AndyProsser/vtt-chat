@@ -891,7 +891,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Admin-Platform: User, Campaign, and Ops Management
 
-**Status**: ⚪ Not Started
+**Status**: 🔵 In Progress
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -899,26 +899,28 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Sub-domains**:
 
-- User Management (suspend, restore, ban, view history)
-- Campaign Management (archive, restore, view members)
-- Logs & Telemetry (search logs, view metrics, event history)
-- System Status (health checks, service status, performance)
-- Import/Export (user data export, campaign archive)
-- Backup/Restore (manual backup, restore from backup)
-- Platform Monitoring (Prometheus/Grafana integration)
+- User Management (suspend, restore, ban, view history) — suspend/restore done; ban not yet implemented
+- Campaign Management (archive, restore, view members) — done
+- Logs & Telemetry (search logs, view metrics, event history) — done
+- System Status (health checks, service status, performance) — done
+- Import/Export (user data export, campaign archive) — done
+- Backup/Restore (manual backup, restore from backup) — backend endpoints exist; frontend UI not yet built
+- Platform Monitoring (uptime, request rate, error rate) — done; Prometheus/Grafana integration not yet implemented
+- Initial Setup Wizard — done; first admin created via `/admin/setup` is granted SUPER_ADMIN automatically
 
 **Acceptance Criteria**:
 
-- [ ] Admin can suspend/restore/ban users
-- [ ] Admin can archive/restore campaigns
-- [ ] Admin can search logs by user/campaign/date range
-- [ ] Admin can view system health and service status
-- [ ] Manual backup and restore workflows are documented and tested
-- [ ] Monitoring integration displays uptime, request rate, error rate
+- [x] Admin can suspend/restore users
+- [ ] Admin can ban users (permanent suspension — no backend route or frontend UI yet)
+- [x] Admin can archive/restore campaigns
+- [x] Admin can search logs by user/campaign/date range
+- [x] Admin can view system health and service status
+- [ ] Backup/restore frontend UI — backend endpoints (`POST /settings/backup`, `GET /settings/backup/export`) exist but are not exposed in the Settings page
+- [x] Monitoring integration displays uptime, request rate, error rate
 
 **Related Docs**:
 
-- (Admin-specific docs to be created)
+- (Admin-specific architecture docs to be created)
 
 ---
 
