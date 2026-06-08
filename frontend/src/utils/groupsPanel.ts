@@ -23,12 +23,12 @@ export function getGroupStatEntries(member: GroupParticipantStatus): Array<[stri
 
   const typedStats = stats as Record<string, unknown>
   const ordered: Array<[string, unknown]> = [
-    ['STR', typedStats.str],
-    ['DEX', typedStats.dex],
-    ['CON', typedStats.con],
-    ['INT', typedStats.int],
-    ['WIS', typedStats.wis],
-    ['CHA', typedStats.cha],
+    ['STR', typedStats.strength],
+    ['DEX', typedStats.dexterity],
+    ['CON', typedStats.constitution],
+    ['INT', typedStats.intelligence],
+    ['WIS', typedStats.wisdom],
+    ['CHA', typedStats.charisma],
   ]
 
   return ordered.filter(([, value]) => value !== null && value !== undefined)

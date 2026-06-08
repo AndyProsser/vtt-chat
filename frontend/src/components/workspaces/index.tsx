@@ -385,6 +385,8 @@ export function WorkspaceInitialization({
       selectedCampaignId,
       selectedCharacterId,
       characterSettingsPanel,
+      isCharacterSettingsLoading,
+      isCharacterSettingsSaving,
       setError,
       setLobbyNotice,
     })
