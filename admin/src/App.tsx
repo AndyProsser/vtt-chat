@@ -54,9 +54,9 @@ export default function App() {
   const { isAuthenticated, logout, setToken, initializeAuth, token } = useAuthStore()
 
   const frontendUrl =
-    (import.meta as any).env?.VITE_FRONTEND_URL ||
-    (import.meta as any).env?.VITE_APP_URL ||
-    'http://localhost:5173'
+    (import.meta.env.VITE_FRONTEND_URL as string | undefined) ||
+    (import.meta.env.VITE_APP_URL as string | undefined) ||
+    window.location.origin
   const inviteToken = new URLSearchParams(window.location.search).get('invite')
 
   // Check if setup is required and restore auth on mount

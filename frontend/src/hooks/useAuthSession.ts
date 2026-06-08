@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Role, UUID } from '@shared'
 import type { AuthUser, AuthState, AuthProfile } from '@/types/auth'
 
@@ -16,6 +16,7 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
   const [adminLaunchLoading, setAdminLaunchLoading] = useState(false)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [upgradePromptDismissed, setUpgradePromptDismissed] = useState(false)
+  const handoffExchangedRef = useRef(false)
 
   const storeAuthSession = (token: string, user: AuthUser) => {
     sessionStorage.setItem('authToken', token)
@@ -84,6 +85,8 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
 
     const bootstrap = async () => {
       if (handoff) {
+        if (handoffExchangedRef.current) return
+        handoffExchangedRef.current = true
         try {
           const response = await fetch(`${apiUrl}/api/auth/handoff/exchange`, {
             method: 'POST',

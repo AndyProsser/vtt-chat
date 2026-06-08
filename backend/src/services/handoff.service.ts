@@ -62,16 +62,17 @@ export function consumeHandoffToken(
     return null
   }
 
-  // One-time use token: always delete before returning.
-  handoffStore.delete(handoffToken)
-
   if (record.target !== expectedTarget) {
     return null
   }
 
   if (record.expiresAtMs <= Date.now()) {
+    handoffStore.delete(handoffToken)
     return null
   }
+
+  // One-time use: only consume when all checks pass.
+  handoffStore.delete(handoffToken)
 
   return {
     userId: record.userId,
