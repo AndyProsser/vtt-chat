@@ -29,17 +29,30 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
               Policy controls for {props.campaignName || 'this campaign'}.
             </p>
           </div>
-          <button
-            type="button"
-            className="session-icon-action session-icon-action--icon"
-            aria-label={props.isSaving ? 'Saving settings' : 'Save settings'}
-            disabled={props.isSaving || !props.settingsName.trim()}
-            onClick={props.onSave}
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              {props.isSaving ? 'hourglass_top' : 'save'}
-            </span>
-          </button>
+          <div className="session-inline-actions" aria-label="Campaign settings actions">
+            <button
+              type="button"
+              className="session-icon-action session-icon-action--icon"
+              aria-label="Export campaign"
+              disabled={props.isSaving}
+              onClick={props.onExport}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                file_download
+              </span>
+            </button>
+            <button
+              type="button"
+              className="session-icon-action session-icon-action--icon"
+              aria-label={props.isSaving ? 'Saving settings' : 'Save settings'}
+              disabled={props.isSaving || !props.settingsName.trim()}
+              onClick={props.onSave}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {props.isSaving ? 'hourglass_top' : 'save'}
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="session-campaign-settings-grid session-campaign-settings-grid-dialog">

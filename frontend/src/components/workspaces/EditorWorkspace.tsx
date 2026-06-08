@@ -112,6 +112,31 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             isEditorContext: true,
             onCopyInviteUrl: props.onCopyInviteUrl,
             onReissueInvite: props.onReissueInvite,
+            onExport: () => {
+              const campaignId = props.settingsData?.id
+              if (!campaignId) return
+              void fetch(`${props.apiUrl}/api/campaigns/${campaignId}/export`, {
+                headers: { Authorization: `Bearer ${props.token}` },
+              })
+                .then((res) => res.json())
+                .then((data: { bundle?: unknown }) => {
+                  if (!data.bundle) return
+                  const blob = new Blob([JSON.stringify(data.bundle, null, 2)], {
+                    type: 'application/json',
+                  })
+                  const url = URL.createObjectURL(blob)
+                  const anchor = document.createElement('a')
+                  anchor.href = url
+                  const safeName = (props.settingsData?.name || 'campaign')
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                  anchor.download = `${safeName}-campaign.json`
+                  document.body.appendChild(anchor)
+                  anchor.click()
+                  document.body.removeChild(anchor)
+                  URL.revokeObjectURL(url)
+                })
+            },
             onSave: props.onSaveCampaignSettings,
             onDeleteCampaign: () => {
               if (props.selectedCampaign) {

@@ -2,7 +2,11 @@ import type { ChangeEvent, SubmitEventHandler } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
 import type { CampaignVisibility, ExtensionSyncPolicy, LateJoinPolicy } from '@/types/sessionUi'
 import type { Session as SessionRecord } from '@/types/session'
-import type { CampaignSettingsHomeTab, CampaignSettingsPayload } from '@/types/session/campaign'
+import type {
+  CampaignExportBundle,
+  CampaignSettingsHomeTab,
+  CampaignSettingsPayload,
+} from '@/types/session/campaign'
 
 export type ModalsProps = {
   apiUrl: string
@@ -12,7 +16,7 @@ export type ModalsProps = {
   showCreateCampaignModal: boolean
   isCreatingCampaign: boolean
   newCampaignName: string
-  onCreateCampaignSubmit: (intent: 'edit' | 'launch') => void
+  onCreateCampaignSubmit: (intent: 'edit' | 'launch', importedBundle?: CampaignExportBundle) => void
   onNewCampaignNameChange: (value: string) => void
   onCloseCreateCampaign: () => void
   showJoinCampaignModal: boolean

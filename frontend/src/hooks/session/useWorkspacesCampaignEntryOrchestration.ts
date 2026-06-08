@@ -3,7 +3,11 @@ import type { Dispatch, SetStateAction, SubmitEventHandler } from 'react'
 import { normalizeCampaignSessionBaseName, type UUID } from '@shared'
 import { SessionState } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
-import type { CampaignJoinRequestSummary, CampaignSummary } from '@/types/session/campaign'
+import type {
+  CampaignExportBundle,
+  CampaignJoinRequestSummary,
+  CampaignSummary,
+} from '@/types/session/campaign'
 import {
   buildDefaultChapterName,
   normalizeSessionRecord,
@@ -251,7 +255,7 @@ export function useWorkspacesCampaignEntryOrchestration(
   )
 
   const handleCreateCampaign = useCallback(
-    async (intent: 'edit' | 'launch') => {
+    async (intent: 'edit' | 'launch', importedBundle?: CampaignExportBundle) => {
       setError(null)
       setLobbyNotice(null)
 
@@ -262,27 +266,57 @@ export function useWorkspacesCampaignEntryOrchestration(
 
       setIsCreatingCampaign(true)
       try {
-        const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ name: newCampaignName }),
-        })
+        let campaign: CampaignSummary
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.message || 'Failed to create campaign')
+        if (importedBundle) {
+          const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns/import`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              bundle: importedBundle,
+              nameOverride: newCampaignName.trim() || null,
+            }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.message || 'Failed to import campaign')
+          }
+
+          const data = (await response.json()) as { campaign: CampaignSummary }
+          campaign = {
+            ...data.campaign,
+            currentDmId: data.campaign.currentDmId ?? userId,
+            memberRole: data.campaign.memberRole ?? 'DM',
+            isMember: data.campaign.isMember ?? true,
+          }
+        } else {
+          const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ name: newCampaignName }),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.message || 'Failed to create campaign')
+          }
+
+          const data = (await response.json()) as { campaign: CampaignSummary }
+          campaign = {
+            ...data.campaign,
+            currentDmId: data.campaign.currentDmId ?? userId,
+            memberRole: data.campaign.memberRole ?? 'DM',
+            isMember: data.campaign.isMember ?? true,
+          }
         }
 
-        const data = (await response.json()) as { campaign: CampaignSummary }
-        const campaign: CampaignSummary = {
-          ...data.campaign,
-          currentDmId: data.campaign.currentDmId ?? userId,
-          memberRole: data.campaign.memberRole ?? 'DM',
-          isMember: data.campaign.isMember ?? true,
-        }
         setCampaigns((prev) => [campaign, ...prev])
         setSelectedCampaignId(campaign.id)
         setShowCreateCampaignModal(false)

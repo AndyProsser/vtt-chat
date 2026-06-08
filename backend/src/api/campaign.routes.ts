@@ -54,6 +54,10 @@ import {
   listCampaignExternalLinks,
   upsertCampaignExternalLink,
 } from '@/services/campaign-external-links.service'
+import {
+  buildCampaignExport,
+  importCampaignBundle,
+} from '@/services/admin/admin-portability.service'
 import { deriveCampaignJoinRole } from '@/services/session/authz.service'
 import { broadcastPresenceProfileUpdate } from '@/services/session/presence-profile-broadcast.service'
 import {
@@ -2250,6 +2254,84 @@ router.post('/:campaignId/external-links', requireAuth, async (req: Request, res
       code: ErrorCode.INTERNAL_ERROR,
       message: 'Failed to create external link',
     })
+  }
+})
+
+// ─── Campaign Export ──────────────────────────────────────────────────────────
+
+router.get('/:campaignId/export', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId as UUID },
+    select: { currentDmId: true },
+  })
+
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only the campaign DM can export' })
+  }
+
+  try {
+    const result = await buildCampaignExport(campaignId, user.userId)
+    if (!result) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+    }
+    return res.json({ bundle: result.bundle, artifactId: result.artifactId, counts: result.counts })
+  } catch {
+    return res
+      .status(500)
+      .json({ code: ErrorCode.INTERNAL_ERROR, message: 'Failed to export campaign' })
+  }
+})
+
+// ─── Campaign Import ──────────────────────────────────────────────────────────
+
+router.post('/import', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+
+  if (user.authType === 'GUEST') {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Guest accounts cannot import campaigns' })
+  }
+
+  const { bundle, nameOverride } = req.body || {}
+
+  if (!bundle || typeof bundle !== 'object') {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'bundle is required', field: 'bundle' })
+  }
+
+  try {
+    const result = await importCampaignBundle(user.userId, bundle, nameOverride ?? null)
+    if (!result) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid or incompatible export bundle' })
+    }
+    return res.status(201).json({
+      campaign: result.campaign,
+      artifactId: result.artifactId,
+      counts: result.counts,
+    })
+  } catch {
+    return res
+      .status(500)
+      .json({ code: ErrorCode.INTERNAL_ERROR, message: 'Failed to import campaign' })
   }
 })
 

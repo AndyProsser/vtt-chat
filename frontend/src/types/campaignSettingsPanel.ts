@@ -54,6 +54,7 @@ export type CampaignSettingsPanelProps = {
   isEditorContext: boolean
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
+  onExport: () => void
   onSave: () => void
   onDeleteCampaign: () => void
   isDeletingCampaign: boolean

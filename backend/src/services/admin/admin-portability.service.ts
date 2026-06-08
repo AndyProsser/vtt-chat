@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { getPrismaClient } from '@/infra/db'
 import { PORTABILITY_FORMAT_VERSION } from '@/constants/admin-portability.constants'
 import type { CampaignTransferBundle, OperationalExportBundle } from '@/types/portability.types'
-import type { PortabilityArtifactType, Prisma, PresenceState, Role } from '@prisma/client'
+import type { AuthType, PortabilityArtifactType, Prisma, PresenceState, Role } from '@prisma/client'
 
 const prisma = getPrismaClient()
 
@@ -56,6 +56,8 @@ function buildCounts(bundle: CampaignTransferBundle) {
     notes: bundle.sessions.reduce((total, session) => total + session.notes.length, 0),
     logs: bundle.sessions.reduce((total, session) => total + session.logs.length, 0),
     recordings: bundle.recordings.length,
+    campaignNotes: bundle.campaignNotes.length,
+    greenroomMessages: bundle.greenroomMessages.length,
   }
 }
 
@@ -71,7 +73,9 @@ function isCampaignTransferBundle(input: unknown): input is CampaignTransferBund
     Array.isArray(candidate.members) &&
     Array.isArray(candidate.characters) &&
     Array.isArray(candidate.sessions) &&
-    Array.isArray(candidate.recordings)
+    Array.isArray(candidate.recordings) &&
+    Array.isArray(candidate.campaignNotes) &&
+    Array.isArray(candidate.greenroomMessages)
   )
 }
 
@@ -183,7 +187,19 @@ async function resolveImportedUsers(
       }
     }
 
-    // 2. Attempt match by source user ID (same platform instance).
+    // 2. Match by email from the bundle — works across platform instances.
+    if (sourceUser.email) {
+      const emailMatch = await tx.user.findUnique({
+        where: { email: sourceUser.email },
+        select: { id: true },
+      })
+      if (emailMatch) {
+        userIdMap.set(sourceUserId, emailMatch.id)
+        continue
+      }
+    }
+
+    // 3. Attempt match by source user ID (same platform instance).
     const existing = await tx.user.findUnique({
       where: { id: sourceUserId },
       select: { id: true },
@@ -194,12 +210,13 @@ async function resolveImportedUsers(
       continue
     }
 
-    // 3. Create a stub user so content authorship is preserved.
+    // 4. Create a GUEST stub so content authorship is preserved.
     const created = await tx.user.create({
       data: {
         username: `${slugifyUsername(sourceUser.username)}-${randomUUID().slice(0, 8)}`,
         displayName: normalizeString(sourceUser.displayName) || sourceUser.username,
         role: sourceUser.role,
+        authType: 'GUEST' as AuthType,
       },
       select: { id: true },
     })
@@ -226,6 +243,13 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
         orderBy: { joinedAt: 'asc' },
       },
       characters: { orderBy: { createdAt: 'asc' } },
+      notes: {
+        where: { sessionId: null },
+        orderBy: { createdAt: 'asc' },
+      },
+      greenroomMessages: {
+        orderBy: { createdAt: 'asc' },
+      },
       sessions: {
         orderBy: { createdAt: 'asc' },
         include: {
@@ -251,11 +275,27 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
     campaign: {
       name: campaign.name,
       description: campaign.description,
+      posterUrl: campaign.posterUrl,
       inviteCode: campaign.inviteCode,
       currentDmId: campaign.currentDmId,
       currentDmUsername: campaign.currentDm.username,
       createdAt: campaign.createdAt.toISOString(),
       updatedAt: campaign.updatedAt.toISOString(),
+      settings: {
+        discoverable: campaign.discoverable,
+        spectatorPolicy: campaign.spectatorPolicy,
+        spectatorMax: campaign.spectatorMax,
+        spectatorWaitlistEnabled: campaign.spectatorWaitlistEnabled,
+        spectatorReconnectGraceSecs: campaign.spectatorReconnectGraceSecs,
+        extensionSyncPolicy: campaign.extensionSyncPolicy,
+        lateJoinPolicy: campaign.lateJoinPolicy,
+        lateJoinGraceMinutes: campaign.lateJoinGraceMinutes,
+        postSessionChatEnabled: campaign.postSessionChatEnabled,
+        postSessionChatDurationMs: campaign.postSessionChatDurationMs,
+        dmAutoTargetOnFirstPlayerJoin: campaign.dmAutoTargetOnFirstPlayerJoin,
+        defaultSessionDurationMins: campaign.defaultSessionDurationMins,
+        supportedPlatforms: campaign.supportedPlatforms,
+      },
     },
     members: campaign.members.map((membership) => ({
       userId: membership.userId,
@@ -277,6 +317,31 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
       metadata: character.metadata as Prisma.JsonValue | null,
       createdAt: character.createdAt.toISOString(),
       updatedAt: character.updatedAt.toISOString(),
+    })),
+    campaignNotes: campaign.notes.map((note) => ({
+      authorId: note.authorId,
+      authorUsername: note.authorUsername,
+      title: note.title,
+      content: note.content,
+      visibility: note.visibility,
+      tags: note.tags as Prisma.JsonValue | null,
+      allowedUsers: note.allowedUsers as Prisma.JsonValue | null,
+      attachments: note.attachments as Prisma.JsonValue | null,
+      publishedAt: toIso(note.publishedAt),
+      createdAt: note.createdAt.toISOString(),
+      updatedAt: note.updatedAt.toISOString(),
+    })),
+    greenroomMessages: campaign.greenroomMessages.map((message) => ({
+      authorId: message.authorId,
+      authorUsername: message.authorUsername,
+      content: message.content,
+      type: message.type,
+      isDmOnly: message.isDmOnly,
+      visibleTo: message.visibleTo as Prisma.JsonValue | null,
+      createdAt: message.createdAt.toISOString(),
+      editedAt: toIso(message.editedAt),
+      deletedAt: toIso(message.deletedAt),
+      deletedBy: message.deletedBy,
     })),
     sessions: campaign.sessions.map((session) => ({
       id: session.id,
@@ -321,6 +386,7 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
         visibility: note.visibility,
         tags: note.tags as Prisma.JsonValue | null,
         allowedUsers: note.allowedUsers as Prisma.JsonValue | null,
+        attachments: note.attachments as Prisma.JsonValue | null,
         publishedAt: toIso(note.publishedAt),
         createdAt: note.createdAt.toISOString(),
         updatedAt: note.updatedAt.toISOString(),
@@ -387,12 +453,31 @@ export async function importCampaignBundle(
     )
     const campaignName = normalizeString(nameOverride) || `${bundle.campaign.name} (Imported)`
 
+    const s = bundle.campaign.settings
     const campaign = await tx.campaign.create({
       data: {
         name: campaignName,
         description: bundle.campaign.description,
+        posterUrl: bundle.campaign.posterUrl,
         inviteCode: generateInviteCode(),
         currentDmId: actorUserId,
+        ...(s
+          ? {
+              discoverable: s.discoverable,
+              spectatorPolicy: s.spectatorPolicy,
+              spectatorMax: s.spectatorMax,
+              spectatorWaitlistEnabled: s.spectatorWaitlistEnabled,
+              spectatorReconnectGraceSecs: s.spectatorReconnectGraceSecs,
+              extensionSyncPolicy: s.extensionSyncPolicy,
+              lateJoinPolicy: s.lateJoinPolicy,
+              lateJoinGraceMinutes: s.lateJoinGraceMinutes,
+              postSessionChatEnabled: s.postSessionChatEnabled,
+              postSessionChatDurationMs: s.postSessionChatDurationMs,
+              dmAutoTargetOnFirstPlayerJoin: s.dmAutoTargetOnFirstPlayerJoin,
+              defaultSessionDurationMins: s.defaultSessionDurationMins,
+              supportedPlatforms: s.supportedPlatforms,
+            }
+          : {}),
       },
       select: {
         id: true,
@@ -529,6 +614,7 @@ export async function importCampaignBundle(
           visibility: note.visibility,
           tags: note.tags as Prisma.InputJsonValue | null,
           allowedUsers: mapUserIdList(note.allowedUsers, userIdMap) as Prisma.InputJsonValue | null,
+          attachments: note.attachments as Prisma.InputJsonValue | null,
           publishedAt: toDate(note.publishedAt),
           createdAt: toDate(note.createdAt) || new Date(),
           updatedAt: toDate(note.updatedAt) || new Date(),
@@ -573,6 +659,47 @@ export async function importCampaignBundle(
           createdAt: toDate(recording.createdAt) || new Date(),
           updatedAt: toDate(recording.updatedAt) || new Date(),
         })),
+      })
+    }
+
+    if (bundle.campaignNotes.length > 0) {
+      await tx.note.createMany({
+        data: bundle.campaignNotes.map((note) => ({
+          id: randomUUID(),
+          campaignId: campaign.id,
+          sessionId: null,
+          authorId: userIdMap.get(note.authorId) || actorUserId,
+          authorUsername: note.authorUsername,
+          title: note.title,
+          content: note.content,
+          visibility: note.visibility,
+          tags: note.tags as Prisma.InputJsonValue | null,
+          allowedUsers: mapUserIdList(note.allowedUsers, userIdMap) as Prisma.InputJsonValue | null,
+          attachments: note.attachments as Prisma.InputJsonValue | null,
+          publishedAt: toDate(note.publishedAt),
+          createdAt: toDate(note.createdAt) || new Date(),
+          updatedAt: toDate(note.updatedAt) || new Date(),
+        })) as any[],
+      })
+    }
+
+    if (bundle.greenroomMessages.length > 0) {
+      await tx.chatMessage.createMany({
+        data: bundle.greenroomMessages.map((message) => ({
+          id: randomUUID(),
+          campaignId: campaign.id,
+          sessionId: null,
+          authorId: userIdMap.get(message.authorId) || actorUserId,
+          authorUsername: message.authorUsername,
+          content: message.content,
+          type: message.type,
+          isDmOnly: message.isDmOnly,
+          visibleTo: mapUserIdList(message.visibleTo, userIdMap) as Prisma.InputJsonValue | null,
+          createdAt: toDate(message.createdAt) || new Date(),
+          editedAt: toDate(message.editedAt),
+          deletedAt: toDate(message.deletedAt),
+          deletedBy: message.deletedBy ? userIdMap.get(message.deletedBy) || null : null,
+        })) as any[],
       })
     }
 

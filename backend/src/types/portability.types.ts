@@ -1,4 +1,6 @@
 import type {
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
   MessageType,
   NoteVisibility,
   Prisma,
@@ -6,6 +8,8 @@ import type {
   RoomType,
   SessionLogEventType,
   SessionState,
+  SpectatorPolicy,
+  SupportedPlatform,
 } from '@prisma/client'
 
 export interface CampaignTransferBundle {
@@ -15,11 +19,27 @@ export interface CampaignTransferBundle {
   campaign: {
     name: string
     description: string | null
+    posterUrl: string | null
     inviteCode: string
     currentDmId: string
     currentDmUsername: string
     createdAt: string
     updatedAt: string
+    settings: {
+      discoverable: boolean
+      spectatorPolicy: SpectatorPolicy
+      spectatorMax: number | null
+      spectatorWaitlistEnabled: boolean
+      spectatorReconnectGraceSecs: number
+      extensionSyncPolicy: ExtensionSyncPolicy
+      lateJoinPolicy: LateJoinPolicy
+      lateJoinGraceMinutes: number
+      postSessionChatEnabled: boolean
+      postSessionChatDurationMs: number
+      dmAutoTargetOnFirstPlayerJoin: boolean
+      defaultSessionDurationMins: number
+      supportedPlatforms: SupportedPlatform[]
+    }
   }
   members: Array<{
     userId: string
@@ -41,6 +61,31 @@ export interface CampaignTransferBundle {
     metadata: Prisma.JsonValue | null
     createdAt: string
     updatedAt: string
+  }>
+  campaignNotes: Array<{
+    authorId: string
+    authorUsername: string
+    title: string
+    content: string
+    visibility: NoteVisibility
+    tags: Prisma.JsonValue | null
+    allowedUsers: Prisma.JsonValue | null
+    attachments: Prisma.JsonValue | null
+    publishedAt: string | null
+    createdAt: string
+    updatedAt: string
+  }>
+  greenroomMessages: Array<{
+    authorId: string
+    authorUsername: string
+    content: string
+    type: MessageType
+    isDmOnly: boolean
+    visibleTo: Prisma.JsonValue | null
+    createdAt: string
+    editedAt: string | null
+    deletedAt: string | null
+    deletedBy: string | null
   }>
   sessions: Array<{
     id: string
@@ -85,6 +130,7 @@ export interface CampaignTransferBundle {
       visibility: NoteVisibility
       tags: Prisma.JsonValue | null
       allowedUsers: Prisma.JsonValue | null
+      attachments: Prisma.JsonValue | null
       publishedAt: string | null
       createdAt: string
       updatedAt: string

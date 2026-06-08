@@ -52,6 +52,23 @@ export type CampaignMembershipRole = CampaignSummary['memberRole']
 
 export type CampaignSettingsHomeTab = 'home' | 'notes' | 'journal'
 
+/** Minimal frontend type for validating and reading a campaign export bundle. */
+export interface CampaignExportBundle {
+  version: 1
+  exportedAt: string
+  sourceCampaignId: string
+  campaign: {
+    name: string
+    [key: string]: unknown
+  }
+  members: unknown[]
+  characters: unknown[]
+  campaignNotes: unknown[]
+  greenroomMessages: unknown[]
+  sessions: unknown[]
+  recordings: unknown[]
+}
+
 export type CampaignSettingsPayload = {
   latestSessionId?: UUID | null
   latestSessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | null

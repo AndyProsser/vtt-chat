@@ -297,6 +297,12 @@
   flex-wrap: wrap;
 }
 
+.session-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
 .session-icon-action {
   display: inline-flex;
   align-items: center;
