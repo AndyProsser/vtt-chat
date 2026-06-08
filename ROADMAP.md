@@ -891,7 +891,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Admin-Platform: User, Campaign, and Ops Management
 
-**Status**: 🔵 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -899,24 +899,25 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Sub-domains**:
 
-- User Management (suspend, restore, ban, view history) — suspend/restore done; ban not yet implemented
+- User Management (suspend, restore, ban, view history) — done
 - Campaign Management (archive, restore, view members) — done
 - Logs & Telemetry (search logs, view metrics, event history) — done
 - System Status (health checks, service status, performance) — done
 - Import/Export (user data export, campaign archive) — done
-- Backup/Restore (manual backup, restore from backup) — backend endpoints exist; frontend UI not yet built
+- Backup/Restore (manual backup, restore from bundle) — done
 - Platform Monitoring (uptime, request rate, error rate) — done; Prometheus/Grafana integration not yet implemented
-- Initial Setup Wizard — done; first admin created via `/admin/setup` is granted SUPER_ADMIN automatically
+- Initial Setup Wizard — done; first frontend load gates on setup if no admin exists; first admin granted SUPER_ADMIN automatically
 
 **Acceptance Criteria**:
 
 - [x] Admin can suspend/restore users
-- [ ] Admin can ban users (permanent suspension — no backend route or frontend UI yet)
+- [x] Admin can permanently ban users (`POST /users/:userId/ban`) and unban (`POST /users/:userId/unban`); `bannedAt` on User schema; restore rejects banned users
 - [x] Admin can archive/restore campaigns
 - [x] Admin can search logs by user/campaign/date range
 - [x] Admin can view system health and service status
-- [ ] Backup/restore frontend UI — backend endpoints (`POST /settings/backup`, `GET /settings/backup/export`) exist but are not exposed in the Settings page
+- [x] Backup/restore UI — Settings page has "Backup Now", "Export Ops Bundle", and "Restore from Bundle" (`POST /settings/backup/restore`)
 - [x] Monitoring integration displays uptime, request rate, error rate
+- [x] First frontend load shows `SetupGate` and blocks the app if no admin account exists yet
 
 **Related Docs**:
 

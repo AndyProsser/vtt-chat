@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { SetupGate } from './components/routes/SetupGate'
 import { AppMainRouteView } from './components/routes/AppMainRouteView'
 import { BrowseRouteView } from './components/routes/BrowseRouteView'
 import { JoinRouteView } from './components/routes/JoinRouteView'
@@ -113,6 +114,34 @@ export default function App() {
     adminUrl,
   })
   const appDiagnosticState = `${routeView.kind}|${auth.token ? 'authenticated' : 'anonymous'}`
+
+  const [setupRequired, setSetupRequired] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    // Skip setup check for lightweight popout routes — they don't need app context.
+    if (routeView.kind === 'popout-note' || routeView.kind === 'popout-journal') {
+      setSetupRequired(false)
+      return
+    }
+
+    const checkSetup = async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/admin/setup-status`)
+        if (!res.ok) {
+          // If we can't reach the endpoint, don't block the app.
+          setSetupRequired(false)
+          return
+        }
+        const data = (await res.json()) as { setupRequired?: boolean }
+        setSetupRequired(data.setupRequired === true)
+      } catch {
+        // Network failure — don't block the app.
+        setSetupRequired(false)
+      }
+    }
+
+    void checkSetup()
+  }, [apiUrl, routeView.kind])
 
   useEffect(() => {
     if (bootstrapLoggedRef.current) return
@@ -253,7 +282,7 @@ export default function App() {
               data-ui-component="RouteSurface"
               data-ui-state={routeView.kind}
             >
-              {renderRouteView()}
+              {setupRequired === true ? <SetupGate adminUrl={adminUrl} /> : renderRouteView()}
             </section>
           </main>
         </div>

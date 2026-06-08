@@ -3,6 +3,7 @@ import { AdminService } from '@/services/admin.service'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
 import type { AdminAuthToken } from '@/types'
 import {
+  banAdminUserPayload,
   createAdminInvitePayload,
   createInitialAdminSetupPayload,
   exchangeAdminHandoffPayload,
@@ -13,6 +14,7 @@ import {
   redeemAdminInvitePayload,
   restoreAdminUserPayload,
   suspendAdminUserPayload,
+  unbanAdminUserPayload,
   validateAdminInvitePayload,
   type AdminAuditWriteInput,
 } from '@/services/admin/admin-access.service'
@@ -298,6 +300,62 @@ export function registerAdminAccessRoutes(router: Router, deps: AdminAccessRoute
       }
     }
   )
+
+  router.post('/users/:userId/ban', adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
+      if (!deps.hasRole(actor.adminRole, 'ADMIN')) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const result = await banAdminUserPayload({
+        actor,
+        userId: String(req.params.userId || ''),
+        reason: String(req.body?.reason || '').trim() || undefined,
+      })
+
+      if (result.audit) {
+        await deps.writeAudit(result.audit)
+      }
+
+      res.status(result.status).json(result.body)
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
+  })
+
+  router.post('/users/:userId/unban', adminAuthMiddleware, async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
+      if (!deps.hasRole(actor.adminRole, 'ADMIN')) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const result = await unbanAdminUserPayload({
+        actor,
+        userId: String(req.params.userId || ''),
+        reason: String(req.body?.reason || '').trim() || undefined,
+      })
+
+      if (result.audit) {
+        await deps.writeAudit(result.audit)
+      }
+
+      res.status(result.status).json(result.body)
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
+  })
 
   router.post('/handoff/app', adminAuthMiddleware, async (req: Request, res: Response) => {
     try {

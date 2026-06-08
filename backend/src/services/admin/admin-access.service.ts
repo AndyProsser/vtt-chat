@@ -520,6 +520,25 @@ export async function restoreAdminUserPayload(params: {
     }
   }
 
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, username: true, bannedAt: true },
+  })
+
+  if (!existing) {
+    return { status: 404, body: { error: 'User not found', code: 'NOT_FOUND' } }
+  }
+
+  if (existing.bannedAt) {
+    return {
+      status: 400,
+      body: {
+        error: 'User is permanently banned and cannot be restored. Use the Unban action instead.',
+        code: 'USER_IS_BANNED',
+      },
+    }
+  }
+
   const updated = await prisma.user.update({
     where: { id: userId },
     data: { isActive: true },
@@ -535,6 +554,90 @@ export async function restoreAdminUserPayload(params: {
     audit: {
       actor: params.actor,
       action: 'USER_RESTORE',
+      targetType: 'USER',
+      targetId: updated.id,
+      reason: params.reason,
+      metadata: { targetUsername: updated.username },
+    },
+  }
+}
+
+export async function banAdminUserPayload(params: {
+  actor: AdminAuthToken
+  userId: string
+  reason?: string
+}): Promise<AdminAccessServiceResult> {
+  const userId = String(params.userId || '')
+  if (!userId) {
+    return { status: 400, body: { error: 'userId is required', code: 'INVALID_USER_ID' } }
+  }
+
+  if (userId === params.actor.userId) {
+    return {
+      status: 400,
+      body: { error: 'You cannot ban your own account', code: 'SELF_ACTION_NOT_ALLOWED' },
+    }
+  }
+
+  const now = new Date()
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { isActive: false, bannedAt: now, tokenInvalidBefore: now },
+    select: { id: true, username: true, isActive: true, bannedAt: true },
+  })
+
+  return {
+    status: 200,
+    body: { message: 'User permanently banned', user: updated },
+    audit: {
+      actor: params.actor,
+      action: 'USER_BAN',
+      targetType: 'USER',
+      targetId: updated.id,
+      reason: params.reason,
+      metadata: { targetUsername: updated.username, bannedAt: updated.bannedAt },
+    },
+  }
+}
+
+export async function unbanAdminUserPayload(params: {
+  actor: AdminAuthToken
+  userId: string
+  reason?: string
+}): Promise<AdminAccessServiceResult> {
+  const userId = String(params.userId || '')
+  if (!userId) {
+    return { status: 400, body: { error: 'userId is required', code: 'INVALID_USER_ID' } }
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, username: true, bannedAt: true },
+  })
+
+  if (!existing) {
+    return { status: 404, body: { error: 'User not found', code: 'NOT_FOUND' } }
+  }
+
+  if (!existing.bannedAt) {
+    return {
+      status: 400,
+      body: { error: 'User is not banned', code: 'USER_NOT_BANNED' },
+    }
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { isActive: true, bannedAt: null },
+    select: { id: true, username: true, isActive: true, bannedAt: true },
+  })
+
+  return {
+    status: 200,
+    body: { message: 'User unbanned successfully', user: updated },
+    audit: {
+      actor: params.actor,
+      action: 'USER_UNBAN',
       targetType: 'USER',
       targetId: updated.id,
       reason: params.reason,

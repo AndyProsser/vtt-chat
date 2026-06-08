@@ -41,54 +41,98 @@ export function UserTable({ rows, actionBusyUserId, onRunAction }: UserTableProp
                   <td>{row.email || '—'}</td>
                   <td>{roleLabel(row.role, row.effectiveAdminRole)}</td>
                   <td>{new Date(row.updatedAt).toLocaleString()}</td>
-                  <td>{row.isActive ? 'Active' : 'Suspended'}</td>
+                  <td>{row.bannedAt ? 'Banned' : row.isActive ? 'Active' : 'Suspended'}</td>
                   <td>
                     <div className="cell-actions">
-                      {row.isActive ? (
+                      {row.bannedAt ? (
+                        <button
+                          className="admin-btn"
+                          disabled={busy}
+                          onClick={() =>
+                            onRunAction(row.id, 'POST', `/users/${row.id}/unban`, 'Ban overturned')
+                          }
+                        >
+                          {busy ? 'Working...' : 'Unban'}
+                        </button>
+                      ) : row.isActive ? (
+                        <>
+                          <button
+                            className="admin-btn admin-btn-ghost"
+                            disabled={busy}
+                            onClick={() =>
+                              onRunAction(
+                                row.id,
+                                'PATCH',
+                                `/users/${row.id}/suspend`,
+                                'Policy or moderation breach'
+                              )
+                            }
+                          >
+                            {busy ? 'Working...' : 'Suspend'}
+                          </button>
+                          <button
+                            className="admin-btn admin-btn-danger"
+                            disabled={busy}
+                            onClick={() =>
+                              onRunAction(
+                                row.id,
+                                'POST',
+                                `/users/${row.id}/ban`,
+                                'Permanent policy violation'
+                              )
+                            }
+                          >
+                            {busy ? 'Working...' : 'Ban'}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="admin-btn"
+                            disabled={busy}
+                            onClick={() =>
+                              onRunAction(
+                                row.id,
+                                'PATCH',
+                                `/users/${row.id}/restore`,
+                                'Issue resolved'
+                              )
+                            }
+                          >
+                            {busy ? 'Working...' : 'Restore'}
+                          </button>
+                          <button
+                            className="admin-btn admin-btn-danger"
+                            disabled={busy}
+                            onClick={() =>
+                              onRunAction(
+                                row.id,
+                                'POST',
+                                `/users/${row.id}/ban`,
+                                'Permanent policy violation'
+                              )
+                            }
+                          >
+                            {busy ? 'Working...' : 'Ban'}
+                          </button>
+                        </>
+                      )}
+                      {!row.bannedAt && (
                         <button
                           className="admin-btn admin-btn-ghost"
                           disabled={busy}
                           onClick={() =>
                             onRunAction(
                               row.id,
-                              'PATCH',
-                              `/users/${row.id}/suspend`,
-                              'Policy or moderation breach'
+                              'POST',
+                              `/users/${row.id}/force-logout`,
+                              'Security policy refresh'
                             )
                           }
                         >
-                          {busy ? 'Working...' : 'Suspend'}
-                        </button>
-                      ) : (
-                        <button
-                          className="admin-btn"
-                          disabled={busy}
-                          onClick={() =>
-                            onRunAction(
-                              row.id,
-                              'PATCH',
-                              `/users/${row.id}/restore`,
-                              'Issue resolved'
-                            )
-                          }
-                        >
-                          {busy ? 'Working...' : 'Restore'}
+                          Force Logout
                         </button>
                       )}
-                      <button
-                        className="admin-btn admin-btn-ghost"
-                        disabled={busy}
-                        onClick={() =>
-                          onRunAction(
-                            row.id,
-                            'POST',
-                            `/users/${row.id}/force-logout`,
-                            'Security policy refresh'
-                          )
-                        }
-                      >
-                        Force Logout
-                      </button>
                     </div>
                   </td>
                 </tr>

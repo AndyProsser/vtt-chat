@@ -16,12 +16,16 @@ export default function Settings() {
     saving,
     backupBusy,
     opsExportBusy,
+    restoreBusy,
+    restoreBundleText,
+    setRestoreBundleText,
     error,
     statusMessage,
     operationsExportText,
     updateSettings,
     triggerBackup,
     exportOperationsBundle,
+    restoreFromBundle,
   } = useRuntimeSettings()
 
   const handleChange = (partial: Partial<RuntimeSettings>) => {
@@ -84,6 +88,31 @@ export default function Settings() {
               />
             </Box>
           ) : null}
+
+          <Box sx={{ display: 'grid', gap: 1 }}>
+            <Typography variant="subtitle2">Restore Settings from Bundle</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Paste a previously exported Operational Export Bundle to restore admin settings. Only
+              the settings block is applied — telemetry and audit log entries are not replayed.
+            </Typography>
+            <textarea
+              aria-label="Restore bundle input"
+              className="settings-export-textarea"
+              placeholder='Paste exported bundle JSON here ({"version":..., "settings":...})'
+              value={restoreBundleText}
+              onChange={(e) => setRestoreBundleText(e.target.value)}
+            />
+            <Box>
+              <Button
+                variant="outlined"
+                color="warning"
+                disabled={restoreBusy || !restoreBundleText.trim()}
+                onClick={() => void restoreFromBundle()}
+              >
+                {restoreBusy ? 'Restoring...' : 'Restore from Bundle'}
+              </Button>
+            </Box>
+          </Box>
         </>
       )}
     </Box>

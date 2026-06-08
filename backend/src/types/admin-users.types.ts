@@ -1,6 +1,6 @@
 export type AdminUsersRoleFilter = 'all' | 'dm' | 'player' | 'spectator' | 'admin'
 
-export type AdminUsersStatusFilter = 'all' | 'active' | 'suspended'
+export type AdminUsersStatusFilter = 'all' | 'active' | 'suspended' | 'banned'
 
 export type AdminUsersExportFormat = 'json' | 'csv'
 
@@ -22,6 +22,7 @@ export interface AdminUsersRepositoryRow {
   role: string
   adminRole: string | null
   isActive: boolean
+  bannedAt: Date | null
   createdAt: Date
   updatedAt: Date
   tokenInvalidBefore: Date | null
@@ -35,6 +36,7 @@ export interface AdminUsersListItem {
   role: string
   adminRole: string | null
   isActive: boolean
+  bannedAt: Date | null
   createdAt: Date
   updatedAt: Date
   tokenInvalidBefore: Date | null

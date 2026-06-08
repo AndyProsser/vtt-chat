@@ -47,6 +47,7 @@ export function UserFilters({
         <option value="all">All statuses</option>
         <option value="active">Active</option>
         <option value="suspended">Suspended</option>
+        <option value="banned">Banned</option>
       </select>
       <select
         aria-label="Rows per page"

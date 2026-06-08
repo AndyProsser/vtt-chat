@@ -14,6 +14,7 @@ export interface AdminUserRow {
   adminRole: AdminRole | null
   effectiveAdminRole: AdminRole | null
   isActive: boolean
+  bannedAt: string | null
   tokenInvalidBefore: string | null
   createdAt: string
   updatedAt: string

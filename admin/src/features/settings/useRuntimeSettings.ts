@@ -8,6 +8,8 @@ export function useRuntimeSettings() {
   const [saving, setSaving] = useState(false)
   const [backupBusy, setBackupBusy] = useState(false)
   const [opsExportBusy, setOpsExportBusy] = useState(false)
+  const [restoreBusy, setRestoreBusy] = useState(false)
+  const [restoreBundleText, setRestoreBundleText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [operationsExportText, setOperationsExportText] = useState('')
@@ -114,6 +116,45 @@ export function useRuntimeSettings() {
     }
   }
 
+  const restoreFromBundle = async () => {
+    const trimmed = restoreBundleText.trim()
+    if (!trimmed) {
+      setError('Paste an exported bundle JSON before restoring.')
+      return
+    }
+
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(trimmed)
+    } catch {
+      setError('Invalid JSON — ensure the bundle is unmodified from the export.')
+      return
+    }
+
+    setRestoreBusy(true)
+    setError(null)
+    setStatusMessage(null)
+
+    try {
+      const response = await requestJson<{
+        message: string
+        restoredAt: string
+        settings: RuntimeSettings
+      }>('/settings/backup/restore', {
+        method: 'POST',
+        body: JSON.stringify({ bundle: parsed }),
+      })
+
+      setSettings(response.settings)
+      setStatusMessage(`${response.message} (${new Date(response.restoredAt).toLocaleString()})`)
+      setRestoreBundleText('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to restore settings from bundle')
+    } finally {
+      setRestoreBusy(false)
+    }
+  }
+
   return {
     settings,
     setSettings,
@@ -121,11 +162,15 @@ export function useRuntimeSettings() {
     saving,
     backupBusy,
     opsExportBusy,
+    restoreBusy,
+    restoreBundleText,
+    setRestoreBundleText,
     error,
     statusMessage,
     operationsExportText,
     updateSettings,
     triggerBackup,
     exportOperationsBundle,
+    restoreFromBundle,
   }
 }

@@ -11,6 +11,7 @@ import {
   buildAdminTelemetryLogsListPayload,
   buildAdminTelemetryStatusPayload,
   buildLogRetentionPatch,
+  applyAdminSettingsRestorePayload,
   buildSettingsBackupQueuedPayload,
   buildSettingsOperationsExportPayload,
   createAdminCampaignRecordingPayload,
@@ -704,6 +705,40 @@ router.get('/settings/backup/export', adminAuthMiddleware, async (req: Request, 
     errorHandler(error as any, req, res, () => {})
   }
 })
+
+router.post(
+  '/settings/backup/restore',
+  adminAuthMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const actor = req.admin
+      if (!actor) {
+        res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED' })
+        return
+      }
+
+      if (!hasRole(actor.adminRole, 'ADMIN')) {
+        res.status(403).json({ error: 'Insufficient permissions', code: 'FORBIDDEN' })
+        return
+      }
+
+      const result = applyAdminSettingsRestorePayload({ bundle: req.body?.bundle ?? req.body })
+
+      if (result.status === 200) {
+        await writeAdminAudit({
+          actor,
+          action: 'SETTINGS_RESTORE',
+          targetType: 'ADMIN_SETTINGS',
+          metadata: { restoredAt: (result.body as Record<string, unknown>).restoredAt },
+        })
+      }
+
+      res.status(result.status).json(result.body)
+    } catch (error) {
+      errorHandler(error as any, req, res, () => {})
+    }
+  }
+)
 
 router.get('/integrations/systems', adminAuthMiddleware, async (req: Request, res: Response) => {
   try {

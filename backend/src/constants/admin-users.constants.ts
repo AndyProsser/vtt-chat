@@ -4,7 +4,7 @@ export const ADMIN_USERS_MAX_LIST_PAGE_SIZE = 200
 
 export const ADMIN_USERS_ROLE_FILTERS = ['all', 'dm', 'player', 'spectator', 'admin'] as const
 
-export const ADMIN_USERS_STATUS_FILTERS = ['all', 'active', 'suspended'] as const
+export const ADMIN_USERS_STATUS_FILTERS = ['all', 'active', 'suspended', 'banned'] as const
 
 export const ADMIN_USERS_DEFAULT_EXPORT_FORMAT = 'json'
 

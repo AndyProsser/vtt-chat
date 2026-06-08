@@ -29,7 +29,9 @@ function buildUsersWhere(params: {
   if (params.statusFilter === 'active') {
     andClauses.push({ isActive: true })
   } else if (params.statusFilter === 'suspended') {
-    andClauses.push({ isActive: false })
+    andClauses.push({ isActive: false, bannedAt: null })
+  } else if (params.statusFilter === 'banned') {
+    andClauses.push({ bannedAt: { not: null } })
   }
 
   if (params.roleFilter === 'dm') {
@@ -70,6 +72,7 @@ export async function listAdminUsers(params: AdminUsersListRequest): Promise<{
         role: true,
         adminRole: true,
         isActive: true,
+        bannedAt: true,
         createdAt: true,
         updatedAt: true,
         tokenInvalidBefore: true,
@@ -87,6 +90,7 @@ export async function listAdminUsers(params: AdminUsersListRequest): Promise<{
       role: user.role,
       adminRole: user.adminRole,
       isActive: user.isActive,
+      bannedAt: user.bannedAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       tokenInvalidBefore: user.tokenInvalidBefore,
@@ -105,6 +109,7 @@ export async function listAdminUsersForExport(): Promise<AdminUsersRepositoryRow
       role: true,
       adminRole: true,
       isActive: true,
+      bannedAt: true,
       createdAt: true,
       updatedAt: true,
       tokenInvalidBefore: true,
@@ -119,6 +124,7 @@ export async function listAdminUsersForExport(): Promise<AdminUsersRepositoryRow
     role: user.role,
     adminRole: user.adminRole,
     isActive: user.isActive,
+    bannedAt: user.bannedAt,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     tokenInvalidBefore: user.tokenInvalidBefore,

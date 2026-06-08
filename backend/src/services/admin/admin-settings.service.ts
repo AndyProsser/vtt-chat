@@ -102,6 +102,38 @@ export function mergeAdminSettingsWithRetention(
 
 // ─── Settings Backup ──────────────────────────────────────────────────────────
 
+export function applyAdminSettingsRestorePayload(params: { bundle: unknown }): {
+  status: number
+  body: Record<string, unknown>
+} {
+  const bundle = params.bundle as Record<string, unknown> | null
+
+  if (!bundle || typeof bundle !== 'object') {
+    return {
+      status: 400,
+      body: { error: 'Invalid bundle: expected a JSON object', code: 'INVALID_BUNDLE' },
+    }
+  }
+
+  if (!bundle.settings || typeof bundle.settings !== 'object') {
+    return {
+      status: 400,
+      body: { error: 'Bundle is missing a valid settings block', code: 'MISSING_SETTINGS' },
+    }
+  }
+
+  const restored = updateRuntimeAdminSettingsFromBody(bundle.settings as Record<string, unknown>)
+
+  return {
+    status: 200,
+    body: {
+      message: 'Settings restored from bundle successfully',
+      restoredAt: restored.updatedAt,
+      settings: restored,
+    },
+  }
+}
+
 export function buildSettingsBackupQueuedPayload(): {
   message: string
   queuedAt: string
