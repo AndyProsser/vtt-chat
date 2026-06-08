@@ -74,12 +74,8 @@ export function PartyPanel({
   const sessionPresenceByUserRef = useRef<Record<UUID, SessionPresence>>(EMPTY_SESSION_PRESENCE)
   const dmOverrides = useStore((state) => state.dmOverrides)
   const dmOverridesRef = useRef(dmOverrides)
-  // Reactive selector for own presence state — used to detect AWAY cleared externally
-  // (e.g., the user clicks Go Live in AudioPanel while AWAY, which calls the presence API).
-  const selfPresenceState = useStore(
-    (state) =>
-      currentSessionId ? state.sessionPresence[currentSessionId]?.[currentUserId]?.state : undefined
-  )
+  // Ref-based previous value tracker for the IDLE → ONLINE transition detection.
+  const prevSelfPresenceStateRef = useRef<PresenceState | undefined>(undefined)
 
   const currentUserSnapshot = useMemo(
     () => snapshotMembers.find((member) => member.userId === currentUserId) || null,
@@ -358,18 +354,34 @@ export function PartyPanel({
     setPresenceState,
   ])
 
-  // When sessionPresence for the current user transitions to ONLINE while AWAY flags are set,
-  // it means AWAY was cleared externally (e.g., user clicked Go Live in AudioPanel).
-  // Sync local away state so the "Set Here" button and auto-away timer reflect reality.
+  // Detect when the self-user's presence transitions IDLE → ONLINE externally
+  // (e.g., Go Live in AudioPanel calls the presence API while AWAY).
+  // Using a Zustand subscription (not a reactive selector) so we compare prev vs next
+  // and cannot miss the transition due to React render batching edge cases.
   useEffect(() => {
-    if ((!manualAway && !autoAway) || selfPresenceState !== PresenceState.ONLINE) return
-    setManualAway(false)
-    setAutoAway(false)
-    window.localStorage.removeItem(awayStorageKey)
-    if (currentSessionId) {
-      window.localStorage.removeItem(`vtt:presence:muted-by-away:${currentSessionId}`)
-    }
-  }, [selfPresenceState, manualAway, autoAway, awayStorageKey, currentSessionId])
+    if (!currentSessionId) return
+
+    // Seed the ref before subscribing so the first event has a valid baseline.
+    prevSelfPresenceStateRef.current =
+      useStore.getState().sessionPresence[currentSessionId]?.[currentUserId]?.state
+
+    const unsub = useStore.subscribe((state) => {
+      const next = state.sessionPresence[currentSessionId]?.[currentUserId]?.state
+      const prev = prevSelfPresenceStateRef.current
+      prevSelfPresenceStateRef.current = next
+
+      if (prev === PresenceState.IDLE && next === PresenceState.ONLINE) {
+        // AWAY cleared by an external action — sync local flags and refresh the panel.
+        setManualAway(false)
+        setAutoAway(false)
+        window.localStorage.removeItem(awayStorageKey)
+        window.localStorage.removeItem(`vtt:presence:muted-by-away:${currentSessionId}`)
+        void refreshSnapshot()
+      }
+    })
+
+    return unsub
+  }, [currentSessionId, currentUserId, awayStorageKey, refreshSnapshot])
 
   const handleRefresh = useCallback(() => {
     void refreshSnapshot()

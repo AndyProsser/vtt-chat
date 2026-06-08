@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConnectionState, RoomEvent } from 'livekit-client'
-import { Role, RoomType } from '@shared'
+import { PresenceState, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { buildLiveKitConnectionKey, useLiveKit } from '@/hooks/useLiveKit'
 import { useAudioEngine } from '@/hooks/useAudioEngine'
@@ -118,13 +118,15 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
     // effect publish once transport is connected.
     setDevice({ microphoneOn: true })
 
-    // If AWAY had auto-muted the player, going live should also clear their AWAY state.
-    // The flag is set by PartyPanel when AWAY is triggered with a live mic.
-    // PartyPanel's selfPresenceState watcher cleans up its own local state when it
-    // receives the resulting PRESENCE:STATE_CHANGED broadcast.
-    const awayMutedKey = `vtt:presence:muted-by-away:${sessionId}`
-    if (window.localStorage.getItem(awayMutedKey) === '1') {
-      window.localStorage.removeItem(awayMutedKey)
+    // If the user is AWAY (presence IDLE), going live should clear AWAY state.
+    // This covers both: AWAY auto-muted them (key present) and AWAY with mic already off.
+    // PartyPanel's selfPresenceState watcher reacts to the resulting WS broadcast.
+    const currentUserId = useStore.getState().currentUser?.id
+    const selfPresenceState = currentUserId
+      ? useStore.getState().sessionPresence[sessionId]?.[currentUserId]?.state
+      : undefined
+    if (selfPresenceState === PresenceState.IDLE) {
+      window.localStorage.removeItem(`vtt:presence:muted-by-away:${sessionId}`)
       try {
         const token = sessionStorage.getItem('authToken')
         if (token) {
