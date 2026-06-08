@@ -369,7 +369,13 @@ async function ensureJoinedMemberPresence(params: {
   session: Awaited<ReturnType<typeof getSession>>
   userId: UUID
   username: string
-}): Promise<{ changed: boolean; roomId?: UUID; state?: PresenceState; previousGroupId?: UUID }> {
+}): Promise<{
+  changed: boolean
+  roomId?: UUID
+  state?: PresenceState
+  previousGroupId?: UUID
+  userMuted?: boolean
+}> {
   if (!params.session) {
     return { changed: false }
   }
@@ -430,6 +436,7 @@ async function ensureJoinedMemberPresence(params: {
       roomId: preservedPresence.primaryRoomId,
       state: preservedPresence.state,
       previousGroupId: preservedPresence.previousGroupId,
+      userMuted: preservedPresence.userMuted,
     }
   }
 
@@ -465,6 +472,7 @@ async function ensureJoinedMemberPresence(params: {
     roomId: targetRoom.id,
     state: targetState,
     previousGroupId: nextPresence.previousGroupId,
+    userMuted: nextPresence.userMuted,
   }
 }
 
@@ -523,6 +531,7 @@ async function broadcastMemberJoined(params: {
   username: string
   primaryRoomId: UUID | null
   state: PresenceState
+  userMuted?: boolean
 }): Promise<void> {
   const profiles = await getSessionParticipantProfiles(params.sessionId)
   const profile = profiles[params.userId] || {}
@@ -553,6 +562,7 @@ async function broadcastMemberJoined(params: {
       state: params.state,
       ghost: false,
       joinedAt: timestamp,
+      userMuted: params.userMuted ?? false,
     },
   })
 }
@@ -609,6 +619,7 @@ async function joinSessionHandler(req: Request, res: Response) {
           username: user.username,
           primaryRoomId: ensured.roomId,
           state: ensured.state,
+          userMuted: ensured.userMuted,
         })
 
         wsManager.broadcastEventToSession(id as UUID, {
@@ -758,6 +769,7 @@ async function joinSessionHandler(req: Request, res: Response) {
           username: user.username,
           primaryRoomId: ensured.roomId,
           state: ensured.state,
+          userMuted: ensured.userMuted,
         })
 
         wsManager.broadcastEventToSession(id as UUID, {

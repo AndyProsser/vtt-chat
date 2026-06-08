@@ -257,6 +257,7 @@ export interface SessionMemberJoined {
   state: PresenceState
   ghost: boolean
   joinedAt: number
+  userMuted?: boolean
 }
 
 export type SessionMemberJoinedEvent = EventEnvelope<SessionMemberJoined>

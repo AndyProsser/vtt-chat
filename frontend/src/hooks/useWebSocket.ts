@@ -280,6 +280,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     // Room events
     dispatcher.register('SESSION:MEMBER_JOINED', (event) => {
       useStore.getState().handleSessionMemberJoined(event)
+      const joinedPayload = event.payload as { userId: UUID; userMuted?: boolean }
+      if (typeof joinedPayload.userMuted === 'boolean') {
+        useStore
+          .getState()
+          .setUserMute(event.sessionId as UUID, joinedPayload.userId, joinedPayload.userMuted)
+      }
     })
     dispatcher.register('SESSION:MEMBER_LEFT', (event) => {
       useStore.getState().handleSessionMemberLeft(event)
