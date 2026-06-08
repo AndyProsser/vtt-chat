@@ -26,6 +26,8 @@ export { AUDIO_BROADCAST_OVERRIDE_TYPE }
 export interface ServerMuteEnforcementState {
   userMuted: boolean
   dmMuted: boolean
+  /** True when the player has the Silenced condition applied by the DM. */
+  silenced: boolean
   enforcedMuted: boolean
 }
 
@@ -293,6 +295,7 @@ export async function getServerMuteEnforcementState(params: {
   return {
     userMuted,
     dmMuted,
+    silenced,
     enforcedMuted: userMuted || dmMuted || silenced,
   }
 }

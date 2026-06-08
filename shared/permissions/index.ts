@@ -286,6 +286,14 @@ export const PERMISSION_MATRIX: PermissionRule[] = [
     description: 'Update own presence state (online, typing, speaking, idle)',
   },
   {
+    // WS event type PRESENCE:STATE_CHANGED is sent by clients for speaking/typing signals.
+    // The action extracted from the event type is 'STATE_CHANGED', not 'UPDATE_OWN'.
+    domain: 'PRESENCE',
+    action: 'STATE_CHANGED',
+    allowedRoles: ['DM', 'PLAYER', 'SPECTATOR'],
+    description: 'Broadcast own presence state change (speaking, online, typing) to session',
+  },
+  {
     domain: 'PRESENCE',
     action: 'VIEW',
     allowedRoles: ['DM', 'PLAYER', 'SPECTATOR'],

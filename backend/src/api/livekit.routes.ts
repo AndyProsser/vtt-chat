@@ -177,7 +177,11 @@ router.post('/token', requireAuth, async (req: Request, res: Response) => {
       userId: user.userId as UUID,
     })
 
-    const publishAllowedByMute = !muteState.enforcedMuted
+    // userMuted tracks "user hasn't gone live yet" and is not a DM-enforced restriction.
+    // Only dmMuted and the Silenced condition should block the LiveKit publish grant —
+    // userMuted alone would cause a permission error on first Go Live (token fetched before
+    // the user clicks Go Live, while userMuted is still true from disconnect cascade).
+    const publishAllowedByMute = !muteState.dmMuted && !muteState.silenced
 
     const canPublish =
       requestedChannel === 'broadcast'
