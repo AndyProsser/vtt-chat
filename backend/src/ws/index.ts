@@ -44,6 +44,7 @@ import {
   snapshotSessionPresence,
   updatePresenceState,
 } from '@/services/room.service'
+import { getServerMuteEnforcementState } from '@/services/audio/effects.service'
 
 const AUTH_TIMEOUT_MS = 5000
 const MAX_WS_MESSAGE_SIZE = 64 * 1024
@@ -361,6 +362,32 @@ export class WebSocketManager {
         username: payload.username,
         state: PresenceState.ONLINE,
       })
+
+      // Re-broadcast the player's current mute state so all clients stay in
+      // sync after a page refresh. The player is muted until they click Go Live
+      // (which calls /api/audio/unmute), so all clients should show muted.
+      try {
+        const muteState = await getServerMuteEnforcementState({
+          sessionId,
+          userId: payload.userId as UUID,
+        })
+        const mutedAt = Date.now()
+        // Send to all clients — including the reconnecting player so their local
+        // avatar badge and mute state update immediately without going live first.
+        this.broadcastEventToSession(sessionId, {
+          id: crypto.randomUUID() as UUID,
+          type: 'AUDIO:MUTE_STATE_CHANGED' as any,
+          version: 1,
+          userId: payload.userId as UUID,
+          userRole: payload.role as Role,
+          sessionId,
+          roomId: null,
+          timestamp: mutedAt,
+          payload: { userId: payload.userId, muted: muteState.userMuted, mutedAt },
+        })
+      } catch {
+        // Non-critical — mute state will correct itself when the player goes live
+      }
 
       if (!wasOnline) {
         await this.broadcastCampaignListInvalidated(sessionId, payload.userId as UUID)

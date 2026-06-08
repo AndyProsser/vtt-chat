@@ -597,11 +597,15 @@ export const createRoomSlice: StateCreator<
       return
     }
 
-    // When a user stops being the "active speaker" via a structural presence event
-    // (e.g. room change), also clear them from the speaking activity tracker.
-    if (nextPresence !== PresenceState.SPEAKING) {
-      get().setPresenceSpeakingActivity(event.sessionId, payload.userId, false)
-    }
+    // Keep the speaking activity tracker in sync for structural presence events
+    // (room changes, new members, etc.). Previously this only cleared speaking;
+    // now it also sets it so a SPEAKING event arriving outside the fast path
+    // (e.g. missing existingPresence on first receive) is not silently dropped.
+    get().setPresenceSpeakingActivity(
+      event.sessionId,
+      payload.userId,
+      nextPresence === PresenceState.SPEAKING
+    )
 
     set((state) => {
       const existingMember = roomId

@@ -19,6 +19,7 @@
 import React from 'react'
 import { type UUID } from '@shared'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
+import { useStore } from '@/state/store'
 
 interface MicMutedIndicatorProps {
   sessionId: UUID
@@ -41,8 +42,12 @@ function MicMutedIndicatorImpl({
   className,
 }: MicMutedIndicatorProps) {
   const isMuted = useIsUserMuted(sessionId, userId, isSelf)
+  // For self: device.enabled = false means the user hasn't gone live yet —
+  // they are not transmitting, so the muted badge should show regardless of
+  // server-side mute state (which may be stale before the reconnect sync lands).
+  const isNotLive = useStore((state) => (isSelf ? !state.device.enabled : false))
 
-  if (!isMuted) return null
+  if (!isMuted && !isNotLive) return null
 
   const baseClass = VARIANT_CLASS[variant]
   const composed = className ? `${baseClass} ${className}` : baseClass

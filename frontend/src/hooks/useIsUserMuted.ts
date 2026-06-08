@@ -24,9 +24,10 @@ export function useIsUserMuted(sessionId: UUID, userId: UUID, isSelf: boolean): 
   const selfLocallyMuted = useStore((state) => {
     if (!isSelf) return false
     const device = state.device
-    // Before audio is initialized, device.microphoneOn is false by default.
-    // Gate on device.enabled so the muted indicator doesn't fire on page load
-    // before the mic track is published.
+    // Before audio is initialized (device.enabled = false), device.microphoneOn
+    // is false by default. Gate on device.enabled so the avatar muted badge
+    // (MicMutedIndicator) doesn't appear before the user has clicked Go Live.
+    // ModeStatusPill handles the "not live" case separately via device.enabled.
     if (!device.enabled) return false
     return device.pttEnabled ? !state.pttActive : !device.microphoneOn
   })

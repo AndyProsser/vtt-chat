@@ -26,6 +26,7 @@
 import { RoomType, type UUID } from '@shared'
 import { useStore } from '@/state/store'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
+import { getUserDMOverride } from '@/utils/audioOverrides'
 
 interface SpeakingIndicatorProps {
   sessionId: UUID
@@ -37,9 +38,15 @@ interface SpeakingIndicatorProps {
 }
 
 export function SpeakingIndicator({ sessionId, userId, isSelf, roomType }: SpeakingIndicatorProps) {
-  // Mute is subscribed via the shared hook (own + DM override + self device).
-  // Re-renders only when THIS user's combined mute bit flips.
+  // For self: full mute check (own + DM + device). Re-renders only on flip.
   const isMuted = useIsUserMuted(sessionId, userId, isSelf)
+
+  // For remote users, ownMuted from server can be stale (race between the
+  // "go live" UI update and the async unmute API broadcast). Only the DM
+  // override is authoritative enough to suppress a speaking ring — if someone
+  // is actively speaking in LiveKit, their ownMuted server state is by
+  // definition stale. Reads a single primitive; same Object.is guarantee.
+  const dmMuted = useStore((state) => Boolean(getUserDMOverride(state.dmOverrides, userId, 'MUTE')))
 
   // Per-user speaking bits — primitive boolean selectors. These are the only
   // store subscriptions that flip at speaking-rate. Object.is equality means
@@ -56,7 +63,10 @@ export function SpeakingIndicator({ sessionId, userId, isSelf, roomType }: Speak
   const deviceSpeaking = useStore((state) => (isSelf ? state.device.isSpeaking : false))
 
   if (roomType === RoomType.PRIVATE) return null
-  if (isMuted) return null
+  // Self: suppress ring when mic is off or DM-muted — full isMuted check.
+  // Remote: only suppress for DM overrides; ownMuted can lag behind the actual
+  // state when a player goes live after a page refresh (async API round-trip).
+  if (isSelf ? isMuted : dmMuted) return null
 
   const speaking = isSelf ? deviceSpeaking : isWsSpeaking || isLkSpeaking
   if (!speaking) return null

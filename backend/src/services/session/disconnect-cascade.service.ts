@@ -13,6 +13,7 @@ import {
   clearSessionDMOverrideState,
   getSessionAudioState,
 } from '@/services/audio/audio-state'
+import { setUserMuteState } from '@/services/audio/effects.service'
 import { updateSessionState, getSession, getSessionUsers } from '@/services/session/core.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import { logSessionStateChange } from '@/services/session/logs.service'
@@ -98,6 +99,32 @@ export class SessionDisconnectCascadeService {
         previousGroupId: updated.previousGroupId || null,
       },
     })
+
+    // Mark the disconnected player as muted in Redis so that when they
+    // reconnect (but before they go live), all clients see the correct state.
+    // When the player clicks Go Live, /api/audio/unmute clears this.
+    try {
+      const mutedAt = updated.lastSeenAt
+      await setUserMuteState({
+        sessionId: context.sessionId,
+        userId: context.userId,
+        muted: true,
+        mutedAt,
+      })
+      context.wsManager.broadcastEventToSession(context.sessionId, {
+        id: crypto.randomUUID() as UUID,
+        type: 'AUDIO:MUTE_STATE_CHANGED' as any,
+        version: 1,
+        userId: context.userId,
+        userRole: context.userRole as Role,
+        sessionId: context.sessionId,
+        roomId: null,
+        timestamp: mutedAt,
+        payload: { userId: context.userId, muted: true, mutedAt },
+      })
+    } catch {
+      // Non-critical: mute state will self-correct when the player goes live
+    }
 
     if (previous?.ghost) {
       context.wsManager.broadcastEventToSession(context.sessionId, {

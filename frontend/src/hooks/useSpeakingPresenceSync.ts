@@ -5,6 +5,10 @@
  * to the backend WS whenever the speaking bit flips. The backend relays it to all
  * connected clients so remote avatars show the speaking ring.
  *
+ * roomId is intentionally null — speaking signals carry no room info so they
+ * always hit the handlePresenceStateChanged fast path regardless of whether the
+ * remote client has stale room data for this user.
+ *
  * Only sends on actual state changes — the device layer already debounces the bit.
  */
 import { useEffect, useRef } from 'react'
@@ -28,9 +32,6 @@ export function useSpeakingPresenceSync({
   send,
 }: UseSpeakingPresenceSyncParams) {
   const isSpeaking = useStore((state) => state.device.isSpeaking)
-  const primaryRoomId = useStore((state) =>
-    sessionId ? (state.sessionPresence[sessionId]?.[userId]?.primaryRoomId ?? null) : null
-  )
 
   const lastSentRef = useRef<boolean | null>(null)
 
@@ -49,15 +50,15 @@ export function useSpeakingPresenceSync({
       sessionId,
       userId,
       userRole,
-      roomId: primaryRoomId,
+      roomId: null,
       timestamp: now,
       payload: {
         userId,
         username,
         newState: isSpeaking ? PresenceState.SPEAKING : PresenceState.ONLINE,
-        roomId: primaryRoomId,
+        roomId: null,
         changedAt: now,
       },
     })
-  }, [isSpeaking, sessionId, userId, username, userRole, primaryRoomId, send])
+  }, [isSpeaking, sessionId, userId, username, userRole, send])
 }

@@ -102,7 +102,7 @@ export function useLiveKit(
   roomId: string,
   options: UseLiveKitOptions = {}
 ): UseLiveKitReturn {
-  const roomListenerDiagEnabled = import.meta.env.DEV
+  const roomListenerDiagEnabled = false //import.meta.env.DEV
   const { onTrackSubscribed, onTrackUnsubscribed, tokenChannel = 'room' } = options
   const dualRoomHandoffEnabled =
     tokenChannel === 'room' && import.meta.env.VITE_LIVEKIT_DUAL_ROOM_HANDOFF === '1'
@@ -861,15 +861,6 @@ export function useLiveKit(
         }
       }
 
-      const handleActiveSpeakersChanged = (speakers: Array<{ identity: string }>) => {
-        if (roomRef.current !== nextRoom || !isMountedRef.current) {
-          return
-        }
-
-        const userIds = speakers.map((s) => s.identity as UUID)
-        useStore.getState().setPresenceSpeakingUsers(sessionId as UUID, userIds)
-      }
-
       const roomWithListeners = nextRoom
       roomWithListeners.on(RoomEvent.Connected, handleConnected)
       incrementRoomListenerCount(RoomEvent.Connected)
@@ -895,8 +886,6 @@ export function useLiveKit(
       incrementRoomListenerCount(RoomEvent.TrackSubscribed)
       roomWithListeners.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
       incrementRoomListenerCount(RoomEvent.TrackUnsubscribed)
-      roomWithListeners.on(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged)
-      incrementRoomListenerCount(RoomEvent.ActiveSpeakersChanged)
       logRoomListenerSnapshot('register')
 
       teardownRoomListenersRef.current = () => {
@@ -924,9 +913,6 @@ export function useLiveKit(
         decrementRoomListenerCount(RoomEvent.TrackSubscribed)
         roomWithListeners.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
         decrementRoomListenerCount(RoomEvent.TrackUnsubscribed)
-        roomWithListeners.off(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged)
-        decrementRoomListenerCount(RoomEvent.ActiveSpeakersChanged)
-        useStore.getState().setPresenceSpeakingUsers(sessionId as UUID, [])
         logRoomListenerSnapshot('teardown')
       }
 
