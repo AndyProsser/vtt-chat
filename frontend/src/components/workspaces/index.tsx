@@ -57,6 +57,7 @@ import { useCampaignSessionsDataFetcher } from '@/hooks/session/useCampaignSessi
 import { useConnectionStatus } from '@/hooks/useConnectionStatus'
 import { useSessionLeaveWarning } from '@/hooks/session/useSessionLeaveWarning'
 import { useFrontendThemeMode } from '@/hooks/useFrontendThemeMode'
+import { useSpeakingPresenceSync } from '@/hooks/useSpeakingPresenceSync'
 import { useToast } from '@/hooks/useToast'
 import { isJournalNote } from '@/utils/notesPanel'
 import type { Session as SessionRecord } from '@/types/session'
@@ -306,6 +307,14 @@ export function WorkspaceInitialization({
     onCampaignListInvalidated: handleCampaignListInvalidated,
     onLobbyStatsUpdated: handleLobbyStatsUpdated,
     onPartyPresenceUpdated: handlePartyPresenceUpdated,
+  })
+
+  useSpeakingPresenceSync({
+    sessionId: currentSessionId ?? null,
+    userId: user.id,
+    username: user.username,
+    userRole: user.role,
+    send,
   })
 
   const selectedCharacter = useMemo(

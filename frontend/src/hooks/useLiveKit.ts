@@ -861,6 +861,15 @@ export function useLiveKit(
         }
       }
 
+      const handleActiveSpeakersChanged = (speakers: Array<{ identity: string }>) => {
+        if (roomRef.current !== nextRoom || !isMountedRef.current) {
+          return
+        }
+
+        const userIds = speakers.map((s) => s.identity as UUID)
+        useStore.getState().setPresenceSpeakingUsers(sessionId as UUID, userIds)
+      }
+
       const roomWithListeners = nextRoom
       roomWithListeners.on(RoomEvent.Connected, handleConnected)
       incrementRoomListenerCount(RoomEvent.Connected)
@@ -886,6 +895,8 @@ export function useLiveKit(
       incrementRoomListenerCount(RoomEvent.TrackSubscribed)
       roomWithListeners.on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
       incrementRoomListenerCount(RoomEvent.TrackUnsubscribed)
+      roomWithListeners.on(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged)
+      incrementRoomListenerCount(RoomEvent.ActiveSpeakersChanged)
       logRoomListenerSnapshot('register')
 
       teardownRoomListenersRef.current = () => {
@@ -913,6 +924,9 @@ export function useLiveKit(
         decrementRoomListenerCount(RoomEvent.TrackSubscribed)
         roomWithListeners.off(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
         decrementRoomListenerCount(RoomEvent.TrackUnsubscribed)
+        roomWithListeners.off(RoomEvent.ActiveSpeakersChanged, handleActiveSpeakersChanged)
+        decrementRoomListenerCount(RoomEvent.ActiveSpeakersChanged)
+        useStore.getState().setPresenceSpeakingUsers(sessionId as UUID, [])
         logRoomListenerSnapshot('teardown')
       }
 
