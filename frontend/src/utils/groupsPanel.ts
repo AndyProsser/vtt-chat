@@ -16,6 +16,10 @@ export function getResolvedGroupEnvironmentName(group: GroupPanelGroupWithPartic
 }
 
 export function getGroupStatEntries(member: GroupParticipantStatus): Array<[string, unknown]> {
+  if (member.roleLabel === 'DM') {
+    return []
+  }
+
   const stats = member.characterStats
   if (!stats) {
     return []

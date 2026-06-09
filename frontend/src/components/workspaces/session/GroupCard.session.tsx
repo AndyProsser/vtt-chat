@@ -57,6 +57,10 @@ function getMetaLine(member: RoomUser): string {
 }
 
 function getStatEntries(member: RoomUser): Array<[string, string]> {
+  if (member.role === 'DM') {
+    return []
+  }
+
   if (!member.characterStats || typeof member.characterStats !== 'object') {
     return []
   }

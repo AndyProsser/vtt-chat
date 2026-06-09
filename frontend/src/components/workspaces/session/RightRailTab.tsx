@@ -80,6 +80,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
           sessionCount={props.sessionCount}
           totalSessionDurationMs={props.totalSessionDurationMs}
           canEdit={props.canEditCampaignInfo}
+          sessionId={props.currentSessionId}
           onSaveCampaignInfo={props.onSaveCampaignInfo}
           joinUrl={props.joinUrl}
           watchUrl={props.watchUrl}

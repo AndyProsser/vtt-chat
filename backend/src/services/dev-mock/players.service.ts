@@ -331,12 +331,12 @@ function buildStatBlock(level: number): Prisma.InputJsonValue {
   return {
     level,
     proficiencyBonus,
-    str: 8 + Math.floor(Math.random() * 10),
-    dex: 8 + Math.floor(Math.random() * 10),
-    con: 8 + Math.floor(Math.random() * 10),
-    int: 8 + Math.floor(Math.random() * 10),
-    wis: 8 + Math.floor(Math.random() * 10),
-    cha: 8 + Math.floor(Math.random() * 10),
+    strength: 8 + Math.floor(Math.random() * 10),
+    dexterity: 8 + Math.floor(Math.random() * 10),
+    constitution: 8 + Math.floor(Math.random() * 10),
+    intelligence: 8 + Math.floor(Math.random() * 10),
+    wisdom: 8 + Math.floor(Math.random() * 10),
+    charisma: 8 + Math.floor(Math.random() * 10),
   }
 }
 

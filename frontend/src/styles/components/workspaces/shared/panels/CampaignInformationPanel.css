@@ -26,11 +26,84 @@
 
 .cip-status-line {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.35rem;
   width: 100%;
   padding-bottom: 0.45rem;
   border-bottom: 1px solid var(--color-border-soft);
+}
+
+/* DM identity row — spans full width above the 4-column stat chips */
+.cip-dm-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem 0.5rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-surface) 94%, var(--color-surface-subtle) 6%);
+  min-height: 2rem;
+}
+
+.cip-dm-row__name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cip-dm-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.cip-dm-row__last-seen {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Live DM status badge */
+.cip-dm-status-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  padding: 0.1rem 0.38rem;
+  border-radius: 99px;
+  border: 1px solid;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.cip-dm-status-badge[data-state='here'] {
+  color: var(--color-success, #22c55e);
+  border-color: color-mix(in srgb, var(--color-success, #22c55e) 45%, transparent);
+  background: color-mix(in srgb, var(--color-success, #22c55e) 10%, transparent);
+}
+
+.cip-dm-status-badge[data-state='away'] {
+  color: var(--color-warning, #f59e0b);
+  border-color: color-mix(in srgb, var(--color-warning, #f59e0b) 45%, transparent);
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 10%, transparent);
+}
+
+.cip-dm-status-badge[data-state='lobby'] {
+  color: var(--color-info, #60a5fa);
+  border-color: color-mix(in srgb, var(--color-info, #60a5fa) 45%, transparent);
+  background: color-mix(in srgb, var(--color-info, #60a5fa) 10%, transparent);
+}
+
+.cip-dm-status-badge[data-state='offline'] {
+  color: var(--color-text-muted);
+  border-color: var(--color-border-soft);
+  background: transparent;
 }
 
 .cip-panel--workspace .cip-status-line {
@@ -506,6 +579,30 @@
 .cip-panel--session .cip-status-chip__text,
 .cip-panel--session .cip-dm-name {
   font-size: 0.7rem;
+}
+
+.cip-panel--session .cip-dm-row {
+  min-height: 1.85rem;
+  padding: 0.3rem 0.42rem;
+}
+
+.cip-panel--session .cip-dm-row__label {
+  font-size: 1.2rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.cip-panel--session .cip-dm-row__name {
+  font-size: 0.9rem;
+}
+
+.cip-panel--session .cip-dm-row__last-seen {
+  font-size: 0.64rem;
+}
+
+.cip-panel--session .cip-dm-status-badge {
+  font-size: 0.58rem;
+  padding: 0.08rem 0.32rem;
 }
 
 .cip-actions {

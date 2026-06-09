@@ -15,6 +15,7 @@ export type CampaignInformationPanelCampaign = {
   dmUsername?: string
   dmAvatarUrl?: string | null
   dmOnline?: boolean
+  currentDmId?: UUID
   connectedPlayers?: number
   connectedSpectators?: number
   registeredPlayersCount?: number
@@ -30,6 +31,7 @@ export type CampaignInformationPanelProps = {
   totalSessionDurationMs: number
   canEdit: boolean
   workspaceMode?: boolean
+  sessionId?: UUID
   onSaveCampaignInfo: (
     campaignId: UUID,
     updates: {
@@ -100,6 +102,7 @@ export type CampaignInformationStatusLineProps = {
     | 'dmUsername'
     | 'dmAvatarUrl'
     | 'dmOnline'
+    | 'currentDmId'
     | 'connectedPlayers'
     | 'connectedSpectators'
     | 'registeredPlayersCount'
@@ -110,4 +113,5 @@ export type CampaignInformationStatusLineProps = {
   >
   sessionCount: number
   totalSessionDurationMs: number
+  sessionId?: UUID
 }

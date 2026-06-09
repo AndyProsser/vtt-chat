@@ -16,6 +16,7 @@ export function CampaignInformationPanel({
   totalSessionDurationMs,
   canEdit,
   workspaceMode = false,
+  sessionId,
   onSaveCampaignInfo,
   joinUrl,
   watchUrl,
@@ -134,6 +135,7 @@ export function CampaignInformationPanel({
       campaign={campaign}
       sessionCount={sessionCount}
       totalSessionDurationMs={totalSessionDurationMs}
+      sessionId={sessionId}
     />
   )
 

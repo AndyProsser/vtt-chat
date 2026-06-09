@@ -1,5 +1,6 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import type { CampaignInformationStatusLineProps } from '@/types/campaignInformationPanel'
+import { DmPresenceStatusLeaf } from './DmPresenceStatusLeaf'
 
 function formatDuration(totalMs: number): string {
   if (!Number.isFinite(totalMs) || totalMs <= 0) {
@@ -46,15 +47,17 @@ function formatDmLastSeen(rawTimestamp?: number | string): string {
 
 /**
  * Compact campaign activity summary used in both view and edit modes.
+ * Renders a full-width DM identity row (avatar | name | live status | last seen)
+ * above a 4-column grid of campaign stat chips.
  */
 export function CampaignInformationStatusLine({
   campaign,
   sessionCount,
   totalSessionDurationMs,
+  sessionId,
 }: CampaignInformationStatusLineProps) {
   const displayName = campaign.dmDisplayName || campaign.dmUsername || 'DM'
   const dmInitial = displayName.charAt(0).toUpperCase()
-  const dmStatusLabel = campaign.dmOnline ? 'Online' : 'Offline'
   const dmLastSeenLabel = formatDmLastSeen(campaign.updatedAt ?? campaign.createdAt)
   const onlinePlayers = campaign.connectedPlayers ?? campaign.connectedPlayersRounded ?? 0
   const registeredPlayers =
@@ -66,39 +69,32 @@ export function CampaignInformationStatusLine({
 
   return (
     <div className="cip-status-line" role="list" aria-label="Campaign status summary">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button type="button" className="cip-status-chip" aria-label="DM details">
-            {campaign.dmAvatarUrl ? (
-              <img
-                className="cip-dm-avatar"
-                src={campaign.dmAvatarUrl}
-                alt={`${displayName} avatar`}
-              />
-            ) : (
-              <span className="cip-dm-avatar cip-dm-avatar--fallback">{dmInitial}</span>
-            )}
-            <span className="cip-status-chip__text">DM: {displayName}</span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" align="start">
-          <div className="cip-dm-popper">
-            <p className="cip-dm-popper__line">
-              <span className="cip-dm-popper__label">Status</span>
-              <span
-                className={`cip-dm-popper__value ${campaign.dmOnline ? 'cip-dm-popper__value--online' : ''}`}
-              >
-                {dmStatusLabel}
-              </span>
-            </p>
-            <p className="cip-dm-popper__line">
-              <span className="cip-dm-popper__label">Last seen</span>
-              <span className="cip-dm-popper__value">{dmLastSeenLabel}</span>
-            </p>
-          </div>
-        </TooltipContent>
-      </Tooltip>
+      {/* Full-width DM row: Avatar | Name | Status (live leaf) | Last Seen */}
+      <div className="cip-dm-row" role="listitem" aria-label="DM details">
+        <span className="cip-dm-row__label" aria-hidden="true">
+          DM:
+        </span>
+        {campaign.dmAvatarUrl ? (
+          <img className="cip-dm-avatar" src={campaign.dmAvatarUrl} alt={`${displayName} avatar`} />
+        ) : (
+          <span className="cip-dm-avatar cip-dm-avatar--fallback" aria-hidden="true">
+            {dmInitial}
+          </span>
+        )}
 
+        <span className="cip-dm-row__name">{displayName}</span>
+
+        <span className="cip-dm-row__meta">
+          <DmPresenceStatusLeaf
+            sessionId={sessionId}
+            userId={campaign.currentDmId}
+            fallbackOnline={campaign.dmOnline}
+          />
+          <span className="cip-dm-row__last-seen">{dmLastSeenLabel}</span>
+        </span>
+      </div>
+
+      {/* 4-column stat chips */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button type="button" className="cip-status-chip" aria-label="Sessions stat">
