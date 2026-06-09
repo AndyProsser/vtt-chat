@@ -17,7 +17,12 @@ export type ModalsProps = {
   isCreatingCampaign: boolean
   newCampaignName: string
   pendingImportBundle?: CampaignExportBundle | null
-  onCreateCampaignSubmit: (intent: 'edit' | 'launch', importedBundle?: CampaignExportBundle) => void
+  conflictCampaign?: { id: string; name: string } | null
+  onCreateCampaignSubmit: (
+    intent: 'edit' | 'launch',
+    importedBundle?: CampaignExportBundle,
+    conflictInfo?: { mode: 'replace' | 'duplicate'; conflictCampaignId: string }
+  ) => void
   onNewCampaignNameChange: (value: string) => void
   onCloseCreateCampaign: () => void
   showJoinCampaignModal: boolean

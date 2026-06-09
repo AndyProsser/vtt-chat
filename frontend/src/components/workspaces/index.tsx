@@ -108,6 +108,9 @@ export function WorkspaceInitialization({
   const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
   const [showCampaignSettingsModal, setShowCampaignSettingsModal] = useState(false)
   const [pendingImportBundle, setPendingImportBundle] = useState<CampaignExportBundle | null>(null)
+  const [conflictCampaign, setConflictCampaign] = useState<{ id: string; name: string } | null>(
+    null
+  )
 
   // Campaign settings hook
   const [campaignSettings, campaignSettingsActions] = useCampaignSettings()
@@ -655,12 +658,29 @@ export function WorkspaceInitialization({
   })
 
   const handleImportCampaign = useCallback(
-    (bundle: CampaignExportBundle) => {
+    async (bundle: CampaignExportBundle) => {
       setPendingImportBundle(bundle)
+      setConflictCampaign(null)
       setNewCampaignName(bundle.campaign.name)
       setShowCreateCampaignModal(true)
+
+      try {
+        const response = await fetch(`${apiUrl}/api/campaigns/import/check`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ sourceCampaignId: bundle.sourceCampaignId }),
+        })
+        if (response.ok) {
+          const data = (await response.json()) as {
+            conflictCampaign: { id: string; name: string } | null
+          }
+          setConflictCampaign(data.conflictCampaign)
+        }
+      } catch {
+        // Non-fatal — import can proceed without conflict detection
+      }
     },
-    [setNewCampaignName]
+    [apiUrl, token, setNewCampaignName]
   )
 
   const hasSessionSelected = Boolean(currentSession)
@@ -1040,9 +1060,11 @@ export function WorkspaceInitialization({
     newCampaignName,
     isCreatingCampaign,
     pendingImportBundle,
+    conflictCampaign,
     onCloseCreateCampaign: () => {
       setShowCreateCampaignModal(false)
       setPendingImportBundle(null)
+      setConflictCampaign(null)
     },
     onCreateCampaignSubmit: handleCreateCampaign,
     onNewCampaignNameChange: setNewCampaignName,

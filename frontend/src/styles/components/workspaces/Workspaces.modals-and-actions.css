@@ -316,3 +316,39 @@
 .session-create-campaign-note__list li + li {
   margin-top: 0.25rem;
 }
+
+.session-conflict-choice {
+  margin-top: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--color-warn, #f59e0b) 40%, var(--color-border-soft));
+  border-radius: var(--radius-md);
+  padding: 0.8rem;
+  background: color-mix(in srgb, var(--color-warn, #f59e0b) 8%, var(--color-surface));
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.session-conflict-choice__title {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.session-conflict-choice__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.session-conflict-choice__option input[type='radio'] {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.session-conflict-choice__option span {
+  color: var(--color-text);
+  line-height: 1.4;
+}

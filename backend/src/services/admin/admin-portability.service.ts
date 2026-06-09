@@ -432,11 +432,43 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
   return { bundle, artifactId: artifact.id, counts }
 }
 
+/**
+ * Returns the first campaign that would conflict with re-importing sourceCampaignId.
+ * Checks both direct ownership and prior imports by this actor.
+ */
+export async function findImportConflict(
+  actorUserId: string,
+  sourceCampaignId: string
+): Promise<{ id: string; name: string } | null> {
+  const ownedCampaign = await prisma.campaign.findFirst({
+    where: { id: sourceCampaignId, currentDmId: actorUserId, deletedAt: null },
+    select: { id: true, name: true },
+  })
+  if (ownedCampaign) return ownedCampaign
+
+  const artifacts = await prisma.$queryRaw<Array<{ campaignId: string | null }>>`
+    SELECT "campaignId"
+    FROM "ImportExportArtifact"
+    WHERE type = 'CAMPAIGN_IMPORT'
+      AND "createdByUserId" = ${actorUserId}::uuid
+      AND payload->>'sourceCampaignId' = ${sourceCampaignId}
+    LIMIT 10
+  `
+  const campaignIds = artifacts.map((a) => a.campaignId).filter((id): id is string => Boolean(id))
+  if (campaignIds.length === 0) return null
+
+  return prisma.campaign.findFirst({
+    where: { id: { in: campaignIds }, currentDmId: actorUserId, deletedAt: null },
+    select: { id: true, name: true },
+  })
+}
+
 export async function importCampaignBundle(
   actorUserId: string,
   input: unknown,
   nameOverride?: string | null,
-  memberEmailMap?: Record<string, string> | null
+  memberEmailMap?: Record<string, string> | null,
+  conflictCampaignId?: string | null
 ) {
   if (!isCampaignTransferBundle(input)) {
     return null
@@ -445,6 +477,12 @@ export async function importCampaignBundle(
   const bundle = input
 
   const imported = await prisma.$transaction(async (tx) => {
+    if (conflictCampaignId) {
+      // Sessions use SetNull on Campaign cascade, so delete them explicitly first
+      await tx.session.deleteMany({ where: { campaignId: conflictCampaignId } })
+      await tx.campaign.delete({ where: { id: conflictCampaignId } })
+    }
+
     const userIdMap = await resolveImportedUsers(
       tx,
       actorUserId,
@@ -575,11 +613,16 @@ export async function importCampaignBundle(
         })
       })
 
+      const seenSessionUsers = new Set<string>()
       session.members.forEach((member) => {
+        const resolvedUserId = userIdMap.get(member.userId) || actorUserId
+        const key = `${mappedSessionId}:${resolvedUserId}`
+        if (seenSessionUsers.has(key)) return
+        seenSessionUsers.add(key)
         memberRows.push({
           id: randomUUID(),
           sessionId: mappedSessionId,
-          userId: userIdMap.get(member.userId) || actorUserId,
+          userId: resolvedUserId,
           username: member.username,
           role: member.role,
           joinedAt: toDate(member.joinedAt) || new Date(),

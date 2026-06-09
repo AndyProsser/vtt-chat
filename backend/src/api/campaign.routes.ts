@@ -54,7 +54,7 @@ import {
   listCampaignExternalLinks,
   upsertCampaignExternalLink,
 } from '@/services/campaign-external-links.service'
-import { importCampaignBundle } from '@/services/admin/admin-portability.service'
+import { importCampaignBundle, findImportConflict } from '@/services/admin/admin-portability.service'
 import { buildDmCampaignExport } from '@/services/dm-portability.service'
 import { deriveCampaignJoinRole } from '@/services/session/authz.service'
 import { broadcastPresenceProfileUpdate } from '@/services/session/presence-profile-broadcast.service'
@@ -2297,6 +2297,29 @@ router.get('/:campaignId/export', requireAuth, async (req: Request, res: Respons
 
 // ─── Campaign Import ──────────────────────────────────────────────────────────
 
+router.post('/import/check', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+
+  if (user.authType === 'GUEST') {
+    return res.status(200).json({ conflictCampaign: null })
+  }
+
+  const { sourceCampaignId } = req.body || {}
+
+  if (!sourceCampaignId || typeof sourceCampaignId !== 'string') {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'sourceCampaignId is required' })
+  }
+
+  try {
+    const conflictCampaign = await findImportConflict(user.userId, sourceCampaignId)
+    return res.status(200).json({ conflictCampaign })
+  } catch {
+    return res.status(200).json({ conflictCampaign: null })
+  }
+})
+
 router.post('/import', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
 
@@ -2306,7 +2329,7 @@ router.post('/import', requireAuth, async (req: Request, res: Response) => {
       .json({ code: ErrorCode.FORBIDDEN, message: 'Guest accounts cannot import campaigns' })
   }
 
-  const { bundle, nameOverride } = req.body || {}
+  const { bundle, nameOverride, conflictCampaignId } = req.body || {}
 
   if (!bundle || typeof bundle !== 'object') {
     return res
@@ -2314,8 +2337,30 @@ router.post('/import', requireAuth, async (req: Request, res: Response) => {
       .json({ code: ErrorCode.INVALID_INPUT, message: 'bundle is required', field: 'bundle' })
   }
 
+  if (conflictCampaignId) {
+    // Verify actor owns the conflict campaign before allowing delete
+    const { getPrismaClient } = await import('@/infra/db')
+    const prisma = getPrismaClient()
+    const owned = await prisma.campaign.findFirst({
+      where: { id: conflictCampaignId, currentDmId: user.userId },
+      select: { id: true },
+    })
+    if (!owned) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'You do not own the campaign you are trying to replace',
+      })
+    }
+  }
+
   try {
-    const result = await importCampaignBundle(user.userId, bundle, nameOverride ?? null)
+    const result = await importCampaignBundle(
+      user.userId,
+      bundle,
+      nameOverride ?? null,
+      null,
+      conflictCampaignId ?? null
+    )
     if (!result) {
       return res
         .status(400)
@@ -2326,7 +2371,8 @@ router.post('/import', requireAuth, async (req: Request, res: Response) => {
       artifactId: result.artifactId,
       counts: result.counts,
     })
-  } catch {
+  } catch (err) {
+    logger.error('campaign.routes', 'Failed to import campaign', err)
     return res
       .status(500)
       .json({ code: ErrorCode.INTERNAL_ERROR, message: 'Failed to import campaign' })

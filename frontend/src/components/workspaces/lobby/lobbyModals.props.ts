@@ -8,6 +8,7 @@ type BuildLobbyModalsPropsParams = {
   newCampaignName: string
   isCreatingCampaign: boolean
   pendingImportBundle: ComponentProps<typeof LobbyModals>['pendingImportBundle']
+  conflictCampaign: ComponentProps<typeof LobbyModals>['conflictCampaign']
   onCloseCreateCampaign: ComponentProps<typeof LobbyModals>['onCloseCreateCampaign']
   onCreateCampaignSubmit: ComponentProps<typeof LobbyModals>['onCreateCampaignSubmit']
   onNewCampaignNameChange: ComponentProps<typeof LobbyModals>['onNewCampaignNameChange']
@@ -89,6 +90,7 @@ export function buildLobbyModalsProps(
     newCampaignName: params.newCampaignName,
     isCreatingCampaign: params.isCreatingCampaign,
     pendingImportBundle: params.pendingImportBundle,
+    conflictCampaign: params.conflictCampaign,
     onCloseCreateCampaign: params.onCloseCreateCampaign,
     onCreateCampaignSubmit: params.onCreateCampaignSubmit,
     onNewCampaignNameChange: params.onNewCampaignNameChange,

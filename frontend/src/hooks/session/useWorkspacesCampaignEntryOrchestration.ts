@@ -255,7 +255,11 @@ export function useWorkspacesCampaignEntryOrchestration(
   )
 
   const handleCreateCampaign = useCallback(
-    async (intent: 'edit' | 'launch', importedBundle?: CampaignExportBundle) => {
+    async (
+      intent: 'edit' | 'launch',
+      importedBundle?: CampaignExportBundle,
+      conflictInfo?: { mode: 'replace' | 'duplicate'; conflictCampaignId: string }
+    ) => {
       setError(null)
       setLobbyNotice(null)
 
@@ -278,6 +282,8 @@ export function useWorkspacesCampaignEntryOrchestration(
             body: JSON.stringify({
               bundle: importedBundle,
               nameOverride: newCampaignName.trim() || null,
+              conflictCampaignId:
+                conflictInfo?.mode === 'replace' ? conflictInfo.conflictCampaignId : undefined,
             }),
           })
 
@@ -317,7 +323,10 @@ export function useWorkspacesCampaignEntryOrchestration(
           }
         }
 
-        setCampaigns((prev) => [campaign, ...prev])
+        setCampaigns((prev) => [
+          campaign,
+          ...prev.filter((c) => c.id !== conflictInfo?.conflictCampaignId),
+        ])
         setSelectedCampaignId(campaign.id)
         setShowCreateCampaignModal(false)
 
