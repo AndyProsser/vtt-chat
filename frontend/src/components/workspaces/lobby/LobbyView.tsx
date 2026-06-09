@@ -1,5 +1,9 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
-import { type CampaignJoinRequestSummary, type CampaignSummary } from '@/types/session/campaign'
+import {
+  type CampaignExportBundle,
+  type CampaignJoinRequestSummary,
+  type CampaignSummary,
+} from '@/types/session/campaign'
 import type { LobbyConnectionStatus, LobbyStats } from '@/types/session/lobby'
 import { CampaignCard } from './LobbyView.CampaignCard'
 import { LobbyToolbar } from '@/components/workspaces/shared/toolbar/LobbyToolbar'
@@ -12,11 +16,13 @@ type LobbyViewProps = {
   isLoadingCampaigns: boolean
   isCreatingCampaign: boolean
   isJoiningCampaign: boolean
+  isGuest: boolean
   themeMode: 'light' | 'dark'
   connectionStatus: LobbyConnectionStatus
   onSelectCampaign: (campaignId: CampaignSummary['id']) => void
   onCreateCampaign: () => void
   onJoinCampaign: () => void
+  onImportCampaign: (bundle: CampaignExportBundle) => void
   onToggleTheme: () => void
   onOpenUserSettings: () => void
   onLogoff: () => void
@@ -52,9 +58,11 @@ export function LobbyView(props: LobbyViewProps) {
           themeMode={props.themeMode}
           isCreatingCampaign={props.isCreatingCampaign}
           isJoiningCampaign={props.isJoiningCampaign}
+          isGuest={props.isGuest}
           connectionStatus={props.connectionStatus}
           onCreateCampaign={props.onCreateCampaign}
           onJoinCampaign={props.onJoinCampaign}
+          onImportCampaign={props.onImportCampaign}
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
           onLogoff={props.onLogoff}

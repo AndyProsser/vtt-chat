@@ -61,7 +61,7 @@ import { useSpeakingPresenceSync } from '@/hooks/useSpeakingPresenceSync'
 import { useToast } from '@/hooks/useToast'
 import { isJournalNote } from '@/utils/notesPanel'
 import type { Session as SessionRecord } from '@/types/session'
-import { resolveMembershipRole } from '@/types/session/campaign'
+import { resolveMembershipRole, type CampaignExportBundle } from '@/types/session/campaign'
 import type {
   ApiBroadcastState,
   WorkspacesProps as WorkspaceInitializationProps,
@@ -107,6 +107,7 @@ export function WorkspaceInitialization({
   const [exitUpgradeLoading, setExitUpgradeLoading] = useState(false)
   const [exitUpgradeError, setExitUpgradeError] = useState<string | null>(null)
   const [showCampaignSettingsModal, setShowCampaignSettingsModal] = useState(false)
+  const [pendingImportBundle, setPendingImportBundle] = useState<CampaignExportBundle | null>(null)
 
   // Campaign settings hook
   const [campaignSettings, campaignSettingsActions] = useCampaignSettings()
@@ -653,6 +654,15 @@ export function WorkspaceInitialization({
     handleEnterCampaign,
   })
 
+  const handleImportCampaign = useCallback(
+    (bundle: CampaignExportBundle) => {
+      setPendingImportBundle(bundle)
+      setNewCampaignName(bundle.campaign.name)
+      setShowCreateCampaignModal(true)
+    },
+    [setNewCampaignName]
+  )
+
   const hasSessionSelected = Boolean(currentSession)
   const selectedCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null
   const settingsReferenceSession =
@@ -715,6 +725,8 @@ export function WorkspaceInitialization({
     onSelectCampaign: setSelectedCampaignId,
     onCreateCampaign: handleOpenCreateCampaignModal,
     onJoinCampaign: handleOpenJoinCampaignModal,
+    onImportCampaign: handleImportCampaign,
+    isGuest: user.authType === 'GUEST',
     onToggleTheme: handleToggleTheme,
     onOpenUserSettings: handleOpenUserSettingsModal,
     onLogoff: handleLogoff,
@@ -830,6 +842,7 @@ export function WorkspaceInitialization({
       }
     },
     isDeletingCampaign,
+    showToast,
   })
 
   const handleSessionWorkspaceExtendCooldown = useCallback(
@@ -1026,7 +1039,11 @@ export function WorkspaceInitialization({
     user,
     newCampaignName,
     isCreatingCampaign,
-    onCloseCreateCampaign: () => setShowCreateCampaignModal(false),
+    pendingImportBundle,
+    onCloseCreateCampaign: () => {
+      setShowCreateCampaignModal(false)
+      setPendingImportBundle(null)
+    },
     onCreateCampaignSubmit: handleCreateCampaign,
     onNewCampaignNameChange: setNewCampaignName,
     showJoinCampaignModal,

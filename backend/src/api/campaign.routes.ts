@@ -54,10 +54,8 @@ import {
   listCampaignExternalLinks,
   upsertCampaignExternalLink,
 } from '@/services/campaign-external-links.service'
-import {
-  buildCampaignExport,
-  importCampaignBundle,
-} from '@/services/admin/admin-portability.service'
+import { importCampaignBundle } from '@/services/admin/admin-portability.service'
+import { buildDmCampaignExport } from '@/services/dm-portability.service'
 import { deriveCampaignJoinRole } from '@/services/session/authz.service'
 import { broadcastPresenceProfileUpdate } from '@/services/session/presence-profile-broadcast.service'
 import {
@@ -2285,7 +2283,7 @@ router.get('/:campaignId/export', requireAuth, async (req: Request, res: Respons
   }
 
   try {
-    const result = await buildCampaignExport(campaignId, user.userId)
+    const result = await buildDmCampaignExport(campaignId, user.userId)
     if (!result) {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
     }

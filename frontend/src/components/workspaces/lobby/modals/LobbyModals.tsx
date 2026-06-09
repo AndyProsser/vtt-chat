@@ -12,6 +12,7 @@ type LobbyModalsProps = Pick<
   | 'user'
   | 'newCampaignName'
   | 'isCreatingCampaign'
+  | 'pendingImportBundle'
   | 'onCloseCreateCampaign'
   | 'onCreateCampaignSubmit'
   | 'onNewCampaignNameChange'
@@ -76,6 +77,7 @@ export function LobbyModals(props: LobbyModalsProps) {
         user={props.user}
         newCampaignName={props.newCampaignName}
         isCreatingCampaign={props.isCreatingCampaign}
+        pendingImportBundle={props.pendingImportBundle}
         onCloseCreateCampaign={props.onCloseCreateCampaign}
         onCreateCampaignSubmit={props.onCreateCampaignSubmit}
         onNewCampaignNameChange={props.onNewCampaignNameChange}

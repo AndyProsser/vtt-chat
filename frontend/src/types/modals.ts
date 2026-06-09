@@ -16,6 +16,7 @@ export type ModalsProps = {
   showCreateCampaignModal: boolean
   isCreatingCampaign: boolean
   newCampaignName: string
+  pendingImportBundle?: CampaignExportBundle | null
   onCreateCampaignSubmit: (intent: 'edit' | 'launch', importedBundle?: CampaignExportBundle) => void
   onNewCampaignNameChange: (value: string) => void
   onCloseCreateCampaign: () => void

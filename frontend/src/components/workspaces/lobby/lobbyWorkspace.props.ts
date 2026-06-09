@@ -17,6 +17,8 @@ type BuildLobbyWorkspacePropsParams = {
   onSelectCampaign: ComponentProps<typeof LobbyView>['onSelectCampaign']
   onCreateCampaign: ComponentProps<typeof LobbyView>['onCreateCampaign']
   onJoinCampaign: ComponentProps<typeof LobbyView>['onJoinCampaign']
+  onImportCampaign: ComponentProps<typeof LobbyView>['onImportCampaign']
+  isGuest: ComponentProps<typeof LobbyView>['isGuest']
   onToggleTheme: ComponentProps<typeof LobbyView>['onToggleTheme']
   onOpenUserSettings: ComponentProps<typeof LobbyView>['onOpenUserSettings']
   onLogoff: ComponentProps<typeof LobbyView>['onLogoff']
@@ -49,6 +51,8 @@ export function buildLobbyWorkspaceProps(
     onSelectCampaign: params.onSelectCampaign,
     onCreateCampaign: params.onCreateCampaign,
     onJoinCampaign: params.onJoinCampaign,
+    onImportCampaign: params.onImportCampaign,
+    isGuest: params.isGuest,
     onToggleTheme: params.onToggleTheme,
     onOpenUserSettings: params.onOpenUserSettings,
     onLogoff: params.onLogoff,

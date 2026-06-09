@@ -1,4 +1,5 @@
 import { type CoreWsState, type Role, type SessionState, type UUID } from '@shared'
+import type { ShowToastInput } from '@/state/toastCenter'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type {
   CampaignVisibility,
@@ -98,4 +99,5 @@ export type EditorWorkspaceProps = {
   isDeletingCampaign: boolean
   isLaunchDisabled: boolean
   launchDisabledReason: string
+  showToast: (input: ShowToastInput) => void
 }

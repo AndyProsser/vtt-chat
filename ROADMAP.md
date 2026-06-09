@@ -993,7 +993,7 @@ Backend is production-ready for extension integration. All guest auth contracts,
 
 ### W-DM-Campaign-Portability: DM Self-Service Campaign Export and Import
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🔵 Low (post-MVP)
 **Depends on**: W0-Lobby-Admin (shares export format), Core Reliability complete
 
@@ -1003,14 +1003,18 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 **Acceptance Criteria**:
 
-- [ ] `GET /api/campaigns/:id/export` — DM-authenticated (campaign owner only). Returns portable JSON: campaign metadata, groups/environments, session history/chat (IC, OOC, system bookends), notes/journal. Member list includes display names and roles but no emails or passwords.
-- [ ] Export respects campaign privacy: Whisper, paused-ephemeral, and cooldown-ephemeral content excluded by default; DM may opt in to include paused/cooldown chat.
-- [ ] `POST /api/campaigns/import` — authenticated user. Creates a new campaign with fresh UUIDs from the export file; the caller becomes the new DM. Import never overwrites an existing campaign.
-- [ ] Import is idempotent for the same file: re-importing always creates a new campaign, never patches an existing one.
-- [ ] Lobby offline workspace surfaces "Export Campaign" in the campaign header actions (DM-only, not visible to players or spectators).
-- [ ] Lobby surfaces "Import Campaign" alongside the existing "Create Campaign" and "Join Campaign" actions (DM-only).
-- [ ] Export and import progress/result surfaces as a toast; errors include a human-readable reason.
-- [ ] Imported campaign appears in the DM's lobby list immediately; players must be re-invited via the normal invite flow.
+- [x] `GET /api/campaigns/:id/export` — DM-authenticated (campaign owner only). Returns portable JSON: campaign metadata, groups/environments, session history/chat (IC, OOC, system bookends), notes/journal. Member list includes display names and roles but no emails or passwords.
+- [x] Export respects campaign privacy: Whisper (PRIVATE room messages and WHISPER-type messages) excluded. Paused/cooldown-ephemeral opt-in deferred.
+- [x] `POST /api/campaigns/import` — authenticated user. Creates a new campaign with fresh UUIDs from the export file; the caller becomes the new DM. Import never overwrites an existing campaign.
+- [x] Import is idempotent for the same file: re-importing always creates a new campaign, never patches an existing one.
+- [x] Lobby offline workspace surfaces "Export Campaign" in the campaign header actions (DM-only, not visible to players or spectators).
+- [x] Lobby surfaces "Import Campaign" alongside the existing "Create Campaign" and "Join Campaign" actions (DM-only).
+- [x] Export and import progress/result surfaces as a toast; errors include a human-readable reason.
+- [x] Imported campaign appears in the DM's lobby list immediately; players must be re-invited via the normal invite flow.
+
+**Remaining**:
+
+- [ ] Paused/cooldown-ephemeral content opt-in (`?includePausedChat=true`) — deferred; requires session-state timestamps on messages.
 
 **Related Docs**:
 

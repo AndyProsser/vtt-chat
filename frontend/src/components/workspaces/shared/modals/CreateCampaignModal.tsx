@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ModalsProps } from '@/types/modals'
 import type { CampaignExportBundle } from '@/types/session/campaign'
 
@@ -11,58 +11,23 @@ type CreateCampaignModalProps = Pick<
   | 'onCloseCreateCampaign'
   | 'onCreateCampaignSubmit'
   | 'onNewCampaignNameChange'
+  | 'pendingImportBundle'
 >
-
-function isValidExportBundle(raw: unknown): raw is CampaignExportBundle {
-  if (!raw || typeof raw !== 'object') return false
-  const b = raw as Record<string, unknown>
-  return (
-    b.version === 1 &&
-    typeof b.sourceCampaignId === 'string' &&
-    typeof b.campaign === 'object' &&
-    b.campaign !== null &&
-    typeof (b.campaign as Record<string, unknown>).name === 'string' &&
-    Array.isArray(b.members) &&
-    Array.isArray(b.sessions) &&
-    Array.isArray(b.recordings)
-  )
-}
 
 export function CreateCampaignModal(props: CreateCampaignModalProps) {
   const [importedBundle, setImportedBundle] = useState<CampaignExportBundle | null>(null)
-  const [importError, setImportError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (props.showCreateCampaignModal && props.pendingImportBundle) {
+      setImportedBundle(props.pendingImportBundle)
+    }
+    if (!props.showCreateCampaignModal) {
+      setImportedBundle(null)
+    }
+  }, [props.showCreateCampaignModal, props.pendingImportBundle])
 
   if (!props.showCreateCampaignModal) {
     return null
-  }
-
-  function handleImportClick() {
-    setImportError(null)
-    fileInputRef.current?.click()
-  }
-
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      try {
-        const raw = JSON.parse(e.target?.result as string)
-        if (!isValidExportBundle(raw)) {
-          setImportError('File is not a valid VTT-Chat campaign export.')
-          return
-        }
-        setImportedBundle(raw)
-        setImportError(null)
-        props.onNewCampaignNameChange(raw.campaign.name)
-      } catch {
-        setImportError('Could not read the file. Make sure it is a valid JSON export.')
-      }
-    }
-    reader.readAsText(file)
   }
 
   const isGuest = props.user.authType === 'GUEST'
@@ -103,9 +68,6 @@ export function CreateCampaignModal(props: CreateCampaignModalProps) {
               above to rename.
             </p>
           ) : null}
-          {importError ? (
-            <p className="session-card-subtitle session-card-subtitle--warn">{importError}</p>
-          ) : null}
           <div className="session-create-campaign-note" aria-label="Create campaign next steps">
             <p className="session-create-campaign-note__title">What happens next</p>
             <ul className="session-create-campaign-note__list">
@@ -115,22 +77,6 @@ export function CreateCampaignModal(props: CreateCampaignModalProps) {
             </ul>
           </div>
           <div className="session-action-row session-action-row--right">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              style={{ display: 'none' }}
-              onChange={handleFileChange}
-            />
-            <button
-              type="button"
-              className="session-button session-button-neutral"
-              style={{ marginRight: 'auto' }}
-              disabled={props.isCreatingCampaign || isGuest}
-              onClick={handleImportClick}
-            >
-              Import
-            </button>
             <button
               type="button"
               className="session-button session-button-neutral"

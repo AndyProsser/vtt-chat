@@ -118,9 +118,20 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
               void fetch(`${props.apiUrl}/api/campaigns/${campaignId}/export`, {
                 headers: { Authorization: `Bearer ${props.token}` },
               })
-                .then((res) => res.json())
-                .then((data: { bundle?: unknown }) => {
-                  if (!data.bundle) return
+                .then(async (res) => {
+                  if (!res.ok) {
+                    const err = await res.json().catch(() => ({}))
+                    props.showToast({
+                      message: (err as { message?: string }).message || 'Export failed',
+                      variant: 'error',
+                    })
+                    return
+                  }
+                  const data = (await res.json()) as { bundle?: unknown }
+                  if (!data.bundle) {
+                    props.showToast({ message: 'Export failed: empty response', variant: 'error' })
+                    return
+                  }
                   const blob = new Blob([JSON.stringify(data.bundle, null, 2)], {
                     type: 'application/json',
                   })
@@ -135,6 +146,10 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
                   anchor.click()
                   document.body.removeChild(anchor)
                   URL.revokeObjectURL(url)
+                  props.showToast({ message: 'Campaign exported successfully', variant: 'success' })
+                })
+                .catch(() => {
+                  props.showToast({ message: 'Export failed: network error', variant: 'error' })
                 })
             },
             onSave: props.onSaveCampaignSettings,

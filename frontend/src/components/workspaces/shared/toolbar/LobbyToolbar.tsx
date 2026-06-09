@@ -3,14 +3,17 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { WorkspaceToolbar } from '@/components/workspaces/shared/toolbar/WorkspaceToolbar'
 import { useCampaignWorkspaceToolbarActions } from '@/hooks/workspaces/useCampaignWorkspaceToolbarActions'
 import type { LobbyConnectionStatus } from '@/types/session/lobby'
+import type { CampaignExportBundle } from '@/types/session/campaign'
 
 type LobbyToolbarProps = {
   themeMode: 'light' | 'dark'
   isCreatingCampaign: boolean
   isJoiningCampaign: boolean
+  isGuest: boolean
   connectionStatus: LobbyConnectionStatus
   onCreateCampaign: () => void
   onJoinCampaign: () => void
+  onImportCampaign: (bundle: CampaignExportBundle) => void
   onToggleTheme: () => void
   onOpenUserSettings: () => void
   onLogoff: () => void
@@ -21,8 +24,10 @@ export function LobbyToolbar(props: LobbyToolbarProps) {
   const { coreStateToneClass, toolbarActions } = useCampaignWorkspaceToolbarActions({
     isCreatingCampaign: props.isCreatingCampaign,
     isJoiningCampaign: props.isJoiningCampaign,
+    isGuest: props.isGuest,
     onCreateCampaign: props.onCreateCampaign,
     onJoinCampaign: props.onJoinCampaign,
+    onImportCampaign: props.onImportCampaign,
     coreWsState: props.connectionStatus.coreWsState,
   })
 
