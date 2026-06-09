@@ -46,10 +46,18 @@
   min-height: 2rem;
 }
 
+.cip-dm-row__label {
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
 .cip-dm-row__name {
   flex: 1 1 0;
   min-width: 0;
-  font-size: 1rem;
+  font-size: 0.76rem;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
@@ -587,13 +595,11 @@
 }
 
 .cip-panel--session .cip-dm-row__label {
-  font-size: 1.2rem;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
+  font-size: 0.64rem;
 }
 
 .cip-panel--session .cip-dm-row__name {
-  font-size: 0.9rem;
+  font-size: 0.7rem;
 }
 
 .cip-panel--session .cip-dm-row__last-seen {
