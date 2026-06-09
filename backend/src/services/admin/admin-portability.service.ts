@@ -639,7 +639,9 @@ export async function importCampaignBundle(
           content: message.content,
           type: message.type,
           isDmOnly: message.isDmOnly,
-          visibleTo: mapUserIdList(message.visibleTo, userIdMap) as Prisma.InputJsonValue | null,
+          // Imported historical messages use null visibleTo so all campaign members can read
+          // the session history. Export already strips whisper/private-room messages.
+          visibleTo: null,
           createdAt: toDate(message.createdAt) || new Date(),
           editedAt: toDate(message.editedAt),
           deletedAt: toDate(message.deletedAt),
@@ -739,7 +741,8 @@ export async function importCampaignBundle(
           content: message.content,
           type: message.type,
           isDmOnly: message.isDmOnly,
-          visibleTo: mapUserIdList(message.visibleTo, userIdMap) as Prisma.InputJsonValue | null,
+          // Imported greenroom messages are campaign-level OOC; null visibleTo lets all members read them
+          visibleTo: null,
           createdAt: toDate(message.createdAt) || new Date(),
           editedAt: toDate(message.editedAt),
           deletedAt: toDate(message.deletedAt),
