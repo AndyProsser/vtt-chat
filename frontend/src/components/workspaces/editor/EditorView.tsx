@@ -8,6 +8,7 @@ import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/Cam
 import { GroupsPanel } from '@/components/workspaces/shared/panels/GroupsPanel'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
+import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel'
 import { EditorWorkspaceToolbar } from '@/components/workspaces/shared/toolbar/EditorWorkspaceToolbar'
 import type { ExtensionSyncPolicy } from '@/types/sessionUi'
 import type { Session } from '@/types/session'
@@ -163,16 +164,13 @@ export function EditorView(props: EditorViewProps) {
 
     if (resolvedActiveTab === 'history') {
       return (
-        <CampaignScaffoldPanel
-          title="Campaign History"
-          iconName="history"
-          subtitle="Browse prior-session boundaries and archived chat context."
-          sections={[
-            'History remains read-only in offline mode',
-            'Current active-session messages are excluded',
-            'Use this view for prep and recap context',
-          ]}
-          campaignName={campaign.name}
+        <HistoryPanel
+          apiUrl={props.apiUrl}
+          token={props.authToken}
+          campaignId={campaign.id as UUID}
+          sessionId={props.currentSessionId || ('' as UUID)}
+          role={props.role}
+          userId={props.currentUserId}
         />
       )
     }

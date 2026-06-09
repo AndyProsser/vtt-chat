@@ -84,6 +84,14 @@ export async function resolveEffectiveSessionRole(params: {
         message: 'You are not a member of this campaign',
       }
     }
+
+    // ENDED/CLEANUP sessions are historical records — campaign membership is sufficient.
+    // Session membership is only required for live routing/presence during active sessions.
+    const isArchivedSession = session.state === 'ENDED' || session.state === 'CLEANUP'
+    if (isArchivedSession) {
+      const isDm = session.dmId === params.userId || campaignRole === Role.DM
+      return { ok: true, session, role: isDm ? Role.DM : campaignRole }
+    }
   }
 
   const isSessionDm = session.dmId === params.userId

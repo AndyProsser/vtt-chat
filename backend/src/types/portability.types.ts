@@ -117,6 +117,7 @@ export interface CampaignTransferBundle {
       type: MessageType
       isDmOnly: boolean
       visibleTo: Prisma.JsonValue | null
+      metadata: Prisma.JsonValue | null
       createdAt: string
       editedAt: string | null
       deletedAt: string | null

@@ -410,6 +410,7 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
         type: message.type,
         isDmOnly: message.isDmOnly,
         visibleTo: message.visibleTo as Prisma.JsonValue | null,
+        metadata: (message.metadata as Prisma.JsonValue | null) ?? null,
         createdAt: message.createdAt.toISOString(),
         editedAt: toIso(message.editedAt),
         deletedAt: toIso(message.deletedAt),
@@ -687,6 +688,7 @@ export async function importCampaignBundle(
             roomIdMap,
             userIdMap
           ),
+          metadata: (message.metadata as Prisma.InputJsonValue | null) ?? null,
           createdAt: toDate(message.createdAt) || new Date(),
           editedAt: toDate(message.editedAt),
           deletedAt: toDate(message.deletedAt),

@@ -190,6 +190,7 @@ export async function buildDmCampaignExport(campaignId: string, actorUserId?: st
           type: message.type,
           isDmOnly: message.isDmOnly,
           visibleTo: message.visibleTo as Prisma.JsonValue | null,
+          metadata: (message.metadata as Prisma.JsonValue | null) ?? null,
           createdAt: message.createdAt.toISOString(),
           editedAt: toIso(message.editedAt),
           deletedAt: toIso(message.deletedAt),

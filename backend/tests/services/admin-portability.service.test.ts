@@ -135,6 +135,7 @@ function makeBundle(): CampaignTransferBundle {
             type: 'OOC',
             isDmOnly: false,
             visibleTo: ['player-source'],
+            metadata: null,
             createdAt: NOW.toISOString(),
             editedAt: null,
             deletedAt: null,

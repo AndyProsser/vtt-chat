@@ -1,6 +1,7 @@
 import type { MessageMetadataEntity } from '@shared'
 
 const NOTE_SHARED_PREFIX = '[Note Shared]'
+const HANDOUT_PREFIX = '[Handout]'
 const SHARED_WITH_PREFIX = 'Shared with:'
 const HASHTAGS_PREFIX = 'Hashtags:'
 
@@ -96,6 +97,20 @@ function parseLegacyNoteSharedMessage(content: string): ParsedNoteSharedMessage 
   }
 }
 
+/**
+ * Parses a handout system message from its content when metadata is unavailable
+ * (e.g. messages imported before metadata was included in the export bundle).
+ * Format: "[Handout] Title\nExcerpt"
+ */
+function parseLegacyHandoutMessage(content: string): ParsedNoteSharedMessage | null {
+  if (!content.startsWith(HANDOUT_PREFIX)) {
+    return null
+  }
+  const [headerLine = '', ...restLines] = content.split('\n')
+  const title = headerLine.slice(HANDOUT_PREFIX.length).trim() || 'Untitled Handout'
+  return { title, sharedWith: null, hashtags: null, markdown: restLines.join('\n').trim() }
+}
+
 export function parseNoteSharedMessage(params: {
   content: string
   metadata?: MessageMetadataEntity | null
@@ -103,6 +118,7 @@ export function parseNoteSharedMessage(params: {
   return (
     parseNoteHandoutMessageMetadata(params.metadata) ??
     parseNoteSharedMessageMetadata(params.metadata) ??
-    parseLegacyNoteSharedMessage(params.content)
+    parseLegacyNoteSharedMessage(params.content) ??
+    parseLegacyHandoutMessage(params.content)
   )
 }
