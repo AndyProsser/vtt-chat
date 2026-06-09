@@ -50,7 +50,7 @@ import {
   clearSessionDMOverrideState,
   getSessionAudioState,
 } from '@/services/audio/audio-state'
-import { clearRoomMessages } from '@/services/chat.service'
+import { clearRoomMessages, openMainRoomMessageHistory } from '@/services/chat.service'
 import {
   countSessionCooldownExtensions,
   logSessionCooldownExtended,
@@ -1979,6 +1979,7 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
 
     if (session.state === SessionStateEnum.ENDED) {
       await disableMockSimulationForSessionExit(session.id)
+      await openMainRoomMessageHistory(session.id)
     }
 
     const users = await getSessionUsers(id as UUID)

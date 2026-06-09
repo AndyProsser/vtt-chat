@@ -678,3 +678,22 @@ export async function getChatCounts(): Promise<{
     activeChatSessions: distinctSessions.length,
   }
 }
+
+/**
+ * Removes the visibleTo audience restriction from all MAIN room messages in a session.
+ * Keeps the roomId key intact so room-scoped queries still work.
+ * Called when a session reaches ENDED so history is readable by all campaign members.
+ */
+export async function clearMainRoomMessageAudience(
+  sessionId: string,
+  mainRoomId: string
+): Promise<number> {
+  const result = await prisma.$executeRaw`
+    UPDATE "ChatMessage"
+    SET "visibleTo" = "visibleTo" - 'visibleTo'
+    WHERE "sessionId" = ${sessionId}::uuid
+      AND "visibleTo" IS NOT NULL
+      AND "visibleTo" ->> 'roomId' = ${mainRoomId}
+  `
+  return result
+}

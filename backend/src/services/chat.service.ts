@@ -27,9 +27,14 @@ import {
   listCampaignMessagesSince,
   listCampaignMessagesPage,
   deleteCampaignMessages,
+  clearMainRoomMessageAudience,
 } from '@/repositories/chat.repository'
 import { findSessionById, listSessionsByCampaign } from '@/repositories/session.repository'
-import { listCampaignGroupRooms, findRoomById } from '@/repositories/room.repository'
+import {
+  listCampaignGroupRooms,
+  findRoomById,
+  findMainRoomBySession,
+} from '@/repositories/room.repository'
 import {
   appendChatRuntimeEvent,
   appendSessionAuditEvent,
@@ -744,4 +749,15 @@ export async function getChatTelemetrySnapshot(): Promise<{
   activeChatSessions: number
 }> {
   return getChatCounts()
+}
+
+/**
+ * Removes per-user visibleTo restrictions from MAIN room messages for a session.
+ * Called when a session reaches ENDED so all campaign members can read the session history.
+ * Preserves the roomId key in the JSON for room-scoped queries; only the audience array is cleared.
+ */
+export async function openMainRoomMessageHistory(sessionId: UUID): Promise<void> {
+  const mainRoom = await findMainRoomBySession(sessionId)
+  if (!mainRoom) return
+  await clearMainRoomMessageAudience(sessionId, mainRoom.id)
 }

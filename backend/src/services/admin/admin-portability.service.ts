@@ -46,6 +46,43 @@ function mapUserIdList(
   return mapped
 }
 
+/**
+ * Resolves visibleTo for an imported chat message.
+ * MAIN room messages get null (visible to all — same as ENDED-session logic).
+ * Other messages get their roomId and audience remapped; the importing DM sees
+ * all of them anyway via the requesterRole === 'DM' bypass in canSeeMessage.
+ */
+function resolveImportedMessageVisibility(
+  rawVisibleTo: Prisma.JsonValue | null,
+  mainRoomIds: Set<string>,
+  roomIdMap: Map<string, string>,
+  userIdMap: Map<string, string>
+): Prisma.InputJsonValue | null {
+  if (!rawVisibleTo || typeof rawVisibleTo !== 'object' || Array.isArray(rawVisibleTo)) {
+    return mapUserIdList(rawVisibleTo, userIdMap) as Prisma.InputJsonValue | null
+  }
+
+  const raw = rawVisibleTo as Record<string, unknown>
+  const originalRoomId = typeof raw.roomId === 'string' ? raw.roomId : null
+
+  if (originalRoomId && mainRoomIds.has(originalRoomId)) {
+    return null
+  }
+
+  const mappedRoomId = originalRoomId ? roomIdMap.get(originalRoomId) || originalRoomId : null
+  const rawAudience = raw.visibleTo
+  const mappedAudience = Array.isArray(rawAudience)
+    ? rawAudience
+        .map((id) => (typeof id === 'string' ? userIdMap.get(id) || id : null))
+        .filter((id): id is string => Boolean(id))
+    : null
+
+  const result: Record<string, unknown> = {}
+  if (mappedRoomId) result.roomId = mappedRoomId
+  if (mappedAudience) result.visibleTo = mappedAudience
+  return result as Prisma.InputJsonValue
+}
+
 function buildCounts(bundle: CampaignTransferBundle) {
   return {
     members: bundle.members.length,
@@ -630,6 +667,11 @@ export async function importCampaignBundle(
         })
       })
 
+      // MAIN room messages become visible to all on import (same as ENDED-session logic).
+      // GROUP room messages keep their remapped restrictions; the importing DM sees all
+      // of them anyway via the requesterRole === 'DM' bypass in canSeeMessage.
+      const mainRoomIds = new Set(session.rooms.filter((r) => r.type === 'MAIN').map((r) => r.id))
+
       session.messages.forEach((message) => {
         messageRows.push({
           id: randomUUID(),
@@ -639,9 +681,12 @@ export async function importCampaignBundle(
           content: message.content,
           type: message.type,
           isDmOnly: message.isDmOnly,
-          // Imported historical messages use null visibleTo so all campaign members can read
-          // the session history. Export already strips whisper/private-room messages.
-          visibleTo: null,
+          visibleTo: resolveImportedMessageVisibility(
+            message.visibleTo,
+            mainRoomIds,
+            roomIdMap,
+            userIdMap
+          ),
           createdAt: toDate(message.createdAt) || new Date(),
           editedAt: toDate(message.editedAt),
           deletedAt: toDate(message.deletedAt),

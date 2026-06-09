@@ -194,3 +194,13 @@ export async function deletePresenceSnapshotRecord(params: {
     },
   })
 }
+
+export async function findMainRoomBySession(
+  sessionId: string
+): Promise<{ id: string; name: string } | null> {
+  const room = await prisma.room.findFirst({
+    where: { sessionId, type: 'MAIN' },
+    select: { id: true, name: true },
+  })
+  return room
+}

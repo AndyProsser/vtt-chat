@@ -14,7 +14,7 @@ import {
   applySessionStateRoomTransition,
 } from '@/services/room.service'
 import { updateSessionState, getSessionUsers } from '@/services/session/core.service'
-import { clearRoomMessages } from '@/services/chat.service'
+import { clearRoomMessages, openMainRoomMessageHistory } from '@/services/chat.service'
 import {
   disableMockSimulationForSessionExit,
   purgeMockSimulationSessionState,
@@ -143,6 +143,7 @@ async function transitionCooldownToEnded(session: {
 }): Promise<void> {
   await updateSessionState(session.id as UUID, SessionState.ENDED, session.dmId as UUID)
   await disableMockSimulationForSessionExit(session.id as UUID)
+  await openMainRoomMessageHistory(session.id as UUID)
 
   logger.info('session-cleanup-job', 'Transitioned session COOLDOWN → ENDED (cooldown expired)', {
     sessionId: session.id,
