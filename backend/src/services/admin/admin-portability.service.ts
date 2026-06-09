@@ -520,6 +520,7 @@ export async function importCampaignBundle(
       select: {
         id: true,
         name: true,
+        posterUrl: true,
         inviteCode: true,
         currentDmId: true,
         createdAt: true,
@@ -579,10 +580,10 @@ export async function importCampaignBundle(
             name: session.name,
             description: session.description,
             dmId: actorUserId,
-            state: session.state,
+            state: 'ENDED',
             createdAt: toDate(session.createdAt) || new Date(),
             startedAt: toDate(session.startedAt),
-            endedAt: toDate(session.endedAt),
+            endedAt: toDate(session.endedAt) || toDate(session.updatedAt) || new Date(),
             updatedAt: toDate(session.updatedAt) || new Date(),
           }
         }),
@@ -649,6 +650,7 @@ export async function importCampaignBundle(
       session.notes.forEach((note) => {
         noteRows.push({
           id: randomUUID(),
+          campaignId: campaign.id,
           sessionId: mappedSessionId,
           authorId: userIdMap.get(note.authorId) || actorUserId,
           authorUsername: note.authorUsername,

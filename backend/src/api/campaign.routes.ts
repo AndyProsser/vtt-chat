@@ -54,7 +54,10 @@ import {
   listCampaignExternalLinks,
   upsertCampaignExternalLink,
 } from '@/services/campaign-external-links.service'
-import { importCampaignBundle, findImportConflict } from '@/services/admin/admin-portability.service'
+import {
+  importCampaignBundle,
+  findImportConflict,
+} from '@/services/admin/admin-portability.service'
 import { buildDmCampaignExport } from '@/services/dm-portability.service'
 import { deriveCampaignJoinRole } from '@/services/session/authz.service'
 import { broadcastPresenceProfileUpdate } from '@/services/session/presence-profile-broadcast.service'
@@ -2366,6 +2369,20 @@ router.post('/import', requireAuth, async (req: Request, res: Response) => {
         .status(400)
         .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid or incompatible export bundle' })
     }
+
+    // Create a fresh IDLE session so the DM can start immediately
+    const sessionName = buildCampaignSessionName({
+      baseName: result.campaign.name,
+      sessionNumber: result.counts.sessions + 1,
+    })
+    const idleSession = await createSession(
+      sessionName,
+      user.userId as UUID,
+      undefined,
+      result.campaign.id as UUID
+    )
+    await ensureSessionDefaultRoomsForSession(idleSession.id as UUID, user.userId as UUID)
+
     return res.status(201).json({
       campaign: result.campaign,
       artifactId: result.artifactId,

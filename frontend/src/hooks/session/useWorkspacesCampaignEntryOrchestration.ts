@@ -292,12 +292,21 @@ export function useWorkspacesCampaignEntryOrchestration(
             throw new Error(errorData.message || 'Failed to import campaign')
           }
 
-          const data = (await response.json()) as { campaign: CampaignSummary }
-          campaign = {
-            ...data.campaign,
-            currentDmId: data.campaign.currentDmId ?? userId,
-            memberRole: data.campaign.memberRole ?? 'DM',
-            isMember: data.campaign.isMember ?? true,
+          const data = (await response.json()) as { campaign: { id: string } }
+          const newCampaignId = data.campaign.id as UUID
+
+          // Refresh the full campaign list so the lobby gets complete data
+          // (posterUrl, memberRole, latestSessionState, etc. are not in the import response)
+          const freshCampaigns = await refreshLobbyCampaignData({
+            showLoading: false,
+            surfaceError: false,
+          })
+          campaign = freshCampaigns?.find((c) => c.id === newCampaignId) ?? {
+            id: newCampaignId,
+            name: newCampaignName.trim(),
+            currentDmId: userId,
+            memberRole: 'DM',
+            isMember: true,
           }
         } else {
           const response = await fetchWithAuthGuard(`${apiUrl}/api/campaigns`, {
@@ -323,10 +332,10 @@ export function useWorkspacesCampaignEntryOrchestration(
           }
         }
 
-        setCampaigns((prev) => [
-          campaign,
-          ...prev.filter((c) => c.id !== conflictInfo?.conflictCampaignId),
-        ])
+        if (!importedBundle) {
+          // For non-import creation, patch the list immediately (no full refresh needed)
+          setCampaigns((prev) => [campaign, ...prev])
+        }
         setSelectedCampaignId(campaign.id)
         setShowCreateCampaignModal(false)
 
