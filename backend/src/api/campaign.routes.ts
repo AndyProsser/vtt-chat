@@ -2066,9 +2066,12 @@ router.get('/:campaignId/sessions', requireAuth, async (req: Request, res: Respo
   const sessions = await listSessionsByCampaign(campaignId as UUID)
   let effectiveSessions = sessions
 
+  const hasLiveSession = effectiveSessions.some((session) =>
+    ['IDLE', 'ACTIVE', 'PAUSED', 'COOLDOWN'].includes(session.state)
+  )
   if (
     effectiveSessions.length > 0 &&
-    effectiveSessions.every((session) => session.state === 'CLEANUP') &&
+    !hasLiveSession &&
     (campaign.memberRole === 'DM' || campaign.memberRole === 'PLAYER')
   ) {
     const sessionName = buildCampaignSessionName({

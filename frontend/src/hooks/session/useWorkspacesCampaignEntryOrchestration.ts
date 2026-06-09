@@ -159,9 +159,10 @@ export function useWorkspacesCampaignEntryOrchestration(
       // server-provided sessions list order (most-recent first) as the
       // canonical source. If the caller provided an explicit
       // `preferredSessionId`, attempt to join that session and rely on the
-      // server's response. Otherwise, use the server's most recent session
-      // (targetSessions[0]) when present.
-      const serverPreferredSession = targetSessions.length > 0 ? targetSessions[0] : null
+      // server's response. Otherwise, use the first non-CLEANUP session
+      // (CLEANUP sessions are archived and can never be joined).
+      const serverPreferredSession =
+        targetSessions.find((s) => s.state !== SessionState.CLEANUP) ?? null
 
       // If the caller has an explicit preferred session id, let the server
       // resolve membership for that id and use the returned session.

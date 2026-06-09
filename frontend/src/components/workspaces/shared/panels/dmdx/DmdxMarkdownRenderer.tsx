@@ -23,6 +23,11 @@ interface MarkdownSegmentViewProps {
   placeholder?: string
 }
 
+function getEditorMarkdown(editor: unknown): string {
+  const e = editor as { storage?: { markdown?: { getMarkdown?: () => string } } } | null
+  return e?.storage?.markdown?.getMarkdown?.() ?? ''
+}
+
 function MarkdownSegmentView({ text, placeholder }: MarkdownSegmentViewProps) {
   const extensions = useMemo(
     () => [
@@ -37,6 +42,9 @@ function MarkdownSegmentView({ text, placeholder }: MarkdownSegmentViewProps) {
     extensions,
     content: text,
     editable: false,
+    // Defer editor creation to after mount so isComponentMounted=true before
+    // scheduleDestroy fires — prevents the destroy/recreate loop in virtual lists.
+    immediatelyRender: false,
   })
 
   useEffect(() => {
@@ -47,7 +55,12 @@ function MarkdownSegmentView({ text, placeholder }: MarkdownSegmentViewProps) {
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) return
-    editor.commands.setContent(text, { emitUpdate: false })
+    // Guard matches MarkdownEditorEditable: only call setContent when the
+    // markdown has actually changed, to avoid a spurious ProseMirror transaction
+    // on mount that causes PureEditorContent to loop via forceUpdate().
+    if (getEditorMarkdown(editor) !== text) {
+      editor.commands.setContent(text, { emitUpdate: false })
+    }
   }, [editor, text])
 
   if (!text.trim() && placeholder) {

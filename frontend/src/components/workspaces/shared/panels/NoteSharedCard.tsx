@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { DmdxMarkdownRenderer } from '@/components/workspaces/shared/panels/dmdx/DmdxMarkdownRenderer'
+import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
 import '@/styles/components/workspaces/shared/panels/NoteSharedCard.css'
 
@@ -14,6 +14,7 @@ interface NoteSharedCardProps {
 
 /**
  * Dedicated renderer for shared handout system messages in chat and history views.
+ * Uses MarkdownEditor readOnly for consistent rendering with Notes and Journal panels.
  */
 export function NoteSharedCard({
   note,
@@ -82,7 +83,12 @@ export function NoteSharedCard({
 
       {hasBody ? (
         <div className="session-note-shared-card__markdown">
-          <DmdxMarkdownRenderer value={note.markdown} />
+          <MarkdownEditor
+            key={note.markdown.length}
+            value={note.markdown}
+            readOnly
+            variant="full"
+          />
         </div>
       ) : null}
       {timestampLabel ? (
