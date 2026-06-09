@@ -189,13 +189,22 @@
 
 .session-user-settings-modal.session-modal--floating {
   top: calc(env(safe-area-inset-top, 0px) + 4.2rem);
-  right: max(0.75rem, calc((100vw - 830px) / 2 + 4.5rem));
+  right: max(3.75rem, calc((100vw - 1200px) / 2 + 4.5rem));
   left: auto;
   transform: none;
   max-height: calc(100dvh - 5.5rem);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 680px) {
+  .session-user-settings-modal.session-modal--floating {
+    top: calc(env(safe-area-inset-top, 0px) + 4rem);
+    right: 3.25rem;
+    left: 0.75rem;
+    width: auto;
+  }
+}
+
+@media (max-width: 420px) {
   .session-user-settings-modal.session-modal--floating {
     top: calc(env(safe-area-inset-top, 0px) + 4rem);
     right: 0.75rem;

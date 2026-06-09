@@ -321,7 +321,7 @@
   width: 100%;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 680px) {
   .crbs-attributes-row {
     grid-template-columns: 1fr;
   }

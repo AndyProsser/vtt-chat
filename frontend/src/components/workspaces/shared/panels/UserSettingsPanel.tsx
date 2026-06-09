@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { CharacterAvatarUploadField } from './CharacterAvatarUploadField'
 import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
+import { getBooleanToggleLabel } from '@/constants/sessionUi.constants'
 import '@/styles/components/workspaces/shared/panels/UserSettingsPanel.css'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
@@ -35,6 +36,42 @@ function profilesMatch(left: ProfileState, right: ProfileState): boolean {
   return (
     normalizedLeft.displayName === normalizedRight.displayName &&
     normalizedLeft.avatarUrl === normalizedRight.avatarUrl
+  )
+}
+
+/** Reusable ON/OFF toggle pair matching the editor pattern. */
+function TogglePair({
+  id,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string
+  value: boolean
+  onChange: (v: boolean) => void
+  disabled: boolean
+}) {
+  return (
+    <div className="session-toggle-group" role="group" aria-labelledby={`${id}-label`}>
+      <button
+        type="button"
+        className={`session-toggle-button ${value ? 'is-active' : ''}`}
+        aria-pressed={value}
+        onClick={() => onChange(true)}
+        disabled={disabled}
+      >
+        {getBooleanToggleLabel(true)}
+      </button>
+      <button
+        type="button"
+        className={`session-toggle-button ${!value ? 'is-active' : ''}`}
+        aria-pressed={!value}
+        onClick={() => onChange(false)}
+        disabled={disabled}
+      >
+        {getBooleanToggleLabel(false)}
+      </button>
+    </div>
   )
 }
 
@@ -168,21 +205,35 @@ export const UserSettingsPanel = forwardRef<UserSettingsPanelHandle, UserSetting
           />
 
           <div className="susp-field susp-field--spaced" role="group" aria-label="Interface labels">
-            <label htmlFor="susp-tooltip-labels-toggle" className="susp-field__label">
+            <label id="susp-tooltip-labels-label" className="susp-field__label">
               Show tooltip labels
             </label>
             <p className="susp-field__help">
               Controls hover labels for toolbar and panel icon buttons.
             </p>
-            <label className="susp-toggle" htmlFor="susp-tooltip-labels-toggle">
-              <input
-                id="susp-tooltip-labels-toggle"
-                type="checkbox"
-                checked={tooltipLabelsEnabled}
-                onChange={(event) => setTooltipLabelsEnabled(event.target.checked)}
-              />
-              <span>{tooltipLabelsEnabled ? 'Enabled' : 'Disabled'}</span>
-            </label>
+
+            <div
+              className="session-toggle-group"
+              role="group"
+              aria-labelledby="susp-tooltip-labels-label"
+            >
+              <button
+                type="button"
+                className={`session-toggle-button ${tooltipLabelsEnabled ? 'is-active' : ''}`}
+                aria-pressed={tooltipLabelsEnabled}
+                onClick={() => setTooltipLabelsEnabled(true)}
+              >
+                {getBooleanToggleLabel(true)}
+              </button>
+              <button
+                type="button"
+                className={`session-toggle-button ${!tooltipLabelsEnabled ? 'is-active' : ''}`}
+                aria-pressed={!tooltipLabelsEnabled}
+                onClick={() => setTooltipLabelsEnabled(false)}
+              >
+                {getBooleanToggleLabel(false)}
+              </button>
+            </div>
           </div>
         </div>
       </section>

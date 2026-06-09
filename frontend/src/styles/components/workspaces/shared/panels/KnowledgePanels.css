@@ -4,7 +4,7 @@
   --knowledge-panels__right-rail-width: 420px;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 680px) {
   .session-workspace-frame__rails {
     --knowledge-panels__right-rail-width: clamp(360px, 100vw, 460px);
   }
@@ -1487,10 +1487,18 @@
   font-size: 0.82rem;
 }
 
-.notes-list-item-status--tone-private { color: #94a3b8; }
-.notes-list-item-status--tone-shared { color: #6ee7b7; }
-.notes-list-item-status--tone-limited { color: #7dd3fc; }
-.notes-list-item-status--tone-warning { color: #fbbf24; }
+.notes-list-item-status--tone-private {
+  color: #94a3b8;
+}
+.notes-list-item-status--tone-shared {
+  color: #6ee7b7;
+}
+.notes-list-item-status--tone-limited {
+  color: #7dd3fc;
+}
+.notes-list-item-status--tone-warning {
+  color: #fbbf24;
+}
 
 .notes-list-item-hashtag {
   cursor: pointer;

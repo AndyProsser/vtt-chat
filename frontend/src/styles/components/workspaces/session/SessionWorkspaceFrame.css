@@ -587,7 +587,7 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 680px) {
   .knowledge-panels__right-rail-overlay {
     right: 1px;
   }
