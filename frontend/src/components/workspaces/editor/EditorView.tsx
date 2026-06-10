@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, memo, useCallback, useMemo, useState } from 'react'
 import { Role, type SessionState, type UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
@@ -59,10 +59,15 @@ type EditorViewProps = {
   ) => Promise<void>
 }
 
-export function EditorView(props: EditorViewProps) {
+export const EditorView = memo(function EditorView(props: EditorViewProps) {
   const campaign = props.campaign
+  const { onLaunch } = props
   const tabs = useMemo(() => getTabsForRole(props.role), [props.role])
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(tabs[0] || 'information')
+
+  const handleLaunch = useCallback(() => {
+    if (campaign) onLaunch(campaign.id)
+  }, [campaign, onLaunch])
   const latestSettingsSession = props.settingsCampaignSessions[0] ?? null
   const notesSessionId = props.settingsReferenceSessionId ?? latestSettingsSession?.id ?? null
 
@@ -209,7 +214,7 @@ export function EditorView(props: EditorViewProps) {
           onToggleTheme={props.onToggleTheme}
           onOpenUserSettings={props.onOpenUserSettings}
           onReturnToLobby={props.onBackToLobby}
-          onLaunch={() => props.onLaunch(campaign.id)}
+          onLaunch={handleLaunch}
           isLaunchDisabled={props.isLaunchDisabled}
           launchDisabledReason={props.launchDisabledReason}
           showInviteWidget={props.showInviteWidget}
@@ -262,4 +267,4 @@ export function EditorView(props: EditorViewProps) {
       </>
     </TooltipProvider>
   )
-}
+})

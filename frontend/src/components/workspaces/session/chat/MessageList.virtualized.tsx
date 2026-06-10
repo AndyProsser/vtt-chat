@@ -1,11 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties, RefObject, UIEventHandler, WheelEventHandler } from 'react'
-import {
-  List,
-  type RowComponentProps,
-  useDynamicRowHeight,
-  useListCallbackRef,
-} from 'react-window'
+import { List, type RowComponentProps, useDynamicRowHeight, useListCallbackRef } from 'react-window'
 import type { MessageListProps, PreparedMessage } from './MessageList'
 import { MessageListSystemRow } from './rows/MessageListSystemRow'
 import { MessageListChatRow } from './rows/MessageListChatRow'
@@ -72,6 +67,7 @@ function MessageRow({
   ...data
 }: RowComponentProps<VirtualizedListData>) {
   const prepared = data.messages[index]
+  const { setRowHeight } = data
   const contentRef = useRef<HTMLDivElement | null>(null)
   const lastHeightRef = useRef<number | null>(null)
 
@@ -89,7 +85,7 @@ function MessageRow({
       // Only update cache if height actually changed—avoid redundant cache updates
       if (height > 0 && lastHeightRef.current !== height) {
         lastHeightRef.current = height
-        data.setRowHeight(index, height)
+        setRowHeight(index, height)
       }
     }
 
@@ -119,7 +115,7 @@ function MessageRow({
       observer.disconnect()
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [data.setRowHeight, index, prepared])
+  }, [setRowHeight, index, prepared])
 
   if (!prepared) {
     return null

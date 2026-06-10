@@ -1,10 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import {
-  List,
-  type RowComponentProps,
-  useDynamicRowHeight,
-} from 'react-window'
+import { List, type RowComponentProps, useDynamicRowHeight } from 'react-window'
 import { MessageType } from '@shared'
 import type { UUID } from '@shared'
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
@@ -244,6 +240,7 @@ function renderRow(row: HistoryRow) {
 
 function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowComponentProps<RowData>) {
   const row = data.rows[index]
+  const { setRowHeight } = data
   const contentRef = useRef<HTMLDivElement | null>(null)
   const lastHeightRef = useRef<number | null>(null)
 
@@ -260,7 +257,7 @@ function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowCompone
       // Only update cache if height actually changed — avoids redundant cache writes.
       if (height > 0 && lastHeightRef.current !== height) {
         lastHeightRef.current = height
-        data.setRowHeight(index, height)
+        setRowHeight(index, height)
       }
     }
 
@@ -293,7 +290,7 @@ function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowCompone
       observer.disconnect()
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [data.setRowHeight, index, row])
+  }, [setRowHeight, index, row])
 
   if (!row) {
     return null

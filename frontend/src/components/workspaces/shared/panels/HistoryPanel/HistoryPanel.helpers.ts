@@ -4,6 +4,39 @@ import type { SessionHistoryMessage, SessionHistoryThread } from '@/types/histor
 export const HISTORY_MESSAGE_LIMIT = 180
 export const HISTORY_GROUPING_WINDOW_MS = 5 * 60 * 1000
 
+export const HISTORY_LOADING_MESSAGES = [
+  "Rolling for History. Natural 1. Checking anyway.",
+  "Consulting the oracles. Their rates are reasonable.",
+  "Bribing the bard to recall the tale.",
+  "Attempting to decipher the DM's handwriting.",
+  "The wizard is rifling through their spell slots.",
+  "Asking the innkeeper what happened last time.",
+  "Summoning memories from the Astral Plane.",
+  "Your paladin is praying for faster load times. The gods are indifferent.",
+  "Interrogating the tavern regulars for intel.",
+  "Casting Speak with Dead on the session logs.",
+  "Consulting the town crier, who has wildly inaccurate information.",
+  "Rummaging through the bag of holding for last session's notes.",
+  "The rogue is picking the lock on the archive.",
+  "Persuasion check failed. Retrying with gold.",
+  "The barbarian is impatient. Please ignore the yelling.",
+  "Unrolling the campaign scroll. It is very long.",
+  "Checking for traps in the records room.",
+  "The monk is meditating on what transpired. This may take 1d4 minutes.",
+  "Your familiar knocked something over in the archives.",
+  "The cleric tried to heal the data. It didn't work.",
+  "Deciphering the ranger's tracking notes from last session.",
+  "The lore keeper demands payment. Negotiating.",
+  "Cross-referencing with the Tome of Past Mistakes.",
+  "The divination wizard is peering into the past. Their eye is twitching.",
+  "Locating the transcript. Someone filed it under 'Miscellaneous'.",
+  "Sending a Sending spell to the scribe. Awaiting reply.",
+  "Resurrecting session logs. Material components: expensive.",
+  "The beholder is reviewing the records. Don't make eye contact.",
+  "Asking NPCs who were probably there. Results vary.",
+  "Dispatching a messenger sprite. Estimated arrival: soon.",
+] as const
+
 export type HistoryMessageVariant = 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'
 
 export function toTimestamp(value: unknown): number {

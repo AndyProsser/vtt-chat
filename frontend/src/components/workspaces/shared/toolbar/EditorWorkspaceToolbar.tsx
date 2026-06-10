@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react'
 import { WorkspaceToolbar } from '@/components/workspaces/shared/toolbar/WorkspaceToolbar'
 import { InvitePopoverWidget } from '@/components/workspaces/shared/toolbar/InvitePopoverWidget'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
@@ -25,73 +26,108 @@ type EditorWorkspaceToolbarProps = {
   isInviteReissuing?: boolean
 }
 
-export function EditorWorkspaceToolbar(props: EditorWorkspaceToolbarProps) {
+export const EditorWorkspaceToolbar = memo(function EditorWorkspaceToolbar({
+  themeMode,
+  connectionStatus,
+  onToggleTheme,
+  onOpenUserSettings,
+  onReturnToLobby,
+  onLaunch,
+  isLaunchDisabled,
+  launchLabel,
+  showInviteWidget,
+  joinUrl,
+  spectatorsEnabled,
+  watchUrl,
+  canRefreshInvites,
+  onCopyInviteUrl,
+  onReissueInvite,
+  isInviteReissuing,
+}: EditorWorkspaceToolbarProps) {
   const coreStateToneClass =
-    props.connectionStatus.coreWsState === 'CONNECTED'
+    connectionStatus.coreWsState === 'CONNECTED'
       ? 'is-green'
-      : props.connectionStatus.coreWsState === 'CONNECTING'
+      : connectionStatus.coreWsState === 'CONNECTING'
         ? 'is-yellow'
         : 'is-red'
 
-  const inviteActions = props.showInviteWidget ? (
-    <InvitePopoverWidget
-      show={props.showInviteWidget}
-      joinUrl={props.joinUrl}
-      spectatorsEnabled={props.spectatorsEnabled}
-      watchUrl={props.watchUrl}
-      canRefreshInvites={props.canRefreshInvites}
-      onCopyInviteUrl={props.onCopyInviteUrl}
-      onReissueInvite={props.onReissueInvite}
-      isInviteReissuing={props.isInviteReissuing}
-    />
-  ) : undefined
+  // Memoised so WorkspaceToolbar's memo check passes when launch data is unchanged.
+  const centerContent = useMemo(
+    () =>
+      onLaunch ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>
+              <button
+                type="button"
+                className="session-toolbar__action session-toolbar__action--launch"
+                onClick={onLaunch}
+                disabled={isLaunchDisabled}
+              >
+                <Icon name="rocket_launch" />
+                <span>{launchLabel || 'Campaign'}</span>
+              </button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="center">
+            {`Launch: ${launchLabel || 'campaign'}`}
+          </TooltipContent>
+        </Tooltip>
+      ) : undefined,
+    [isLaunchDisabled, launchLabel, onLaunch]
+  )
 
-  const centerContent = props.onLaunch ? (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span>
-          <button
-            type="button"
-            className="session-toolbar__action session-toolbar__action--launch"
-            onClick={props.onLaunch}
-            disabled={props.isLaunchDisabled}
-          >
-            <Icon name="rocket_launch" />
-            <span>{props.launchLabel || 'Campaign'}</span>
-          </button>
-        </span>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" align="center">
-        {`Launch: ${props.launchLabel || 'campaign'}`}
-      </TooltipContent>
-    </Tooltip>
-  ) : undefined
+  // Memoised so WorkspaceToolbar's memo check passes when invite data is unchanged.
+  const extraActions = useMemo(
+    () =>
+      showInviteWidget ? (
+        <InvitePopoverWidget
+          show={showInviteWidget}
+          joinUrl={joinUrl}
+          spectatorsEnabled={spectatorsEnabled}
+          watchUrl={watchUrl}
+          canRefreshInvites={canRefreshInvites}
+          onCopyInviteUrl={onCopyInviteUrl}
+          onReissueInvite={onReissueInvite}
+          isInviteReissuing={isInviteReissuing}
+        />
+      ) : undefined,
+    [
+      canRefreshInvites,
+      isInviteReissuing,
+      joinUrl,
+      onCopyInviteUrl,
+      onReissueInvite,
+      showInviteWidget,
+      spectatorsEnabled,
+      watchUrl,
+    ]
+  )
 
   return (
     <WorkspaceToolbar
       className="session-toolbar--lobby"
       dataTestId="workspaces-lobby-toolbar"
       dataUiComponent="EditorWorkspaceToolbar"
-      dataUiState={props.dataUiState}
       brandAriaLabel="Editor toolbar"
       centerContent={centerContent}
-      extraActions={inviteActions}
-      themeMode={props.themeMode}
-      onToggleTheme={props.onToggleTheme}
-      onOpenUserSettings={props.onOpenUserSettings}
-      onExit={props.onReturnToLobby}
+      extraActions={extraActions}
+      themeMode={themeMode}
+      onToggleTheme={onToggleTheme}
+      onOpenUserSettings={onOpenUserSettings}
+      onExit={onReturnToLobby}
       exitIcon="arrow_back"
       exitAriaLabel="Return to lobby"
       exitTooltipLabel="Return"
-      connectionStatusColorKey={props.connectionStatus.statusColorKey}
-      connectionStatusLabel={props.connectionStatus.label}
+      connectionStatusColorKey={connectionStatus.statusColorKey}
+      connectionStatusLabel={connectionStatus.label}
       connectionStatusRows={[
         {
           label: 'Core',
-          value: props.connectionStatus.coreWsState,
+          value: connectionStatus.coreWsState,
           toneClassName: coreStateToneClass,
         },
       ]}
     />
   )
-}
+})

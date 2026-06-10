@@ -4,6 +4,7 @@ import { type Role, type UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import type { SessionHistoryMessage, SessionHistoryThread } from '@/types/history'
 import {
+  HISTORY_LOADING_MESSAGES,
   HISTORY_MESSAGE_LIMIT,
   formatBoundaryDate,
   matchesQuery,
@@ -39,6 +40,9 @@ export function HistoryPanel({
   const [query, setQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [loadingMessage] = useState(
+    () => HISTORY_LOADING_MESSAGES[Math.floor(Math.random() * HISTORY_LOADING_MESSAGES.length)]
+  )
 
   useEffect(() => {
     let isDisposed = false
@@ -229,7 +233,19 @@ export function HistoryPanel({
           <Icon name="history" />
           History
         </h3>
-        <p className="knowledge-panel__empty">Loading history…</p>
+        <div className="history-panel-loading" role="status">
+          <span className="history-panel-loading__icon" aria-hidden="true">
+            <Icon name="history" />
+          </span>
+          <p className="history-panel-loading__message">
+            {loadingMessage}
+            <span className="history-panel-loading__dots" aria-hidden="true">
+              <span />
+              <span style={{ animationDelay: '0.2s' }} />
+              <span style={{ animationDelay: '0.4s' }} />
+            </span>
+          </p>
+        </div>
       </section>
     )
   }

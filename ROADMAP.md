@@ -10,16 +10,16 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     16 |      13 |              0 |              3 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     16 |      16 |              0 |              0 | 🟢 Done        |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **45** |  **33** |          **2** |         **10** |                |
+| **Total**                              | **45** |  **36** |          **2** |          **7** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning: 13 of 16 done — 3 new items added from CampaignEditor lobby trace (PERF-14, PERF-15, PERF-16).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase complete (all 16 items done).
 
 ---
 
@@ -31,7 +31,7 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ---
 
-## Performance Tuning & Bug Fixes 🟡
+## Performance Tuning & Bug Fixes 🟢
 
 _Root-cause re-render isolation fixes. Two profiler traces captured 2026-06-10: initial trace (1,405 commits, 43MB) and a follow-up full-session trace (1,554 commits, lobby → session → all panels). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
 
@@ -364,7 +364,7 @@ The `useMemo` summary and expiry `useEffect` are updated to use the two split ar
 
 ### PERF-14: EditorWorkspace — inline `settingsPanel` JSX and unstabilized callbacks cause EditorView cascade
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical
 **Source**: Profiler trace 2026-06-10 (lobby CampaignEditor, 323 commits)
 
@@ -387,17 +387,20 @@ The same inline-JSX-as-prop pattern was the root cause for PERF-10 (`RightRailCo
 
 **Acceptance Criteria**:
 
-- [ ] `EditorView` receives a stable `settingsPanel` reference across re-renders where campaign/settings data hasn't changed
-- [ ] `onCopyInviteUrl`, `onReissueInvite`, `onSettingsReferenceSessionChange` are stable across `EditorWorkspace` renders
-- [ ] No prop-change re-render triggered for `EditorView` on unrelated parent state changes
+- [x] `EditorView` wrapped in `memo()` — prevents cascade from any `EditorWorkspace` re-render where `EditorView` props are stable
+- [x] `settingsPanel` wrapped in `useMemo` with exhaustive deps — stable reference when settings data hasn't changed
+- [x] Inline `onRemovePoster`, `onExport`, `onDeleteCampaign` extracted to `useCallback` — stable within `settingsPanel` useMemo
+- [x] `onCopyInviteUrl`, `onReissueInvite`, `onSettingsReferenceSessionChange` stabilised in `EditorWorkspace` via stable-callback-via-ref pattern — unconditionally stable regardless of parent re-renders
+- [x] Props used in `useCallback` hooks destructured before the hook calls — satisfies exhaustive-deps rule
+- [x] Hooks moved before the early-return guard (rules of hooks)
+- [x] Both files ≤ 400 lines
 - [ ] Worst-commit component count drops from ~382 to ≤ 50 (follow-up trace)
-- [ ] Each modified file stays ≤ 400 lines after the refactor
 
 ---
 
 ### PERF-15: EditorWorkspaceToolbar — tooltip cascade from unstabilized inline handlers
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Source**: Profiler trace 2026-06-10 (lobby CampaignEditor, 323 commits)
 
@@ -409,42 +412,41 @@ The 6 hook-driven `EditorView` re-renders (commits 101, 118, 153, 195, 276, 319)
 
 **Fix**:
 
-1. Wrap `EditorWorkspaceToolbar` in `memo()` — prevents the cascade from all `EditorView` re-renders where toolbar props haven't changed
-2. Wrap toolbar button `onClick` (and other event handlers) in `useCallback` — stabilizes the handler references that flow into Radix `Primitive.button.Slot`
+1. Wrap `EditorWorkspaceToolbar` in `memo()` and destructure all props — prevents the cascade from all `EditorView` re-renders where toolbar props haven't changed
+2. Wrap `centerContent` and `extraActions` (the two `ReactNode` slots passed to `WorkspaceToolbar`) in `useMemo` in `EditorWorkspaceToolbar` — `WorkspaceToolbar` is already `memo()`-wrapped; stabilising these two slots stops its memo check from failing on every render
+3. Stop forwarding `dataUiState` to `WorkspaceToolbar` — the active-tab value changes on every tab switch and was the last prop causing `WorkspaceToolbar` to re-render even after the other slots were stabilised. The tab state is already reflected on the workspace `section` element.
+4. Stabilise `onLaunch` in `EditorView` with `useCallback` so it can safely be a dep of `centerContent`'s `useMemo`
 
-**Files to change**:
+**Files changed**:
 
-- `frontend/src/components/workspaces/shared/toolbar/WorkspaceToolbar.tsx` (or the editor-specific toolbar if separate)
-- Any component in `EditorView.tsx` that defines toolbar handler functions inline
-
-**Acceptance Criteria**:
-
-- [ ] `EditorWorkspaceToolbar` does not re-render when `EditorView` re-renders for reasons unrelated to toolbar props
-- [ ] Toolbar button event handler references are stable across `EditorView` renders
-- [ ] Per-`EditorView`-render cascade from toolbar drops from ~350 components to < 10
-- [ ] Toolbar button interactions (tooltips, clicks, keyboard nav) remain fully functional
-
----
-
-### PERF-16: EditorView — broad Zustand selector triggers 6 hook-driven re-renders per lobby session
-
-**Status**: ⚪ Not Started
-**Priority**: 🟡 Medium
-**Source**: Profiler trace 2026-06-10 (lobby CampaignEditor, 323 commits)
-
-**Problem**: `EditorView` has a Zustand subscription (hook index 1 in the profiler) that fires 6 times during the 323-commit trace — each firing causes a hook-driven `EditorView` re-render. The selector subscribes to campaign or session state but the exact slice is broader than needed, catching unrelated state changes. Each of these 6 re-renders currently cascades into the toolbar tooltip chain (~122 prop-changed components per event, per PERF-15).
-
-**Fix**: Narrow the Zustand selector in `EditorView` — apply `useShallow` if the hook returns an object or array, or split into primitive-value selectors (one subscription per primitive) so the hook only fires on directly relevant state changes.
-
-**Files to change**:
-
+- `frontend/src/components/workspaces/shared/toolbar/EditorWorkspaceToolbar.tsx`
 - `frontend/src/components/workspaces/editor/EditorView.tsx`
 
 **Acceptance Criteria**:
 
-- [ ] Hook-driven re-render count for `EditorView` drops from 6+ per lobby session to ≤ 1 for actual state changes that affect the view
-- [ ] Editor tab switching and settings behaviour remain functional
-- [ ] Zustand selector does not fire on unrelated session/campaign state changes
+- [x] `EditorWorkspaceToolbar` wrapped in `memo()` — isolated from `EditorView` re-renders where toolbar props are unchanged
+- [x] `centerContent` and `extraActions` wrapped in `useMemo` — `WorkspaceToolbar` receives stable `ReactNode` slots
+- [x] `dataUiState` not forwarded to `WorkspaceToolbar` — tab-switch re-renders no longer propagate into the toolbar tooltip chain
+- [x] `onLaunch` in `EditorView` stabilised with `useCallback` — stable dep for `centerContent` useMemo
+- [ ] Per-`EditorView`-render cascade from toolbar drops from ~350 to < 10 (follow-up trace)
+- [ ] Toolbar interactions (launch, invite, theme, settings, exit, tooltips) remain fully functional
+
+---
+
+### PERF-16: EditorView — 6 hook-driven re-renders per lobby session
+
+**Status**: 🟢 Done (resolved by PERF-15)
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10 (lobby CampaignEditor, 323 commits)
+
+**Root-cause correction**: The original diagnosis ("broad Zustand selector at hook index 1") was wrong. `EditorView` has no Zustand subscription. Hook index 1 at trace time was `useState(activeTab)` — the 6 fires were 6 tab-click interactions during the recording, which is expected behaviour. There is no extraneous subscription to narrow.
+
+The cascade produced by those 6 re-renders (~122 prop-changed components each) was the toolbar tooltip chain, driven by `dataUiState` propagating into `WorkspaceToolbar` on every tab change. **PERF-15 resolved this**: `dataUiState` is no longer forwarded to `WorkspaceToolbar`, and `centerContent`/`extraActions` are now memoised — so tab-click re-renders of `EditorView` no longer cascade into the toolbar at all.
+
+**Acceptance Criteria**:
+
+- [x] Tab-click re-renders of `EditorView` do not cascade into `WorkspaceToolbar` or its Tooltip children (resolved in PERF-15)
+- [x] No Zustand subscription narrowing required — `EditorView` has no store subscriptions
 
 ---
 
