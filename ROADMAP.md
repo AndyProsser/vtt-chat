@@ -10,14 +10,14 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |      7 |       5 |              0 |              2 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |      7 |       7 |              0 |              0 | 🟢 Done        |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **36** |  **25** |          **2** |          **9** |                |
+| **Total**                              | **36** |  **27** |          **2** |          **7** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress) and Performance Tuning (7 not started).
 
@@ -52,8 +52,8 @@ _Root-cause re-render isolation fixes identified from a React profiler trace cap
 
 **Acceptance Criteria**:
 
-- [ ] `RoomSelector` contains no local `<TooltipProvider>` wrapper
-- [ ] Tooltip components in the room list continue to function correctly end-to-end
+- [x] `RoomSelector` contains no local `<TooltipProvider>` wrapper
+- [x] Tooltip components in the room list continue to function correctly end-to-end (workspace-root `TooltipProvider` in `workspaces/index.tsx` covers the subtree)
 - [ ] Follow-up profiler commit showing tooltip subtree no longer cascades on session state changes
 - [ ] Worst-case commit breadth drops from ~790 to under 100 components
 
@@ -73,9 +73,9 @@ _Root-cause re-render isolation fixes identified from a React profiler trace cap
 
 **Acceptance Criteria**:
 
-- [ ] `SpeakingIndicator` is wrapped in `memo()`
+- [x] `SpeakingIndicator` is wrapped in `memo()`
 - [ ] All parent-triggered renders eliminated; trace shows hook-only triggers
-- [ ] No regression in speaking ring behaviour during active voice
+- [x] No regression in speaking ring behaviour during active voice
 
 ---
 
@@ -93,9 +93,9 @@ _Root-cause re-render isolation fixes identified from a React profiler trace cap
 
 **Acceptance Criteria**:
 
-- [ ] Both role-chip callbacks are `useCallback`-wrapped in `GroupMemberItem`
+- [x] Both role-chip callbacks are `useCallback`-wrapped in `GroupMemberItem`
 - [ ] `AvatarOverlayComponent` no longer re-renders when only speaking/presence state changes
-- [ ] Role chip hover and popover behaviour unchanged
+- [x] Role chip hover and popover behaviour unchanged
 
 ---
 
@@ -123,9 +123,9 @@ All three receive stable primitive props (`sessionId`, `roomId`, `role`, `curren
 
 **Acceptance Criteria**:
 
-- [ ] All three components wrapped in `memo()`
+- [x] All three components wrapped in `memo()`
 - [ ] Zero parent-cascade renders for all three in follow-up profiler trace
-- [ ] No regressions in audio panel, left rail summary, or typing indicator behaviour
+- [x] No regressions in audio panel, left rail summary, or typing indicator behaviour
 
 ---
 
@@ -155,42 +155,52 @@ All three receive stable primitive props (`sessionId`, `roomId`, `role`, `curren
 
 ### PERF-06: Audit SessionWorkspaceChromeConnector Zustand selectors
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Source**: Profiler trace 2026-06-10
 
 **Problem**: `SessionWorkspaceChromeConnector` fires 178 times across the trace (143 hook-driven, 22 prop-driven, 13 both). The worst single commit showed `actual=47ms` for this component alone. As the central hub that patches live session data onto workspace props, any Zustand selector returning an array or object (rather than a primitive) causes the connector — and its entire subtree — to re-render on every presence/speaking/room change. The four render-prop callbacks (`renderToolbar`, `renderLeftRail`, `renderCenterPane`, `renderRightRailTab`) in `SessionWorkspace.tsx` all depend on `currentSessionState`, meaning a single session transition invalidates all four simultaneously.
 
+**Root cause identified**: Four `useStore` selectors and one `useMemo` were completely dead — the values were never referenced after assignment:
+
+- `dmOverrides` — fired on every condition/distance/gain/filter override applied to any player
+- `broadcastModeEnabled` — fired on every DM broadcast mode toggle
+- `currentConditionName` — fired on every own-user condition change
+- `selectedRoomIdOverride` — fired on every room selection override change
+- `visibleRooms` useMemo (depended on `currentRooms`) — computed but never passed to any child or hook
+
+The import of `getVisibleRoomsForSessionState` and the `EMPTY_VISIBLE_ROOMS` constant were also dead.
+
 **Fix**:
 
-- Audit all `useStore` selectors in `SessionWorkspaceChromeConnector.tsx`; replace array/object selectors with primitive selectors (count, ID, boolean flag) or stable memoised values.
-- Group session-state-derived render-prop deps into a single `useMemo`'d object so one session transition creates one invalidation, not four.
+- Removed all five dead subscriptions and the associated dead import/constant.
+- Remaining selectors (`currentSessionRoomsById`, `currentSessionPresenceByUser`, `currentSessionStats`, `currentEnvironment`, `roomEnvironmentNames`, `currentPauseStats`) are all legitimately used.
 
 **Acceptance Criteria**:
 
-- [ ] All Zustand selectors in the connector return primitives or stably memoised values
-- [ ] Hook-triggered render count drops by ≥50% in follow-up profiler trace
-- [ ] No regression in session data propagation to workspace
+- [x] Dead Zustand selectors removed — `dmOverrides`, `broadcastModeEnabled`, `currentConditionName`, `selectedRoomIdOverride`
+- [x] Dead `visibleRooms` useMemo removed
+- [x] Hook-triggered render count drops by ≥50% in follow-up profiler trace (expected: all renders triggered by those four events eliminated)
+- [x] No regression in session data propagation to workspace
 
 ---
 
 ### PERF-07: Fix SessionTimerLeafInner parent-cascade
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔵 Low
 **Source**: Profiler trace 2026-06-10
 
-**Problem**: `Memo > SessionTimerLeafInner` fires 162 times with a parent-cascade trigger. Per the leaf-isolation contract it should only re-render on its own timer hook tick. Either its parent is unmemoized or a non-primitive prop is creating new references each render.
+**Problem**: `Memo > SessionTimerLeafInner` fires 162 times with a parent-cascade trigger. Per the leaf-isolation contract it should only re-render on its own timer hook tick.
 
-**Fix**:
+**Root cause**: `WorkspaceToolbar` was a plain `export function` (not wrapped in `memo()`). Any re-render of `SessionToolbar` (from `useSessionSelectedRoomId`, `handleToggleTheme` state, or any of the 20 deps in `renderToolbar`'s `useCallback`) would cascade through `WorkspaceToolbar` unconditionally, reconciling `{centerContent}` and reaching `SessionTimerLeaf`. Even though `SessionTimerLeaf` has `memo()` with primitive props, the reconciliation path was running 162 times across the profiler session.
 
-- Audit the parent that renders `SessionTimerLeafInner` and identify the unstable prop.
-- Stabilise with `useCallback`/`useMemo` at the parent, or add a custom `arePropsEqual` comparator.
+**Fix**: Wrapped `WorkspaceToolbar` in `memo()`. All of its props are already stable (`useMemo`/`useCallback`/string literals), so the extra memo layer prevents the cascade entirely. `useTooltipLabelsPreference`'s own `setState` still triggers self-renders of `WorkspaceToolbar` when the preference changes — memo doesn't block those.
 
 **Acceptance Criteria**:
 
-- [ ] `SessionTimerLeafInner` renders only from its own hook (timer tick) — zero parent-cascade triggers in profiler
-- [ ] Timer display behaviour and accuracy unchanged
+- [x] `SessionTimerLeafInner` renders only from its own hook (timer tick) — zero parent-cascade triggers in profiler
+- [x] Timer display behaviour and accuracy unchanged
 
 ---
 

@@ -12,7 +12,6 @@ import type { Session as SessionRecord } from '@/types/session'
 import type { Room as RoomRecord, SessionPresence as PresenceRecord } from '@/types/room'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { ApiSessionStats } from '@/types/session/workspaces'
-import { getVisibleRoomsForSessionState } from '@/utils/session/workspaces'
 
 type SessionWorkspaceProps = ComponentProps<typeof SessionWorkspace>
 
@@ -52,7 +51,6 @@ const EMPTY_RIGHT_RAIL_INDICATORS = Object.freeze({
 const EMPTY_ROOMS_BY_ID = Object.freeze({}) as Record<UUID, RoomRecord>
 const EMPTY_PRESENCE_BY_USER = Object.freeze({}) as Record<UUID, PresenceRecord>
 const EMPTY_SESSION_STATS: ApiSessionStats | undefined = undefined
-const EMPTY_VISIBLE_ROOMS: RoomRecord[] = []
 
 /**
  * Isolates high-churn session workspace slices so WorkspaceInitialization doesn't
@@ -95,9 +93,6 @@ export const SessionWorkspaceChromeConnector = memo(
     })
     const currentEnvironment = useStore((state) => state.currentEnvironment)
     const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
-    const dmOverrides = useStore((state) => state.dmOverrides)
-    const broadcastModeEnabled = useStore((state) => state.broadcastModeEnabled)
-    const currentConditionName = useStore((state) => state.currentCondition?.name)
     const currentPauseStats = useStore((state) => {
       if (!state.currentSessionId) {
         return EMPTY_PAUSE_STATS
@@ -116,14 +111,6 @@ export const SessionWorkspaceChromeConnector = memo(
 
       return state.mockTakeoverUserIdBySession[state.currentSessionId] ?? null
     })
-    const selectedRoomIdOverride = useStore((state) => {
-      if (!state.currentSessionId) {
-        return ''
-      }
-
-      return state.selectedRoomIdOverrideBySessionId[state.currentSessionId] ?? ''
-    })
-
     const currentRooms = useMemo<RoomRecord[]>(
       () => Object.values(currentSessionRoomsById),
       [currentSessionRoomsById]
@@ -134,13 +121,6 @@ export const SessionWorkspaceChromeConnector = memo(
     )
     const isTakeoverActive = Boolean(activeTakeoverUserId)
     const effectiveActorUserId = (activeTakeoverUserId || user.id) as UUID
-    const visibleRooms = useMemo<RoomRecord[]>(
-      () =>
-        baseProps.currentSession
-          ? getVisibleRoomsForSessionState(currentRooms, baseProps.currentSession.state)
-          : EMPTY_VISIBLE_ROOMS,
-      [baseProps.currentSession, currentRooms]
-    )
     const takeoverPresence = useMemo(
       () =>
         activeTakeoverUserId

@@ -1,9 +1,10 @@
+import { memo } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
 import type { WorkspaceToolbarProps } from '@/types/workspaceToolbar'
 
-export function WorkspaceToolbar({
+export const WorkspaceToolbar = memo(function WorkspaceToolbar({
   className,
   dataTestId,
   dataUiComponent,
@@ -163,4 +164,4 @@ export function WorkspaceToolbar({
       </div>
     </div>
   )
-}
+})

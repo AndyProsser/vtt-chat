@@ -189,7 +189,7 @@
 
 .session-user-settings-modal.session-modal--floating {
   top: calc(env(safe-area-inset-top, 0px) + 4.2rem);
-  right: max(3.75rem, calc((100vw - 1200px) / 2 + 4.5rem));
+  right: max(3.75rem, calc((100vw - 1320px) / 2 + 4.5rem));
   left: auto;
   transform: none;
   max-height: calc(100dvh - 5.5rem);
