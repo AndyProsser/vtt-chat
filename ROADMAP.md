@@ -10,16 +10,16 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |      7 |       7 |              0 |              0 | 🟢 Done        |
+| Performance Tuning & Bug Fixes         |     13 |       8 |              0 |              5 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **36** |  **27** |          **2** |          **7** |                |
+| **Total**                              | **42** |  **28** |          **2** |         **12** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress) and Performance Tuning (7 not started).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress), Performance Tuning follow-up (6 not started from second profiler trace).
 
 ---
 
@@ -31,9 +31,9 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ---
 
-## Performance Tuning & Bug Fixes ⚪
+## Performance Tuning & Bug Fixes 🟡
 
-_Root-cause re-render isolation fixes identified from a React profiler trace captured 2026-06-10 (full session lifecycle simulation: 1,405 render commits, 43MB trace). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
+_Root-cause re-render isolation fixes. Two profiler traces captured 2026-06-10: initial trace (1,405 commits, 43MB) and a follow-up full-session trace (1,554 commits, lobby → session → all panels). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
 
 ---
 
@@ -201,6 +201,149 @@ The import of `getVisibleRoomsForSessionState` and the `EMPTY_VISIBLE_ROOMS` con
 
 - [x] `SessionTimerLeafInner` renders only from its own hook (timer tick) — zero parent-cascade triggers in profiler
 - [x] Timer display behaviour and accuracy unchanged
+
+---
+
+### PERF-08: Wrap ReconnectBanner in memo()
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: `ReconnectBanner` is an unwrapped function component rendered as a direct child of `Memo(SessionWorkspaceFrame)`. With only **5** real prop changes across the entire session, it still re-renders **1,436 times** — 1,431 are pure parent cascades. As `Memo(SessionWorkspaceFrame)` re-renders due to its own Zustand subscriptions, every unmemoized child follows unconditionally.
+
+**Fix**:
+
+- Wrap `ReconnectBanner` in `React.memo`. Its props are stable primitives (`reconnecting`, `isHydrating`) so the default shallow equality check is sufficient.
+
+**Acceptance Criteria**:
+
+- [x] `ReconnectBanner` wrapped in `React.memo`
+- [ ] Parent-cascade render count drops from 1,431 to 0 in follow-up trace
+- [x] Reconnect banner display, dismiss, and hydrating-state behaviour unchanged
+
+---
+
+### PERF-09: Fix GroupMemberItem prop instability defeating memo
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: `Memo(GroupMemberItem)` re-renders **1,220 times** with a prop change in 1,217 of those — the `memo()` wrapper is effectively disabled because every render of `GroupMemberList` passes new object/function references as props. With 58 member instances in the trace, this causes a systemic cascade: the full chain of `GroupMemberList → RoomGroupCardComponent → Memo(RoomGroupCardComponent)` churns on every upstream state change, accounting for the bulk of the room-list cost throughout the session.
+
+The root cause is the same pattern fixed in PERF-03 (avatar callbacks), but affecting additional props beyond the avatar callbacks — context menu handler props, member data objects built inline, and condition/distance display helpers recreated on each render.
+
+**Fix**:
+
+- Audit every prop passed from `GroupMemberList` to `GroupMemberItem`. Stabilize: all callbacks with `useCallback`, all derived object/array values with `useMemo`, and confirm member data is sourced from a stable Zustand selector (not transformed inline).
+
+**Acceptance Criteria**:
+
+- [ ] All props passed to `GroupMemberItem` from `GroupMemberList` are stable references between renders
+- [ ] `Memo(GroupMemberItem)` prop-change render count drops from ~1,217 to near-zero in follow-up trace
+- [ ] No regression in member list behaviour, context menu, DM audio overrides, or condition display
+
+---
+
+### PERF-10: Stabilise Tooltip/TruncatedTextWithTooltip prop references in JournalPanel
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: The Radix Tooltip family accounts for ~25,000 combined rerenders — the largest cumulative cost in the trace:
+
+| Component | Count | Primary driver |
+| --------- | ----- | -------------- |
+| `Presence` | 4,147× | 4,053 prop changes |
+| `Popper` / `PopperProvider` / `PopperAnchor` | 3,559× each | ~3,500 prop changes |
+| `Tooltip` | 3,148× | 2,221 props + 844 cascade |
+| `TruncatedTextWithTooltip` | 3,054× | 3,048 pure cascade |
+| `TooltipContent` | 2,262× | 1,745 cascade |
+
+The primary source is **65 `TruncatedTextWithTooltip` instances inside `JournalPanel`** cascading via:
+
+```text
+TruncatedTextWithTooltip ← JournalBrowser ← JournalPanel
+  ← RightRailContent ← SessionWorkspaceRightRailTab ← Primitive.div ← Presence
+```
+
+The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/close transitions; each re-render propagates through the entire `JournalPanel` subtree because tooltip `content` and `children` JSX props are created inline on every render, producing a new `React.ReactNode` reference that Radix interprets as a changed prop and uses to re-render its full internal tree (Popper → PopperAnchor → Provider → Trigger → Content → Presence).
+
+**Fix**:
+
+- In `TruncatedTextWithTooltip` and its call sites in `JournalBrowser`, ensure the `content` prop is a stable reference. JSX passed as tooltip content must be wrapped in `useMemo` or extracted to a stable constant.
+- Confirm `SessionWorkspaceRightRailTab` only re-renders on its own open/close transition, not on unrelated session state changes.
+
+**Acceptance Criteria**:
+
+- [ ] Combined Tooltip family rerender count drops by ≥70% in follow-up trace
+- [ ] `TruncatedTextWithTooltip` cascade count drops from ~3,048 to near-zero
+- [ ] Journal panel, tooltip labels, and right-rail tab transitions behave correctly
+
+---
+
+### PERF-11: Fix PlayerContextMenu prop instability
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+**Depends on**: PERF-09
+
+**Problem**: 55 `PlayerContextMenu` instances each rerender **1,177 times**, all prop-change driven. Every time `GroupMemberItem` re-renders (see PERF-09), it passes new callback references down to the context menu. Even after PERF-09 stabilises the `GroupMemberItem` memo check, handler callbacks threaded to `PlayerContextMenu` (room moves, conditions, distances, DM audio overrides) are likely recreated as inline arrow functions inside `GroupMemberItem`'s render body.
+
+**Fix**:
+
+- Inside `GroupMemberItem`, wrap all handler props passed to `PlayerContextMenu` in `useCallback` with appropriate deps (typically `[member.userId, onXxx]`). This includes: room move, condition apply/remove, distance apply/remove, and DM audio override callbacks.
+
+**Acceptance Criteria**:
+
+- [ ] All handler callbacks passed to `PlayerContextMenu` are `useCallback`-wrapped
+- [ ] `PlayerContextMenu` prop-change render count drops from 1,177 to near-zero in follow-up trace
+- [ ] Context menu actions (move, condition, distance, audio override) all function correctly
+
+---
+
+### PERF-12: Fix Memo(MessageRow) Zustand selector identity
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: `Memo(MessageRow)` re-renders **1,819 times** despite the PERF-05 `rowHeightCache` fix. Of these, **1,057 are prop changes** (the memo check fires but fails) and 762 are cascades from the virtualizer (`Ae`). The residual prop-change failures indicate the message data object provided to `MessageListVirtualized` or the virtualizer row renderer is not identity-stable between renders: any inline transform (`.map()`, spread, `.filter()`, or `{ ...msg }`) on each selector read produces a new reference even when the underlying data is unchanged.
+
+**Fix**:
+
+- Audit the Zustand selector(s) that supply message data to `MessageListVirtualized` and `MessageRow`. Replace any inline-transforming selector with one that returns a stable reference (raw store slice, or via `createSelector`/`useMemo` with correct deps).
+- Confirm `rowProps` (the object passed from the virtualizer to each row renderer) is still wrapped in `useMemo([])` as established in PERF-05.
+
+**Acceptance Criteria**:
+
+- [ ] `Memo(MessageRow)` prop-change render count drops from 1,057 to near-zero in follow-up trace
+- [ ] Virtualizer cascade count (762×) drops proportionally as parent renders decrease
+- [ ] No regression in chat list scrolling, message display, or row height measurement
+
+---
+
+### PERF-13: Reduce TypingIndicator hook churn with granular Zustand selector
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: `Memo(TypingIndicator)` re-renders **266 times** with 262 of those driven by hook changes. PERF-04 already wrapped it in `memo()`, eliminating parent cascades. The remaining churn is internal: the Zustand selector subscribes to a slice containing typing state for all users across all rooms, so any typing event anywhere in the session produces a new object reference and triggers a re-render — even in rooms the indicator is not rendering for.
+
+**Fix**:
+
+- Replace the broad typing-state subscription with a selector scoped to the specific `roomId`: `useStore(s => s.typing[roomId])` or equivalent. The selector should return a primitive or array and remain stable when typing users for this specific room have not changed.
+- If the selector returns an array, apply a shallow equality comparator (`useStore(selector, shallow)`) to avoid reference churn from array identity.
+
+**Acceptance Criteria**:
+
+- [ ] Hook-driven render count for `Memo(TypingIndicator)` drops from 262 to approximately one per actual typing-state change in the component's room
+- [ ] Typing indicator appearance, disappearance, and debounce timing unchanged
+- [ ] Selector does not fire on typing changes in other rooms
 
 ---
 

@@ -9,6 +9,7 @@
  * Uses CSS custom properties from theme.css.
  */
 
+import { memo } from 'react'
 import type { ConnectionState } from '@/types/ws'
 import '../../styles/components/ui/ReconnectBanner.css'
 
@@ -21,7 +22,7 @@ export interface ReconnectBannerProps {
   manualRetryCountdownSeconds?: number | null
 }
 
-export function ReconnectBanner({
+export const ReconnectBanner = memo(function ReconnectBanner({
   wsState,
   isHydrating,
   manualRetryCountdownSeconds,
@@ -59,4 +60,4 @@ export function ReconnectBanner({
       ) : null}
     </div>
   )
-}
+})
