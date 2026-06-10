@@ -10,16 +10,16 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     16 |      16 |              0 |              0 | 🟢 Done        |
+| Performance Tuning & Bug Fixes         |     19 |      16 |              0 |              3 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **45** |  **36** |          **2** |          **7** |                |
+| **Total**                              | **48** |  **36** |          **2** |         **10** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase complete (all 16 items done).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35).
 
 ---
 
@@ -33,7 +33,7 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ## Performance Tuning & Bug Fixes 🟢
 
-_Root-cause re-render isolation fixes. Two profiler traces captured 2026-06-10: initial trace (1,405 commits, 43MB) and a follow-up full-session trace (1,554 commits, lobby → session → all panels). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
+_Root-cause re-render isolation fixes. Three profiler traces captured 2026-06-10: initial trace (1,405 commits, 43MB), a follow-up full-session trace (1,554 commits, lobby → session → all panels), and a third session trace (809 commits, 8,594ms measured, 60,992 total re-renders — 86% prop-change driven). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
 
 ---
 
@@ -241,7 +241,7 @@ The root cause is the same pattern fixed in PERF-03 (avatar callbacks), but affe
 **Acceptance Criteria**:
 
 - [x] All props passed to `GroupMemberItem` from `GroupMemberList` are stable references between renders
-- [ ] `Memo(GroupMemberItem)` prop-change render count drops from ~1,217 to near-zero in follow-up trace
+- [ ] `Memo(GroupMemberItem)` prop-change render count drops from ~1,217 to near-zero in follow-up trace — trace 3 shows `GroupMemberList` itself is NOT wrapped in `memo()` ([GroupMemberList.tsx:52](frontend/src/components/workspaces/session/rooms/GroupMemberList.tsx#L52)), so every `RoomGroupCard` re-render cascades unconditionally through `GroupMemberList` into `GroupMemberItem`, defeating this fix. See **PERF-19**.
 - [x] No regression in member list behaviour, context menu, DM audio overrides, or condition display
 
 ---
@@ -278,12 +278,12 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 
 **Acceptance Criteria**:
 
-- [ ] Combined Tooltip family rerender count drops by ≥70% in follow-up trace
+- [x] Combined Tooltip family rerender count drops by ≥70% in follow-up trace — trace 3 confirms: `Tooltip` 163× (↓95% from 3,148), `Popper` 16× (↓99% from 3,559), `Presence` 376× (↓91% from 4,147)
 - [x] `TruncatedTextWithTooltip` wrapped in `memo` — all props are stable primitives, blocks Radix cascade on parent re-renders
 - [x] `JournalPanel` and `JournalBrowser` wrapped in `memo` — stops list from running on unrelated session state changes
 - [x] `onSessionChange` stabilised to module-level NOOP in `RightRailTab.tsx` — enables `JournalPanel` memo to hold across Presence transitions
-- [ ] `TruncatedTextWithTooltip` cascade count drops from ~3,048 to near-zero in follow-up trace
-- [ ] Journal panel, tooltip labels, and right-rail tab transitions behave correctly
+- [x] `TruncatedTextWithTooltip` cascade count drops from ~3,048 to near-zero — not found in trace 3 (zero renders)
+- [x] Journal panel, tooltip labels, and right-rail tab transitions behave correctly
 
 ---
 
@@ -303,7 +303,7 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 **Acceptance Criteria**:
 
 - [x] All handler callbacks passed to `PlayerContextMenu` are `useCallback`-wrapped — completed as part of PERF-09 (`handleDistanceSelect`, `handleToggleMute`, `handleClearEffects`, `handleConditionSelect`, `handleAudioAdjust`, `handleTakeOver`)
-- [ ] `PlayerContextMenu` prop-change render count drops from 1,177 to near-zero in follow-up trace
+- [ ] `PlayerContextMenu` prop-change render count drops from 1,177 to near-zero in follow-up trace — trace 3 shows 1,195 renders (1,109 prop-change), near-identical to baseline. Callback stabilisation alone was insufficient: `GroupMemberList` is not memo'd (PERF-19), so every `GroupMemberList` re-render unconditionally cascades into `GroupMemberItem` → `PlayerContextMenu` regardless of callback stability.
 - [x] Context menu actions (move, condition, distance, audio override) all function correctly — no regressions; PERF-09 tests pass
 
 ---
@@ -447,6 +447,105 @@ The cascade produced by those 6 re-renders (~122 prop-changed components each) w
 
 - [x] Tab-click re-renders of `EditorView` do not cascade into `WorkspaceToolbar` or its Tooltip children (resolved in PERF-15)
 - [x] No Zustand subscription narrowing required — `EditorView` has no store subscriptions
+
+---
+
+### PERF-17: Stabilise `leftRailActions` object identity in `WorkspaceFrame`
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10 15:35
+
+**Problem**: `WorkspaceFrame.tsx:175-181` builds `leftRailActions` with `useMemo([handleOpenRightRailTab])`. The memo body includes an inline arrow function `openInformationPanel: () => handleOpenRightRailTab('information')` which is recreated on every memo re-run. `handleOpenRightRailTab` itself is derived from state that includes `toolbarRightRailOpen`, `tabs`, and `toolbarCenterPaneView`, so it changes on every right-rail open/close and tab switch. Each change produces a new `leftRailActions` object reference, which fails `LeftRailSlot`'s reference-equality comparator (`prev.leftRailActions === next.leftRailActions`) and triggers a full re-render of the entire left-rail subtree.
+
+Trace 3 data: `LeftRailSlot` 235 re-renders (200 comparator-fail / 35 explicit prop), 4,233ms cumulative self-time — the single most expensive component by total render cost in the trace.
+
+**Fix**:
+
+- Apply the stable-callback-via-ref pattern (same as PERF-14 `onCopyInviteUrl`) to both `openRightRailTab` and `openInformationPanel` in `WorkspaceFrame.tsx` so they are unconditionally stable refs — changing state no longer invalidates the `leftRailActions` identity.
+- Remove the `useMemo` for `leftRailActions` if both callbacks are stable refs (the object can be constructed with `useMemo([])` or a module-level constant instead).
+
+**Files**:
+
+- [WorkspaceFrame.tsx:175](frontend/src/components/workspaces/session/WorkspaceFrame.tsx#L175)
+- [WorkspaceFrame.slots.tsx:28](frontend/src/components/workspaces/session/WorkspaceFrame.slots.tsx#L28)
+
+**Acceptance Criteria**:
+
+- [ ] Both `openRightRailTab` and `openInformationPanel` in `leftRailActions` are unconditionally stable (stable-ref pattern or equivalent)
+- [ ] `LeftRailSlot` re-render count drops from 235 to near-zero in follow-up trace (only re-renders when `renderLeftRail` itself changes)
+- [ ] Left-rail open/close and right-rail tab switches no longer trigger a left-rail re-render
+
+---
+
+### PERF-18: Wrap `SessionWorkspaceRightRailTab` in memo and stabilise panel JSX slots
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10 15:35
+
+**Problem**: `SessionWorkspaceRightRailTab` ([RightRailTab.tsx:77](frontend/src/components/workspaces/session/RightRailTab.tsx#L77)) is an unwrapped `export function`. Every render of `WorkspaceFrame` re-renders it unconditionally. Inside it, 8 panel JSX slots (`informationPanel`, `partyPanel`, `roomsPanel`, `notesPanel`, `journalPanel`, `historyPanel`, `settingsPanel`) are assembled inline, creating new `ReactNode` references each time. These cascade into `RightRailContent` → Radix `Tabs.Root`, which re-renders its entire subtree because its `children` prop changed.
+
+This is the same root-cause pattern as PERF-14 (`EditorWorkspace` settingsPanel) and PERF-10 (JournalPanel inline JSX).
+
+Trace 3 data:
+
+- `SessionWorkspaceRightRailTab` (fiber_7856): 138 renders, 63 explicit prop-changes, 459ms
+- Radix `Tabs.Root` child (fiber_7847): 459 renders, 396 cascade, 1,884ms
+- Worst single commit driven by this pattern: **82ms** (commit #517, 548 components)
+
+**Fix**:
+
+1. Wrap `SessionWorkspaceRightRailTab` in `memo()` — prevents cascades from `WorkspaceFrame` re-renders where its props haven't changed.
+2. Wrap each of the 8 inline panel JSX blocks in `useMemo` with appropriate deps so that a panel slot only creates a new `ReactNode` reference when its own data changes.
+3. Verify `RightRailContent` is also memo'd (if not, wrap it too).
+
+**Files**:
+
+- [RightRailTab.tsx](frontend/src/components/workspaces/session/RightRailTab.tsx)
+
+**Acceptance Criteria**:
+
+- [ ] `SessionWorkspaceRightRailTab` wrapped in `memo()`
+- [ ] All 8 panel JSX slots wrapped in `useMemo` with exhaustive deps
+- [ ] `Tabs.Root` cascade renders drop from 459 to near-zero in follow-up trace
+- [ ] Worst-commit component count drops below 200 (currently 548 in commit #517)
+- [ ] Right-rail panel switching, tab animations, and all panel surfaces behave correctly
+
+---
+
+### PERF-19: Wrap `GroupMemberList` in memo and stabilise `RoomGroupCard` member props
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10 15:35
+**Depends on**: PERF-09, PERF-11
+
+**Problem**: `GroupMemberList` ([GroupMemberList.tsx:52](frontend/src/components/workspaces/session/rooms/GroupMemberList.tsx#L52)) is an unwrapped `export function`. Every render of `RoomGroupCard` cascades unconditionally into `GroupMemberList`, which then cascades into every `GroupMemberItem` child, regardless of whether any member data changed. This defeats PERF-09's `memo(GroupMemberItem)` wrapper and PERF-11's stabilised `PlayerContextMenu` callbacks — both are bypassed because their immediate parent re-renders unconditionally.
+
+Trace 3 data:
+
+- `GroupMemberList`: 989 re-renders, **987 prop-change** (0.2% cascade — the component reconciles on almost every parent render)
+- `PlayerContextMenu`: 1,195 re-renders, 1,109 prop-change — near-baseline despite PERF-11 fix
+
+**Fix**:
+
+1. Wrap `GroupMemberList` in `memo()`. Its props include many callbacks already stabilised in PERF-09; audit remaining callback props in `RoomGroupCard.tsx:361` (call site) and wrap any un-stabilised ones in `useCallback`.
+2. Confirm the `participants`/`members` array passed to `GroupMemberList` from `RoomGroupCard` is identity-stable between renders when the underlying data hasn't changed. If `RoomGroupCard` derives it from `Object.values()` or `.map()`, apply the `stableRef` pattern (same as PERF-12's `stableVisibleRef`).
+
+**Files**:
+
+- [GroupMemberList.tsx:52](frontend/src/components/workspaces/session/rooms/GroupMemberList.tsx#L52)
+- [RoomGroupCard.tsx:361](frontend/src/components/workspaces/session/rooms/RoomGroupCard.tsx#L361)
+
+**Acceptance Criteria**:
+
+- [ ] `GroupMemberList` wrapped in `memo()`
+- [ ] All callback props passed from `RoomGroupCard` to `GroupMemberList` are `useCallback`-stabilised
+- [ ] `participants`/member array is identity-stable when the room membership hasn't changed
+- [ ] `GroupMemberList` re-render count drops from 989 to near-zero cascade renders in follow-up trace
+- [ ] `PlayerContextMenu` prop-change render count drops to near-zero (unblocked by fixing the cascade source)
+- [ ] No regression in member list rendering, drag-and-drop, context menu, or DM overrides
 
 ---
 
