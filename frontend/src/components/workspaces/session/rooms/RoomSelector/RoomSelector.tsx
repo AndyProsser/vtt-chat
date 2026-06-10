@@ -49,6 +49,7 @@ export type {
 const OPTIMISTIC_ROOM_MAX_AGE_MS = 15000
 const GROUP_CARD_DISTANCE_TARGETS = [...DISTANCE_PRESETS]
 const GROUP_CARD_CONDITION_TARGETS = [...CONDITION_PRESETS, RADIAL_MENU_COPY.none]
+const EMPTY_PARTICIPANTS: GroupParticipantWithGroupId[] = []
 
 export function RoomSelector({
   apiUrl,
@@ -507,7 +508,7 @@ export function RoomSelector({
       key={room.id}
       room={room}
       selected={room.id === selectedRoomId}
-      participants={visibleNonDmParticipantsByRoom[room.id] || []}
+      participants={visibleNonDmParticipantsByRoom[room.id] ?? EMPTY_PARTICIPANTS}
       sessionId={sessionId}
       currentUserId={currentUser?.id ?? ('' as UUID)}
       canManageRooms={canManageRooms}
@@ -526,15 +527,13 @@ export function RoomSelector({
       touchFeedbackUserId={touchFeedbackUserId}
       setTouchFeedbackUserId={setTouchFeedbackUserId}
       dmUserId={dmUserId}
-      onApplyEnvironment={(roomId, env) => actions.handleApplyEnvironment(roomId, env)}
+      onApplyEnvironment={actions.handleApplyEnvironment}
       onToggleEnvironmentPicker={(roomId) => {
         setShowCreateGroupModal(false)
         setEnvironmentPickerRoomId((cur) => (cur === roomId ? null : roomId))
       }}
       onSelectRoom={onSelectRoom}
-      onSetDmVoiceRoom={(roomId) => {
-        void actions.handleSetDmVoiceRoom(roomId)
-      }}
+      onSetDmVoiceRoom={actions.handleSetDmVoiceRoom}
       onDeleteGroup={(r) => {
         void actions.handleDeleteGroup(r, roomMoves)
       }}
@@ -543,14 +542,12 @@ export function RoomSelector({
       distanceTargets={GROUP_CARD_DISTANCE_TARGETS}
       conditionTargets={GROUP_CARD_CONDITION_TARGETS}
       activeTakeoverUserId={activeTakeoverUserId || null}
-      onApplyDistanceOverride={(userId, d) => actions.handleApplyDistanceOverride(userId, d)}
-      onApplyConditionOverride={(userId, c) => actions.handleApplyConditionOverride(userId, c)}
-      onApplyMuteOverride={(userId, m) => actions.handleApplyMuteOverride(userId, m)}
-      onApplyAudioOverride={(userId, ot, p) => actions.handleApplyAudioOverride(userId, ot, p)}
-      onClearMemberEffects={(userId) => actions.handleClearMemberEffects(userId)}
-      onTakeOverPlayer={(userId) => {
-        void handleTakeOverPlayer(userId)
-      }}
+      onApplyDistanceOverride={actions.handleApplyDistanceOverride}
+      onApplyConditionOverride={actions.handleApplyConditionOverride}
+      onApplyMuteOverride={actions.handleApplyMuteOverride}
+      onApplyAudioOverride={actions.handleApplyAudioOverride}
+      onClearMemberEffects={actions.handleClearMemberEffects}
+      onTakeOverPlayer={handleTakeOverPlayer}
       onMemberDragStart={roomMoves.handleMemberDragStart}
       onMemberDragEnd={roomMoves.handleMemberDragEnd}
       getDisplayRoomName={getDisplayGroupName}

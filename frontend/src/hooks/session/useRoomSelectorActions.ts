@@ -583,30 +583,61 @@ export function useRoomSelectorActions({
     ]
   )
 
+  // Stable public wrappers — useCallback so callers with memo comparators
+  // see the same reference between renders when the async impl hasn't changed.
+  const handleApplyEnvironment = useCallback(
+    (roomId: UUID, environmentName: string) => {
+      void handleApplyEnvironmentAsync(roomId, environmentName)
+    },
+    [handleApplyEnvironmentAsync]
+  )
+  const handleApplyMuteOverride = useCallback(
+    (targetUserId: UUID, muted: boolean) => {
+      void handleApplyMuteOverrideAsync(targetUserId, muted)
+    },
+    [handleApplyMuteOverrideAsync]
+  )
+  const handleApplyDistanceOverride = useCallback(
+    (targetUserId: UUID, distanceName: string) => {
+      void handleApplyDistanceOverrideAsync(targetUserId, distanceName)
+    },
+    [handleApplyDistanceOverrideAsync]
+  )
+  const handleApplyConditionOverride = useCallback(
+    (targetUserId: UUID, conditionName: string) => {
+      void handleApplyConditionOverrideAsync(targetUserId, conditionName)
+    },
+    [handleApplyConditionOverrideAsync]
+  )
+  const handleApplyAudioOverride = useCallback(
+    (
+      targetUserId: UUID,
+      overrideType: 'GAIN' | 'FILTER',
+      parameters: Record<string, unknown> | null
+    ) => {
+      void handleApplyAudioOverrideAsync(targetUserId, overrideType, parameters)
+    },
+    [handleApplyAudioOverrideAsync]
+  )
+  const handleClearMemberEffects = useCallback(
+    (targetUserId: UUID) => {
+      void handleClearMemberEffectsAsync(targetUserId)
+    },
+    [handleClearMemberEffectsAsync]
+  )
+
   return {
     moveError,
     setMoveError,
     optimisticRooms,
     setOptimisticRooms,
     pendingRoomDeletes,
-    handleApplyEnvironment: (roomId, env) => {
-      void handleApplyEnvironmentAsync(roomId, env)
-    },
-    handleApplyMuteOverride: (userId, muted) => {
-      void handleApplyMuteOverrideAsync(userId, muted)
-    },
-    handleApplyDistanceOverride: (userId, distance) => {
-      void handleApplyDistanceOverrideAsync(userId, distance)
-    },
-    handleApplyConditionOverride: (userId, condition) => {
-      void handleApplyConditionOverrideAsync(userId, condition)
-    },
-    handleApplyAudioOverride: (userId, overrideType, params) => {
-      void handleApplyAudioOverrideAsync(userId, overrideType, params)
-    },
-    handleClearMemberEffects: (userId) => {
-      void handleClearMemberEffectsAsync(userId)
-    },
+    handleApplyEnvironment,
+    handleApplyMuteOverride,
+    handleApplyDistanceOverride,
+    handleApplyConditionOverride,
+    handleApplyAudioOverride,
+    handleClearMemberEffects,
     handleBroadcastToggleClick,
     handleSetDmVoiceRoom,
     handleSetDmVoicePreset,

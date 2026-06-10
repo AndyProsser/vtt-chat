@@ -10,14 +10,14 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     13 |       8 |              0 |              5 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     13 |       9 |              0 |              4 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **42** |  **28** |          **2** |         **12** |                |
+| **Total**                              | **42** |  **29** |          **2** |         **11** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress), Performance Tuning follow-up (6 not started from second profiler trace).
 
@@ -226,7 +226,7 @@ The import of `getVisibleRoomsForSessionState` and the `EMPTY_VISIBLE_ROOMS` con
 
 ### PERF-09: Fix GroupMemberItem prop instability defeating memo
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical
 **Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
 
@@ -240,9 +240,9 @@ The root cause is the same pattern fixed in PERF-03 (avatar callbacks), but affe
 
 **Acceptance Criteria**:
 
-- [ ] All props passed to `GroupMemberItem` from `GroupMemberList` are stable references between renders
+- [x] All props passed to `GroupMemberItem` from `GroupMemberList` are stable references between renders
 - [ ] `Memo(GroupMemberItem)` prop-change render count drops from ~1,217 to near-zero in follow-up trace
-- [ ] No regression in member list behaviour, context menu, DM audio overrides, or condition display
+- [x] No regression in member list behaviour, context menu, DM audio overrides, or condition display
 
 ---
 

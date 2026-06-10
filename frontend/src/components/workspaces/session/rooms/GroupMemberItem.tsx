@@ -201,6 +201,40 @@ export const GroupMemberItem = memo(function GroupMemberItem({
     [clearTouchFeedback, member.userId]
   )
 
+  const canDrag = canManageRooms && isSessionActive && !isGreenroom && member.roleLabel !== 'DM'
+
+  // Stable per-member context-menu handlers — bind member.userId once so
+  // PlayerContextMenu sees the same references between renders.
+  const handleDistanceSelect = useCallback(
+    (distanceName: string) => onApplyDistanceOverride(member.userId, distanceName),
+    [member.userId, onApplyDistanceOverride]
+  )
+  const handleToggleMute = useCallback(
+    (nextMuted: boolean) => onApplyMuteOverride(member.userId, nextMuted),
+    [member.userId, onApplyMuteOverride]
+  )
+  const handleClearEffects = useCallback(
+    () => onClearMemberEffects(member.userId),
+    [member.userId, onClearMemberEffects]
+  )
+  const handleConditionSelect = useCallback(
+    (conditionName: string) => onApplyConditionOverride(member.userId, conditionName),
+    [member.userId, onApplyConditionOverride]
+  )
+  const handleAudioAdjust = useCallback(
+    (overrideType: 'GAIN' | 'FILTER', parameters: Record<string, unknown> | null) =>
+      onApplyAudioOverride(member.userId, overrideType, parameters),
+    [member.userId, onApplyAudioOverride]
+  )
+  const handleTakeOver = useCallback(
+    () => onTakeOverPlayer?.(member.userId),
+    [member.userId, onTakeOverPlayer]
+  )
+  const handleDragStart = useCallback(
+    (event: React.DragEvent<HTMLButtonElement>) => onMemberDragStart(event, member.userId, canDrag),
+    [canDrag, member.userId, onMemberDragStart]
+  )
+
   // Stable references so areAvatarOverlayPropsEqual's callback equality check
   // can hold — inline arrows created here would always return false.
   const handleRoleChipPointerEnter = useCallback(
@@ -213,8 +247,6 @@ export const GroupMemberItem = memo(function GroupMemberItem({
   const handleRoleChipPointerLeave = useCallback(() => {
     onProfilePillLeave(member.userId)
   }, [member.userId, onProfilePillLeave])
-
-  const canDrag = canManageRooms && isSessionActive && !isGreenroom && member.roleLabel !== 'DM'
   const isSelf = member.userId === currentUserId
   const isPlayerTarget = member.roleLabel !== 'DM'
   const isTakeoverEligible = member.roleLabel === 'PLAYER'
@@ -227,7 +259,7 @@ export const GroupMemberItem = memo(function GroupMemberItem({
       draggable={canDrag}
       aria-label={canDrag ? `Drag ${member.username}` : member.username}
       title={undefined}
-      onDragStart={(event) => onMemberDragStart(event, member.userId, canDrag)}
+      onDragStart={handleDragStart}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={() => {
@@ -267,18 +299,14 @@ export const GroupMemberItem = memo(function GroupMemberItem({
         isSelf={isSelf}
         distanceTargets={distanceTargets}
         conditionTargets={conditionTargets}
-        onDistanceSelect={(distanceName) => onApplyDistanceOverride(member.userId, distanceName)}
-        onToggleMute={(nextMuted) => onApplyMuteOverride(member.userId, nextMuted)}
-        onClearEffects={() => onClearMemberEffects(member.userId)}
-        onConditionSelect={(conditionName) =>
-          onApplyConditionOverride(member.userId, conditionName)
-        }
-        onAudioAdjust={(overrideType, parameters) =>
-          onApplyAudioOverride(member.userId, overrideType, parameters)
-        }
+        onDistanceSelect={handleDistanceSelect}
+        onToggleMute={handleToggleMute}
+        onClearEffects={handleClearEffects}
+        onConditionSelect={handleConditionSelect}
+        onAudioAdjust={handleAudioAdjust}
         canTakeOver={isTakeoverEligible}
         isTakeoverActive={isTakeoverActive}
-        onTakeOver={() => onTakeOverPlayer?.(member.userId)}
+        onTakeOver={handleTakeOver}
       >
         <span className="room-selector-member-context-anchor">{memberButton}</span>
       </PlayerContextMenu>
