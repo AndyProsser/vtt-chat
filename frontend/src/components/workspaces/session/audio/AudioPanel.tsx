@@ -10,7 +10,7 @@
  *    into the audio engine automatically (handled inside useAudioEngine).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConnectionState, RoomEvent } from 'livekit-client'
 import { PresenceState, Role, RoomType } from '@shared'
 import type { UUID } from '@shared'
@@ -33,7 +33,7 @@ interface AudioPanelProps {
   role?: Role
 }
 
-export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
+export const AudioPanel = memo(function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
   const audioEngine = useAudioEngine()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const trackParticipantByTrackIdRef = useRef(new Map<string, UUID>())
@@ -403,4 +403,4 @@ export function AudioPanel({ sessionId, roomId, role }: AudioPanelProps) {
       />
     </section>
   )
-}
+})

@@ -254,7 +254,7 @@ export default function App() {
   }
 
   return (
-    <TooltipProvider delayDuration={140}>
+    <TooltipProvider delayDuration={140} disableHoverableContent>
       <div
         className="app-shell relative h-screen overflow-hidden font-sans text-ui-primary"
         data-ui-component="AppShell"

@@ -201,6 +201,19 @@ export const GroupMemberItem = memo(function GroupMemberItem({
     [clearTouchFeedback, member.userId]
   )
 
+  // Stable references so areAvatarOverlayPropsEqual's callback equality check
+  // can hold — inline arrows created here would always return false.
+  const handleRoleChipPointerEnter = useCallback(
+    (event: React.PointerEvent<HTMLSpanElement>) => {
+      onProfilePillEnter(member.userId, event.currentTarget)
+    },
+    [member.userId, onProfilePillEnter]
+  )
+
+  const handleRoleChipPointerLeave = useCallback(() => {
+    onProfilePillLeave(member.userId)
+  }, [member.userId, onProfilePillLeave])
+
   const canDrag = canManageRooms && isSessionActive && !isGreenroom && member.roleLabel !== 'DM'
   const isSelf = member.userId === currentUserId
   const isPlayerTarget = member.roleLabel !== 'DM'
@@ -231,12 +244,8 @@ export const GroupMemberItem = memo(function GroupMemberItem({
         roleLabel={member.roleLabel}
         metaLine={getParticipantMetaLine(member)}
         highlightRoleChip={isProfileHovered}
-        onRoleChipPointerEnter={(event) => {
-          onProfilePillEnter(member.userId, event.currentTarget)
-        }}
-        onRoleChipPointerLeave={() => {
-          onProfilePillLeave(member.userId)
-        }}
+        onRoleChipPointerEnter={handleRoleChipPointerEnter}
+        onRoleChipPointerLeave={handleRoleChipPointerLeave}
         presence={{
           sessionId,
           userId: member.userId,

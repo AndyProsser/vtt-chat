@@ -2,7 +2,6 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import type { CSSProperties } from 'react'
 import {
   List,
-  type DynamicRowHeight,
   type RowComponentProps,
   useDynamicRowHeight,
 } from 'react-window'
@@ -188,7 +187,8 @@ export function flattenHistoryGroupsToRows(
 
 interface RowData {
   rows: HistoryRow[]
-  rowHeightCache: DynamicRowHeight
+  /** Stable reference — extracted from DynamicRowHeight so rowProps doesn't invalidate on every measurement. */
+  setRowHeight: (index: number, height: number) => void
 }
 
 // Conservative starting estimates — actual height is measured & cached after first paint.
@@ -260,7 +260,7 @@ function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowCompone
       // Only update cache if height actually changed — avoids redundant cache writes.
       if (height > 0 && lastHeightRef.current !== height) {
         lastHeightRef.current = height
-        data.rowHeightCache.setRowHeight(index, height)
+        data.setRowHeight(index, height)
       }
     }
 
@@ -293,7 +293,7 @@ function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowCompone
       observer.disconnect()
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [data.rowHeightCache, index, row])
+  }, [data.setRowHeight, index, row])
 
   if (!row) {
     return null
@@ -341,7 +341,10 @@ export function HistoryPanelVirtualList({
 
   const [listApi, setListApi] = useState<{ element?: HTMLDivElement | null } | null>(null)
   const rowHeightCache = useDynamicRowHeight({ defaultRowHeight })
-  const rowProps = useMemo<RowData>(() => ({ rows, rowHeightCache }), [rows, rowHeightCache])
+  const rowProps = useMemo<RowData>(
+    () => ({ rows, setRowHeight: rowHeightCache.setRowHeight }),
+    [rows, rowHeightCache.setRowHeight]
+  )
 
   useEffect(() => {
     if (!autoScrollToLastRow || !listApi?.element || rows.length === 0) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import {
   isGreenRoomName,
   RADIAL_MENU_COPY,
@@ -561,166 +561,160 @@ export function RoomSelector({
   )
 
   return (
-    <TooltipProvider delayDuration={140} disableHoverableContent>
-      <section className="room-selector" aria-label="Room Selector">
-        <header className="room-selector-header">
-          <h4>
-            <Icon name="rooms" /> Groups
-            {activeTakeoverUserId ? (
-              <span
-                className="room-selector-header__takeover-pill"
-                role="status"
-                aria-live="polite"
-              >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  swap_horiz
-                </span>
-                Takeover Active
+    <section className="room-selector" aria-label="Room Selector">
+      <header className="room-selector-header">
+        <h4>
+          <Icon name="rooms" /> Groups
+          {activeTakeoverUserId ? (
+            <span className="room-selector-header__takeover-pill" role="status" aria-live="polite">
+              <span className="material-symbols-outlined" aria-hidden="true">
+                swap_horiz
               </span>
-            ) : null}
-          </h4>
-          <GroupsHeaderActions
-            headerModeCopy={headerModeCopy}
-            canManageRooms={canManageRooms}
-            isGreenroom={isGreenroom}
-            broadcastModeEnabled={broadcastModeEnabled}
-            whisperModeLocked={whisperModeLocked}
-            whisperActive={whisperActive}
-            whisperEndBlockedByPendingMoves={whisperEndBlockedByPendingMoves}
-            isDevResettingMocks={isDevResettingMocks}
-            showCreateGroupControl={canManageRooms && !isGreenroom}
-            showCreateGroupModal={showCreateGroupModal}
-            canCreateGroups={canManageRooms && !isGreenroom}
-            createGroupWrapRef={createGroupWrapRef}
-            apiUrl={apiUrl}
-            token={token}
-            sessionId={sessionId}
-            activeTakeoverUserId={activeTakeoverUserId || null}
-            dmVoicePreset={dmVoicePreset}
-            onBroadcastToggle={() => {
-              void actions.handleBroadcastToggleClick()
-            }}
-            onDevReset={() => {
-              void handleDevResetMocks()
-            }}
-            onReturnToUser={handleReturnToMyUser}
-            onToggleCreateGroupModal={() => {
-              setEnvironmentPickerRoomId(null)
-              setShowCreateGroupModal((cur) => !cur)
-            }}
-            onCloseCreateGroupModal={() => setShowCreateGroupModal(false)}
-            onCreateGroup={actions.handleCreateGroup}
-            onEndWhisper={() => {
-              void handleEndWhisper()
-            }}
-            onSelectVoicePreset={(preset) => {
-              void actions.handleSetDmVoicePreset(preset)
-            }}
-          />
-        </header>
+              Takeover Active
+            </span>
+          ) : null}
+        </h4>
+        <GroupsHeaderActions
+          headerModeCopy={headerModeCopy}
+          canManageRooms={canManageRooms}
+          isGreenroom={isGreenroom}
+          broadcastModeEnabled={broadcastModeEnabled}
+          whisperModeLocked={whisperModeLocked}
+          whisperActive={whisperActive}
+          whisperEndBlockedByPendingMoves={whisperEndBlockedByPendingMoves}
+          isDevResettingMocks={isDevResettingMocks}
+          showCreateGroupControl={canManageRooms && !isGreenroom}
+          showCreateGroupModal={showCreateGroupModal}
+          canCreateGroups={canManageRooms && !isGreenroom}
+          createGroupWrapRef={createGroupWrapRef}
+          apiUrl={apiUrl}
+          token={token}
+          sessionId={sessionId}
+          activeTakeoverUserId={activeTakeoverUserId || null}
+          dmVoicePreset={dmVoicePreset}
+          onBroadcastToggle={() => {
+            void actions.handleBroadcastToggleClick()
+          }}
+          onDevReset={() => {
+            void handleDevResetMocks()
+          }}
+          onReturnToUser={handleReturnToMyUser}
+          onToggleCreateGroupModal={() => {
+            setEnvironmentPickerRoomId(null)
+            setShowCreateGroupModal((cur) => !cur)
+          }}
+          onCloseCreateGroupModal={() => setShowCreateGroupModal(false)}
+          onCreateGroup={actions.handleCreateGroup}
+          onEndWhisper={() => {
+            void handleEndWhisper()
+          }}
+          onSelectVoicePreset={(preset) => {
+            void actions.handleSetDmVoicePreset(preset)
+          }}
+        />
+      </header>
 
-        <div className="room-selector-body">
-          <div className="room-selector-stack">
-            {dmDetachedParticipant ? (
-              <section
-                className="room-selector-group-section room-selector-group-section--dm-detached-dock"
-                aria-label="Dungeon Master"
-              >
-                <div className="room-selector-dm" data-ui-component="RoomSelectorDmDetached">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="room-selector-dm__profile"
-                        onClick={() => {
-                          if (!canManageRooms || !dmVoiceTargetRoom) return
-                          void actions.handleSetDmVoiceRoom(dmVoiceTargetRoom.id)
-                        }}
-                      >
-                        <AvatarOverlay
-                          username={dmDetachedParticipant.username}
-                          avatarUrl={dmDetachedParticipant.avatarUrl}
-                          roleLabel={ROOM_ROLE_LABELS.dm}
-                          metaLine={dmFlavorLine}
-                          presence={{
-                            sessionId,
-                            userId: dmDetachedParticipant.userId as UUID,
-                            isSelf: dmDetachedParticipant.userId === currentUser?.id,
-                          }}
-                        />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="room-selector-profile-tooltip">
-                      <GroupMemberProfileCard
-                        sessionId={sessionId}
-                        isSelf={dmDetachedParticipant.userId === currentUser?.id}
-                        member={dmDetachedParticipant}
-                        metaLine={dmFlavorLine}
-                        statEntries={getGroupStatEntries(dmDetachedParticipant)}
-                        environmentName={dmDetachedEnvironmentName}
-                      />
-                    </TooltipContent>
-                  </Tooltip>
-                  <DmVoiceTargetIndicator allRooms={allRooms} />
-                </div>
-              </section>
-            ) : null}
-
-            <div
-              className="room-selector-list"
-              role="list"
-              aria-label="Session groups"
-              ref={roomListRef}
+      <div className="room-selector-body">
+        <div className="room-selector-stack">
+          {dmDetachedParticipant ? (
+            <section
+              className="room-selector-group-section room-selector-group-section--dm-detached-dock"
+              aria-label="Dungeon Master"
             >
-              {visibleMainRooms.length === 0 && visibleOtherRooms.length === 0 ? (
-                <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
-              ) : (
-                <>
-                  <section
-                    className="room-selector-group-section"
-                    aria-label={ROOM_PRESENCE_COPY.mainGroup}
-                  >
-                    {visibleMainRooms.map(renderRoomCard)}
-                  </section>
-                  {visibleOtherRooms.length > 0 ? (
-                    <section
-                      className="room-selector-group-section room-selector-group-section--after-main"
-                      aria-label={ROOM_PRESENCE_COPY.otherGroups}
+              <div className="room-selector-dm" data-ui-component="RoomSelectorDmDetached">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="room-selector-dm__profile"
+                      onClick={() => {
+                        if (!canManageRooms || !dmVoiceTargetRoom) return
+                        void actions.handleSetDmVoiceRoom(dmVoiceTargetRoom.id)
+                      }}
                     >
-                      {visibleOtherRooms.map(renderRoomCard)}
-                    </section>
-                  ) : null}
-                </>
-              )}
-            </div>
+                      <AvatarOverlay
+                        username={dmDetachedParticipant.username}
+                        avatarUrl={dmDetachedParticipant.avatarUrl}
+                        roleLabel={ROOM_ROLE_LABELS.dm}
+                        metaLine={dmFlavorLine}
+                        presence={{
+                          sessionId,
+                          userId: dmDetachedParticipant.userId as UUID,
+                          isSelf: dmDetachedParticipant.userId === currentUser?.id,
+                        }}
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="room-selector-profile-tooltip">
+                    <GroupMemberProfileCard
+                      sessionId={sessionId}
+                      isSelf={dmDetachedParticipant.userId === currentUser?.id}
+                      member={dmDetachedParticipant}
+                      metaLine={dmFlavorLine}
+                      statEntries={getGroupStatEntries(dmDetachedParticipant)}
+                      environmentName={dmDetachedEnvironmentName}
+                    />
+                  </TooltipContent>
+                </Tooltip>
+                <DmVoiceTargetIndicator allRooms={allRooms} />
+              </div>
+            </section>
+          ) : null}
 
-            {!isGreenroom && whisperRooms.length > 0 ? (
-              <WhisperDock>
-                <section className="room-selector-group-section" aria-label="Whisper">
-                  <header className="room-selector-group-section__header room-selector-group-section__header--divider-only">
-                    <span className="room-selector-group-section__divider" />
-                  </header>
-                  {whisperRooms.map(renderRoomCard)}
+          <div
+            className="room-selector-list"
+            role="list"
+            aria-label="Session groups"
+            ref={roomListRef}
+          >
+            {visibleMainRooms.length === 0 && visibleOtherRooms.length === 0 ? (
+              <p className="room-selector-empty">{ROOM_PRESENCE_COPY.noGroupsAvailable}</p>
+            ) : (
+              <>
+                <section
+                  className="room-selector-group-section"
+                  aria-label={ROOM_PRESENCE_COPY.mainGroup}
+                >
+                  {visibleMainRooms.map(renderRoomCard)}
                 </section>
-              </WhisperDock>
-            ) : null}
+                {visibleOtherRooms.length > 0 ? (
+                  <section
+                    className="room-selector-group-section room-selector-group-section--after-main"
+                    aria-label={ROOM_PRESENCE_COPY.otherGroups}
+                  >
+                    {visibleOtherRooms.map(renderRoomCard)}
+                  </section>
+                ) : null}
+              </>
+            )}
           </div>
-        </div>
 
-        {actions.moveError ? (
-          <div className="room-selector-error">
-            <p>{actions.moveError}</p>
-            <button
-              type="button"
-              className="room-selector-error-dismiss"
-              onClick={() => actions.setMoveError(null)}
-              aria-label="Dismiss error"
-            >
-              ✕
-            </button>
-          </div>
-        ) : null}
-      </section>
-    </TooltipProvider>
+          {!isGreenroom && whisperRooms.length > 0 ? (
+            <WhisperDock>
+              <section className="room-selector-group-section" aria-label="Whisper">
+                <header className="room-selector-group-section__header room-selector-group-section__header--divider-only">
+                  <span className="room-selector-group-section__divider" />
+                </header>
+                {whisperRooms.map(renderRoomCard)}
+              </section>
+            </WhisperDock>
+          ) : null}
+        </div>
+      </div>
+
+      {actions.moveError ? (
+        <div className="room-selector-error">
+          <p>{actions.moveError}</p>
+          <button
+            type="button"
+            className="room-selector-error-dismiss"
+            onClick={() => actions.setMoveError(null)}
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
+    </section>
   )
 }

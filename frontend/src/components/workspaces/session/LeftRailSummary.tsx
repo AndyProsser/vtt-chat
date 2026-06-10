@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 
@@ -11,7 +12,7 @@ interface LeftRailSummaryProps {
   onOpenInfoPanel?: () => void
 }
 
-export function LeftRailSummary({
+export const LeftRailSummary = memo(function LeftRailSummary({
   campaignName,
   campaignDescription,
   sessionName,
@@ -107,4 +108,4 @@ export function LeftRailSummary({
       </section>
     </TooltipProvider>
   )
-}
+})

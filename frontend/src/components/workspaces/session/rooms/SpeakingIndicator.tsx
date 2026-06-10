@@ -23,6 +23,7 @@
  *     to parents — parents do not re-render when speaking changes.
  */
 
+import { memo } from 'react'
 import { RoomType, type UUID } from '@shared'
 import { useStore } from '@/state/store'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
@@ -37,7 +38,12 @@ interface SpeakingIndicatorProps {
   roomType: RoomType
 }
 
-export function SpeakingIndicator({ sessionId, userId, isSelf, roomType }: SpeakingIndicatorProps) {
+export const SpeakingIndicator = memo(function SpeakingIndicator({
+  sessionId,
+  userId,
+  isSelf,
+  roomType,
+}: SpeakingIndicatorProps) {
   // For self: full mute check (own + DM + device). Re-renders only on flip.
   const isMuted = useIsUserMuted(sessionId, userId, isSelf)
 
@@ -72,4 +78,4 @@ export function SpeakingIndicator({ sessionId, userId, isSelf, roomType }: Speak
   if (!speaking) return null
 
   return <span className="avatar-glyph__speaking-ring" aria-hidden="true" />
-}
+})

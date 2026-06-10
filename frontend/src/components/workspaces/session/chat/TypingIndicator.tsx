@@ -10,7 +10,7 @@
  * Renders nothing when no one (other than the current user, in the same room)
  * is currently typing.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import type { UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import type { SessionPresence } from '@/types/room'
@@ -29,7 +29,11 @@ const EMPTY_TYPING_INDICATORS: Array<{
 }> = []
 const EMPTY_SESSION_PRESENCE: Record<UUID, SessionPresence> = {}
 
-export function TypingIndicator({ sessionId, roomId, currentUserId }: TypingIndicatorProps) {
+export const TypingIndicator = memo(function TypingIndicator({
+  sessionId,
+  roomId,
+  currentUserId,
+}: TypingIndicatorProps) {
   const typingIndicators = useStore(
     (state) => state.presenceTypingBySession[sessionId] ?? EMPTY_TYPING_INDICATORS
   )
@@ -150,4 +154,4 @@ export function TypingIndicator({ sessionId, roomId, currentUserId }: TypingIndi
       </div>
     </div>
   )
-}
+})

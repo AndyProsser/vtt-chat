@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties, RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import {
   List,
-  type DynamicRowHeight,
   type RowComponentProps,
   useDynamicRowHeight,
   useListCallbackRef,
@@ -26,7 +25,8 @@ interface VirtualizedListData {
   roomDirectory?: Record<string, { name: string }>
   activeRoomId?: string
   hideIntermissionMarkers: boolean
-  rowHeightCache: DynamicRowHeight
+  /** Stable reference — extracted from DynamicRowHeight so rowProps doesn't invalidate on every measurement. */
+  setRowHeight: (index: number, height: number) => void
 }
 
 function estimateMessageHeight(message: PreparedMessage): number {
@@ -89,7 +89,7 @@ function MessageRow({
       // Only update cache if height actually changed—avoid redundant cache updates
       if (height > 0 && lastHeightRef.current !== height) {
         lastHeightRef.current = height
-        data.rowHeightCache.setRowHeight(index, height)
+        data.setRowHeight(index, height)
       }
     }
 
@@ -119,7 +119,7 @@ function MessageRow({
       observer.disconnect()
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [data.rowHeightCache, index, prepared])
+  }, [data.setRowHeight, index, prepared])
 
   if (!prepared) {
     return null
@@ -187,6 +187,34 @@ export function MessageListVirtualized({
 
   const rowHeightCache = useDynamicRowHeight({ defaultRowHeight })
 
+  // setRowHeight is a stable useCallback([]) inside useDynamicRowHeight — safe as a dep.
+  // Keeping it separate from rowHeightCache prevents all visible rows from re-rendering
+  // whenever ResizeObserver measurements update the height cache object reference.
+  const rowProps = useMemo<VirtualizedListData>(
+    () => ({
+      messages: visibleMessages,
+      currentUserId,
+      currentUserRole,
+      sessionDmId,
+      groupingWindowMs,
+      roomDirectory,
+      activeRoomId,
+      hideIntermissionMarkers,
+      setRowHeight: rowHeightCache.setRowHeight,
+    }),
+    [
+      visibleMessages,
+      currentUserId,
+      currentUserRole,
+      sessionDmId,
+      groupingWindowMs,
+      roomDirectory,
+      activeRoomId,
+      hideIntermissionMarkers,
+      rowHeightCache.setRowHeight,
+    ]
+  )
+
   useEffect(() => {
     if (!listRef || visibleMessages.length === 0) {
       return
@@ -224,18 +252,6 @@ export function MessageListVirtualized({
         </div>
       </div>
     )
-  }
-
-  const rowProps: VirtualizedListData = {
-    messages: visibleMessages,
-    currentUserId,
-    currentUserRole,
-    sessionDmId,
-    groupingWindowMs,
-    roomDirectory,
-    activeRoomId,
-    hideIntermissionMarkers,
-    rowHeightCache,
   }
 
   return (

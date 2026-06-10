@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-08
+**Last Updated**: 2026-06-10
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -10,15 +10,16 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
+| Performance Tuning & Bug Fixes         |      7 |       5 |              0 |              2 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🟢 Done        |
-| Phase 4: Future Enhancements           |      5 |       0 |              1 |              4 | 🟡 In Progress |
+| Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
+| Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **29** |  **14** |          **1** |         **14** |                |
+| **Total**                              | **36** |  **25** |          **2** |          **9** |                |
 
-**MVP-blocking items remaining**: Phase 3 (Notes & Journal Foundation) — all items ⚪ Not Started.
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress) and Performance Tuning (7 not started).
 
 ---
 
@@ -27,6 +28,169 @@
 VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses on **core reliability first**, then **UI/UX**, then **audio experiences**, then **notes/journal**. Each phase unlocks the next.
 
 **Legend**: 🟢 Done | 🟡 In Progress | 🔴 Blocked | ⚪ Not Started
+
+---
+
+## Performance Tuning & Bug Fixes ⚪
+
+_Root-cause re-render isolation fixes identified from a React profiler trace captured 2026-06-10 (full session lifecycle simulation: 1,405 render commits, 43MB trace). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
+
+---
+
+### PERF-01: Remove TooltipProvider from RoomSelector
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `RoomSelector.tsx:564` wraps its entire content in its own `<TooltipProvider>`. When `renderLeftRail` is invalidated by any session state change, the left rail rebuilds → `RoomSelector` rebuilds → `TooltipProvider` context is recreated → **all 106 tooltip instances** in the subtree cascade. Worst observed: 790 components re-rendered in a single 59ms commit. This pattern triggered in 183 of 1,405 commits — the single largest performance issue in the trace.
+
+**Fix**:
+
+- Remove the `<TooltipProvider>` wrapper from [RoomSelector.tsx:564](frontend/src/components/workspaces/session/rooms/RoomSelector/RoomSelector.tsx#L564) and its closing tag at line 724.
+- Confirm the workspace-root `TooltipProvider` in `workspaces/index.tsx` already covers this subtree (it does — `TooltipProvider` is imported there).
+
+**Acceptance Criteria**:
+
+- [ ] `RoomSelector` contains no local `<TooltipProvider>` wrapper
+- [ ] Tooltip components in the room list continue to function correctly end-to-end
+- [ ] Follow-up profiler commit showing tooltip subtree no longer cascades on session state changes
+- [ ] Worst-case commit breadth drops from ~790 to under 100 components
+
+---
+
+### PERF-02: Wrap SpeakingIndicator in memo()
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `SpeakingIndicator` is declared as a plain `export function` with no `memo()` wrapper ([SpeakingIndicator.tsx:40](frontend/src/components/workspaces/session/rooms/SpeakingIndicator.tsx#L40)). Its internal Zustand selectors subscribe to single primitive bits (correct), but the component is not memoized so any parent re-render drags it along. Trace shows **67 parent-triggered renders** versus only 18 hook-triggered renders — the leaf-isolation contract is violated ~79% of the time. This is a CLAUDE.md-mandated leaf component.
+
+**Fix**:
+
+- Change `export function SpeakingIndicator(...)` to `export const SpeakingIndicator = memo(function SpeakingIndicator(...) {...})` in [SpeakingIndicator.tsx:40](frontend/src/components/workspaces/session/rooms/SpeakingIndicator.tsx#L40).
+
+**Acceptance Criteria**:
+
+- [ ] `SpeakingIndicator` is wrapped in `memo()`
+- [ ] All parent-triggered renders eliminated; trace shows hook-only triggers
+- [ ] No regression in speaking ring behaviour during active voice
+
+---
+
+### PERF-03: Fix AvatarOverlay memo bypass — stabilise callbacks in GroupMemberItem
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `GroupMemberItem.tsx:234–238` passes inline arrow functions as `onRoleChipPointerEnter` and `onRoleChipPointerLeave` to `AvatarOverlay`. The `areAvatarOverlayPropsEqual` comparator ([AvatarOverlay.tsx:134–135](frontend/src/components/workspaces/session/rooms/AvatarOverlay.tsx#L134)) checks reference equality on these callbacks. Because they're recreated on every render, the comparator **always returns false** — the `memo()` wrapper on `AvatarOverlay` is permanently ineffective. Trace shows 69 prop-triggered `AvatarOverlayComponent` renders as a result, dragging `SpeakingIndicator` (PERF-02) along with it.
+
+**Fix**:
+
+- In `GroupMemberItem.tsx`, extract both callbacks into `useCallback` with deps `[member.userId, onProfilePillEnter]` and `[member.userId, onProfilePillLeave]` respectively.
+
+**Acceptance Criteria**:
+
+- [ ] Both role-chip callbacks are `useCallback`-wrapped in `GroupMemberItem`
+- [ ] `AvatarOverlayComponent` no longer re-renders when only speaking/presence state changes
+- [ ] Role chip hover and popover behaviour unchanged
+
+---
+
+### PERF-04: Wrap LeftRailSummary, AudioPanel, and TypingIndicator in memo()
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: All three are plain `export function` components with no `memo()` wrapping. Each rebuilds its full subtree on every upstream state change even though their own props haven't changed:
+
+| Component         | Parent-cascade renders | Avg self-time | Cumulative waste                             |
+| ----------------- | ---------------------- | ------------- | -------------------------------------------- |
+| `AudioPanel`      | 370×                   | 0.26ms        | ~96ms                                        |
+| `LeftRailSummary` | 466×                   | 0.17ms        | ~79ms                                        |
+| `TypingIndicator` | 118×                   | 0.19ms        | ~22ms extra (plus 228 legitimate hook fires) |
+
+All three receive stable primitive props (`sessionId`, `roomId`, `role`, `currentUserId`) so the default shallow equality check works without a custom comparator.
+
+**Fix**:
+
+- [LeftRailSummary.tsx:14](frontend/src/components/workspaces/session/LeftRailSummary.tsx#L14): `export const LeftRailSummary = memo(function LeftRailSummary(...) {...})`
+- [AudioPanel.tsx:36](frontend/src/components/workspaces/session/audio/AudioPanel.tsx#L36): `export const AudioPanel = memo(function AudioPanel(...) {...})`
+- [TypingIndicator.tsx:32](frontend/src/components/workspaces/session/chat/TypingIndicator.tsx#L32): `export const TypingIndicator = memo(function TypingIndicator(...) {...})`
+
+**Acceptance Criteria**:
+
+- [ ] All three components wrapped in `memo()`
+- [ ] Zero parent-cascade renders for all three in follow-up profiler trace
+- [ ] No regressions in audio panel, left rail summary, or typing indicator behaviour
+
+---
+
+### PERF-05: Investigate and fix Memo > MessageRow parent-cascade bypass
+
+**Status**: 🟢 Done
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `MessageRow` has a `memo()` wrapper but still re-renders 239 times with a parent-cascade cause. The equality check is being bypassed — the parent (`MessageListVirtualized` or `ChatWindow`) is passing at least one unstable prop reference (inline object, arrow function, or array literal) that is recreated on every chat store update.
+
+**Root cause identified**: `rowProps` included `rowHeightCache: DynamicRowHeight`. React-window's `useDynamicRowHeight` returns a new object every time a row height is measured by ResizeObserver (because `o` and `i` callbacks inside get new references when the internal height map updates). This caused `rowProps` to change on every measurement, which bypassed react-window's internal row memoisation and triggered all visible rows to re-render.
+
+**Fix**:
+
+- Replaced `rowHeightCache: DynamicRowHeight` in `VirtualizedListData` with `setRowHeight: (index: number, height: number) => void` — a stable `useCallback([])` reference extracted from the cache object.
+- Wrapped `rowProps` in `useMemo` in `MessageListVirtualized` so the object reference is stable when no meaningful data changes.
+- Updated `MessageRow.useLayoutEffect` to use `data.setRowHeight` and updated dep array accordingly.
+
+**Acceptance Criteria**:
+
+- [x] Root cause of memo bypass identified and fixed
+- [x] Parent-cascade renders for `MessageRow` eliminated in follow-up trace
+- [x] Chat list performance unchanged or improved; no visual regressions
+
+---
+
+### PERF-06: Audit SessionWorkspaceChromeConnector Zustand selectors
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `SessionWorkspaceChromeConnector` fires 178 times across the trace (143 hook-driven, 22 prop-driven, 13 both). The worst single commit showed `actual=47ms` for this component alone. As the central hub that patches live session data onto workspace props, any Zustand selector returning an array or object (rather than a primitive) causes the connector — and its entire subtree — to re-render on every presence/speaking/room change. The four render-prop callbacks (`renderToolbar`, `renderLeftRail`, `renderCenterPane`, `renderRightRailTab`) in `SessionWorkspace.tsx` all depend on `currentSessionState`, meaning a single session transition invalidates all four simultaneously.
+
+**Fix**:
+
+- Audit all `useStore` selectors in `SessionWorkspaceChromeConnector.tsx`; replace array/object selectors with primitive selectors (count, ID, boolean flag) or stable memoised values.
+- Group session-state-derived render-prop deps into a single `useMemo`'d object so one session transition creates one invalidation, not four.
+
+**Acceptance Criteria**:
+
+- [ ] All Zustand selectors in the connector return primitives or stably memoised values
+- [ ] Hook-triggered render count drops by ≥50% in follow-up profiler trace
+- [ ] No regression in session data propagation to workspace
+
+---
+
+### PERF-07: Fix SessionTimerLeafInner parent-cascade
+
+**Status**: ⚪ Not Started
+**Priority**: 🔵 Low
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `Memo > SessionTimerLeafInner` fires 162 times with a parent-cascade trigger. Per the leaf-isolation contract it should only re-render on its own timer hook tick. Either its parent is unmemoized or a non-primitive prop is creating new references each render.
+
+**Fix**:
+
+- Audit the parent that renders `SessionTimerLeafInner` and identify the unstable prop.
+- Stabilise with `useCallback`/`useMemo` at the parent, or add a custom `arePropsEqual` comparator.
+
+**Acceptance Criteria**:
+
+- [ ] `SessionTimerLeafInner` renders only from its own hook (timer tick) — zero parent-cascade triggers in profiler
+- [ ] Timer display behaviour and accuracy unchanged
 
 ---
 
@@ -726,7 +890,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Notes-Editor: DMDX Markdown Editor Integration
 
-**Status**: 🟢 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-Rightbar
 
