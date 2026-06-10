@@ -9,7 +9,7 @@ import type { OptimisticSessionSelection } from '@/types/journalPanel'
 import type { Session } from '@/types/session'
 import { buildMissingRecapCopy, normalizeCardHashtag } from '@/utils/journalPanel'
 import { JournalEditor } from './JournalEditor'
-import { useJournalStatuses } from './useJournalStatuses'
+import { useJournalStatuses } from '@/hooks/useJournalStatuses'
 
 interface JournalBrowserProps {
   apiUrl: string

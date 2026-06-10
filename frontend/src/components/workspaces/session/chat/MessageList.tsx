@@ -12,7 +12,7 @@ import { MessageType } from '@shared'
 import { parseNoteSharedMessage } from '@/utils/noteSharedMessage'
 import { useStore } from '@/hooks/useStore'
 import { MessageListVirtualized } from './MessageList.virtualized'
-import type { ConditionMessageMetadata, PreparedMessage } from './MessageList.types'
+import type { ConditionMessageMetadata, PreparedMessage } from '@/types/messageList'
 import {
   DEFAULT_CHAT_GROUPING_WINDOW_MS,
   SESSION_BOOKEND_PREFIXES,

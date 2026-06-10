@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties, RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import { List, type RowComponentProps, useDynamicRowHeight, useListCallbackRef } from 'react-window'
 import type { MessageListProps, PreparedMessage } from './MessageList'
-import type { VirtualizedListData } from './MessageList.types'
+import type { VirtualizedListData } from '@/types/messageList'
 import { MessageListSystemRow } from './rows/MessageListSystemRow'
 import { MessageListChatRow } from './rows/MessageListChatRow'
 

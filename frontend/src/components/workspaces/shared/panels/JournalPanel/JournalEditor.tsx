@@ -18,7 +18,7 @@ import { openJournalPopout } from '@/utils/route-view'
 import { noteToEntry, serializeJournalHashtags } from '@/utils/journalPanel'
 import { useStore } from '@/hooks/useStore'
 import { useToast } from '@/hooks/useToast'
-import { useJournalHashtags } from './useJournalHashtags'
+import { useJournalHashtags } from '@/hooks/useJournalHashtags'
 import { JournalHashtagEditor } from './JournalHashtagEditor'
 
 export interface JournalEditorProps {

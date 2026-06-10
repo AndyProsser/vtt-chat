@@ -27,5 +27,3 @@ export const ROLE_ALLOWED_TYPES: Record<string, MessageType[]> = {
   PLAYER: [MessageType.IC, MessageType.OOC, MessageType.WHISPER, MessageType.DM],
   SPECTATOR: [MessageType.OOC],
 }
-
-export type ComposerMode = 'greenroom' | 'active' | 'active-whisper' | 'paused' | 'cooldown'

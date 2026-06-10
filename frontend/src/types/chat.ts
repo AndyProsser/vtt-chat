@@ -24,6 +24,8 @@ export interface WhisperRecipientOption {
   avatarUrl?: string | null
 }
 
+export type ComposerMode = 'greenroom' | 'active' | 'active-whisper' | 'paused' | 'cooldown'
+
 export interface SessionSummaryStats {
   sessionName: string
   startedAt: number | null

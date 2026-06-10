@@ -12,9 +12,10 @@ import { useStore } from '@/hooks/useStore'
 import type { WhisperRecipientOption } from '@/types/chat'
 import { MessageTypeSelector } from './MessageTypeSelector'
 import { MessageInputWhisperPicker } from './MessageInputWhisperPicker'
-import { useWhisperRecipients } from './useWhisperRecipients'
-import { useTypingEmitter } from './useTypingEmitter'
-import { MESSAGE_TYPE_ORDER, ROLE_ALLOWED_TYPES, type ComposerMode } from './MessageInput.constants'
+import { useWhisperRecipients } from '@/hooks/session/useWhisperRecipients'
+import { useTypingEmitter } from '@/hooks/session/useTypingEmitter'
+import { MESSAGE_TYPE_ORDER, ROLE_ALLOWED_TYPES } from '@/constants/chatComposer.constants'
+import type { ComposerMode } from '@/types/chat'
 
 interface MessageInputProps {
   onSend: (content: string, type: MessageType, recipientId?: string) => Promise<void>

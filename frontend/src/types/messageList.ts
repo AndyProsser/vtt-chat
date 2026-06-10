@@ -10,19 +10,6 @@ export interface ConditionMessageMetadata {
   overrideType?: 'CONDITION' | 'DISTANCE'
 }
 
-export interface VirtualizedListData {
-  messages: PreparedMessage[]
-  currentUserId: string
-  currentUserRole?: string
-  sessionDmId?: string
-  groupingWindowMs: number
-  roomDirectory?: Record<string, { name: string }>
-  activeRoomId?: string
-  hideIntermissionMarkers: boolean
-  /** Stable reference — extracted from DynamicRowHeight so rowProps doesn't invalidate on every measurement. */
-  setRowHeight: (index: number, height: number) => void
-}
-
 export interface PreparedMessage {
   msg: Message
   variant: 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'
@@ -52,4 +39,17 @@ export interface PreparedMessage {
   dayLabel: string | null
   relativeTime: string
   bookendTime: string | null
+}
+
+export interface VirtualizedListData {
+  messages: PreparedMessage[]
+  currentUserId: string
+  currentUserRole?: string
+  sessionDmId?: string
+  groupingWindowMs: number
+  roomDirectory?: Record<string, { name: string }>
+  activeRoomId?: string
+  hideIntermissionMarkers: boolean
+  /** Stable reference — extracted from DynamicRowHeight so rowProps doesn't invalidate on every measurement. */
+  setRowHeight: (index: number, height: number) => void
 }

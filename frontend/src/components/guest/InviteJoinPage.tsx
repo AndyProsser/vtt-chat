@@ -13,8 +13,8 @@ import {
   joinAuthenticatedUserApi,
 } from '@/utils/inviteJoin'
 import '@/styles/components/guest/InviteJoinPage.css'
-import { useInviteValidation } from './useInviteValidation'
-import { useEmailPrecheck } from './useEmailPrecheck'
+import { useInviteValidation } from '@/hooks/useInviteValidation'
+import { useEmailPrecheck } from '@/hooks/useEmailPrecheck'
 import { InviteJoinCampaignAside } from './InviteJoinCampaignAside'
 import { InviteJoinCharacterForm } from './InviteJoinCharacterForm'
 
