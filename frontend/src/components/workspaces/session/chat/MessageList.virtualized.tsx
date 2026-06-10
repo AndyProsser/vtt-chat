@@ -2,26 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties, RefObject, UIEventHandler, WheelEventHandler } from 'react'
 import { List, type RowComponentProps, useDynamicRowHeight, useListCallbackRef } from 'react-window'
 import type { MessageListProps, PreparedMessage } from './MessageList'
+import type { VirtualizedListData } from './MessageList.types'
 import { MessageListSystemRow } from './rows/MessageListSystemRow'
 import { MessageListChatRow } from './rows/MessageListChatRow'
 
-export { BOOKEND_META } from './MessageList.virtualized.constants'
-
 interface MessageListVirtualizedProps extends Omit<MessageListProps, 'messages'> {
   preparedMessages: PreparedMessage[]
-}
-
-interface VirtualizedListData {
-  messages: PreparedMessage[]
-  currentUserId: string
-  currentUserRole?: string
-  sessionDmId?: string
-  groupingWindowMs: number
-  roomDirectory?: Record<string, { name: string }>
-  activeRoomId?: string
-  hideIntermissionMarkers: boolean
-  /** Stable reference — extracted from DynamicRowHeight so rowProps doesn't invalidate on every measurement. */
-  setRowHeight: (index: number, height: number) => void
 }
 
 function estimateMessageHeight(message: PreparedMessage): number {

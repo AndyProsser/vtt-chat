@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 import { MessageType, findConditionPreset, findDistancePreset } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { PreparedMessage } from '../MessageList'
-import { TYPE_LABEL_BY_VARIANT } from '../MessageList.virtualized.constants'
+import { TYPE_LABEL_BY_VARIANT } from '../MessageList.helpers'
 import { getAuthorInitial } from '@/utils/format'
 
 interface MessageListChatRowProps {

@@ -1,6 +1,6 @@
 import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteSharedCard'
 import type { PreparedMessage } from '../MessageList'
-import { BOOKEND_META } from '../MessageList.virtualized.constants'
+import { BOOKEND_META } from '../MessageList.helpers'
 import { formatDuration } from '../MessageList.helpers'
 
 interface MessageListSystemRowProps {
