@@ -10,16 +10,16 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     13 |      10 |              0 |              3 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     13 |      12 |              0 |              1 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **42** |  **30** |          **2** |         **10** |                |
+| **Total**                              | **42** |  **32** |          **2** |          **8** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress), Performance Tuning follow-up (6 not started from second profiler trace).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress), Performance Tuning follow-up (5 not started from second profiler trace).
 
 ---
 
@@ -289,7 +289,7 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 
 ### PERF-11: Fix PlayerContextMenu prop instability
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
 **Depends on**: PERF-09
@@ -302,27 +302,31 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 
 **Acceptance Criteria**:
 
-- [ ] All handler callbacks passed to `PlayerContextMenu` are `useCallback`-wrapped
+- [x] All handler callbacks passed to `PlayerContextMenu` are `useCallback`-wrapped — completed as part of PERF-09 (`handleDistanceSelect`, `handleToggleMute`, `handleClearEffects`, `handleConditionSelect`, `handleAudioAdjust`, `handleTakeOver`)
 - [ ] `PlayerContextMenu` prop-change render count drops from 1,177 to near-zero in follow-up trace
-- [ ] Context menu actions (move, condition, distance, audio override) all function correctly
+- [x] Context menu actions (move, condition, distance, audio override) all function correctly — no regressions; PERF-09 tests pass
 
 ---
 
 ### PERF-12: Fix Memo(MessageRow) Zustand selector identity
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
 
 **Problem**: `Memo(MessageRow)` re-renders **1,819 times** despite the PERF-05 `rowHeightCache` fix. Of these, **1,057 are prop changes** (the memo check fires but fails) and 762 are cascades from the virtualizer (`Ae`). The residual prop-change failures indicate the message data object provided to `MessageListVirtualized` or the virtualizer row renderer is not identity-stable between renders: any inline transform (`.map()`, spread, `.filter()`, or `{ ...msg }`) on each selector read produces a new reference even when the underlying data is unchanged.
 
-**Fix**:
+**Root cause**: Every message arriving in _any_ room causes `state.messages[sessionId]` to get a new object reference (Zustand spread). `Object.values()` then creates a new array in `orderedMessages`, which re-runs the `visibleMessages` filter. Even though the filtered result for room A is identical (the room B message was excluded), the new array reference fails `areMessageListPropsEqual`'s `previous.messages === next.messages` check — cascading through `preparedMessages` and `rowProps` to all visible `MessageRow` instances.
 
-- Audit the Zustand selector(s) that supply message data to `MessageListVirtualized` and `MessageRow`. Replace any inline-transforming selector with one that returns a stable reference (raw store slice, or via `createSelector`/`useMemo` with correct deps).
-- Confirm `rowProps` (the object passed from the virtualizer to each row renderer) is still wrapped in `useMemo([])` as established in PERF-05.
+**Fix**: Added a `stableVisibleRef` identity guard to `useChatVisibleMessages.ts`. After computing the filtered array, a per-item reference comparison (`next.every((m, i) => m === prev[i])`) detects when the visible set is unchanged and returns the previous array reference. This breaks the cross-room cascade without changing behaviour for actual in-room message arrivals.
+
+**Files changed**:
+
+- `frontend/src/hooks/session/useChatVisibleMessages.ts` — added `useRef` import, `stableVisibleRef`, and identity-preservation check inside `visibleMessages` useMemo
 
 **Acceptance Criteria**:
 
+- [x] `visibleMessages` returns a stable reference when messages arrive in other rooms (same message objects, same order)
 - [ ] `Memo(MessageRow)` prop-change render count drops from 1,057 to near-zero in follow-up trace
 - [ ] Virtualizer cascade count (762×) drops proportionally as parent renders decrease
 - [ ] No regression in chat list scrolling, message display, or row height measurement

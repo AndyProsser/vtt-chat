@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import type { UUID } from '@shared'
 import { MessageType } from '@shared'
 import { useStore } from '@/hooks/useStore'
@@ -104,6 +104,10 @@ export function useChatVisibleMessages({
     return [...values].sort((a, b) => a.createdAt - b.createdAt)
   }, [sessionMessages])
 
+  // Stable reference guard: avoids cascading MessageList re-renders when messages
+  // arrive in other rooms and the visible set for this room is unchanged.
+  const stableVisibleRef = useRef<Message[]>([])
+
   const visibleMessages = useMemo(() => {
     const roomScopedMessages: Message[] = []
     const startedIndices: number[] = []
@@ -172,9 +176,17 @@ export function useChatVisibleMessages({
       roomScopedMessages.push(message)
     }
 
-    return isGreenroomMode || startedIndices.length === 0
-      ? roomScopedMessages
-      : roomScopedMessages.slice(startedIndices[startedIndices.length - 1])
+    const next =
+      isGreenroomMode || startedIndices.length === 0
+        ? roomScopedMessages
+        : roomScopedMessages.slice(startedIndices[startedIndices.length - 1])
+
+    const prev = stableVisibleRef.current
+    if (prev.length === next.length && next.every((m, i) => m === prev[i])) {
+      return prev
+    }
+    stableVisibleRef.current = next
+    return next
   }, [
     currentUserId,
     greenroomRoomId,
