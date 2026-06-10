@@ -23,6 +23,9 @@ function stripMarkdown(md: string): string {
       .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
       // Remove images entirely (inline base64 would bloat excerpt)
       .replace(/!\[[^\]]*\]\([^)]*\)/g, '[image]')
+      // Remove partial/truncated image markdown that lacks a closing paren
+      // (occurs in legacy messages where base64 was sliced at a fixed char limit)
+      .replace(/!\[[^\]]*\]\(data:[^\n)]*$/gm, '[image]')
       // Remove HTML tags
       .replace(/<[^>]+>/g, '')
       // Remove headings markers

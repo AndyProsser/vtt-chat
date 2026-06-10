@@ -110,7 +110,12 @@ export function useChatVisibleMessages({
     const isResolvedRoomGreen = isGreenRoomName(resolvedRoomName)
 
     for (const message of orderedMessages) {
-      if (Array.isArray(message.visibleTo) && !message.visibleTo.includes(currentUserId)) {
+      // Greenroom messages are always visible to all campaign members; only filter visibleTo in session mode
+      if (
+        !isGreenroomMode &&
+        Array.isArray(message.visibleTo) &&
+        !message.visibleTo.includes(currentUserId)
+      ) {
         continue
       }
 

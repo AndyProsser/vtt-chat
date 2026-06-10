@@ -923,9 +923,7 @@ async function emitPersistedChatMessage(params: {
           campaignId: sessionRecord.campaignId as UUID,
           authorId: params.author.userId,
           authorUsername: params.author.username,
-          dmId: session.dmId,
           content,
-          visibleTo,
         })
       })()
     : await sendMessage({

@@ -675,10 +675,12 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     publishedAt: published.publishedAt,
   })
 
-  const snippet =
-    published.content.length > NOTE_PUBLISH_SNIPPET_MAX_LENGTH
-      ? `${published.content.slice(0, NOTE_PUBLISH_SNIPPET_MAX_LENGTH)}...`
-      : published.content
+  // Strip markdown (including base64 images) and word-wrap to a clean plain-text snippet.
+  // Raw slice would embed truncated base64 data URIs in the content field and session logs.
+  const { excerpt: snippet } = generateExcerpt(published.content, {
+    fallbackTitle: published.title,
+  })
+  const historyContentPreview = snippet
 
   const sessionUsers = await getSessionUsers(session.id)
   const sessionUsernamesById = new Map(
@@ -691,11 +693,6 @@ router.post('/:noteId/publish', requireAuth, async (req: Request, res: Response)
     sessionUsernamesById,
   })
   const hashtagsSummary = summarizeHashtags(published.tags || [])
-
-  const historyContentPreview =
-    published.content.length > NOTE_PUBLISH_SNIPPET_MAX_LENGTH
-      ? `${published.content.slice(0, NOTE_PUBLISH_SNIPPET_MAX_LENGTH)}...`
-      : published.content
 
   const publishAudienceUsers = noteVisibleTo({
     authorId: published.authorId,

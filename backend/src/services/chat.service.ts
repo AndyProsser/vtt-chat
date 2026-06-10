@@ -364,27 +364,16 @@ export async function sendMessage(params: {
 
 /**
  * Send a message to the campaign greenroom (campaign-scoped, OOC-only).
- * Messages sent here are visible to all campaign members and persist across session boundaries.
+ * Messages sent here are always visible to all campaign members — no per-user visibility filtering.
  */
 export async function sendCampaignGreenroomMessage(params: {
   campaignId: UUID
   authorId: UUID
   authorUsername: string
-  dmId: UUID
   content: string
-  visibleTo?: UUID[]
 }): Promise<StoredMessage> {
-  const { campaignId, authorId, authorUsername, dmId, content, visibleTo } = params
+  const { campaignId, authorId, authorUsername, content } = params
   const id = crypto.randomUUID() as UUID
-
-  const visibility = computeVisibility(
-    MessageType.OOC,
-    authorId,
-    dmId,
-    undefined,
-    undefined,
-    visibleTo
-  )
 
   const message: StoredMessage = {
     id,
@@ -396,8 +385,8 @@ export async function sendCampaignGreenroomMessage(params: {
     type: MessageType.OOC,
     isDmOnly: false,
     isOffTheRecord: false,
-    visibleTo: visibility.visibleTo,
-    targetIds: visibility.targetIds,
+    visibleTo: undefined,
+    targetIds: undefined,
     createdAt: Date.now(),
   }
 
@@ -410,7 +399,6 @@ export async function sendCampaignGreenroomMessage(params: {
     type: MessageType.OOC,
     isDmOnly: false,
     isOffTheRecord: false,
-    visibleTo: visibility,
     createdAt: new Date(message.createdAt),
   })
 
@@ -500,13 +488,10 @@ export async function getCampaignGreenroomMessages(
   const messages = rows.map(mapStoredMessage)
 
   return messages.filter((message) => {
-    if (requesterRole === 'DM') {
-      return canSeeMessage(message, requesterId, requesterRole)
-    }
-    if (message.isOffTheRecord) {
-      return false
-    }
-    return canSeeMessage(message, requesterId, requesterRole)
+    if (message.deletedAt !== undefined) return false
+    // OTR messages are hidden from non-DM users; greenroom messages are never filtered by visibleTo
+    if (message.isOffTheRecord && requesterRole !== 'DM') return false
+    return true
   })
 }
 
@@ -551,13 +536,10 @@ export async function getCampaignGreenroomMessagesPage(
   })
 
   const messages = page.rows.map(mapStoredMessage).filter((message) => {
-    if (requesterRole === 'DM') {
-      return canSeeMessage(message, requesterId, requesterRole)
-    }
-    if (message.isOffTheRecord) {
-      return false
-    }
-    return canSeeMessage(message, requesterId, requesterRole)
+    if (message.deletedAt !== undefined) return false
+    // OTR messages are hidden from non-DM users; greenroom messages are never filtered by visibleTo
+    if (message.isOffTheRecord && requesterRole !== 'DM') return false
+    return true
   })
 
   const nextBefore = messages.length > 0 ? messages[0]?.createdAt : options?.before

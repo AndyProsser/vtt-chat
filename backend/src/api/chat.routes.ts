@@ -721,7 +721,7 @@ router.post('/campaign/:campaignId/chat', requireAuth, async (req: Request, res:
     }
 
     // Verify the sender is a campaign member (spectators cannot post to greenroom)
-    const { isUserInCampaign, getCampaignDmId } = await import('@/repositories/campaign.repository')
+    const { isUserInCampaign } = await import('@/repositories/campaign.repository')
     const isMember = await isUserInCampaign({
       userId: user.userId as string,
       campaignId: campaignId as string,
@@ -730,18 +730,11 @@ router.post('/campaign/:campaignId/chat', requireAuth, async (req: Request, res:
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
     }
 
-    // Resolve the campaign DM for visibility computation
-    const dmId = await getCampaignDmId(campaignId as string)
-    if (!dmId) {
-      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
-    }
-
     const { sendCampaignGreenroomMessage } = await import('@/services/chat.service')
     const message = await sendCampaignGreenroomMessage({
       campaignId: campaignId as UUID,
       authorId: user.userId as UUID,
       authorUsername: user.username,
-      dmId: dmId as UUID,
       content,
     })
 

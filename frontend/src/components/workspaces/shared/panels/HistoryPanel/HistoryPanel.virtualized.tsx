@@ -264,7 +264,12 @@ function HistoryVirtualRow({ ariaAttributes, index, style, ...data }: RowCompone
       }
     }
 
-    reportSize()
+    // Defer initial measurement — calling setRowHeight synchronously inside useLayoutEffect
+    // creates a nested re-render cascade when many rows mount at the same time (e.g. a
+    // screenful of note-shared cards with immediatelyRender:false Tiptap editors all
+    // reporting a small initial height). Deferring breaks that cascade without affecting
+    // the ResizeObserver-driven steady-state updates.
+    timeoutId = setTimeout(reportSize, 0)
 
     if (typeof ResizeObserver === 'undefined') {
       const handleResize = () => {

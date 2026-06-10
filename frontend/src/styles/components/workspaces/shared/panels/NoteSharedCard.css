@@ -154,6 +154,13 @@
   justify-content: flex-end;
 }
 
+.session-note-shared-card__footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
 .session-note-shared-card__hashtags {
   text-align: right;
   font-size: 0.64rem;
@@ -162,4 +169,22 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 62%;
+}
+
+.session-note-shared-card__more-link {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.64rem;
+  color: color-mix(in srgb, #7dd3fc 55%, var(--color-text-muted));
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, #7dd3fc 30%, transparent);
+  text-underline-offset: 2px;
+}
+
+.session-note-shared-card__more-link:hover {
+  color: #7dd3fc;
+  text-decoration-color: color-mix(in srgb, #7dd3fc 60%, transparent);
 }

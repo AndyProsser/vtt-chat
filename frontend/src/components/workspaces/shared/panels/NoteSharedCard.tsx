@@ -1,7 +1,15 @@
 import { useMemo } from 'react'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
+import { openNotePopout } from '@/utils/route-view'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
 import '@/styles/components/workspaces/shared/panels/NoteSharedCard.css'
+
+function handleOpenNotePopout(noteId: string) {
+  const token = sessionStorage.getItem('authToken') ?? ''
+  const apiUrl =
+    (import.meta.env.VITE_API_URL as string | undefined)?.trim() || window.location.origin
+  openNotePopout(noteId, token, apiUrl)
+}
 
 interface NoteSharedCardProps {
   note: ParsedNoteSharedMessage
@@ -94,17 +102,39 @@ export function NoteSharedCard({
       {timestampLabel ? (
         <div className="session-note-shared-card__footer">
           <time dateTime={timestampDateTime}>{timestampLabel}</time>
+          <div className="session-note-shared-card__footer-right">
+            {hashtagsSummary ? (
+              <span className="session-note-shared-card__hashtags" title={hashtags.join(', ')}>
+                {hashtagsSummary}
+              </span>
+            ) : null}
+            {note.noteId ? (
+              <button
+                className="session-note-shared-card__more-link"
+                onClick={() => handleOpenNotePopout(note.noteId!)}
+                type="button"
+              >
+                more...
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : hashtagsSummary || note.noteId ? (
+        <div className="session-note-shared-card__footer session-note-shared-card__footer--hashtags-only">
           {hashtagsSummary ? (
             <span className="session-note-shared-card__hashtags" title={hashtags.join(', ')}>
               {hashtagsSummary}
             </span>
           ) : null}
-        </div>
-      ) : hashtagsSummary ? (
-        <div className="session-note-shared-card__footer session-note-shared-card__footer--hashtags-only">
-          <span className="session-note-shared-card__hashtags" title={hashtags.join(', ')}>
-            {hashtagsSummary}
-          </span>
+          {note.noteId ? (
+            <button
+              className="session-note-shared-card__more-link"
+              onClick={() => handleOpenNotePopout(note.noteId!)}
+              type="button"
+            >
+              more...
+            </button>
+          ) : null}
         </div>
       ) : null}
     </article>
