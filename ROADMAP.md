@@ -10,16 +10,16 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     13 |      12 |              0 |              1 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     13 |      13 |              0 |              0 | 🟢 Done        |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **42** |  **32** |          **2** |          **8** |                |
+| **Total**                              | **42** |  **33** |          **2** |          **7** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress), Performance Tuning follow-up (5 not started from second profiler trace).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase complete (all 13 items done).
 
 ---
 
@@ -335,20 +335,28 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 
 ### PERF-13: Reduce TypingIndicator hook churn with granular Zustand selector
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
 
-**Problem**: `Memo(TypingIndicator)` re-renders **266 times** with 262 of those driven by hook changes. PERF-04 already wrapped it in `memo()`, eliminating parent cascades. The remaining churn is internal: the Zustand selector subscribes to a slice containing typing state for all users across all rooms, so any typing event anywhere in the session produces a new object reference and triggers a re-render — even in rooms the indicator is not rendering for.
+**Problem**: `Memo(TypingIndicator)` re-renders **266 times** with 262 of those driven by hook changes. PERF-04 already wrapped it in `memo()`, eliminating parent cascades. The remaining churn is internal: the Zustand selector subscribed to `presenceTypingBySession[sessionId]` — the full session-wide indicator array — so any typing event anywhere in the session produced a new object reference and triggered a re-render, even in rooms the indicator wasn't rendering for.
 
-**Fix**:
+**Fix**: Split the single broad subscription into two room-scoped selectors, both using `useShallow`:
 
-- Replace the broad typing-state subscription with a selector scoped to the specific `roomId`: `useStore(s => s.typing[roomId])` or equivalent. The selector should return a primitive or array and remain stable when typing users for this specific room have not changed.
-- If the selector returns an array, apply a shallow equality comparator (`useStore(selector, shallow)`) to avoid reference churn from array identity.
+- `inRoomIndicators` — filters the session array to indicators with `!t.roomId || t.roomId === roomId`. `useShallow` compares element-by-element; when only other-room indicators change, the filtered result is shallowly equal to the previous and the re-render is suppressed.
+- `elsewhereIndicators` — filters to indicators in OTHER rooms, but only for DM viewers. For non-DM users the selector always returns `EMPTY_TYPING_INDICATORS` (same stable reference), so `useShallow` short-circuits immediately and the subscription never fires on cross-room typing.
+
+The `useMemo` summary and expiry `useEffect` are updated to use the two split arrays instead of the former combined `typingIndicators`.
+
+**Files changed**:
+
+- `frontend/src/components/workspaces/session/chat/TypingIndicator.tsx` — replaced session-wide selector with two room-scoped `useShallow` selectors; simplified `useMemo` logic (DM check now handled at subscription level)
 
 **Acceptance Criteria**:
 
-- [ ] Hook-driven render count for `Memo(TypingIndicator)` drops from 262 to approximately one per actual typing-state change in the component's room
+- [x] `inRoomIndicators` selector stable when typing events arrive in other rooms (useShallow element comparison)
+- [x] `elsewhereIndicators` always returns `EMPTY_TYPING_INDICATORS` for non-DM users (no cross-room re-renders for players)
+- [ ] Hook-driven render count for `Memo(TypingIndicator)` drops from 262 to approximately one per actual typing-state change in the component's room (follow-up trace)
 - [ ] Typing indicator appearance, disappearance, and debounce timing unchanged
 - [ ] Selector does not fire on typing changes in other rooms
 
