@@ -1,8 +1,5 @@
+import { memo, useMemo } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
-
-// JournalPanel manages session selection internally via optimisticSelection state;
-// the parent workspace does not need to respond to journal session changes.
-const NOOP_SESSION_CHANGE = () => {}
 import type { RightRailTab } from '@/types/ui'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { PartyPanel } from '@/components/workspaces/shared/panels/PartyPanel'
@@ -18,6 +15,10 @@ import { RightRailContent } from '@/components/workspaces/session/RightRailConte
 import type { ExtensionSyncPolicy } from '@/types/sessionUi'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
+
+// JournalPanel manages session selection internally via optimisticSelection state;
+// the parent workspace does not need to respond to journal session changes.
+const NOOP_SESSION_CHANGE = () => {}
 
 type SessionWorkspaceRightRailTabProps = {
   tab: RightRailTab
@@ -74,157 +75,297 @@ type SessionWorkspaceRightRailTabProps = {
   onReissueInvite?: (inviteType: 'PLAYER' | 'SPECTATOR') => void
 }
 
-export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTabProps) {
+export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightRailTab({
+  tab,
+  selectedCampaign,
+  sessions,
+  sessionCount,
+  totalSessionDurationMs,
+  canEditCampaignInfo,
+  onSaveCampaignInfo,
+  campaignId,
+  apiUrl,
+  token,
+  currentSessionId,
+  currentSessionName: _currentSessionName,
+  currentSessionState,
+  effectiveSessionUserId,
+  partyPresenceRefreshVersion,
+  fetchWithAuthGuard,
+  effectiveSessionRole,
+  userId,
+  sessionSettingsName,
+  sessionSettingsPlannedDurationMinutes,
+  defaultSessionDurationMinutes,
+  sessionStartedAt,
+  canEditSessionSettings,
+  canEditEndedSessionName,
+  onSessionNameChange,
+  onPlannedDurationMinutesChange,
+  onSaveSessionSettings,
+  isSessionSettingsSaving,
+  sessionCampaignPolicy,
+  campaignIdForSettings,
+  characterDraft,
+  onCharacterFieldChange,
+  onSaveCharacterSettings,
+  isCharacterSettingsLoading,
+  isCharacterSettingsSaving,
+  onRequestOpenPlayerSettings,
+  playerSettingsFocusRequestKey,
+  joinUrl,
+  watchUrl,
+  spectatorsEnabled,
+  canRefreshInvites,
+  isInviteReissuing,
+  onCopyInviteUrl,
+  onReissueInvite,
+}: SessionWorkspaceRightRailTabProps) {
+  const informationPanel = useMemo(
+    () => (
+      <CampaignInformationPanel
+        campaign={selectedCampaign ?? null}
+        sessionCount={sessionCount}
+        totalSessionDurationMs={totalSessionDurationMs}
+        canEdit={canEditCampaignInfo}
+        sessionId={currentSessionId}
+        onSaveCampaignInfo={onSaveCampaignInfo}
+        joinUrl={joinUrl}
+        watchUrl={watchUrl}
+        spectatorsEnabled={spectatorsEnabled}
+        canRefreshInvites={canRefreshInvites}
+        isInviteReissuing={isInviteReissuing}
+        onCopyInviteUrl={onCopyInviteUrl}
+        onReissueInvite={onReissueInvite}
+      />
+    ),
+    [
+      selectedCampaign,
+      sessionCount,
+      totalSessionDurationMs,
+      canEditCampaignInfo,
+      currentSessionId,
+      onSaveCampaignInfo,
+      joinUrl,
+      watchUrl,
+      spectatorsEnabled,
+      canRefreshInvites,
+      isInviteReissuing,
+      onCopyInviteUrl,
+      onReissueInvite,
+    ]
+  )
+
+  const partyPanel = useMemo(
+    () =>
+      campaignId ? (
+        <PartyPanel
+          key={`${campaignId}:${currentSessionId}:${effectiveSessionUserId}`}
+          campaignId={campaignId}
+          campaignName={selectedCampaign?.name}
+          apiUrl={apiUrl}
+          authToken={token}
+          currentSessionId={currentSessionId}
+          currentSessionState={currentSessionState}
+          currentUserId={effectiveSessionUserId}
+          partyPresenceRefreshVersion={partyPresenceRefreshVersion}
+          fetchWithAuthGuard={fetchWithAuthGuard}
+          canOpenCharacterSettings={effectiveSessionRole === 'PLAYER'}
+          onOpenCharacterSettings={onRequestOpenPlayerSettings}
+        />
+      ) : (
+        <CampaignScaffoldPanel
+          title="Party"
+          iconName="party"
+          subtitle="Party roster is unavailable until a campaign is selected."
+          sections={[
+            'Select or open a campaign session',
+            'Party presence snapshots will load automatically',
+          ]}
+        />
+      ),
+    [
+      campaignId,
+      selectedCampaign,
+      currentSessionId,
+      currentSessionState,
+      effectiveSessionUserId,
+      partyPresenceRefreshVersion,
+      apiUrl,
+      token,
+      fetchWithAuthGuard,
+      effectiveSessionRole,
+      onRequestOpenPlayerSettings,
+    ]
+  )
+
+  const roomsPanel = useMemo(
+    () =>
+      selectedCampaign && campaignId ? (
+        <GroupsPanelSession
+          sessionId={currentSessionId}
+          sessionState={currentSessionState}
+          effectiveSessionRole={effectiveSessionRole}
+          campaignId={campaignId}
+          apiUrl={apiUrl}
+          token={token}
+        />
+      ) : (
+        <CampaignScaffoldPanel
+          title="Groups"
+          iconName="rooms"
+          subtitle="Groups panel unavailable."
+          sections={['Load a campaign and start a session to manage groups.']}
+          campaignName={selectedCampaign?.name}
+        />
+      ),
+    [
+      selectedCampaign,
+      campaignId,
+      currentSessionId,
+      currentSessionState,
+      effectiveSessionRole,
+      apiUrl,
+      token,
+    ]
+  )
+
+  const notesPanel = useMemo(
+    () =>
+      campaignId ? (
+        <NotesPanel
+          key={`${campaignId}:${currentSessionId}`}
+          apiUrl={apiUrl}
+          token={token}
+          campaignId={campaignId}
+          sessionId={currentSessionId}
+          currentSessionState={currentSessionState}
+          compactPicker
+          user={{ id: effectiveSessionUserId, role: effectiveSessionRole }}
+        />
+      ) : (
+        <CampaignScaffoldPanel
+          title="Handouts"
+          iconName="notes"
+          subtitle="Handouts are unavailable until a campaign is selected."
+          sections={[
+            'Select or open a campaign session',
+            'Handouts and private notes will load automatically',
+          ]}
+        />
+      ),
+    [
+      campaignId,
+      currentSessionId,
+      currentSessionState,
+      effectiveSessionUserId,
+      effectiveSessionRole,
+      apiUrl,
+      token,
+    ]
+  )
+
+  const journalPanel = useMemo(
+    () => (
+      <JournalPanel
+        apiUrl={apiUrl}
+        token={token}
+        campaignId={campaignId}
+        role={effectiveSessionRole}
+        sessions={sessions}
+        selectedSessionId={currentSessionId}
+        onSessionChange={NOOP_SESSION_CHANGE}
+      />
+    ),
+    [apiUrl, token, campaignId, effectiveSessionRole, sessions, currentSessionId]
+  )
+
+  const historyPanel = useMemo(
+    () => (
+      <HistoryPanel
+        apiUrl={apiUrl}
+        token={token}
+        campaignId={campaignId}
+        sessionId={currentSessionId}
+        role={effectiveSessionRole}
+        userId={userId}
+      />
+    ),
+    [apiUrl, token, campaignId, currentSessionId, effectiveSessionRole, userId]
+  )
+
+  const settingsPanel = useMemo(
+    () => (
+      <WorkspaceSettingsPanel
+        role={
+          effectiveSessionRole === 'DM'
+            ? 'DM'
+            : effectiveSessionRole === 'PLAYER'
+              ? 'PLAYER'
+              : 'SPECTATOR'
+        }
+        sessionSettings={{
+          campaignId: campaignIdForSettings || null,
+          sessionName: sessionSettingsName,
+          plannedDurationMinutes: sessionSettingsPlannedDurationMinutes,
+          defaultSessionDurationMinutes: defaultSessionDurationMinutes,
+          sessionStateLabel: currentSessionState,
+          sessionStartedAt: sessionStartedAt,
+          canEditSessionSettings: canEditSessionSettings,
+          canEditEndedSessionName: canEditEndedSessionName,
+          onSessionNameChange: onSessionNameChange,
+          onPlannedDurationMinutesChange: onPlannedDurationMinutesChange,
+          onSaveSessionSettings: onSaveSessionSettings,
+          isSessionSaving: isSessionSettingsSaving,
+          isSaving: false,
+          isLoading: false,
+          campaignPolicy: sessionCampaignPolicy,
+        }}
+        playerSettings={{
+          campaignId: campaignIdForSettings || null,
+          characterDraft: characterDraft,
+          onCharacterFieldChange: onCharacterFieldChange,
+          onSaveCharacterSettings: onSaveCharacterSettings,
+          isCharacterLoading: isCharacterSettingsLoading,
+          isCharacterSaving: isCharacterSettingsSaving,
+          focusRequestKey: playerSettingsFocusRequestKey,
+        }}
+      />
+    ),
+    [
+      effectiveSessionRole,
+      campaignIdForSettings,
+      sessionSettingsName,
+      sessionSettingsPlannedDurationMinutes,
+      defaultSessionDurationMinutes,
+      currentSessionState,
+      sessionStartedAt,
+      canEditSessionSettings,
+      canEditEndedSessionName,
+      onSessionNameChange,
+      onPlannedDurationMinutesChange,
+      onSaveSessionSettings,
+      isSessionSettingsSaving,
+      sessionCampaignPolicy,
+      characterDraft,
+      onCharacterFieldChange,
+      onSaveCharacterSettings,
+      isCharacterSettingsLoading,
+      isCharacterSettingsSaving,
+      playerSettingsFocusRequestKey,
+    ]
+  )
+
   return (
     <RightRailContent
-      tab={props.tab}
-      informationPanel={
-        <CampaignInformationPanel
-          campaign={props.selectedCampaign ?? null}
-          sessionCount={props.sessionCount}
-          totalSessionDurationMs={props.totalSessionDurationMs}
-          canEdit={props.canEditCampaignInfo}
-          sessionId={props.currentSessionId}
-          onSaveCampaignInfo={props.onSaveCampaignInfo}
-          joinUrl={props.joinUrl}
-          watchUrl={props.watchUrl}
-          spectatorsEnabled={props.spectatorsEnabled}
-          canRefreshInvites={props.canRefreshInvites}
-          isInviteReissuing={props.isInviteReissuing}
-          onCopyInviteUrl={props.onCopyInviteUrl}
-          onReissueInvite={props.onReissueInvite}
-        />
-      }
-      partyPanel={
-        props.campaignId ? (
-          <PartyPanel
-            key={`${props.campaignId}:${props.currentSessionId}:${props.effectiveSessionUserId}`}
-            campaignId={props.campaignId}
-            campaignName={props.selectedCampaign?.name}
-            apiUrl={props.apiUrl}
-            authToken={props.token}
-            currentSessionId={props.currentSessionId}
-            currentSessionState={props.currentSessionState}
-            currentUserId={props.effectiveSessionUserId}
-            partyPresenceRefreshVersion={props.partyPresenceRefreshVersion}
-            fetchWithAuthGuard={props.fetchWithAuthGuard}
-            canOpenCharacterSettings={props.effectiveSessionRole === 'PLAYER'}
-            onOpenCharacterSettings={props.onRequestOpenPlayerSettings}
-          />
-        ) : (
-          <CampaignScaffoldPanel
-            title="Party"
-            iconName="party"
-            subtitle="Party roster is unavailable until a campaign is selected."
-            sections={[
-              'Select or open a campaign session',
-              'Party presence snapshots will load automatically',
-            ]}
-          />
-        )
-      }
-      roomsPanel={
-        props.selectedCampaign && props.campaignId ? (
-          <GroupsPanelSession
-            sessionId={props.currentSessionId}
-            sessionState={props.currentSessionState}
-            effectiveSessionRole={props.effectiveSessionRole}
-            campaignId={props.campaignId}
-            apiUrl={props.apiUrl}
-            token={props.token}
-          />
-        ) : (
-          <CampaignScaffoldPanel
-            title="Groups"
-            iconName="rooms"
-            subtitle="Groups panel unavailable."
-            sections={['Load a campaign and start a session to manage groups.']}
-            campaignName={props.selectedCampaign?.name}
-          />
-        )
-      }
-      notesPanel={
-        props.campaignId ? (
-          <NotesPanel
-            key={`${props.campaignId}:${props.currentSessionId}`}
-            apiUrl={props.apiUrl}
-            token={props.token}
-            campaignId={props.campaignId}
-            sessionId={props.currentSessionId}
-            currentSessionState={props.currentSessionState}
-            compactPicker
-            user={{ id: props.effectiveSessionUserId, role: props.effectiveSessionRole }}
-          />
-        ) : (
-          <CampaignScaffoldPanel
-            title="Handouts"
-            iconName="notes"
-            subtitle="Handouts are unavailable until a campaign is selected."
-            sections={[
-              'Select or open a campaign session',
-              'Handouts and private notes will load automatically',
-            ]}
-          />
-        )
-      }
-      journalPanel={
-        <JournalPanel
-          apiUrl={props.apiUrl}
-          token={props.token}
-          campaignId={props.campaignId}
-          role={props.effectiveSessionRole}
-          sessions={props.sessions}
-          selectedSessionId={props.currentSessionId}
-          onSessionChange={NOOP_SESSION_CHANGE}
-        />
-      }
-      historyPanel={
-        <HistoryPanel
-          apiUrl={props.apiUrl}
-          token={props.token}
-          campaignId={props.campaignId}
-          sessionId={props.currentSessionId}
-          role={props.effectiveSessionRole}
-          userId={props.userId}
-        />
-      }
-      settingsPanel={
-        <WorkspaceSettingsPanel
-          role={
-            props.effectiveSessionRole === 'DM'
-              ? 'DM'
-              : props.effectiveSessionRole === 'PLAYER'
-                ? 'PLAYER'
-                : 'SPECTATOR'
-          }
-          sessionSettings={{
-            campaignId: props.campaignIdForSettings || null,
-            sessionName: props.sessionSettingsName,
-            plannedDurationMinutes: props.sessionSettingsPlannedDurationMinutes,
-            defaultSessionDurationMinutes: props.defaultSessionDurationMinutes,
-            sessionStateLabel: props.currentSessionState,
-            sessionStartedAt: props.sessionStartedAt,
-            canEditSessionSettings: props.canEditSessionSettings,
-            canEditEndedSessionName: props.canEditEndedSessionName,
-            onSessionNameChange: props.onSessionNameChange,
-            onPlannedDurationMinutesChange: props.onPlannedDurationMinutesChange,
-            onSaveSessionSettings: props.onSaveSessionSettings,
-            isSessionSaving: props.isSessionSettingsSaving,
-            isSaving: false,
-            isLoading: false,
-            campaignPolicy: props.sessionCampaignPolicy,
-          }}
-          playerSettings={{
-            campaignId: props.campaignIdForSettings || null,
-            characterDraft: props.characterDraft,
-            onCharacterFieldChange: props.onCharacterFieldChange,
-            onSaveCharacterSettings: props.onSaveCharacterSettings,
-            isCharacterLoading: props.isCharacterSettingsLoading,
-            isCharacterSaving: props.isCharacterSettingsSaving,
-            focusRequestKey: props.playerSettingsFocusRequestKey,
-          }}
-        />
-      }
+      tab={tab}
+      informationPanel={informationPanel}
+      partyPanel={partyPanel}
+      roomsPanel={roomsPanel}
+      notesPanel={notesPanel}
+      journalPanel={journalPanel}
+      historyPanel={historyPanel}
+      settingsPanel={settingsPanel}
     />
   )
-}
+})

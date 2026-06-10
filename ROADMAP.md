@@ -10,14 +10,14 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     19 |      17 |              0 |              2 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     19 |      18 |              0 |              1 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **48** |  **37** |          **2** |          **9** |                |
+| **Total**                              | **48** |  **38** |          **2** |          **8** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35).
 
@@ -480,7 +480,7 @@ Trace 3 data: `LeftRailSlot` 235 re-renders (200 comparator-fail / 35 explicit p
 
 ### PERF-18: Wrap `SessionWorkspaceRightRailTab` in memo and stabilise panel JSX slots
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical
 **Source**: Profiler trace 2026-06-10 15:35
 
@@ -506,8 +506,9 @@ Trace 3 data:
 
 **Acceptance Criteria**:
 
-- [ ] `SessionWorkspaceRightRailTab` wrapped in `memo()`
-- [ ] All 8 panel JSX slots wrapped in `useMemo` with exhaustive deps
+- [x] `SessionWorkspaceRightRailTab` wrapped in `memo()`
+- [x] All 8 panel JSX slots wrapped in `useMemo` with exhaustive deps
+- [x] `RightRailContent` wrapped in `memo()`
 - [ ] `Tabs.Root` cascade renders drop from 459 to near-zero in follow-up trace
 - [ ] Worst-commit component count drops below 200 (currently 548 in commit #517)
 - [ ] Right-rail panel switching, tab animations, and all panel surfaces behave correctly

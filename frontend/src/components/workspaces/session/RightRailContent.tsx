@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { ReactNode } from 'react'
 import type { RightRailTab } from '@/types/ui'
 
@@ -12,7 +13,7 @@ interface RightRailContentProps {
   settingsPanel: ReactNode
 }
 
-export function RightRailContent({
+export const RightRailContent = memo(function RightRailContent({
   tab,
   informationPanel,
   partyPanel,
@@ -40,4 +41,4 @@ export function RightRailContent({
     default:
       return <p className="session-placeholder-copy">Tool panel is not available for this tab.</p>
   }
-}
+})
