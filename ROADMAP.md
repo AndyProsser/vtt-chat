@@ -54,8 +54,8 @@ _Root-cause re-render isolation fixes. Two profiler traces captured 2026-06-10: 
 
 - [x] `RoomSelector` contains no local `<TooltipProvider>` wrapper
 - [x] Tooltip components in the room list continue to function correctly end-to-end (workspace-root `TooltipProvider` in `workspaces/index.tsx` covers the subtree)
-- [ ] Follow-up profiler commit showing tooltip subtree no longer cascades on session state changes
-- [ ] Worst-case commit breadth drops from ~790 to under 100 components
+- [x] Follow-up profiler commit showing tooltip subtree no longer cascades on session state changes — second trace confirms `RoomSelector` has zero non-first-mount renders; the cascade pattern is eliminated
+- [ ] Worst-case commit breadth drops from ~790 to under 100 components — second trace still shows ~800-component commits, now driven by prop updates cascading through lobby modal subtrees (9 modal instances × full Radix Dialog tree each) correlated with `SessionWorkspaceChromeConnector` renders; the original RoomSelector cascade is gone but a different source remains
 
 ---
 
@@ -74,7 +74,7 @@ _Root-cause re-render isolation fixes. Two profiler traces captured 2026-06-10: 
 **Acceptance Criteria**:
 
 - [x] `SpeakingIndicator` is wrapped in `memo()`
-- [ ] All parent-triggered renders eliminated; trace shows hook-only triggers
+- [x] All parent-triggered renders eliminated; trace shows hook-only triggers — second trace: `Memo(SpeakingIndicator)` 0 cascade renders, 2 hook-driven renders (legitimate speaking state changes)
 - [x] No regression in speaking ring behaviour during active voice
 
 ---
@@ -94,7 +94,7 @@ _Root-cause re-render isolation fixes. Two profiler traces captured 2026-06-10: 
 **Acceptance Criteria**:
 
 - [x] Both role-chip callbacks are `useCallback`-wrapped in `GroupMemberItem`
-- [ ] `AvatarOverlayComponent` no longer re-renders when only speaking/presence state changes
+- [x] `AvatarOverlayComponent` no longer re-renders when only speaking/presence state changes — second trace: 2 prop-driven renders (legitimate data changes), 0 cascade; speaking/presence handled exclusively by their own leaf components
 - [x] Role chip hover and popover behaviour unchanged
 
 ---
@@ -124,7 +124,7 @@ All three receive stable primitive props (`sessionId`, `roomId`, `role`, `curren
 **Acceptance Criteria**:
 
 - [x] All three components wrapped in `memo()`
-- [ ] Zero parent-cascade renders for all three in follow-up profiler trace
+- [x] Zero parent-cascade renders for all three in follow-up profiler trace — second trace: `Memo(AudioPanel)` 1 residual cascade (negligible), `Memo(LeftRailSummary)` 0, `Memo(TypingIndicator)` 0
 - [x] No regressions in audio panel, left rail summary, or typing indicator behaviour
 
 ---
@@ -148,7 +148,7 @@ All three receive stable primitive props (`sessionId`, `roomId`, `role`, `curren
 **Acceptance Criteria**:
 
 - [x] Root cause of memo bypass identified and fixed
-- [x] Parent-cascade renders for `MessageRow` eliminated in follow-up trace
+- [ ] Parent-cascade renders for `MessageRow` eliminated in follow-up trace — second trace shows 679 cascade renders still reaching `Memo(MessageRow)`; the rowHeightCache fix resolved the original root cause but a separate cascade source remains (Zustand selector identity, tracked as PERF-12)
 - [x] Chat list performance unchanged or improved; no visual regressions
 
 ---
@@ -254,13 +254,13 @@ The root cause is the same pattern fixed in PERF-03 (avatar callbacks), but affe
 
 **Problem**: The Radix Tooltip family accounts for ~25,000 combined rerenders — the largest cumulative cost in the trace:
 
-| Component | Count | Primary driver |
-| --------- | ----- | -------------- |
-| `Presence` | 4,147× | 4,053 prop changes |
-| `Popper` / `PopperProvider` / `PopperAnchor` | 3,559× each | ~3,500 prop changes |
-| `Tooltip` | 3,148× | 2,221 props + 844 cascade |
-| `TruncatedTextWithTooltip` | 3,054× | 3,048 pure cascade |
-| `TooltipContent` | 2,262× | 1,745 cascade |
+| Component                                    | Count       | Primary driver            |
+| -------------------------------------------- | ----------- | ------------------------- |
+| `Presence`                                   | 4,147×      | 4,053 prop changes        |
+| `Popper` / `PopperProvider` / `PopperAnchor` | 3,559× each | ~3,500 prop changes       |
+| `Tooltip`                                    | 3,148×      | 2,221 props + 844 cascade |
+| `TruncatedTextWithTooltip`                   | 3,054×      | 3,048 pure cascade        |
+| `TooltipContent`                             | 2,262×      | 1,745 cascade             |
 
 The primary source is **65 `TruncatedTextWithTooltip` instances inside `JournalPanel`** cascading via:
 

@@ -19,7 +19,7 @@
       "Bash(xargs basename -a)",
       "Bash(xargs ls -la)",
       "Bash(docker compose *)",
-      "Bash(python3)",
+      "Bash(python3 - *)",
       "Bash(sed -n '*,*p' *)"
     ]
   }
