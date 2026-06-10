@@ -80,8 +80,7 @@ export function useWhisperFlow({
   }, [pendingRoomMoves, whisperRoom])
   const whisperEndBlockedByPendingMoves = pendingMovesToWhisperCount > 0
   const whisperModeLocked = whisperActive || hasWhisperContext
-  const canAutoReconcileWhisper =
-    sessionState === SessionState.ACTIVE || sessionState === SessionState.PAUSED
+  const canAutoReconcileWhisper = sessionState === SessionState.ACTIVE
 
   const rememberDmVoiceRoom = useCallback((roomId: UUID | '') => {
     previousDmVoiceRoomIdRef.current = roomId

@@ -95,4 +95,92 @@ describe('useWhisperFlow', () => {
       expect(fetchMock).not.toHaveBeenCalled()
     })
   })
+
+  it('does not auto-end whisper when session pause empties the whisper room', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const baseOptions = {
+      apiUrl: 'https://api.test',
+      token: 'token',
+      sessionId: SESSION_ID,
+      dmUserId: DM_ID,
+      displayedParticipantsByRoom: {
+        [WHISPER_ROOM_ID]: [{ userId: PLAYER_ID, username: 'alice', roomId: WHISPER_ROOM_ID }],
+      },
+      pendingRoomMoves: {},
+      selectedRoomId: WHISPER_ROOM_ID,
+      broadcastModeEnabled: false,
+      canManageRooms: true,
+      onToggleBroadcastMode: vi.fn(async () => undefined),
+      onSelectRoom: vi.fn(),
+      setMoveError: vi.fn(),
+      syncSessionTopologyFromServer: vi.fn(async () => undefined),
+      getRoomMemberIdsFromServer: vi.fn(async () => []),
+    }
+
+    const { rerender } = renderHook(
+      (props: {
+        sessionState: SessionState
+        allRooms: Array<{
+          id: UUID
+          name: string
+          type: RoomType
+          memberCount: number
+          participants: Array<{ userId: UUID; username: string }>
+        }>
+        displayedParticipantsByRoom: Record<
+          string,
+          Array<{ userId: UUID; username: string; roomId: UUID }>
+        >
+      }) =>
+        useWhisperFlow({
+          ...baseOptions,
+          sessionState: props.sessionState,
+          allRooms: props.allRooms,
+          displayedParticipantsByRoom: props.displayedParticipantsByRoom,
+        }),
+      {
+        initialProps: {
+          sessionState: SessionState.ACTIVE,
+          allRooms: [
+            {
+              id: WHISPER_ROOM_ID,
+              name: 'Whisper',
+              type: RoomType.PRIVATE,
+              memberCount: 2,
+              participants: [
+                { userId: DM_ID, username: 'dm' },
+                { userId: PLAYER_ID, username: 'alice' },
+              ],
+            },
+          ],
+          displayedParticipantsByRoom: {
+            [WHISPER_ROOM_ID]: [{ userId: PLAYER_ID, username: 'alice', roomId: WHISPER_ROOM_ID }],
+          },
+        },
+      }
+    )
+
+    // Simulate PAUSE transition: whisper room empties as session moves to PAUSED
+    rerender({
+      sessionState: SessionState.PAUSED,
+      allRooms: [
+        {
+          id: WHISPER_ROOM_ID,
+          name: 'Whisper',
+          type: RoomType.PRIVATE,
+          memberCount: 0,
+          participants: [],
+        },
+      ],
+      displayedParticipantsByRoom: {
+        [WHISPER_ROOM_ID]: [],
+      },
+    })
+
+    await waitFor(() => {
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+  })
 })
