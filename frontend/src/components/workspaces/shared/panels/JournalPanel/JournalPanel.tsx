@@ -15,6 +15,7 @@
  * See: docs/changes/NOTES-JOURNAL-IMPLEMENTATION-CHECKLIST.md
  */
 
+import { memo } from 'react'
 import { type Role, type UUID } from '@shared'
 import type { JournalSavedPayload } from '@/types/journalPanel'
 import type { Session } from '@/types/session'
@@ -60,7 +61,7 @@ type JournalPanelBrowserProps = {
 
 export type JournalPanelProps = JournalPanelFocusedProps | JournalPanelBrowserProps
 
-export function JournalPanel(props: JournalPanelProps) {
+export const JournalPanel = memo(function JournalPanel(props: JournalPanelProps) {
   if (props.sessions !== undefined) {
     return (
       <JournalBrowser
@@ -91,4 +92,4 @@ export function JournalPanel(props: JournalPanelProps) {
       onSaved={props.onSaved}
     />
   )
-}
+})

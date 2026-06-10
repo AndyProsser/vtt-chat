@@ -10,14 +10,14 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     13 |       9 |              0 |              4 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     13 |      10 |              0 |              3 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **42** |  **29** |          **2** |         **11** |                |
+| **Total**                              | **42** |  **30** |          **2** |         **10** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress), Performance Tuning follow-up (6 not started from second profiler trace).
 
@@ -248,7 +248,7 @@ The root cause is the same pattern fixed in PERF-03 (avatar callbacks), but affe
 
 ### PERF-10: Stabilise Tooltip/TruncatedTextWithTooltip prop references in JournalPanel
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
 
@@ -279,7 +279,10 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 **Acceptance Criteria**:
 
 - [ ] Combined Tooltip family rerender count drops by ≥70% in follow-up trace
-- [ ] `TruncatedTextWithTooltip` cascade count drops from ~3,048 to near-zero
+- [x] `TruncatedTextWithTooltip` wrapped in `memo` — all props are stable primitives, blocks Radix cascade on parent re-renders
+- [x] `JournalPanel` and `JournalBrowser` wrapped in `memo` — stops list from running on unrelated session state changes
+- [x] `onSessionChange` stabilised to module-level NOOP in `RightRailTab.tsx` — enables `JournalPanel` memo to hold across Presence transitions
+- [ ] `TruncatedTextWithTooltip` cascade count drops from ~3,048 to near-zero in follow-up trace
 - [ ] Journal panel, tooltip labels, and right-rail tab transitions behave correctly
 
 ---

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import type React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './primitives'
 
@@ -9,7 +9,7 @@ type TruncatedTextWithTooltipProps = {
   tooltipSide?: 'top' | 'right' | 'bottom' | 'left'
 }
 
-export function TruncatedTextWithTooltip({
+export const TruncatedTextWithTooltip = memo(function TruncatedTextWithTooltip({
   text,
   className,
   as = 'span',
@@ -67,4 +67,4 @@ export function TruncatedTextWithTooltip({
       </Tooltip>
     </TooltipProvider>
   )
-}
+})

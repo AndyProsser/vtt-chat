@@ -1,4 +1,8 @@
 import type { Role, SessionState, UUID } from '@shared'
+
+// JournalPanel manages session selection internally via optimisticSelection state;
+// the parent workspace does not need to respond to journal session changes.
+const NOOP_SESSION_CHANGE = () => {}
 import type { RightRailTab } from '@/types/ui'
 import { CampaignInformationPanel } from '@/components/workspaces/shared/panels/CampaignInformationPanel'
 import { PartyPanel } from '@/components/workspaces/shared/panels/PartyPanel'
@@ -171,7 +175,7 @@ export function SessionWorkspaceRightRailTab(props: SessionWorkspaceRightRailTab
           role={props.effectiveSessionRole}
           sessions={props.sessions}
           selectedSessionId={props.currentSessionId}
-          onSessionChange={() => {}}
+          onSessionChange={NOOP_SESSION_CHANGE}
         />
       }
       historyPanel={

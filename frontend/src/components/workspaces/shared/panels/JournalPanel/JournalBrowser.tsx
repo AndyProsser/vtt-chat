@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { SessionState, type Role, type UUID } from '@shared'
 import { getRandomJournalDmRoast, getSeededJournalDmRoast } from '@/constants/journal.constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
@@ -21,7 +21,7 @@ interface JournalBrowserProps {
   onSessionChange: (sessionId: UUID) => void
 }
 
-export function JournalBrowser({
+export const JournalBrowser = memo(function JournalBrowser({
   apiUrl,
   token,
   campaignId,
@@ -421,4 +421,4 @@ export function JournalBrowser({
       </div>
     </section>
   )
-}
+})
