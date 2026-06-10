@@ -149,6 +149,16 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
     [activeRightRailTab, role, setToolbarRightRailOpen, tabs]
   )
 
+  // Stable-via-ref: keeps leftRailActions identity fixed so LeftRailSlot's
+  // comparator holds across right-rail tab switches and toolbar state changes.
+  const handleOpenRightRailTabRef = useRef(handleOpenRightRailTab)
+  handleOpenRightRailTabRef.current = handleOpenRightRailTab
+
+  const leftRailActionsRef = useRef({
+    openRightRailTab: (tab: RightRailTab) => handleOpenRightRailTabRef.current(tab),
+    openInformationPanel: () => handleOpenRightRailTabRef.current('information'),
+  })
+
   const toolbarModel: ToolbarActionModel = useMemo(
     () => ({
       centerPaneView: toolbarCenterPaneView,
@@ -170,14 +180,6 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
       toolbarCenterPaneView,
       toolbarRightRailOpen,
     ]
-  )
-
-  const leftRailActions = useMemo(
-    () => ({
-      openRightRailTab: handleOpenRightRailTab,
-      openInformationPanel: () => handleOpenRightRailTab('information'),
-    }),
-    [handleOpenRightRailTab]
   )
 
   useEffect(() => {
@@ -347,7 +349,10 @@ export const SessionWorkspaceFrame = memo(function SessionWorkspaceFrame({
           className="session-workspace-frame__surface session-workspace-frame__left-rail-shell"
           data-ui-component="SessionWorkspaceLeftRail"
         >
-          <LeftRailSlot renderLeftRail={renderLeftRail} leftRailActions={leftRailActions} />
+          <LeftRailSlot
+            renderLeftRail={renderLeftRail}
+            leftRailActions={leftRailActionsRef.current}
+          />
         </aside>
 
         <div

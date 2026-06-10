@@ -10,14 +10,14 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     19 |      16 |              0 |              3 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     19 |      17 |              0 |              2 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **48** |  **36** |          **2** |         **10** |                |
+| **Total**                              | **48** |  **37** |          **2** |          **9** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35).
 
@@ -452,7 +452,7 @@ The cascade produced by those 6 re-renders (~122 prop-changed components each) w
 
 ### PERF-17: Stabilise `leftRailActions` object identity in `WorkspaceFrame`
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical
 **Source**: Profiler trace 2026-06-10 15:35
 
@@ -472,7 +472,7 @@ Trace 3 data: `LeftRailSlot` 235 re-renders (200 comparator-fail / 35 explicit p
 
 **Acceptance Criteria**:
 
-- [ ] Both `openRightRailTab` and `openInformationPanel` in `leftRailActions` are unconditionally stable (stable-ref pattern or equivalent)
+- [x] Both `openRightRailTab` and `openInformationPanel` in `leftRailActions` are unconditionally stable — stable-via-ref pattern applied in [WorkspaceFrame.tsx:154-160](frontend/src/components/workspaces/session/WorkspaceFrame.tsx#L154); `handleOpenRightRailTabRef` tracks the current handler, `leftRailActionsRef` holds a permanent object whose callbacks always delegate through the ref
 - [ ] `LeftRailSlot` re-render count drops from 235 to near-zero in follow-up trace (only re-renders when `renderLeftRail` itself changes)
 - [ ] Left-rail open/close and right-rail tab switches no longer trigger a left-rail re-render
 
