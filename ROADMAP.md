@@ -17,8 +17,8 @@
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| Monorepo Restructure                   |      6 |       1 |              0 |              5 | 🟡 In Progress |
-| **Total**                              | **54** |  **39** |          **2** |         **13** |                |
+| Monorepo Restructure                   |      6 |       2 |              0 |              4 | 🟡 In Progress |
+| **Total**                              | **54** |  **40** |          **2** |         **12** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -609,18 +609,19 @@ _Reorganize the repository from a flat multi-app layout into a conventional `app
 
 ### RS-02: Add npm workspaces to root package.json (pre-move dry run)
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical
 **Depends on**: RS-01
+**Completed**: 2026-06-11
 
 **Scope**: Add `"workspaces": ["apps/*", "packages/*"]` to root `package.json` and verify `npm install` resolves correctly **before any directories move**. This dry run confirms the workspace config is valid against the current layout and catches any hoisting conflicts early.
 
 **Acceptance Criteria**:
 
-- [ ] `"workspaces": ["apps/*", "packages/*"]` added to root `package.json`
-- [ ] `npm install` succeeds from repo root with no hoisting errors
-- [ ] Existing `--prefix` scripts still run (they will be replaced in RS-04, not here)
-- [ ] No existing build or test run broken by this preparatory change
+- [x] `"workspaces": ["apps/*", "packages/*"]` added to root `package.json`
+- [x] `npm install` succeeds from repo root with no hoisting errors (workspace globs match nothing yet — inert until RS-03)
+- [x] Existing `--prefix` scripts still run (they will be replaced in RS-04, not here)
+- [x] No existing build or test run broken by this preparatory change
 
 ---
 
