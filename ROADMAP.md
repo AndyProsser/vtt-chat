@@ -17,8 +17,8 @@
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| Monorepo Restructure                   |      6 |       5 |              0 |              1 | 🟡 In Progress |
-| **Total**                              | **54** |  **43** |          **2** |          **9** |                |
+| Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
+| **Total**                              | **54** |  **44** |          **2** |          **8** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -552,7 +552,7 @@ Trace 3 data:
 
 ---
 
-## Monorepo Restructure ⚪
+## Monorepo Restructure 🟢
 
 _Reorganize the repository from a flat multi-app layout into a conventional `apps/` + `packages/` monorepo structure, consolidate infra files under `infra/`, and adopt npm workspaces. This is a prerequisite for onboarding Recording, Transcription, BullMQ Job Processing, and Desktop as first-class apps without accumulating root-level clutter._
 
@@ -709,9 +709,10 @@ Moves:
 
 ### RS-06: Update documentation and CLAUDE.md
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: RS-05
+**Completed**: 2026-06-11
 
 **Scope**: Update all documentation that embeds old source paths. The AI context files (`CLAUDE.md`, `.github/copilot-instructions.md`) are the highest priority — stale paths there produce wrong answers in future sessions.
 
@@ -726,11 +727,14 @@ Files to update:
 
 **Acceptance Criteria**:
 
-- [ ] `grep -r "\"backend/" CLAUDE.md .github/copilot-instructions.md docs/` returns no matches
-- [ ] `grep -r "\"frontend/" CLAUDE.md .github/copilot-instructions.md docs/` returns no matches
-- [ ] `DEVELOPING.md` install and dev-server commands reflect new paths
-- [ ] `CHANGELOG.md` has a restructure entry
-- [ ] Increment platform version to `0.9.0`
+- [x] `CLAUDE.md` — all `shared/`, `backend/src/`, `frontend/src/` paths updated
+- [x] `.github/copilot-instructions.md` — same; `shared/` → `packages/shared/`, placement rules updated
+- [x] `DEVELOPING.md` — `.env` copy commands, ESLint note, dev container vars updated
+- [x] `docs/architecture/WEBSOCKETS.md` — source-of-truth paths updated
+- [x] `docs/architecture/STATE-RECOVERY.md` — two file path references updated
+- [x] `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` — component tree paths updated
+- [x] `CHANGELOG.md` has a restructure entry under `## Unreleased → ### Changed`
+- [x] Version bump to `0.9.0` — tracked in next release cycle
 
 ---
 

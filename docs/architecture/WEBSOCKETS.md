@@ -5,7 +5,7 @@ _A versioned, event‑driven real‑time protocol for presence, chat, audio, and
 Status:
 
 - This document now distinguishes the shipped Stage 0-7 runtime protocol from broader conceptual protocol design.
-- The canonical runtime contract is the shared event package under `shared/events` and the current backend/frontend transport implementation.
+- The canonical runtime contract is the shared event package under `packages/shared/events` and the current backend/frontend transport implementation.
 - Any older lowercase namespace examples in this file should be treated as conceptual legacy design notes until they are fully rewritten.
 
 ---
@@ -26,11 +26,11 @@ It covers:
 
 For shipped runtime behavior through Stage 7, the source of truth is:
 
-- `shared/events/*`
-- `shared/events/base.ts`
-- `backend/src/ws/index.ts`
-- `frontend/src/ws/client.ts`
-- `frontend/src/hooks/useWebSocket.ts`
+- `packages/shared/events/*`
+- `packages/shared/events/base.ts`
+- `apps/backend/src/ws/index.ts`
+- `apps/frontend/src/ws/client.ts`
+- `apps/frontend/src/hooks/useWebSocket.ts`
 
 This document also contains conceptual and planned material for later stages.
 
@@ -236,7 +236,7 @@ Conceptual families still referenced in older docs:
 - `audio.*` for preset application, environment changes, distance, and PTT
 - `note.*`, `external.*`, `telemetry.*`, and `error.*` for later-stage integration and observability flows
 
-When updating runtime-facing documentation, prefer the shipped uppercase contract in `shared/events/*` instead of expanding these legacy examples.
+When updating runtime-facing documentation, prefer the shipped uppercase contract in `packages/shared/events/*` instead of expanding these legacy examples.
 
 ---
 

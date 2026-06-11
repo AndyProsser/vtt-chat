@@ -25,6 +25,8 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ### Changed
 
+- RS-Monorepo: Restructured repository from flat layout into `apps/` + `packages/` monorepo. Moved `frontend/` → `apps/frontend/`, `backend/` → `apps/backend/`, `admin/` → `apps/admin/`, `shared/` → `packages/shared/`, docker-compose files → `infra/`. Adopted npm workspaces (`apps/*`, `packages/*`). Updated all Dockerfiles, tsconfigs, vitest configs, vite configs, eslint config, QA scripts, CI workflows, and `.code-workspace` folder paths. All source paths in `CLAUDE.md`, `.github/copilot-instructions.md`, `DEVELOPING.md`, and `docs/architecture/` updated to reflect the new layout. Build and test verified green post-restructure.
+
 - W4-Conversation-Authority: Fixed frontend `ROOM:SESSION_TRANSITION_APPLIED` WS handler to only call `resetSessionAudioState()` and `clearActiveEffects()` for teardown transitions (`IDLE`, `ENDED`, `CLEANUP`). `ACTIVE`, `PAUSED`, and `COOLDOWN` transitions are policy remaps — audio transport identity (LiveKit connections, effect/environment state) is now preserved across pause/resume and cooldown cycles as specified in the W4 contract.
 - W4-Conversation-Authority: Documented session-transition audio continuity policy in `docs/architecture/SESSION-LIFECYCLE.md` section 1.7: transport connections are not reset on state transitions; `roomEnvironmentNames` is always campaign-persistent; Whisper/spectator isolation remains a hard room-routing boundary.
 - W4-Conversation-Authority: Added 11 focused tests in `frontend/tests/state/sessionTransition.audio.test.ts` covering non-teardown audio preservation, teardown audio clearing, pause/resume cycle, and the campaign-persistence invariant for `roomEnvironmentNames`.

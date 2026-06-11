@@ -286,7 +286,7 @@ Current shipped baseline:
 
 Current implementation note:
 
-- `backend/src/ws/state-recovery.ts` now has both in-memory replay helpers (legacy/tests) and Redis durable replay helpers for restart-safe reconnect windows (`ws:session:{sessionId}:events`).
+- `apps/backend/src/ws/state-recovery.ts` now has both in-memory replay helpers (legacy/tests) and Redis durable replay helpers for restart-safe reconnect windows (`ws:session:{sessionId}:events`).
 - After restart, clients rely on both targeted API rehydration and bounded Redis replay when cursor history is available.
 
 ---
@@ -401,7 +401,7 @@ Current shipped baseline:
 - Presence recovery is the most complete shipped subsystem recovery path.
 - Backend can recover session presence from persisted snapshots when realtime state is empty.
 - Frontend reconnect refresh replaces room and presence topology atomically.
-- This path is validated by `backend/tests/integration/room-service-recovery.integration.test.ts`.
+- This path is validated by `apps/backend/tests/integration/room-service-recovery.integration.test.ts`.
 
 ---
 

@@ -8,7 +8,7 @@ It assumes you're using:
 - **Ubuntu 22.04+** (or any modern Debian‑based distro)
 - **WSL 2** (if on Windows — see [Windows Setup](#-windows--wsl-setup) section below)
 
-Frontend beta/runtime debug knobs in `frontend/.env`:
+Frontend beta/runtime debug knobs in `apps/frontend/.env`:
 
 - `VITE_MEMORY_PRESSURE_THRESHOLD_MB` or `VITE_MEMORY_PRESSURE_THRESHOLD_BYTES`: memory-pressure threshold before the workspace recovery toast appears
 - `VITE_MEMORY_PRESSURE_POLL_MS`: how often the browser memory guard samples memory APIs
@@ -208,8 +208,8 @@ cd vtt-chat
 Copy the example env files:
 
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.example apps/frontend/.env
 ```
 
 Fill in:
@@ -416,7 +416,7 @@ wsl -e bash -lc "cd /mnt/c/Users/<your-user>/dev/vtt-chat && npm run ci:lint"
 ESLint note:
 
 - React linting now runs through `@eslint-react/eslint-plugin`, so the old peer-dependency workaround for `eslint-plugin-react` is no longer needed.
-- The repo root and package-local ESLint entrypoints now use ESM flat config files (`eslint.config.mjs`) so `npm run lint` works consistently from the root, `frontend/`, `admin/`, and `backend/`.
+- The repo root and package-local ESLint entrypoints now use ESM flat config files (`eslint.config.mjs`) so `npm run lint` works consistently from the root, `apps/frontend/`, `apps/admin/`, and `apps/backend/`.
 
 VS Code will auto‑format on save.
 
@@ -665,8 +665,8 @@ cd vtt-chat
 Copy the example files:
 
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.example apps/frontend/.env
 ```
 
 Fill in:
@@ -735,7 +735,7 @@ docker compose -f docker-compose.dev.yml up --build
 
 Notes:
 
-- These vars apply to backend/frontend/admin dev containers.
+- These vars apply to `apps/backend`, `apps/frontend`, and `apps/admin` dev containers.
 - Polling improves reliability on Windows bind mounts, but can increase CPU usage.
 - If possible, store the repo in the WSL filesystem (for example under `~/`) for best watcher performance.
 
