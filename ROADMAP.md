@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-10
+**Last Updated**: 2026-06-11
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -17,9 +17,10 @@
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **48** |  **38** |          **2** |          **8** |                |
+| Monorepo Restructure                   |      6 |       0 |              0 |              6 | ⚪ Not Started |
+| **Total**                              | **54** |  **38** |          **2** |         **14** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
 ---
 
@@ -548,6 +549,143 @@ Trace 3 data:
 - [ ] `GroupMemberList` re-render count drops from 989 to near-zero cascade renders in follow-up trace
 - [ ] `PlayerContextMenu` prop-change render count drops to near-zero (unblocked by fixing the cascade source)
 - [ ] No regression in member list rendering, drag-and-drop, context menu, or DM overrides
+
+---
+
+## Monorepo Restructure ⚪
+
+_Reorganize the repository from a flat multi-app layout into a conventional `apps/` + `packages/` monorepo structure, consolidate infra files under `infra/`, and adopt npm workspaces. This is a prerequisite for onboarding Recording, Transcription, BullMQ Job Processing, and Desktop as first-class apps without accumulating root-level clutter._
+
+---
+
+### RS-01: Pre-flight audit and decision record
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical (blocks all other RS stages)
+
+**Scope**: Enumerate every file that references a sub-package path directly — `tsconfig.json`, `docker-compose` files, `Dockerfiles`, root `package.json` scripts, CI workflows, `CLAUDE.md`, `.github/copilot-instructions.md`. Confirm the final directory layout and workspace manager choice before touching any code.
+
+**Acceptance Criteria**:
+
+- [ ] Final directory layout agreed: `apps/` (frontend, backend, admin + future services), `packages/` (shared), `infra/` (docker-compose files, caddy/, livekit/, existing infra/ contents)
+- [ ] Workspace manager confirmed: npm workspaces (already on npm; pnpm is a future upgrade path, not in scope here)
+- [ ] Complete list of files with path references compiled — no files changed in this stage
+
+---
+
+### RS-02: Add npm workspaces to root package.json (pre-move dry run)
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical
+**Depends on**: RS-01
+
+**Scope**: Add `"workspaces": ["apps/*", "packages/*"]` to root `package.json` and verify `npm install` resolves correctly **before any directories move**. This dry run confirms the workspace config is valid against the current layout and catches any hoisting conflicts early.
+
+**Acceptance Criteria**:
+
+- [ ] `"workspaces": ["apps/*", "packages/*"]` added to root `package.json`
+- [ ] `npm install` succeeds from repo root with no hoisting errors
+- [ ] Existing `--prefix` scripts still run (they will be replaced in RS-04, not here)
+- [ ] No existing build or test run broken by this preparatory change
+
+---
+
+### RS-03: Pure git mv restructure (zero content changes)
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical
+**Depends on**: RS-02
+
+**Scope**: Move directories using `git mv` only — **no file content changes in this commit**. Moving and modifying in the same commit breaks git's rename detection and loses blame history. This commit is a pure rename and nothing else.
+
+Moves:
+
+- `frontend/` → `apps/frontend/`
+- `backend/` → `apps/backend/`
+- `admin/` → `apps/admin/`
+- `shared/` → `packages/shared/`
+- `docker-compose.yml` → `infra/docker-compose.yml`
+- `docker-compose.dev.yml` → `infra/docker-compose.dev.yml`
+- `caddy/` → `infra/caddy/`
+
+**Acceptance Criteria**:
+
+- [ ] All seven moves completed with `git mv` (not copy + delete)
+- [ ] Single atomic commit with zero content changes alongside renames
+- [ ] `git log --follow -- apps/frontend/src/App.tsx` traces history back through the rename
+- [ ] `git log --follow -- packages/shared/index.ts` traces history back through the rename
+- [ ] No broken symlinks or missing files after the move
+
+---
+
+### RS-04: Update root package.json scripts to use npm workspaces
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical
+**Depends on**: RS-03
+
+**Scope**: Replace all `--prefix backend` / `--prefix frontend` / `--prefix admin` patterns in root `package.json` with workspace-aware equivalents (`npm --workspace=apps/backend run X`). Update `postinstall` and any QA/CI scripts that reference sub-package paths.
+
+**Acceptance Criteria**:
+
+- [ ] All `--prefix <path>` flags removed from root `package.json`
+- [ ] `npm install` from root hoists deps and resolves all workspace packages correctly
+- [ ] `npm run build` completes successfully for all workspaces
+- [ ] `npm run test` completes successfully for all workspaces
+- [ ] `npm run lint` passes
+
+---
+
+### RS-05: Update all path references in configs and tooling
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical
+**Depends on**: RS-03
+
+**Scope**: Update every config file that hard-codes old paths. This is a content-only commit (no renames). Files include:
+
+- `infra/docker-compose.yml` and `infra/docker-compose.dev.yml` — `build.context` and volume mount paths
+- All `Dockerfile`s — `COPY` and `WORKDIR` paths
+- Root `tsconfig.json` and per-app `tsconfig.json` — `references` and `paths` entries (`../shared` → `../../packages/shared`)
+- `eslint.config.mjs` — any project-path globs
+- `vtt-chat.code-workspace` — folder entries
+- `.github/workflows/*.yml` — path filters and `working-directory` overrides
+- `scripts/` — any script that references old top-level dirs directly
+
+**Acceptance Criteria**:
+
+- [ ] `docker compose config` (or `docker-compose config`) validates without path errors from inside `infra/`
+- [ ] All Dockerfiles build successfully from their new context
+- [ ] `tsc --build` passes for all apps (tsconfig references resolve)
+- [ ] `vtt-chat.code-workspace` opens in VS Code with all folders found
+- [ ] CI workflow path filters pass a dry-run validation
+- [ ] Dev server starts (`npm run dev` or equivalent) without import resolution errors
+
+---
+
+### RS-06: Update documentation and CLAUDE.md
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 High
+**Depends on**: RS-05
+
+**Scope**: Update all documentation that embeds old source paths. The AI context files (`CLAUDE.md`, `.github/copilot-instructions.md`) are the highest priority — stale paths there produce wrong answers in future sessions.
+
+Files to update:
+
+- `CLAUDE.md` — all embedded file paths (e.g. `backend/src/ws/index.ts` → `apps/backend/src/ws/index.ts`)
+- `.github/copilot-instructions.md` — same
+- `DEVELOPING.md` — install instructions, dev server startup commands
+- `docs/architecture/` files that reference source paths
+- `ROADMAP.md` (self) — embedded clickable file links
+- `CHANGELOG.md` — add entry for the restructure
+
+**Acceptance Criteria**:
+
+- [ ] `grep -r "\"backend/" CLAUDE.md .github/copilot-instructions.md docs/` returns no matches
+- [ ] `grep -r "\"frontend/" CLAUDE.md .github/copilot-instructions.md docs/` returns no matches
+- [ ] `DEVELOPING.md` install and dev-server commands reflect new paths
+- [ ] `CHANGELOG.md` has a restructure entry
 
 ---
 
