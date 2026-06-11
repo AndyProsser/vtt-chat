@@ -6,7 +6,7 @@ services:
     container_name: vttchat-backend
     restart: unless-stopped
     env_file:
-      - ../.env
+      - .env
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/vttchat
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379

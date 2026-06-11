@@ -9,7 +9,7 @@ services:
     command: sh -c "node scripts/container-startup.mjs && npm run dev"
     restart: unless-stopped
     env_file:
-      - ../.env
+      - .env
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/vttchat
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
