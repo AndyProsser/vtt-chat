@@ -17,8 +17,8 @@
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| Monorepo Restructure                   |      6 |       2 |              0 |              4 | 🟡 In Progress |
-| **Total**                              | **54** |  **40** |          **2** |         **12** |                |
+| Monorepo Restructure                   |      6 |       3 |              0 |              3 | 🟡 In Progress |
+| **Total**                              | **54** |  **41** |          **2** |         **11** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -627,9 +627,10 @@ _Reorganize the repository from a flat multi-app layout into a conventional `app
 
 ### RS-03: Pure git mv restructure (zero content changes)
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical
 **Depends on**: RS-02
+**Completed**: 2026-06-11
 
 **Scope**: Move directories using `git mv` only — **no file content changes in this commit**. Moving and modifying in the same commit breaks git's rename detection and loses blame history. This commit is a pure rename and nothing else.
 
@@ -645,11 +646,12 @@ Moves:
 
 **Acceptance Criteria**:
 
-- [ ] All seven moves completed with `git mv` (not copy + delete)
-- [ ] Single atomic commit with zero content changes alongside renames
-- [ ] `git log --follow -- apps/frontend/src/App.tsx` traces history back through the rename
-- [ ] `git log --follow -- packages/shared/index.ts` traces history back through the rename
-- [ ] No broken symlinks or missing files after the move
+- [x] All moves completed with `git mv` (not copy + delete) — 967 files, 0 insertions, 0 deletions
+- [x] Single atomic commit with zero content changes alongside renames (commit 53fe71e0)
+- [x] `git log --follow -- apps/frontend/src/App.tsx` traces history back through the rename
+- [x] `git log --follow -- packages/shared/index.ts` traces history back through the rename
+- [x] No broken symlinks or missing files after the move
+- [x] Note: `caddy/certs/` was empty and untracked — stays at root; docker-compose path updated in RS-05
 
 ---
 
