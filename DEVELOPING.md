@@ -299,13 +299,13 @@ ipconfig getifaddr en0
 
 Then in your `.env`:
 
-```
+```text
 LIVEKIT_NODE_IP=192.168.1.50   # replace with your actual LAN IP
 ```
 
 2. **Add the HTTPS origin to `CORS_ALLOWED_ORIGINS`** if the browser sends cross-origin requests:
 
-```
+```text
 CORS_ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173,http://localhost:5174,https://192.168.1.50:8443
 ```
 
@@ -328,6 +328,7 @@ If you use Firefox on Linux, either enable `security.enterprise_roots.enabled` i
 manually via `Settings -> Privacy & Security -> Certificates -> View Certificates -> Authorities -> Import`.
 
 4. **Browse to `https://192.168.x.x:8443`** after trusting the CA.
+
    The issued leaf certificate covers `localhost` and the `LIVEKIT_NODE_IP` value wired into
    Caddy as `DEV_HOST_IP`, so set `LIVEKIT_NODE_IP` before starting the stack when you want
    LAN-IP access without a certificate warning.
@@ -541,7 +542,49 @@ docker compose -f docker-compose.dev.yml up --build
 
 ---
 
-## ❤️ 14. Need Help?
+## ⚠️ 14. Docker Compose Path Resolution Gotcha
+
+The `infra/scripts/server.sh` script wraps every `docker compose` call with
+`--project-directory "$INSTALL_DIR"` (the repo root). This is intentional — Docker Compose
+resolves `.env` relative to the project directory, so without it the variables in the
+compose files are empty.
+
+**The side-effect:** every relative path inside `infra/docker-compose*.yml` now resolves
+from the **repo root**, not from `infra/`. This trips up anyone who edits those files.
+
+| What you might write     | What Compose actually resolves                  |
+| ------------------------ | ----------------------------------------------- |
+| `context: ..`            | parent of the repo (wrong)                      |
+| `../apps/backend/src`    | one level above the repo (wrong)                |
+| `./livekit/livekit.yaml` | `<repo>/livekit/` (wrong — it's under `infra/`) |
+| `../.env`                | parent of the repo (wrong)                      |
+
+**Rule: all paths in `infra/docker-compose*.yml` must be relative to the repo root.**
+
+Correct equivalents:
+
+```yaml
+# build context
+context: .                              # repo root
+
+# source volume mounts
+- apps/backend/src:/workspace/apps/backend/src
+- packages/shared:/workspace/packages/shared
+
+# config files that live inside infra/
+- infra/livekit/livekit.yaml:/etc/livekit.yaml
+- infra/caddy/Caddyfile:/etc/caddy/Caddyfile
+
+# env file
+- .env                                  # repo root .env, not infra/.env
+```
+
+If you're adding a new service or volume mount, always write the host-side path as if
+you're sitting at the repo root, regardless of where the compose file lives.
+
+---
+
+## ❤️ 15. Need Help?
 
 If you run into issues:
 
