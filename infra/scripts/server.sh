@@ -24,6 +24,14 @@ PROD_CLEAN_DETECTED_BUILD_RECORDS=0
 PROD_CLEAN_REMOVED_BUILD_RECORDS=0
 PROD_CLEAN_RETAINED_BUILD_RECORDS=0
 
+# Wrapper so every compose invocation uses the repo root as the project
+# directory. Docker Compose resolves .env relative to the project directory;
+# since the compose files now live in infra/ we must override that default or
+# the variables in the compose files will be empty.
+function dc() {
+  docker compose --project-directory "$INSTALL_DIR" "$@"
+}
+
 function show_help() {
   cat <<HELP
 Usage: $0 [--dev] <command>
@@ -347,7 +355,7 @@ function clean_dev_compose_resources() {
   if [[ -f "$compose_file" ]]; then
     # Compose-native cleanup is the most reliable way to remove named volumes and images
     # for the selected DEV stack regardless of current running state.
-    docker compose -f "$compose_file" down --volumes --rmi all --remove-orphans || true
+    dc -f "$compose_file" down --volumes --rmi all --remove-orphans || true
   fi
 }
 
@@ -1074,7 +1082,7 @@ function get_caddy_access_url_from_compose() {
   host_ip="$(get_local_server_ip)"
 
   # Prefer HTTPS when exposed.
-  mapped=$(docker compose -f "$compose_file" port caddy 8443 2>/dev/null | head -n1 || true)
+  mapped=$(dc -f "$compose_file" port caddy 8443 2>/dev/null | head -n1 || true)
   if [[ -n "$mapped" ]]; then
     port=$(printf '%s' "$mapped" | awk -F: '{print $NF}')
     echo "https://${host_ip}:${port}"
@@ -1082,7 +1090,7 @@ function get_caddy_access_url_from_compose() {
   fi
 
   # Fall back to HTTP for dev/local setups.
-  mapped=$(docker compose -f "$compose_file" port caddy 8080 2>/dev/null | head -n1 || true)
+  mapped=$(dc -f "$compose_file" port caddy 8080 2>/dev/null | head -n1 || true)
   if [[ -n "$mapped" ]]; then
     port=$(printf '%s' "$mapped" | awk -F: '{print $NF}')
     echo "http://${host_ip}:${port}"
@@ -1123,8 +1131,8 @@ function build() {
   local compose_file
   compose_file="$(get_compose_file)"
   echo "Building Docker images..."
-  docker compose -f "$compose_file" pull || true
-  docker compose -f "$compose_file" build --pull
+  dc -f "$compose_file" pull || true
+  dc -f "$compose_file" build --pull
   echo "Build complete. Run '$0 start' to start the server."
 }
 
@@ -1145,9 +1153,9 @@ function sync_dev_workspace_dependencies() {
 
   # DEV uses persistent node_modules volumes. Reinstalling on start/restart keeps
   # workspace volumes aligned with newly added packages.
-  docker compose -f "$compose_file" run --rm --no-deps backend npm install
-  docker compose -f "$compose_file" run --rm --no-deps frontend npm install
-  docker compose -f "$compose_file" run --rm --no-deps admin npm install
+  dc -f "$compose_file" run --rm --no-deps backend npm install
+  dc -f "$compose_file" run --rm --no-deps frontend npm install
+  dc -f "$compose_file" run --rm --no-deps admin npm install
 
   echo "DEV dependency sync complete."
 }
@@ -1157,7 +1165,7 @@ function start() {
   local stack_name=$(get_stack_name)
   cd "$INSTALL_DIR"
   sync_dev_workspace_dependencies
-  docker compose -f "$(get_compose_file)" up -d --build
+  dc -f "$(get_compose_file)" up -d --build
   load_config
   echo "VTT-Chat $stack_name stack started. Access the app at $(get_stack_access_url)"
 }
@@ -1167,7 +1175,7 @@ function restart() {
   local stack_name=$(get_stack_name)
   cd "$INSTALL_DIR"
   sync_dev_workspace_dependencies
-  docker compose -f "$(get_compose_file)" up -d --build
+  dc -f "$(get_compose_file)" up -d --build
   load_config
   echo "VTT-Chat $stack_name stack restarted. Access the app at $(get_stack_access_url)"
 }
@@ -1175,7 +1183,7 @@ function restart() {
 function stop() {
   local stack_name=$(get_stack_name)
   cd "$INSTALL_DIR"
-  docker compose -f "$(get_compose_file)" down --remove-orphans
+  dc -f "$(get_compose_file)" down --remove-orphans
   echo "VTT-Chat $stack_name stack stopped."
 }
 
