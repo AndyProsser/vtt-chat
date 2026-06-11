@@ -1149,6 +1149,14 @@ function sync_dev_workspace_dependencies() {
   local compose_file
   compose_file="$(get_compose_file)"
 
+  echo "Building service images for DEV dependency sync..."
+
+  # Build images before running npm install so the run commands always use
+  # images that reflect the current Dockerfile and build context. Without this,
+  # a stale cached image (e.g. from before a monorepo restructure) would be used
+  # and npm would fail to find package.json at the expected path.
+  dc -f "$compose_file" build backend frontend admin
+
   echo "Syncing DEV workspace npm dependencies (backend, frontend, admin)..."
 
   # DEV uses persistent node_modules volumes. Reinstalling on start/restart keeps
