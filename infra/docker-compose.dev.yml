@@ -22,10 +22,10 @@ services:
       CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
       CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
     volumes:
-      - apps/backend/src:/workspace/apps/backend/src
-      - apps/backend/prisma:/workspace/apps/backend/prisma
-      - apps/backend/tsconfig.json:/workspace/apps/backend/tsconfig.json
-      - packages/shared:/workspace/packages/shared
+      - ./apps/backend/src:/workspace/apps/backend/src
+      - ./apps/backend/prisma:/workspace/apps/backend/prisma
+      - ./apps/backend/tsconfig.json:/workspace/apps/backend/tsconfig.json
+      - ./packages/shared:/workspace/packages/shared
       - backend_node_modules:/workspace/apps/backend/node_modules
     depends_on:
       postgres:
@@ -69,9 +69,9 @@ services:
       CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
       CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
     volumes:
-      - apps/frontend/src:/workspace/apps/frontend/src
-      - apps/frontend/public:/workspace/apps/frontend/public
-      - packages/shared:/workspace/packages/shared
+      - ./apps/frontend/src:/workspace/apps/frontend/src
+      - ./apps/frontend/public:/workspace/apps/frontend/public
+      - ./packages/shared:/workspace/packages/shared
       - frontend_node_modules:/workspace/apps/frontend/node_modules
     depends_on:
       backend:
@@ -105,7 +105,7 @@ services:
       CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
       CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
     volumes:
-      - apps/admin/src:/workspace/apps/admin/src
+      - ./apps/admin/src:/workspace/apps/admin/src
       - admin_node_modules:/workspace/apps/admin/node_modules
     depends_on:
       backend:
@@ -175,7 +175,7 @@ services:
       - '7881-7980:7881-7980/udp'
       - '7881-7980:7881-7980/tcp'
     volumes:
-      - infra/livekit/livekit.dev.yaml:/etc/livekit.yaml
+      - ./infra/livekit/livekit.dev.yaml:/etc/livekit.yaml
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -T 3 -O - http://127.0.0.1:7880/ | grep -q "^OK$"']
       interval: 10s
@@ -196,7 +196,7 @@ services:
       - '8080:8080'
       - '8443:8443'
     volumes:
-      - infra/caddy/Caddyfile.dev:/etc/caddy/Caddyfile
+      - ./infra/caddy/Caddyfile.dev:/etc/caddy/Caddyfile
       - caddy_data_dev:/data
     depends_on:
       backend:

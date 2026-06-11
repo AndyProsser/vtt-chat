@@ -559,28 +559,36 @@ from the **repo root**, not from `infra/`. This trips up anyone who edits those 
 | `./livekit/livekit.yaml` | `<repo>/livekit/` (wrong — it's under `infra/`) |
 | `../.env`                | parent of the repo (wrong)                      |
 
-**Rule: all paths in `infra/docker-compose*.yml` must be relative to the repo root.**
+**Second gotcha — bind mounts must start with `./`.**
+Docker Compose distinguishes bind mounts from named volumes by the leading `./`. A path like
+`apps/backend/src:...` with no leading `./` is treated as a named volume name and you'll get
+`service "X" refers to undefined volume apps/backend/src`. Always use `./apps/backend/src:...`.
+
+**Rule: all paths in `infra/docker-compose*.yml` must be relative to the repo root and prefixed with `./`.**
 
 Correct equivalents:
 
 ```yaml
-# build context
+# build context (. is already unambiguous)
 context: .                              # repo root
 
-# source volume mounts
-- apps/backend/src:/workspace/apps/backend/src
-- packages/shared:/workspace/packages/shared
+# source volume mounts — must start with ./
+- ./apps/backend/src:/workspace/apps/backend/src
+- ./packages/shared:/workspace/packages/shared
 
 # config files that live inside infra/
-- infra/livekit/livekit.yaml:/etc/livekit.yaml
-- infra/caddy/Caddyfile:/etc/caddy/Caddyfile
+- ./infra/livekit/livekit.yaml:/etc/livekit.yaml
+- ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile
 
 # env file
 - .env                                  # repo root .env, not infra/.env
 ```
 
-If you're adding a new service or volume mount, always write the host-side path as if
-you're sitting at the repo root, regardless of where the compose file lives.
+Named volumes (Docker-managed) don't need `./` — those are defined in the top-level `volumes:` block
+and referenced by name (e.g. `backend_node_modules:/workspace/apps/backend/node_modules`).
+
+If you're adding a new bind mount, always start the host-side path with `./` and write it
+relative to the repo root.
 
 ---
 

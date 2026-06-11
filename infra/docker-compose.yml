@@ -138,7 +138,7 @@ services:
       - '7881-8980:7881-8980/udp'
       - '7881:7881/tcp' # TCP fallback for clients that can't use UDP
     volumes:
-      - infra/livekit/livekit.yaml:/etc/livekit.yaml
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -T 3 -O - http://127.0.0.1:7880/ | grep -q "^OK$"']
       interval: 10s
@@ -155,8 +155,8 @@ services:
     ports:
       - '8443:8443'
     volumes:
-      - infra/caddy/Caddyfile:/etc/caddy/Caddyfile
-      - infra/caddy/certs:/certs
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/certs:/certs
       - caddy_data:/data
     depends_on:
       backend:
