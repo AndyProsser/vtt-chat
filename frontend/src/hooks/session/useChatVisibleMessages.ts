@@ -144,13 +144,21 @@ export function useChatVisibleMessages({
         continue
       }
 
-      const isGreenroomContextMessage =
-        message.roomId === roomId ||
-        (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
       const isSessionSummaryMessage =
         message.type === MessageType.SYSTEM &&
         typeof message.content === 'string' &&
         message.content.startsWith(SESSION_SUMMARY_PREFIX)
+      // Campaign-scoped SYSTEM bookends/summaries (sessionId is null) are exclusively
+      // greenroom artifacts — they must appear regardless of which session's room ID they
+      // carry, because the greenroom gets a new room ID each session.
+      const isCampaignScopedGreenroomArtifact =
+        message.type === MessageType.SYSTEM &&
+        message.sessionId == null &&
+        (Boolean(bookendState) || isSessionSummaryMessage)
+      const isGreenroomContextMessage =
+        isCampaignScopedGreenroomArtifact ||
+        message.roomId === roomId ||
+        (typeof roomNameForMessage === 'string' && isGreenRoomName(roomNameForMessage))
       const isHistoricalSessionArtifact =
         (Boolean(bookendState) || isSessionSummaryMessage) &&
         Boolean(message.sessionId) &&
