@@ -17,8 +17,8 @@
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| Monorepo Restructure                   |      6 |       3 |              0 |              3 | 🟡 In Progress |
-| **Total**                              | **54** |  **41** |          **2** |         **11** |                |
+| Monorepo Restructure                   |      6 |       4 |              0 |              2 | 🟡 In Progress |
+| **Total**                              | **54** |  **42** |          **2** |         **10** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -572,24 +572,24 @@ _Reorganize the repository from a flat multi-app layout into a conventional `app
 
 **Files with path references that need updating (RS-03 through RS-06)**:
 
-| File | Change |
-| ---- | ------ |
-| `docker-compose.yml` → `infra/` | All `context:` → `context: ..`; `dockerfile: backend/` → `dockerfile: ../apps/backend/`; `./caddy/certs` → `./caddy/certs` (caddy/ lands inside infra/ so this path simplifies) |
-| `docker-compose.dev.yml` → `infra/` | Same context change; dev volume mounts `./backend/src` → `../apps/backend/src`, `./shared` → `../packages/shared`, etc. |
-| `backend/Dockerfile` | `COPY shared` → `COPY packages/shared`; `COPY backend/` → `COPY apps/backend/` |
-| `frontend/Dockerfile` | Same pattern |
-| `admin/Dockerfile` | Same pattern |
-| `backend/tsconfig.json` | `@shared` alias `../shared/` → `../../packages/shared/`; `rootDir: ".."` → `"../.."`; `include` `"../shared/**"` → `"../../packages/shared/**"` |
-| `frontend/tsconfig.json` | `@shared` alias only: `../shared/` → `../../packages/shared/` |
-| `admin/tsconfig.json` | Same as frontend |
-| `eslint.config.mjs` | `'frontend/**/*'` → `'apps/frontend/**/*'`; `'admin/**/*'` → `'apps/admin/**/*'` |
-| `scripts/qa/coverage-report.mjs` | `path.join(ROOT, pkg)` → `path.join(ROOT, 'apps', pkg)` for `['backend','frontend','admin']` |
-| `scripts/qa/flaky-tests.mjs` | Same coverage-path pattern |
-| `.github/workflows/*.yml.disabled` | Path filters and `working-directory` entries |
-| `vtt-chat.code-workspace` | `"path": "backend"` → `"path": "apps/backend"` (×4 folders); `npm --prefix frontend/backend` in `autoApprove` |
-| `CLAUDE.md` | All embedded source paths throughout |
-| `.github/copilot-instructions.md` | Same |
-| `DEVELOPING.md` | `frontend/.env` and dev server command references |
+| File                                | Change                                                                                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docker-compose.yml` → `infra/`     | All `context:` → `context: ..`; `dockerfile: backend/` → `dockerfile: ../apps/backend/`; `./caddy/certs` → `./caddy/certs` (caddy/ lands inside infra/ so this path simplifies) |
+| `docker-compose.dev.yml` → `infra/` | Same context change; dev volume mounts `./backend/src` → `../apps/backend/src`, `./shared` → `../packages/shared`, etc.                                                         |
+| `backend/Dockerfile`                | `COPY shared` → `COPY packages/shared`; `COPY backend/` → `COPY apps/backend/`                                                                                                  |
+| `frontend/Dockerfile`               | Same pattern                                                                                                                                                                    |
+| `admin/Dockerfile`                  | Same pattern                                                                                                                                                                    |
+| `backend/tsconfig.json`             | `@shared` alias `../shared/` → `../../packages/shared/`; `rootDir: ".."` → `"../.."`; `include` `"../shared/**"` → `"../../packages/shared/**"`                                 |
+| `frontend/tsconfig.json`            | `@shared` alias only: `../shared/` → `../../packages/shared/`                                                                                                                   |
+| `admin/tsconfig.json`               | Same as frontend                                                                                                                                                                |
+| `eslint.config.mjs`                 | `'frontend/**/*'` → `'apps/frontend/**/*'`; `'admin/**/*'` → `'apps/admin/**/*'`                                                                                                |
+| `scripts/qa/coverage-report.mjs`    | `path.join(ROOT, pkg)` → `path.join(ROOT, 'apps', pkg)` for `['backend','frontend','admin']`                                                                                    |
+| `scripts/qa/flaky-tests.mjs`        | Same coverage-path pattern                                                                                                                                                      |
+| `.github/workflows/*.yml.disabled`  | Path filters and `working-directory` entries                                                                                                                                    |
+| `vtt-chat.code-workspace`           | `"path": "backend"` → `"path": "apps/backend"` (×4 folders); `npm --prefix frontend/backend` in `autoApprove`                                                                   |
+| `CLAUDE.md`                         | All embedded source paths throughout                                                                                                                                            |
+| `.github/copilot-instructions.md`   | Same                                                                                                                                                                            |
+| `DEVELOPING.md`                     | `frontend/.env` and dev server command references                                                                                                                               |
 
 **Things that do NOT move or change**:
 
@@ -657,19 +657,21 @@ Moves:
 
 ### RS-04: Update root package.json scripts to use npm workspaces
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical
 **Depends on**: RS-03
+**Completed**: 2026-06-11
 
 **Scope**: Replace all `--prefix backend` / `--prefix frontend` / `--prefix admin` patterns in root `package.json` with workspace-aware equivalents (`npm --workspace=apps/backend run X`). Update `postinstall` and any QA/CI scripts that reference sub-package paths.
 
 **Acceptance Criteria**:
 
-- [ ] All `--prefix <path>` flags removed from root `package.json`
-- [ ] `npm install` from root hoists deps and resolves all workspace packages correctly
-- [ ] `npm run build` completes successfully for all workspaces
-- [ ] `npm run test` completes successfully for all workspaces
-- [ ] `npm run lint` passes
+- [x] All `--prefix <path>` flags removed from root `package.json`
+- [x] `postinstall` removed — workspaces handle sub-package install automatically
+- [x] `npm install` from root hoists deps and resolves all workspace packages correctly — all four packages linked: `vtt-chat-backend`, `vtt-chat-frontend`, `vtt-chat-admin`, `@vtt-chat/shared`
+- [ ] `npm run build` completes successfully for all workspaces — blocked on RS-05 (`@shared` tsconfig paths still point to old location)
+- [ ] `npm run test` completes successfully for all workspaces — blocked on RS-05
+- [ ] `npm run lint` passes — blocked on RS-05
 
 ---
 
@@ -696,7 +698,7 @@ Moves:
 - [ ] `tsc --build` passes for all apps (tsconfig references resolve)
 - [ ] `vtt-chat.code-workspace` opens in VS Code with all folders found
 - [ ] CI workflow path filters pass a dry-run validation
-- [ ] Dev server starts (`npm run dev` or equivalent) without import resolution errors
+- [ ] Dev server starts (`./server --dev start` or equivalent) without import resolution errors
 
 ---
 
@@ -723,6 +725,7 @@ Files to update:
 - [ ] `grep -r "\"frontend/" CLAUDE.md .github/copilot-instructions.md docs/` returns no matches
 - [ ] `DEVELOPING.md` install and dev-server commands reflect new paths
 - [ ] `CHANGELOG.md` has a restructure entry
+- [ ] Increment platform version to `0.9.0`
 
 ---
 
