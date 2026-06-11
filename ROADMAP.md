@@ -17,8 +17,8 @@
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| Monorepo Restructure                   |      6 |       0 |              0 |              6 | ⚪ Not Started |
-| **Total**                              | **54** |  **38** |          **2** |         **14** |                |
+| Monorepo Restructure                   |      6 |       1 |              0 |              5 | 🟡 In Progress |
+| **Total**                              | **54** |  **39** |          **2** |         **13** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -560,16 +560,50 @@ _Reorganize the repository from a flat multi-app layout into a conventional `app
 
 ### RS-01: Pre-flight audit and decision record
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical (blocks all other RS stages)
+**Completed**: 2026-06-11
 
-**Scope**: Enumerate every file that references a sub-package path directly — `tsconfig.json`, `docker-compose` files, `Dockerfiles`, root `package.json` scripts, CI workflows, `CLAUDE.md`, `.github/copilot-instructions.md`. Confirm the final directory layout and workspace manager choice before touching any code.
+**Decisions**:
+
+- **Layout**: `apps/` (frontend, backend, admin + future services), `packages/` (shared), `infra/` (absorbs docker-compose files, caddy/, plus existing livekit/, install-config.yml, scripts/)
+- **Workspace manager**: npm workspaces (`"workspaces": ["apps/*", "packages/*"]`); pnpm deferred as a future upgrade
+- **docker-compose location**: Move to `infra/` — all services get `context: ..` (repo root) and dev volume mounts gain `../` prefix
+
+**Files with path references that need updating (RS-03 through RS-06)**:
+
+| File | Change |
+| ---- | ------ |
+| `docker-compose.yml` → `infra/` | All `context:` → `context: ..`; `dockerfile: backend/` → `dockerfile: ../apps/backend/`; `./caddy/certs` → `./caddy/certs` (caddy/ lands inside infra/ so this path simplifies) |
+| `docker-compose.dev.yml` → `infra/` | Same context change; dev volume mounts `./backend/src` → `../apps/backend/src`, `./shared` → `../packages/shared`, etc. |
+| `backend/Dockerfile` | `COPY shared` → `COPY packages/shared`; `COPY backend/` → `COPY apps/backend/` |
+| `frontend/Dockerfile` | Same pattern |
+| `admin/Dockerfile` | Same pattern |
+| `backend/tsconfig.json` | `@shared` alias `../shared/` → `../../packages/shared/`; `rootDir: ".."` → `"../.."`; `include` `"../shared/**"` → `"../../packages/shared/**"` |
+| `frontend/tsconfig.json` | `@shared` alias only: `../shared/` → `../../packages/shared/` |
+| `admin/tsconfig.json` | Same as frontend |
+| `eslint.config.mjs` | `'frontend/**/*'` → `'apps/frontend/**/*'`; `'admin/**/*'` → `'apps/admin/**/*'` |
+| `scripts/qa/coverage-report.mjs` | `path.join(ROOT, pkg)` → `path.join(ROOT, 'apps', pkg)` for `['backend','frontend','admin']` |
+| `scripts/qa/flaky-tests.mjs` | Same coverage-path pattern |
+| `.github/workflows/*.yml.disabled` | Path filters and `working-directory` entries |
+| `vtt-chat.code-workspace` | `"path": "backend"` → `"path": "apps/backend"` (×4 folders); `npm --prefix frontend/backend` in `autoApprove` |
+| `CLAUDE.md` | All embedded source paths throughout |
+| `.github/copilot-instructions.md` | Same |
+| `DEVELOPING.md` | `frontend/.env` and dev server command references |
+
+**Things that do NOT move or change**:
+
+- `server` (root) — a shell script, not a directory; stays as-is
+- `scripts/`, `docs/`, `install/`, `tmp/` — remain at root
+- `shared/tsconfig.json` — no relative sibling references
+- `release.config.mjs`, `package-lock.json` — no package path references
 
 **Acceptance Criteria**:
 
-- [ ] Final directory layout agreed: `apps/` (frontend, backend, admin + future services), `packages/` (shared), `infra/` (docker-compose files, caddy/, livekit/, existing infra/ contents)
-- [ ] Workspace manager confirmed: npm workspaces (already on npm; pnpm is a future upgrade path, not in scope here)
-- [ ] Complete list of files with path references compiled — no files changed in this stage
+- [x] Final directory layout agreed
+- [x] Workspace manager confirmed
+- [x] Complete list of files with path references compiled
+- [x] No files changed in this stage (audit only)
 
 ---
 
