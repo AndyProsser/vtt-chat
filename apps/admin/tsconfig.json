@@ -16,8 +16,8 @@
     "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["./src/*"],
-      "@shared": ["../shared/index.ts"],
-      "@shared/*": ["../shared/*"]
+      "@shared": ["../../packages/shared/index.ts"],
+      "@shared/*": ["../../packages/shared/*"]
     }
   },
   "include": ["src", "vite.config.ts"]

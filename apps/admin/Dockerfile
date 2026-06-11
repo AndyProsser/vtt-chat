@@ -1,19 +1,19 @@
 FROM node:26-alpine AS builder
-# Context is the project root so shared/ is accessible alongside admin/
+# Context is the project root so packages/shared/ is accessible alongside apps/admin/
 WORKDIR /workspace
 
 # Copy shared package because admin uses @shared aliases
-COPY shared ./shared
+COPY packages/shared ./packages/shared
 
 # Install admin dependencies
-COPY admin/package.json admin/package-lock.json* ./admin/
-WORKDIR /workspace/admin
+COPY apps/admin/package.json apps/admin/package-lock.json* ./apps/admin/
+WORKDIR /workspace/apps/admin
 RUN npm ci
 
-COPY admin/tsconfig.json ./
-COPY admin/index.html ./
-COPY admin/vite.config.ts ./
-COPY admin/src ./src
+COPY apps/admin/tsconfig.json ./
+COPY apps/admin/index.html ./
+COPY apps/admin/vite.config.ts ./
+COPY apps/admin/src ./src
 RUN npm run build
 
 FROM node:26-alpine
@@ -21,7 +21,7 @@ WORKDIR /app
 
 RUN npm install -g http-server
 
-COPY --from=builder /workspace/admin/dist ./dist
+COPY --from=builder /workspace/apps/admin/dist ./dist
 
 EXPOSE 5174
 

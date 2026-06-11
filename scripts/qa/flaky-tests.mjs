@@ -27,7 +27,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 // Configuration
-const BACKEND_DIR = path.join(__dirname, '..', '..', 'backend')
+const BACKEND_DIR = path.join(__dirname, '..', '..', 'apps', 'backend')
 const TESTS_DIR = path.join(BACKEND_DIR, 'tests')
 
 const THRESHOLDS = {
@@ -246,7 +246,7 @@ function main() {
   displayReport(report)
 
   if (options.json) {
-    const reportPath = path.join(__dirname, '../../backend/coverage/flaky-tests-report.json')
+    const reportPath = path.join(__dirname, '../../apps/backend/coverage/flaky-tests-report.json')
     fs.mkdirSync(path.dirname(reportPath), { recursive: true })
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2))
     console.log(`\nJSON report written to: ${reportPath}`)

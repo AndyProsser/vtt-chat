@@ -1,12 +1,12 @@
 services:
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ..
+      dockerfile: apps/backend/Dockerfile
     container_name: vttchat-backend
     restart: unless-stopped
     env_file:
-      - .env
+      - ../.env
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/vttchat
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -39,8 +39,8 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ..
+      dockerfile: apps/frontend/Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-https://localhost:8443}
         VITE_WS_URL: ${VITE_WS_URL:-wss://localhost:8443}
@@ -66,8 +66,8 @@ services:
 
   admin:
     build:
-      context: .
-      dockerfile: admin/Dockerfile
+      context: ..
+      dockerfile: apps/admin/Dockerfile
     container_name: vttchat-admin
     restart: unless-stopped
     healthcheck:
@@ -138,7 +138,7 @@ services:
       - '7881-8980:7881-8980/udp'
       - '7881:7881/tcp' # TCP fallback for clients that can't use UDP
     volumes:
-      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml
+      - ./livekit/livekit.yaml:/etc/livekit.yaml
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -T 3 -O - http://127.0.0.1:7880/ | grep -q "^OK$"']
       interval: 10s
@@ -155,8 +155,8 @@ services:
     ports:
       - '8443:8443'
     volumes:
-      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile
-      - ./caddy/certs:/certs
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ../caddy/certs:/certs
       - caddy_data:/data
     depends_on:
       backend:

@@ -118,8 +118,8 @@ export default defineConfig(({ mode }) => {
       extensions: ['.ts', '.tsx', '.mjs', '.js', '.jsx', '.json'],
       alias: [
         { find: '@', replacement: path.resolve(__dirname, './src') },
-        { find: '@shared', replacement: path.resolve(__dirname, '../shared/index.ts') },
-        { find: /^@shared\/(.*)$/, replacement: path.resolve(__dirname, '../shared/$1') },
+        { find: '@shared', replacement: path.resolve(__dirname, '../../packages/shared/index.ts') },
+        { find: /^@shared\/(.*)$/, replacement: path.resolve(__dirname, '../../packages/shared/$1') },
       ],
     },
     server: {

@@ -4,16 +4,16 @@
       "path": ".",
     },
     {
-      "path": "backend",
+      "path": "apps/backend",
     },
     {
-      "path": "frontend",
+      "path": "apps/frontend",
     },
     {
-      "path": "admin",
+      "path": "apps/admin",
     },
     {
-      "path": "shared",
+      "path": "packages/shared",
     },
     {
       "path": "infra",
@@ -48,9 +48,9 @@
         "approve": true,
         "matchCommandLine": true,
       },
-      "npm --prefix frontend": true,
+      "npm --workspace=apps/frontend": true,
       "npx prettier": true,
-      "npm --prefix backend": true,
+      "npm --workspace=apps/backend": true,
       "npm run lint": true,
       "npm run -s build": true,
       "npm run -s test:coverage": true,

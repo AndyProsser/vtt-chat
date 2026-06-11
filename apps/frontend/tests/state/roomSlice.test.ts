@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { EventEnvelope, UUID } from '../../../shared'
-import { SessionState } from '../../../shared'
+import type { EventEnvelope, UUID } from '@shared'
+import { SessionState } from '@shared'
 import { useStore } from '../../src/state/store'
 import type { Room, RoomUser } from '../../src/types/room'
 

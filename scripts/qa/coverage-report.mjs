@@ -29,7 +29,7 @@ function pct(covered, total) {
 }
 
 function readSummary(pkg) {
-  const summaryPath = path.join(ROOT, pkg, 'coverage', 'coverage-summary.json')
+  const summaryPath = path.join(ROOT, 'apps', pkg, 'coverage', 'coverage-summary.json')
   if (!fs.existsSync(summaryPath)) return null
   try {
     return JSON.parse(fs.readFileSync(summaryPath, 'utf8'))
@@ -65,7 +65,7 @@ for (const pkg of PACKAGES) {
     report[pkg] = { error: `coverage-summary.json not found — run npm run test:coverage in ${pkg}` }
     if (!JSON_MODE) {
       console.log(`\n${pkg.toUpperCase()}`)
-      console.log(`  No coverage data found. Run: npm --prefix ${pkg} run test:coverage`)
+      console.log(`  No coverage data found. Run: npm --workspace=apps/${pkg} run test:coverage`)
     }
     continue
   }

@@ -1,15 +1,15 @@
 services:
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ..
+      dockerfile: apps/backend/Dockerfile
       target: builder
     container_name: vttchat-backend-dev
-    working_dir: /workspace/backend
+    working_dir: /workspace/apps/backend
     command: sh -c "node scripts/container-startup.mjs && npm run dev"
     restart: unless-stopped
     env_file:
-      - .env
+      - ../.env
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/vttchat
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -22,11 +22,11 @@ services:
       CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
       CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
     volumes:
-      - ./backend/src:/workspace/backend/src
-      - ./backend/prisma:/workspace/backend/prisma
-      - ./backend/tsconfig.json:/workspace/backend/tsconfig.json
-      - ./shared:/workspace/shared
-      - backend_node_modules:/workspace/backend/node_modules
+      - ../apps/backend/src:/workspace/apps/backend/src
+      - ../apps/backend/prisma:/workspace/apps/backend/prisma
+      - ../apps/backend/tsconfig.json:/workspace/apps/backend/tsconfig.json
+      - ../packages/shared:/workspace/packages/shared
+      - backend_node_modules:/workspace/apps/backend/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,11 +51,11 @@ services:
 
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ..
+      dockerfile: apps/frontend/Dockerfile
       target: builder
     container_name: vttchat-frontend-dev
-    working_dir: /workspace/frontend
+    working_dir: /workspace/apps/frontend
     command: sh -c "npm install && npm run dev -- --host"
     restart: unless-stopped
     environment:
@@ -69,10 +69,10 @@ services:
       CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
       CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
     volumes:
-      - ./frontend/src:/workspace/frontend/src
-      - ./frontend/public:/workspace/frontend/public
-      - ./shared:/workspace/shared
-      - frontend_node_modules:/workspace/frontend/node_modules
+      - ../apps/frontend/src:/workspace/apps/frontend/src
+      - ../apps/frontend/public:/workspace/apps/frontend/public
+      - ../packages/shared:/workspace/packages/shared
+      - frontend_node_modules:/workspace/apps/frontend/node_modules
     depends_on:
       backend:
         condition: service_healthy
@@ -93,11 +93,11 @@ services:
 
   admin:
     build:
-      context: .
-      dockerfile: admin/Dockerfile
+      context: ..
+      dockerfile: apps/admin/Dockerfile
       target: builder
     container_name: vttchat-admin-dev
-    working_dir: /workspace/admin
+    working_dir: /workspace/apps/admin
     command: npm run dev -- --host
     restart: unless-stopped
     environment:
@@ -105,8 +105,8 @@ services:
       CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
       CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
     volumes:
-      - ./admin/src:/workspace/admin/src
-      - admin_node_modules:/workspace/admin/node_modules
+      - ../apps/admin/src:/workspace/apps/admin/src
+      - admin_node_modules:/workspace/apps/admin/node_modules
     depends_on:
       backend:
         condition: service_healthy
@@ -175,7 +175,7 @@ services:
       - '7881-7980:7881-7980/udp'
       - '7881-7980:7881-7980/tcp'
     volumes:
-      - ./infra/livekit/livekit.dev.yaml:/etc/livekit.yaml
+      - ./livekit/livekit.dev.yaml:/etc/livekit.yaml
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -T 3 -O - http://127.0.0.1:7880/ | grep -q "^OK$"']
       interval: 10s
@@ -196,7 +196,7 @@ services:
       - '8080:8080'
       - '8443:8443'
     volumes:
-      - ./infra/caddy/Caddyfile.dev:/etc/caddy/Caddyfile
+      - ./caddy/Caddyfile.dev:/etc/caddy/Caddyfile
       - caddy_data_dev:/data
     depends_on:
       backend:

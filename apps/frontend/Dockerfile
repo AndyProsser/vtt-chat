@@ -1,13 +1,13 @@
 FROM node:26-alpine AS builder
-# Context is the project root so shared/ is accessible alongside frontend/
+# Context is the project root so packages/shared/ is accessible alongside apps/frontend/
 WORKDIR /workspace
 
 # Copy shared types (referenced via @shared alias in tsconfig)
-COPY shared ./shared
+COPY packages/shared ./packages/shared
 
 # Install frontend dependencies
-COPY frontend/package.json frontend/package-lock.json* ./frontend/
-WORKDIR /workspace/frontend
+COPY apps/frontend/package.json apps/frontend/package-lock.json* ./apps/frontend/
+WORKDIR /workspace/apps/frontend
 RUN npm ci
 
 # VITE_* vars must be declared as ARGs so docker-compose build.args can inject them.
@@ -23,18 +23,18 @@ ENV VITE_API_URL=$VITE_API_URL \
   VITE_LOG_LEVEL=$VITE_LOG_LEVEL \
   VITE_DEBUG_BUILD=$VITE_DEBUG_BUILD
 
-COPY frontend/tsconfig.json ./
-COPY frontend/index.html ./
-COPY frontend/vite.config.ts ./
-COPY frontend/public ./public
-COPY frontend/src ./src
+COPY apps/frontend/tsconfig.json ./
+COPY apps/frontend/index.html ./
+COPY apps/frontend/vite.config.ts ./
+COPY apps/frontend/public ./public
+COPY apps/frontend/src ./src
 RUN npm run build
 
 FROM node:26-alpine
 WORKDIR /app
 RUN npm install -g serve
 
-COPY --from=builder /workspace/frontend/dist ./dist
+COPY --from=builder /workspace/apps/frontend/dist ./dist
 EXPOSE 5173
 
 CMD ["serve", "-s", "dist", "-l", "5173"]

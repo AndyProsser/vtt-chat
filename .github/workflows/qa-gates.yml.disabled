@@ -20,9 +20,9 @@ jobs:
           cache: npm
           cache-dependency-path: |
             package-lock.json
-            backend/package-lock.json
-            frontend/package-lock.json
-            admin/package-lock.json
+            apps/backend/package-lock.json
+            apps/frontend/package-lock.json
+            apps/admin/package-lock.json
 
       - name: Install workspace dependencies
         run: npm ci
@@ -52,7 +52,7 @@ jobs:
           name: qa-gates
           path: |
             coverage-gate-report.json
-            backend/coverage/flaky-tests-report.json
-            backend/coverage/coverage-summary.json
-            frontend/coverage/coverage-summary.json
-            admin/coverage/coverage-summary.json
+            apps/backend/coverage/flaky-tests-report.json
+            apps/backend/coverage/coverage-summary.json
+            apps/frontend/coverage/coverage-summary.json
+            apps/admin/coverage/coverage-summary.json
