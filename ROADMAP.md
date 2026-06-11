@@ -517,10 +517,11 @@ Trace 3 data:
 
 ### PERF-19: Wrap `GroupMemberList` in memo and stabilise `RoomGroupCard` member props
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Source**: Profiler trace 2026-06-10 15:35
 **Depends on**: PERF-09, PERF-11
+**Completed**: 2026-06-11
 
 **Problem**: `GroupMemberList` ([GroupMemberList.tsx:52](frontend/src/components/workspaces/session/rooms/GroupMemberList.tsx#L52)) is an unwrapped `export function`. Every render of `RoomGroupCard` cascades unconditionally into `GroupMemberList`, which then cascades into every `GroupMemberItem` child, regardless of whether any member data changed. This defeats PERF-09's `memo(GroupMemberItem)` wrapper and PERF-11's stabilised `PlayerContextMenu` callbacks — both are bypassed because their immediate parent re-renders unconditionally.
 
@@ -541,9 +542,9 @@ Trace 3 data:
 
 **Acceptance Criteria**:
 
-- [ ] `GroupMemberList` wrapped in `memo()`
-- [ ] All callback props passed from `RoomGroupCard` to `GroupMemberList` are `useCallback`-stabilised
-- [ ] `participants`/member array is identity-stable when the room membership hasn't changed
+- [x] `GroupMemberList` wrapped in `memo()`
+- [x] All callback props passed from `RoomGroupCard` to `GroupMemberList` are `useCallback`-stabilised (all are pass-throughs of already-stable `RoomGroupCard` props; none are created inline within `RoomGroupCard`)
+- [x] `participants`/member array is identity-stable when the room membership hasn't changed (`stableParticipantsByRoomRef` guard in `RoomSelector.tsx`)
 - [ ] `GroupMemberList` re-render count drops from 989 to near-zero cascade renders in follow-up trace
 - [ ] `PlayerContextMenu` prop-change render count drops to near-zero (unblocked by fixing the cascade source)
 - [ ] No regression in member list rendering, drag-and-drop, context menu, or DM overrides

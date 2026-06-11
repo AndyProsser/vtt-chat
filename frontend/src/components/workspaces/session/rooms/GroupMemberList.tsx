@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UUID } from '@shared'
 import { GroupMemberSharedProfileHoverCard } from './GroupMemberSharedProfileHoverCard'
 import type {
@@ -49,7 +49,7 @@ export interface GroupMemberListProps {
   onMemberDragEnd: () => void
 }
 
-export function GroupMemberList({
+function GroupMemberListComponent({
   room,
   participants,
   sessionId,
@@ -229,5 +229,6 @@ export function GroupMemberList({
   )
 }
 
+export const GroupMemberList = memo(GroupMemberListComponent)
 export { GroupMemberList as RoomMemberList }
 export type { GroupMemberListProps as RoomMemberListProps }

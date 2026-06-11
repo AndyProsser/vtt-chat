@@ -402,23 +402,37 @@ export function RoomSelector({
     canManageRooms && !isGreenroom && (visibleParticipants.length >= 10 || allRooms.length >= 4)
   const activeEnvironmentPickerRoomId = isGreenroom ? null : environmentPickerRoomId
 
+  // Stable reference guard: prevents GroupMemberList re-renders when other rooms' participants
+  // change and the full map recomputes, but this room's array content is unchanged.
+  const stableParticipantsByRoomRef = useRef<Record<UUID, GroupParticipantWithGroupId[]>>({})
+
   const visibleNonDmParticipantsByRoom = useMemo(() => {
     const next: Record<UUID, GroupParticipantWithGroupId[]> = {}
+    const prev = stableParticipantsByRoomRef.current
     for (const [roomId, participants] of Object.entries(displayedParticipantsByRoom) as Array<
       [UUID, GroupParticipantWithGroupId[]]
     >) {
       const nonDm = participants.filter(
         (p) => p.userId !== dmUserId && p.roleLabel !== ROOM_ROLE_LABELS.dm
       )
+      let roomArray: GroupParticipantWithGroupId[]
       if (isGreenroom) {
         const dm = participants.find(
           (p) => p.userId === dmUserId || p.roleLabel === ROOM_ROLE_LABELS.dm
         )
-        next[roomId] = dm ? [dm, ...nonDm] : nonDm
+        roomArray = dm ? [dm, ...nonDm] : nonDm
       } else {
-        next[roomId] = nonDm
+        roomArray = nonDm
       }
+      const prevArray = prev[roomId as UUID]
+      next[roomId as UUID] =
+        prevArray !== undefined &&
+        prevArray.length === roomArray.length &&
+        roomArray.every((p, i) => p === prevArray[i])
+          ? prevArray
+          : roomArray
     }
+    stableParticipantsByRoomRef.current = next
     return next
   }, [displayedParticipantsByRoom, dmUserId, isGreenroom])
 
