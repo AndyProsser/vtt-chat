@@ -76,9 +76,9 @@ function clean_logs_and_artifacts() {
   # Limit artifact cleanup to the main workspace app roots.
   local -a artifact_roots=(
     "$INSTALL_DIR"
-    "$INSTALL_DIR/backend"
-    "$INSTALL_DIR/frontend"
-    "$INSTALL_DIR/admin"
+    "$INSTALL_DIR/apps/backend"
+    "$INSTALL_DIR/apps/frontend"
+    "$INSTALL_DIR/apps/admin"
   )
 
   local root
@@ -109,9 +109,9 @@ function clean_logs_and_artifacts() {
   # "logs" because source code paths like admin/src/features/logs must be preserved.
   local log_dirs=(
     "$INSTALL_DIR/logs"
-    "$INSTALL_DIR/backend/logs"
-    "$INSTALL_DIR/frontend/logs"
-    "$INSTALL_DIR/admin/logs"
+    "$INSTALL_DIR/apps/backend/logs"
+    "$INSTALL_DIR/apps/frontend/logs"
+    "$INSTALL_DIR/apps/admin/logs"
   )
   local log_dir
   for log_dir in "${log_dirs[@]}"; do
@@ -121,7 +121,7 @@ function clean_logs_and_artifacts() {
   done
 
   # Run npm run clean in root, backend, frontend, admin if package.json exists
-  for d in "$INSTALL_DIR" "$INSTALL_DIR/backend" "$INSTALL_DIR/frontend" "$INSTALL_DIR/admin"; do
+  for d in "$INSTALL_DIR" "$INSTALL_DIR/apps/backend" "$INSTALL_DIR/apps/frontend" "$INSTALL_DIR/apps/admin"; do
     if [[ -f "$d/package.json" ]]; then
       (cd "$d" && npm run clean >/dev/null 2>&1 || true)
     fi
@@ -501,9 +501,9 @@ function ensure_env_key_value() {
 
 function get_compose_file() {
   if [[ "$DEV_MODE" == "true" ]]; then
-    echo "$INSTALL_DIR/docker-compose.dev.yml"
+    echo "$INSTALL_DIR/infra/docker-compose.dev.yml"
   else
-    echo "$INSTALL_DIR/docker-compose.yml"
+    echo "$INSTALL_DIR/infra/docker-compose.yml"
   fi
 }
 
@@ -690,8 +690,8 @@ VITE_ENV=production
 EOF
 )
 
-  write_file_guarded "$INSTALL_DIR/backend/.env" "backend env file" "$backend_env"
-  write_file_guarded "$INSTALL_DIR/frontend/.env" "frontend env file" "$frontend_env"
+  write_file_guarded "$INSTALL_DIR/apps/backend/.env" "backend env file" "$backend_env"
+  write_file_guarded "$INSTALL_DIR/apps/frontend/.env" "frontend env file" "$frontend_env"
 }
 
 function ensure_mode_standard_files() {
@@ -700,11 +700,11 @@ function ensure_mode_standard_files() {
   local livekit_file
 
   if [[ "$DEV_MODE" == "true" ]]; then
-    compose_file="$INSTALL_DIR/docker-compose.dev.yml"
+    compose_file="$INSTALL_DIR/infra/docker-compose.dev.yml"
     caddy_file="$INSTALL_DIR/infra/caddy/Caddyfile.dev"
     livekit_file="$INSTALL_DIR/infra/livekit/livekit.dev.yaml"
   else
-    compose_file="$INSTALL_DIR/docker-compose.yml"
+    compose_file="$INSTALL_DIR/infra/docker-compose.yml"
     caddy_file="$INSTALL_DIR/infra/caddy/Caddyfile"
     livekit_file="$INSTALL_DIR/infra/livekit/livekit.yaml"
   fi
@@ -725,11 +725,11 @@ function ensure_mode_standard_files() {
 
 function get_mode_file_relpaths() {
   if [[ "$DEV_MODE" == "true" ]]; then
-    echo "docker-compose.dev.yml"
+    echo "infra/docker-compose.dev.yml"
     echo "infra/caddy/Caddyfile.dev"
     echo "infra/livekit/livekit.dev.yaml"
   else
-    echo "docker-compose.yml"
+    echo "infra/docker-compose.yml"
     echo "infra/caddy/Caddyfile"
     echo "infra/livekit/livekit.yaml"
   fi
@@ -901,9 +901,9 @@ function generate_caddyfile() {
 
 function generate_docker_compose() {
   if [[ "$DEV_MODE" == "true" ]]; then
-    write_repo_baseline_file "docker-compose.dev.yml" "dev compose file"
+    write_repo_baseline_file "infra/docker-compose.dev.yml" "dev compose file"
   else
-    write_repo_baseline_file "docker-compose.yml" "prod compose file"
+    write_repo_baseline_file "infra/docker-compose.yml" "prod compose file"
   fi
 }
 
