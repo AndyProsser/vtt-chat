@@ -10,7 +10,7 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     23 |      19 |              0 |              4 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     23 |      20 |              0 |              3 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
@@ -18,7 +18,7 @@
 | Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **60** |  **45** |          **2** |         **13** |                |
+| **Total**                              | **60** |  **46** |          **2** |         **12** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 19/23 done; 4 new items from trace 4 (2026-06-12); trace 4 confirms GroupMemberItem, MessageRow, ReconnectBanner, LeftRailSlot, and Tabs.Root cascades resolved. **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -554,9 +554,10 @@ Trace 3 data:
 
 ### PERF-20: Fix GroupsHeaderActions inline callbacks defeating memo in RoomSelector
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical
 **Source**: Profiler trace 2026-06-12
+**Completed**: 2026-06-12
 
 **Problem**: `GroupsHeaderActions` is wrapped in `memo()` but `RoomSelector.tsx:606–622` passes **7 inline arrow functions** as props on every render, bypassing the memo check completely. The profiler records 1,318 renders (fid=2395) across 1,769 commits — 324 commits contain actual prop changes where all 7 callbacks change simultaneously. Triggers are entirely upstream: Radix `Presence` (210×), `SessionWorkspaceChromeConnector` (116×), `Popper` (103×), `SessionWorkspaceLeftRailComponent` (93×) — none of which affect the callbacks' behaviour. The callbacks are:
 
@@ -577,7 +578,7 @@ onSelectVoicePreset={(preset) => { ... }}
 
 **Acceptance Criteria**:
 
-- [ ] All 7 callbacks are `useCallback`-wrapped in `RoomSelector.tsx` — no inline arrows passed to `GroupsHeaderActions`
+- [x] All 7 callbacks are stable in `RoomSelector.tsx` — `onBroadcastToggle`, `onDevReset`, `onEndWhisper`, `onSelectVoicePreset` pass their already-`useCallback`-wrapped source functions directly; `onToggleCreateGroupModal` and `onCloseCreateGroupModal` extracted to new `useCallback([], [])` declarations; `onReturnToUser` was already stable
 - [ ] `GroupsHeaderActions` render count drops from 1,318 to near-zero between actual state changes in follow-up trace
 - [ ] Broadcast, whisper-end, group create/close, voice preset, and dev-reset actions continue to function correctly
 

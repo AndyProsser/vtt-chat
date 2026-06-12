@@ -610,25 +610,14 @@ export function RoomSelector({
           sessionId={sessionId}
           activeTakeoverUserId={activeTakeoverUserId || null}
           dmVoicePreset={dmVoicePreset}
-          onBroadcastToggle={() => {
-            void actions.handleBroadcastToggleClick()
-          }}
-          onDevReset={() => {
-            void handleDevResetMocks()
-          }}
+          onBroadcastToggle={actions.handleBroadcastToggleClick}
+          onDevReset={handleDevResetMocks}
           onReturnToUser={handleReturnToMyUser}
-          onToggleCreateGroupModal={() => {
-            setEnvironmentPickerRoomId(null)
-            setShowCreateGroupModal((cur) => !cur)
-          }}
-          onCloseCreateGroupModal={() => setShowCreateGroupModal(false)}
+          onToggleCreateGroupModal={handleToggleCreateGroupModal}
+          onCloseCreateGroupModal={handleCloseCreateGroupModal}
           onCreateGroup={actions.handleCreateGroup}
-          onEndWhisper={() => {
-            void handleEndWhisper()
-          }}
-          onSelectVoicePreset={(preset) => {
-            void actions.handleSetDmVoicePreset(preset)
-          }}
+          onEndWhisper={handleEndWhisper}
+          onSelectVoicePreset={actions.handleSetDmVoicePreset}
         />
       </header>
 
