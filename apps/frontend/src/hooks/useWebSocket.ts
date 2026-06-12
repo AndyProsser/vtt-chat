@@ -457,6 +457,20 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       onPartyPresenceUpdatedRef.current?.(event)
     })
 
+    // DM transfer events — update Zustand for both the initiating DM and the target player.
+    dispatcher.register('CAMPAIGN:DM_TRANSFER_INITIATED', (event) => {
+      useStore.getState().handleDmTransferInitiated(event)
+    })
+    dispatcher.register('CAMPAIGN:DM_TRANSFER_RESPONDED', (event) => {
+      useStore.getState().handleDmTransferResponded(event)
+    })
+    dispatcher.register('CAMPAIGN:DM_TRANSFER_CANCELLED', (event) => {
+      useStore.getState().handleDmTransferCancelled(event)
+    })
+    dispatcher.register('CAMPAIGN:DM_TRANSFERRED', (event) => {
+      useStore.getState().handleDmTransferred(event)
+    })
+
     // Metadata events (WS internal)
     dispatcher.register('WS:CONNECTED', (event) => {
       useStore.getState().handleConnectionEstablished(event)

@@ -1593,6 +1593,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] Operator can inspect/retry/clear jobs via admin API (`GET/POST/DELETE /queues/*`, secured with `QUEUE_ADMIN_SECRET`)
 
 **Phase 3 complete**:
+
 - [x] `generate-summary` worker feature-gated on `LLM_SUMMARY_URL` — skips gracefully when not set; activates automatically on deploy
 - [x] `process-recording` worker feature-gated on `RECORDING_PROCESSOR_URL` — dedicated `vttchat:recording` queue; same graceful skip pattern
 - [x] Admin app queue inspection via `GET|POST|DELETE /api/admin/queues/*` — backend proxies to queues service with `adminAuthMiddleware` (no direct browser → queues exposure)
@@ -1600,6 +1601,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] `docs/operations/QUEUES.md` created — full operator reference: env vars, queue reference, admin API, DLQ workflow, troubleshooting
 
 **Remaining (Phase 4 / future)**:
+
 - [ ] LLM checkpoint resume for `generate-summary` (once LLM integration is live)
 - [ ] Set `DISABLE_INTERNAL_CLEANUP_SCHEDULER=1` in production once BullMQ schedule is proven stable
 
@@ -1741,7 +1743,6 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Export and Import section (admin variant; DM contract to be appended when implemented)
 
 ---
-
 
 ### W-Chat-Commands: Chat Command System
 

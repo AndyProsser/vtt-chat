@@ -17,6 +17,10 @@ export type CampaignEventType =
   | 'CAMPAIGN:LOBBY_STATS_UPDATED'
   | 'CAMPAIGN:LIST_INVALIDATED'
   | 'CAMPAIGN:PARTY_PRESENCE_UPDATED'
+  | 'CAMPAIGN:DM_TRANSFER_INITIATED'
+  | 'CAMPAIGN:DM_TRANSFER_RESPONDED'
+  | 'CAMPAIGN:DM_TRANSFER_CANCELLED'
+  | 'CAMPAIGN:DM_TRANSFERRED'
 
 // ---------------------------------------------------------------------------
 // CAMPAIGN:JOIN_REQUEST_RECEIVED
@@ -119,6 +123,70 @@ export interface CampaignPartyPresenceUpdatedPayload {
 
 export type CampaignPartyPresenceUpdatedEvent = EventEnvelope<CampaignPartyPresenceUpdatedPayload>
 
+// ---------------------------------------------------------------------------
+// CAMPAIGN:DM_TRANSFER_INITIATED
+// Sent to the target player when the current DM initiates a handoff.
+// Includes enough context to surface the offer without a fetch.
+// ---------------------------------------------------------------------------
+export interface CampaignDmTransferInitiatedPayload {
+  campaignId: UUID
+  campaignName: string
+  fromUserId: UUID
+  fromUsername: string
+  toUserId: UUID
+  toUsername: string
+  initiatedAt: number // Unix ms
+  expiresAt: number // Unix ms
+}
+
+export type CampaignDmTransferInitiatedEvent =
+  EventEnvelope<CampaignDmTransferInitiatedPayload>
+
+// ---------------------------------------------------------------------------
+// CAMPAIGN:DM_TRANSFER_RESPONDED
+// Sent to the DM when the target player accepts or declines.
+// ---------------------------------------------------------------------------
+export interface CampaignDmTransferRespondedPayload {
+  campaignId: UUID
+  toUserId: UUID
+  toUsername: string
+  response: 'ACCEPTED' | 'DECLINED'
+  respondedAt: number // Unix ms
+}
+
+export type CampaignDmTransferRespondedEvent =
+  EventEnvelope<CampaignDmTransferRespondedPayload>
+
+// ---------------------------------------------------------------------------
+// CAMPAIGN:DM_TRANSFER_CANCELLED
+// Sent to the target player when the DM cancels a pending offer.
+// ---------------------------------------------------------------------------
+export interface CampaignDmTransferCancelledPayload {
+  campaignId: UUID
+  fromUserId: UUID
+  fromUsername: string
+  cancelledAt: number // Unix ms
+}
+
+export type CampaignDmTransferCancelledEvent =
+  EventEnvelope<CampaignDmTransferCancelledPayload>
+
+// ---------------------------------------------------------------------------
+// CAMPAIGN:DM_TRANSFERRED
+// Broadcast to all campaign members after ownership successfully transfers.
+// ---------------------------------------------------------------------------
+export interface CampaignDmTransferredPayload {
+  campaignId: UUID
+  campaignName: string
+  previousDmId: UUID
+  previousDmUsername: string
+  newDmId: UUID
+  newDmUsername: string
+  transferredAt: number // Unix ms
+}
+
+export type CampaignDmTransferredEvent = EventEnvelope<CampaignDmTransferredPayload>
+
 export type CampaignEvent =
   | CampaignJoinRequestReceivedEvent
   | CampaignJoinRequestResolvedEvent
@@ -127,3 +195,7 @@ export type CampaignEvent =
   | CampaignLobbyStatsUpdatedEvent
   | CampaignListInvalidatedEvent
   | CampaignPartyPresenceUpdatedEvent
+  | CampaignDmTransferInitiatedEvent
+  | CampaignDmTransferRespondedEvent
+  | CampaignDmTransferCancelledEvent
+  | CampaignDmTransferredEvent
