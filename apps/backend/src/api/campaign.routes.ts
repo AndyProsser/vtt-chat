@@ -8,9 +8,13 @@ import {
   Role,
   RoomType,
   SessionState,
+  SessionScheduleType,
   isValidRoomName,
   isValidSessionName,
   isValidUUID,
+  calculateNextOccurrence,
+  formatScheduleLabel,
+  type SessionSchedule,
 } from '@shared'
 import type { UUID } from '@shared'
 import { createToken, extractTokenFromHeader, verifyToken } from '@/services/auth.service'
@@ -1156,6 +1160,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     lateJoinGraceMinutes,
     defaultSessionDurationMins,
     supportedPlatforms,
+    sessionSchedule,
   } = req.body || {}
 
   if (!isValidUUID(campaignId)) {
@@ -1412,6 +1417,117 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Session schedule validation (optional — omitting leaves existing schedule intact)
+  // ---------------------------------------------------------------------------
+  let scheduleUpdateData: {
+    sessionScheduleType: SessionScheduleType | null
+    sessionScheduleDay: number | null
+    sessionScheduleNth: number | null
+    sessionScheduleHour: number | null
+    sessionScheduleMinute: number | null
+    sessionScheduleTz: string | null
+    nextSessionDate: Date | null
+    nextSessionIsManual: boolean
+  } | null = null
+
+  if (sessionSchedule !== undefined) {
+    if (sessionSchedule === null) {
+      // Explicit null clears the schedule entirely
+      scheduleUpdateData = {
+        sessionScheduleType: null,
+        sessionScheduleDay: null,
+        sessionScheduleNth: null,
+        sessionScheduleHour: null,
+        sessionScheduleMinute: null,
+        sessionScheduleTz: null,
+        nextSessionDate: null,
+        nextSessionIsManual: false,
+      }
+    } else {
+      const VALID_SCHEDULE_TYPES = Object.values(SessionScheduleType)
+      if (!VALID_SCHEDULE_TYPES.includes(sessionSchedule.type)) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: `sessionSchedule.type must be one of: ${VALID_SCHEDULE_TYPES.join(', ')}`,
+          field: 'sessionSchedule.type',
+        })
+      }
+      const schedDay = Number(sessionSchedule.dayOfWeek)
+      if (!Number.isInteger(schedDay) || schedDay < 0 || schedDay > 6) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'sessionSchedule.dayOfWeek must be an integer 0–6 (0 = Sunday)',
+          field: 'sessionSchedule.dayOfWeek',
+        })
+      }
+      const schedNth = sessionSchedule.nth != null ? Number(sessionSchedule.nth) : null
+      if (sessionSchedule.type === SessionScheduleType.MONTHLY_NTH) {
+        if (!schedNth || !Number.isInteger(schedNth) || schedNth < 1 || schedNth > 4) {
+          return res.status(400).json({
+            code: ErrorCode.INVALID_INPUT,
+            message: 'sessionSchedule.nth must be an integer 1–4 for MONTHLY_NTH',
+            field: 'sessionSchedule.nth',
+          })
+        }
+      }
+      const schedHour = Number(sessionSchedule.hour)
+      const schedMinute = Number(sessionSchedule.minute)
+      if (!Number.isInteger(schedHour) || schedHour < 0 || schedHour > 23) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'sessionSchedule.hour must be an integer 0–23',
+          field: 'sessionSchedule.hour',
+        })
+      }
+      if (!Number.isInteger(schedMinute) || schedMinute < 0 || schedMinute > 59) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'sessionSchedule.minute must be an integer 0–59',
+          field: 'sessionSchedule.minute',
+        })
+      }
+      if (typeof sessionSchedule.timezone !== 'string' || !sessionSchedule.timezone.trim()) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'sessionSchedule.timezone must be a valid IANA timezone string',
+          field: 'sessionSchedule.timezone',
+        })
+      }
+
+      const scheduleObj: SessionSchedule = {
+        type: sessionSchedule.type as SessionScheduleType,
+        dayOfWeek: schedDay,
+        nth: schedNth ?? undefined,
+        hour: schedHour,
+        minute: schedMinute,
+        timezone: sessionSchedule.timezone.trim(),
+      }
+
+      let nextDate: Date
+      try {
+        nextDate = calculateNextOccurrence(scheduleObj, new Date())
+      } catch {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'Could not calculate next occurrence from provided schedule',
+          field: 'sessionSchedule',
+        })
+      }
+
+      scheduleUpdateData = {
+        sessionScheduleType: scheduleObj.type,
+        sessionScheduleDay: schedDay,
+        sessionScheduleNth: schedNth,
+        sessionScheduleHour: schedHour,
+        sessionScheduleMinute: schedMinute,
+        sessionScheduleTz: scheduleObj.timezone,
+        nextSessionDate: nextDate,
+        nextSessionIsManual: false,
+      }
+    }
+  }
+
   const updated = await prisma.campaign.update({
     where: { id: campaignId as UUID },
     data: {
@@ -1435,6 +1551,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       lateJoinGraceMinutes: Math.round(parsedGraceMinutes),
       defaultSessionDurationMins: Math.round(parsedDefaultSessionDurationMins),
       supportedPlatforms: effectiveSupportedPlatforms,
+      ...(scheduleUpdateData ?? {}),
     },
     select: {
       id: true,
@@ -1458,10 +1575,199 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       inviteActive: true,
       spectatorInviteCode: true,
       spectatorInviteActive: true,
+      sessionScheduleType: true,
+      sessionScheduleDay: true,
+      sessionScheduleNth: true,
+      sessionScheduleHour: true,
+      sessionScheduleMinute: true,
+      sessionScheduleTz: true,
+      nextSessionDate: true,
+      nextSessionIsManual: true,
     },
   })
 
+  // Broadcast schedule change to all campaign members when the schedule was touched
+  if (scheduleUpdateData !== null) {
+    const schedLabel =
+      updated.sessionScheduleType && updated.sessionScheduleDay != null &&
+      updated.sessionScheduleHour != null && updated.sessionScheduleMinute != null &&
+      updated.sessionScheduleTz
+        ? formatScheduleLabel({
+            type: updated.sessionScheduleType as SessionScheduleType,
+            dayOfWeek: updated.sessionScheduleDay,
+            nth: updated.sessionScheduleNth ?? undefined,
+            hour: updated.sessionScheduleHour,
+            minute: updated.sessionScheduleMinute,
+            timezone: updated.sessionScheduleTz,
+          })
+        : null
+
+    await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+      id: randomUUID() as UUID,
+      type: 'CAMPAIGN:SCHEDULE_UPDATED',
+      version: 1,
+      userId: user.userId as UUID,
+      userRole: Role.DM,
+      sessionId: null as unknown as UUID,
+      roomId: null,
+      timestamp: Date.now(),
+      payload: {
+        campaignId: campaignId as UUID,
+        nextSessionDate: updated.nextSessionDate?.toISOString() ?? null,
+        scheduleLabel: schedLabel,
+        nextSessionIsManual: updated.nextSessionIsManual,
+      },
+    })
+  }
+
   return res.status(200).json({ campaign: updated })
+})
+
+// ---------------------------------------------------------------------------
+// PUT /:campaignId/next-session-date — DM manual override for next session date
+// Sets nextSessionIsManual = true; schedule resumes after that session ends.
+// ---------------------------------------------------------------------------
+router.put('/:campaignId/next-session-date', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+  const { date } = req.body || {}
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  if (typeof date !== 'string' || !date.trim()) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'date must be an ISO 8601 string', field: 'date' })
+  }
+
+  const parsedDate = new Date(date)
+  if (isNaN(parsedDate.getTime())) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'date is not a valid ISO 8601 string', field: 'date' })
+  }
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only the campaign DM can override the next session date' })
+  }
+
+  const updated = await prisma.campaign.update({
+    where: { id: campaignId as UUID },
+    data: { nextSessionDate: parsedDate, nextSessionIsManual: true },
+    select: {
+      sessionScheduleType: true,
+      sessionScheduleDay: true,
+      sessionScheduleNth: true,
+      sessionScheduleHour: true,
+      sessionScheduleMinute: true,
+      sessionScheduleTz: true,
+      nextSessionDate: true,
+      nextSessionIsManual: true,
+    },
+  })
+
+  const schedLabel =
+    updated.sessionScheduleType && updated.sessionScheduleDay != null &&
+    updated.sessionScheduleHour != null && updated.sessionScheduleMinute != null &&
+    updated.sessionScheduleTz
+      ? formatScheduleLabel({
+          type: updated.sessionScheduleType as SessionScheduleType,
+          dayOfWeek: updated.sessionScheduleDay,
+          nth: updated.sessionScheduleNth ?? undefined,
+          hour: updated.sessionScheduleHour,
+          minute: updated.sessionScheduleMinute,
+          timezone: updated.sessionScheduleTz,
+        })
+      : null
+
+  await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:SCHEDULE_UPDATED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: {
+      campaignId: campaignId as UUID,
+      nextSessionDate: updated.nextSessionDate?.toISOString() ?? null,
+      scheduleLabel: schedLabel,
+      nextSessionIsManual: true,
+    },
+  })
+
+  return res.status(200).json({
+    nextSessionDate: updated.nextSessionDate?.toISOString() ?? null,
+    nextSessionIsManual: true,
+  })
+})
+
+// ---------------------------------------------------------------------------
+// DELETE /:campaignId/schedule — DM clears the entire recurrence schedule
+// ---------------------------------------------------------------------------
+router.delete('/:campaignId/schedule', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only the campaign DM can clear the schedule' })
+  }
+
+  await prisma.campaign.update({
+    where: { id: campaignId as UUID },
+    data: {
+      sessionScheduleType: null,
+      sessionScheduleDay: null,
+      sessionScheduleNth: null,
+      sessionScheduleHour: null,
+      sessionScheduleMinute: null,
+      sessionScheduleTz: null,
+      nextSessionDate: null,
+      nextSessionIsManual: false,
+    },
+  })
+
+  await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:SCHEDULE_UPDATED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: {
+      campaignId: campaignId as UUID,
+      nextSessionDate: null,
+      scheduleLabel: null,
+      nextSessionIsManual: false,
+    },
+  })
+
+  return res.status(204).send()
 })
 
 router.get(

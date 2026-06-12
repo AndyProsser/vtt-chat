@@ -25,6 +25,7 @@ import {
   STANDALONE_SESSION_COOLDOWN_MS,
 } from '@/constants/session.constants'
 import { logger, isGreenRoomName } from '@/utils'
+import { advanceSessionScheduleOnEnded } from '@/services/campaign-schedule.service'
 import crypto from 'node:crypto'
 
 interface WsAdapter {
@@ -140,6 +141,7 @@ async function transitionCooldownToEnded(session: {
   id: string
   dmId: string
   name: string
+  campaignId: string | null
 }): Promise<void> {
   await updateSessionState(session.id as UUID, SessionState.ENDED, session.dmId as UUID)
   await disableMockSimulationForSessionExit(session.id as UUID)
@@ -149,6 +151,20 @@ async function transitionCooldownToEnded(session: {
     sessionId: session.id,
     sessionName: session.name,
   })
+
+  // Auto-advance the campaign's next session date from the recurrence rule (no-op if no schedule).
+  if (session.campaignId) {
+    await advanceSessionScheduleOnEnded(
+      session.campaignId as UUID,
+      session.dmId as UUID,
+    ).catch((err) =>
+      logger.warn('session-cleanup-job', 'Failed to advance session schedule on ENDED', {
+        sessionId: session.id,
+        campaignId: session.campaignId,
+        err,
+      })
+    )
+  }
 }
 
 /**

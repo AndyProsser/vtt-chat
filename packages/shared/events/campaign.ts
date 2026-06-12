@@ -21,6 +21,7 @@ export type CampaignEventType =
   | 'CAMPAIGN:DM_TRANSFER_RESPONDED'
   | 'CAMPAIGN:DM_TRANSFER_CANCELLED'
   | 'CAMPAIGN:DM_TRANSFERRED'
+  | 'CAMPAIGN:SCHEDULE_UPDATED'
 
 // ---------------------------------------------------------------------------
 // CAMPAIGN:JOIN_REQUEST_RECEIVED
@@ -187,6 +188,24 @@ export interface CampaignDmTransferredPayload {
 
 export type CampaignDmTransferredEvent = EventEnvelope<CampaignDmTransferredPayload>
 
+// ---------------------------------------------------------------------------
+// CAMPAIGN:SCHEDULE_UPDATED
+// Broadcast to all campaign members whenever the DM changes the recurrence
+// schedule, manually overrides the next session date, or clears the schedule.
+// Also fires automatically when SESSION:ENDED auto-advances nextSessionDate.
+// ---------------------------------------------------------------------------
+export interface CampaignScheduleUpdatedPayload {
+  campaignId: UUID
+  /** ISO-8601 UTC string, or null if cleared */
+  nextSessionDate: string | null
+  /** Human-readable recurrence label, or null if no schedule is set */
+  scheduleLabel: string | null
+  /** True when nextSessionDate was set by a DM manual override rather than the recurrence rule */
+  nextSessionIsManual: boolean
+}
+
+export type CampaignScheduleUpdatedEvent = EventEnvelope<CampaignScheduleUpdatedPayload>
+
 export type CampaignEvent =
   | CampaignJoinRequestReceivedEvent
   | CampaignJoinRequestResolvedEvent
@@ -199,3 +218,4 @@ export type CampaignEvent =
   | CampaignDmTransferRespondedEvent
   | CampaignDmTransferCancelledEvent
   | CampaignDmTransferredEvent
+  | CampaignScheduleUpdatedEvent

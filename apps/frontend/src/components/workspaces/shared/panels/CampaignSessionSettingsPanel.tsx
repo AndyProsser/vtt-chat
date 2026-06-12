@@ -10,6 +10,7 @@ import {
 import type { LateJoinPolicy } from '@/types/sessionUi'
 import { SessionTimerCard } from './CampaignSessionSettingsPanel.Timer'
 import { TransferDMSection } from './CampaignSettingsPanel/TransferDMSection'
+import { SessionSchedulePicker } from './CampaignSettingsPanel/SessionSchedulePicker'
 import { useStore } from '@/hooks/useStore'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
@@ -108,6 +109,7 @@ export const CampaignSessionSettingsPanel = memo(function CampaignSessionSetting
   const [isSaving, setIsSaving] = useState(false)
   const [isSpectatorsExpanded, setIsSpectatorsExpanded] = useState(false)
   const [isTransferDmExpanded, setIsTransferDmExpanded] = useState(false)
+  const [isScheduleExpanded, setIsScheduleExpanded] = useState(false)
 
   const outgoingTransfer = useStore((s) =>
     props.campaignId
@@ -345,6 +347,35 @@ export const CampaignSessionSettingsPanel = memo(function CampaignSessionSetting
                 disabled={spectatorChildDisabled}
               />
             </div>
+          )}
+        </div>
+      )}
+
+      {props.campaignId && (
+        <div className="csp-card csp-card--collapsible">
+          <button
+            type="button"
+            className="csp-card-collapsible-header"
+            aria-expanded={isScheduleExpanded}
+            onClick={() => setIsScheduleExpanded((v) => !v)}
+          >
+            <h5 className="crbs-heading csp-card-heading csp-card-heading--inline">
+              Session Schedule
+            </h5>
+            <span className="csp-card-collapsible-header-right">
+              <span
+                className="material-symbols-outlined csp-card-collapsible-chevron"
+                aria-hidden="true"
+              >
+                {isScheduleExpanded ? 'expand_more' : 'chevron_right'}
+              </span>
+            </span>
+          </button>
+
+          {isScheduleExpanded && (
+            <SessionSchedulePicker
+              campaignId={props.campaignId as import('@shared').UUID}
+            />
           )}
         </div>
       )}

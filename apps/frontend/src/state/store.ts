@@ -23,6 +23,7 @@ import type { SessionGroupsSlice } from './sessionGroupsSlice'
 import type { GroupPanelUISlice } from './groupPanelUISlice'
 import type { MockSimulationSlice } from './mockSimulationSlice'
 import type { DmTransferSlice } from './dmTransferSlice'
+import type { CampaignScheduleSlice } from './campaignScheduleSlice'
 
 import { createSessionSlice } from './sessionSlice'
 import { createChatSlice } from './chatSlice'
@@ -40,6 +41,7 @@ import { createSessionGroupsSlice } from './sessionGroupsSlice'
 import { createGroupPanelUISlice } from './groupPanelUISlice'
 import { createMockSimulationSlice } from './mockSimulationSlice'
 import { createDmTransferSlice } from './dmTransferSlice'
+import { createCampaignScheduleSlice } from './campaignScheduleSlice'
 
 declare global {
   interface Window {
@@ -150,7 +152,8 @@ export type Store = SessionSlice &
   SessionGroupsSlice &
   GroupPanelUISlice &
   MockSimulationSlice &
-  DmTransferSlice
+  DmTransferSlice &
+  CampaignScheduleSlice
 
 /**
  * Root Zustand store.
@@ -173,6 +176,7 @@ export const useStore = create<Store>()((...args) => ({
   ...createGroupPanelUISlice(...args),
   ...createMockSimulationSlice(...args),
   ...createDmTransferSlice(...args),
+  ...createCampaignScheduleSlice(...args),
 }))
 
 if (typeof window !== 'undefined') {

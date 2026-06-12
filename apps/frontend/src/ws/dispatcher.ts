@@ -32,7 +32,8 @@ export class EventDispatcher {
       event.type === 'CAMPAIGN:DM_TRANSFER_INITIATED' ||
       event.type === 'CAMPAIGN:DM_TRANSFER_RESPONDED' ||
       event.type === 'CAMPAIGN:DM_TRANSFER_CANCELLED' ||
-      event.type === 'CAMPAIGN:DM_TRANSFERRED'
+      event.type === 'CAMPAIGN:DM_TRANSFERRED' ||
+      event.type === 'CAMPAIGN:SCHEDULE_UPDATED'
     )
   }
 

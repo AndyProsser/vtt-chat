@@ -96,6 +96,12 @@ export enum StatusColorKey {
   RED = 'RED',
 }
 
+export enum SessionScheduleType {
+  WEEKLY = 'WEEKLY',
+  BIWEEKLY = 'BIWEEKLY',
+  MONTHLY_NTH = 'MONTHLY_NTH',
+}
+
 /**
  * Core Domain Objects (contracts, not full models)
  */

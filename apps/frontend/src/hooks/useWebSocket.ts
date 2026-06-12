@@ -498,6 +498,11 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       useStore.getState().handleDmTransferred(event)
     })
 
+    // Session schedule events — update campaign schedule state for all members.
+    dispatcher.register('CAMPAIGN:SCHEDULE_UPDATED', (event) => {
+      useStore.getState().handleCampaignScheduleUpdated(event)
+    })
+
     // Metadata events (WS internal)
     dispatcher.register('WS:CONNECTED', (event) => {
       useStore.getState().handleConnectionEstablished(event)
