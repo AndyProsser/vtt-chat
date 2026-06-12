@@ -10,7 +10,7 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     23 |      22 |              0 |              1 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     23 |      23 |              0 |              0 | 🟢 Done        |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
@@ -18,9 +18,9 @@
 | Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **60** |  **48** |          **2** |         **10** |                |
+| **Total**                              | **60** |  **49** |          **2** |          **9** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 19/23 done; 4 new items from trace 4 (2026-06-12); trace 4 confirms GroupMemberItem, MessageRow, ReconnectBanner, LeftRailSlot, and Tabs.Root cascades resolved. **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 23/23 done; all items from trace 4 (2026-06-12) resolved. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
 ---
 
@@ -642,9 +642,10 @@ onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
 
 ### PERF-23: Stabilise SessionWorkspaceChromeConnector hook[6] and RoomSelector rooms array
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Source**: Profiler trace 2026-06-12
+**Completed**: 2026-06-12
 
 **Problem**: Two related instabilities drive high render counts in the left-rail subtree:
 
@@ -660,9 +661,11 @@ onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
 
 **Acceptance Criteria**:
 
+- [x] `SessionWorkspaceChromeConnector` hook[6] (`currentPauseStats`) wrapped with `useShallow` — shallow equality prevents re-renders when `{ cumulativePauseMs, pauseCount, pauseStartedAt }` values are unchanged
+- [x] `isSameParticipantProjection` in `LeftRailPanel.tsx`: `characterStats` (object) now uses `isSameStats` shallow comparison — the existing `mergeGroupProjectionsPreservingReferences` guard now correctly short-circuits on presence updates that don't change participant data
+- [x] `onToggleBroadcastMode` stabilised via latest-ref + `useCallback([], [])` in `LeftRailPanel.tsx`; `GroupsHeaderActions` (memo) no longer re-renders on unrelated session state changes
 - [ ] `SessionWorkspaceChromeConnector` hook[6] change count drops by ≥80% in follow-up trace
 - [ ] `RoomSelector` `rooms` prop change count drops from 74× to near-zero between actual room membership changes
-- [ ] `onToggleBroadcastMode` is `useCallback`-wrapped in `LeftRailPanel.tsx`
 - [ ] No regression in broadcast mode toggle, room selection, or left-rail participant display
 
 ---
