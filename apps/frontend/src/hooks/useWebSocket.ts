@@ -13,6 +13,7 @@ import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
 import { useStore } from './useStore'
 import { logger } from '../utils/logger'
+import { showToast } from '../state/toastCenter'
 
 const WS_CONNECT_DEFER_MS = 75
 
@@ -457,15 +458,41 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       onPartyPresenceUpdatedRef.current?.(event)
     })
 
-    // DM transfer events — update Zustand for both the initiating DM and the target player.
+    // DM transfer events — update Zustand and surface toasts for both parties.
     dispatcher.register('CAMPAIGN:DM_TRANSFER_INITIATED', (event) => {
       useStore.getState().handleDmTransferInitiated(event)
+      const p = event.payload as { fromUsername: string; campaignName: string }
+      showToast({
+        message: `${p.fromUsername} is offering you the DM role for "${p.campaignName}". Open campaign settings to respond.`,
+        variant: 'info',
+        durationMs: null, // persist until dismissed
+      })
     })
     dispatcher.register('CAMPAIGN:DM_TRANSFER_RESPONDED', (event) => {
       useStore.getState().handleDmTransferResponded(event)
+      const p = event.payload as { toUsername: string; response: 'ACCEPTED' | 'DECLINED' }
+      if (p.response === 'ACCEPTED') {
+        showToast({
+          message: `${p.toUsername} accepted the DM transfer. They are now the campaign DM.`,
+          variant: 'success',
+          durationMs: 8000,
+        })
+      } else {
+        showToast({
+          message: `${p.toUsername} declined the DM transfer offer.`,
+          variant: 'info',
+          durationMs: 6000,
+        })
+      }
     })
     dispatcher.register('CAMPAIGN:DM_TRANSFER_CANCELLED', (event) => {
       useStore.getState().handleDmTransferCancelled(event)
+      const p = event.payload as { fromUsername: string }
+      showToast({
+        message: `${p.fromUsername} cancelled the DM transfer offer.`,
+        variant: 'info',
+        durationMs: 5000,
+      })
     })
     dispatcher.register('CAMPAIGN:DM_TRANSFERRED', (event) => {
       useStore.getState().handleDmTransferred(event)

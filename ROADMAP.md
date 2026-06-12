@@ -1692,7 +1692,7 @@ Backend is production-ready for extension integration. All guest auth contracts,
 
 ### W-DM-Handoff: Campaign Ownership Transfer
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🔵 Low (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -1700,16 +1700,20 @@ Backend is production-ready for extension integration. All guest auth contracts,
 
 **Acceptance Criteria**:
 
-- [ ] DM can initiate handoff to any current campaign member from campaign settings
-- [ ] Target player must accept the handoff before ownership transfers
-- [ ] Handoff is not permitted during an active session (must be from greenroom/IDLE)
-- [ ] All campaign-scoped data (groups, notes, history) is preserved on transfer
-- [ ] Former DM is demoted to PLAYER role automatically
-- [ ] Handoff is logged as a campaign system event
+- [x] DM can initiate handoff to any current campaign member from campaign settings
+- [x] Target player must accept the handoff before ownership transfers
+- [x] Handoff is not permitted during an active session (must be from greenroom/IDLE)
+- [x] All campaign-scoped data (groups, notes, history) is preserved on transfer
+- [x] Former DM is demoted to PLAYER role automatically
+- [ ] Handoff is logged as a campaign system event (system chat message — deferred)
+
+**Remaining**:
+
+- [ ] System chat message posted to greenroom on successful transfer
 
 **Related Docs**:
 
-- (To be created when work begins)
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign DM Transfer section
 
 ---
 

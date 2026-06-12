@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef } from 'react'
 import type { UUID } from '@shared'
 import { EditorView } from '@/components/workspaces/editor/EditorView'
 import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
+import { DmTransferOfferBanner } from '@/components/workspaces/shared/DmTransferOfferBanner'
 import type { EditorWorkspaceProps } from '@/types/editorWorkspace'
 
 export function EditorWorkspace(props: EditorWorkspaceProps) {
@@ -165,6 +166,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           onSave: props.onSaveCampaignSettings,
           onDeleteCampaign: handleDeleteCampaign,
           isDeletingCampaign: props.isDeletingCampaign,
+          campaignId: props.selectedCampaignId || null,
         }}
         playerSettings={{
           campaignId: props.selectedCampaignId || null,
@@ -240,7 +242,11 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   }
 
   return (
-    <EditorView
+    <>
+      {props.selectedCampaignId && (
+        <DmTransferOfferBanner campaignId={props.selectedCampaignId as UUID} />
+      )}
+      <EditorView
       campaign={props.selectedCampaign}
       role={props.membershipRole}
       themeMode={props.themeMode}
@@ -292,5 +298,6 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       onSaveCampaignInfo={props.onSaveCampaignInfo}
       onSettingsReferenceSessionChange={props.onSettingsReferenceSessionChange}
     />
+    </>
   )
 }

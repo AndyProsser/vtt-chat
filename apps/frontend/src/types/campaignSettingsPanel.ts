@@ -59,6 +59,8 @@ export type CampaignSettingsPanelProps = {
   onDeleteCampaign: () => void
   isDeletingCampaign: boolean
   sessionSettingsPanel?: ReactNode
+  /** Campaign UUID — required to enable the DM transfer section. */
+  campaignId?: string | null
 }
 
 export type CampaignSettingsPanelPolicyProps = Pick<

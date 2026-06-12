@@ -1011,6 +1011,38 @@ Guests who exit a session are routed to an upgrade screen only — they do not s
 
 ---
 
+## Campaign DM Transfer (W-DM-Handoff)
+
+Two-phase ownership handoff: DM initiates, target player accepts or declines. Pending state is stored in Redis with a 24-hour TTL.
+
+### Endpoints
+
+| Method | Path                                    | Auth           | Description                                                                       |
+| ------ | --------------------------------------- | -------------- | --------------------------------------------------------------------------------- |
+| `POST` | `/api/campaigns/:id/dm/handoff`         | DM of campaign | Initiate transfer — stores pending offer in Redis, notifies target via WS         |
+| `GET`  | `/api/campaigns/:id/dm/handoff/pending` | Any member     | Returns current pending offer or `null`                                           |
+| `POST` | `/api/campaigns/:id/dm/handoff/accept`  | Target player  | Accept offer — executes DB transaction, broadcasts `CAMPAIGN:DM_TRANSFERRED`      |
+| `POST` | `/api/campaigns/:id/dm/handoff/decline` | Target player  | Decline offer — clears Redis, notifies DM via `CAMPAIGN:DM_TRANSFER_RESPONDED`    |
+| `POST` | `/api/campaigns/:id/dm/handoff/cancel`  | Initiating DM  | Cancel offer — clears Redis, notifies target via `CAMPAIGN:DM_TRANSFER_CANCELLED` |
+
+### Constraints
+
+- Transfer is rejected (`409`) if the latest session is `ACTIVE`, `PAUSED`, or `COOLDOWN`.
+- Target must be an existing `PLAYER` member (not a spectator, not already DM).
+- Only one pending transfer per campaign at a time; re-initiating replaces the previous.
+- On `accept`: `Campaign.currentDmId` updates, both `CampaignMembership.role` rows swap, old DM's `user.role` demotes to `PLAYER` only if they hold no other DM campaigns.
+
+### WS Events (all campaign-scoped, no `sessionId` required)
+
+| Event                            | Sent to              |
+| -------------------------------- | -------------------- |
+| `CAMPAIGN:DM_TRANSFER_INITIATED` | Target player        |
+| `CAMPAIGN:DM_TRANSFER_RESPONDED` | Initiating DM        |
+| `CAMPAIGN:DM_TRANSFER_CANCELLED` | Target player        |
+| `CAMPAIGN:DM_TRANSFERRED`        | All campaign members |
+
+---
+
 ## Campaign Export and Import (Admin-Only)
 
 ### Export
@@ -1121,11 +1153,11 @@ On success (`200`): returns `{ token: string, credential: string }` — a fresh 
 
 On failure (`401`):
 
-| Code | Meaning | Required extension behaviour |
-| ---- | ------- | ---------------------------- |
-| `CREDENTIAL_INVALID` | Token not found, already rotated, or explicitly revoked | Treat as first launch — prompt for invite code |
-| `CREDENTIAL_EXPIRED_GUEST` | 90-day inactivity window elapsed; account is still guest | Prompt user to re-enter a fresh invite code |
-| `CREDENTIAL_EXPIRED_FULL` | 90-day inactivity window elapsed; account is full | Prompt user for email and password to re-authenticate |
+| Code                       | Meaning                                                  | Required extension behaviour                          |
+| -------------------------- | -------------------------------------------------------- | ----------------------------------------------------- |
+| `CREDENTIAL_INVALID`       | Token not found, already rotated, or explicitly revoked  | Treat as first launch — prompt for invite code        |
+| `CREDENTIAL_EXPIRED_GUEST` | 90-day inactivity window elapsed; account is still guest | Prompt user to re-enter a fresh invite code           |
+| `CREDENTIAL_EXPIRED_FULL`  | 90-day inactivity window elapsed; account is full        | Prompt user for email and password to re-authenticate |
 
 ### Expiry policy
 

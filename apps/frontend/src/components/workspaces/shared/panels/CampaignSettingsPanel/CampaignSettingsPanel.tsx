@@ -2,6 +2,8 @@ import { TooltipProvider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import { CampaignSettingsPanelPolicy } from './Policy'
 import { DeleteCampaignSection } from './DeleteCampaignSection'
+import { TransferDMSection } from './TransferDMSection'
+import type { UUID } from '@shared'
 import type { CampaignSettingsPanelProps } from '@/types/campaignSettingsPanel'
 
 export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
@@ -102,6 +104,13 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
           />
           {props.sessionSettingsPanel}
         </div>
+
+        {props.campaignId && (
+          <TransferDMSection
+            campaignId={props.campaignId as UUID}
+            isSessionBlocking={props.isSessionActive}
+          />
+        )}
 
         <DeleteCampaignSection
           campaignName={props.campaignName || 'this campaign'}

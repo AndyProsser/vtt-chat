@@ -1715,8 +1715,14 @@ router.post('/:campaignId/dm/handoff', requireAuth, async (req: Request, res: Re
   })
 
   eventBroadcaster.sendToUser(targetUserId as UUID, {
+    id: randomUUID() as UUID,
     type: 'CAMPAIGN:DM_TRANSFER_INITIATED',
-    sessionId: null as any,
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: now,
     payload: {
       campaignId,
       campaignName: campaign.name,
@@ -1743,294 +1749,296 @@ router.post('/:campaignId/dm/handoff', requireAuth, async (req: Request, res: Re
  * Returns the current pending DM transfer for the campaign, or null.
  * Accessible to both the current DM and the target player.
  */
-router.get(
-  '/:campaignId/dm/handoff/pending',
-  requireAuth,
-  async (req: Request, res: Response) => {
-    const user = (req as any).user
-    const { campaignId } = req.params
+router.get('/:campaignId/dm/handoff/pending', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
 
-    if (!isValidUUID(campaignId)) {
-      return res
-        .status(400)
-        .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
-    }
-
-    const membership = await prisma.campaignMembership.findUnique({
-      where: { campaignId_userId: { campaignId: campaignId as UUID, userId: user.userId as UUID } },
-    })
-    if (!membership) {
-      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
-    }
-
-    const pending = await getPendingDmTransfer(campaignId)
-    return res.status(200).json({ pending })
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
   }
-)
+
+  const membership = await prisma.campaignMembership.findUnique({
+    where: { campaignId_userId: { campaignId: campaignId as UUID, userId: user.userId as UUID } },
+  })
+  if (!membership) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+  }
+
+  const pending = await getPendingDmTransfer(campaignId)
+  return res.status(200).json({ pending })
+})
 
 /**
  * POST /:campaignId/dm/handoff/accept
  * Phase 2 — target player accepts the pending ownership offer.
  * Executes the ownership transfer atomically and broadcasts the result.
  */
-router.post(
-  '/:campaignId/dm/handoff/accept',
-  requireAuth,
-  async (req: Request, res: Response) => {
-    const user = (req as any).user
-    const { campaignId } = req.params
+router.post('/:campaignId/dm/handoff/accept', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
 
-    if (!isValidUUID(campaignId)) {
-      return res
-        .status(400)
-        .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
-    }
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+  }
 
-    const pending = await getPendingDmTransfer(campaignId)
-    if (!pending) {
-      return res
-        .status(404)
-        .json({ code: ErrorCode.NOT_FOUND, message: 'No pending DM transfer for this campaign' })
-    }
+  const pending = await getPendingDmTransfer(campaignId)
+  if (!pending) {
+    return res
+      .status(404)
+      .json({ code: ErrorCode.NOT_FOUND, message: 'No pending DM transfer for this campaign' })
+  }
 
-    if (pending.toUserId !== (user.userId as UUID)) {
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: 'You are not the target of this DM transfer',
-      })
-    }
-
-    const campaign = await prisma.campaign.findUnique({
-      where: { id: campaignId as UUID },
-      select: { id: true, name: true, currentDmId: true },
-    })
-
-    if (!campaign) {
-      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
-    }
-
-    if (campaign.currentDmId !== (pending.fromUserId as UUID)) {
-      // The DM changed between initiate and accept — stale offer.
-      await clearPendingDmTransfer(campaignId)
-      return res.status(409).json({
-        code: ErrorCode.CONFLICT,
-        message: 'The pending transfer is no longer valid — the campaign DM has changed.',
-      })
-    }
-
-    const now = Date.now()
-
-    await prisma.$transaction(async (tx) => {
-      await tx.campaign.update({
-        where: { id: campaignId as UUID },
-        data: { currentDmId: user.userId as UUID },
-      })
-
-      // Demote old DM's campaign membership role.
-      await tx.campaignMembership.update({
-        where: {
-          campaignId_userId: {
-            campaignId: campaignId as UUID,
-            userId: pending.fromUserId as UUID,
-          },
-        },
-        data: { role: 'PLAYER' },
-      })
-
-      // Promote new DM's campaign membership role.
-      await tx.campaignMembership.update({
-        where: {
-          campaignId_userId: {
-            campaignId: campaignId as UUID,
-            userId: user.userId as UUID,
-          },
-        },
-        data: { role: 'DM' },
-      })
-
-      // Promote new DM's global role if needed.
-      await tx.user.update({
-        where: { id: user.userId as UUID },
-        data: { role: 'DM', adminRole: 'CAMPAIGN_DM' },
-      })
-
-      // Demote old DM's global role only if they are no longer DM of any other campaign.
-      const remainingDmCampaigns = await tx.campaign.count({
-        where: {
-          currentDmId: pending.fromUserId as UUID,
-          id: { not: campaignId as UUID },
-          deletedAt: null,
-          retiredAt: null,
-        },
-      })
-      if (remainingDmCampaigns === 0) {
-        await tx.user.updateMany({
-          where: {
-            id: pending.fromUserId as UUID,
-            adminRole: 'CAMPAIGN_DM',
-          },
-          data: { role: 'PLAYER', adminRole: null },
-        })
-      }
-    })
-
-    await consumePendingDmTransfer(campaignId)
-
-    const transferredPayload = {
-      campaignId,
-      campaignName: campaign.name,
-      previousDmId: pending.fromUserId,
-      previousDmUsername: pending.fromUsername,
-      newDmId: user.userId,
-      newDmUsername: user.username,
-      transferredAt: now,
-    }
-
-    // Notify all campaign members.
-    await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
-      type: 'CAMPAIGN:DM_TRANSFERRED',
-      sessionId: null as any,
-      payload: transferredPayload,
-    })
-
-    // Notify the old DM of the accepted response.
-    eventBroadcaster.sendToUser(pending.fromUserId as UUID, {
-      type: 'CAMPAIGN:DM_TRANSFER_RESPONDED',
-      sessionId: null as any,
-      payload: {
-        campaignId,
-        toUserId: user.userId,
-        toUsername: user.username,
-        response: 'ACCEPTED',
-        respondedAt: now,
-      },
-    })
-
-    logger.info('campaign.routes', 'DM transfer accepted', {
-      campaignId,
-      previousDmId: pending.fromUserId,
-      newDmId: user.userId,
-    })
-
-    return res.status(200).json({
-      campaignId,
-      previousDmId: pending.fromUserId,
-      newDmId: user.userId,
-      transferredAt: new Date(now).toISOString(),
+  if (pending.toUserId !== (user.userId as UUID)) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'You are not the target of this DM transfer',
     })
   }
-)
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId as UUID },
+    select: { id: true, name: true, currentDmId: true },
+  })
+
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+
+  if (campaign.currentDmId !== (pending.fromUserId as UUID)) {
+    // The DM changed between initiate and accept — stale offer.
+    await clearPendingDmTransfer(campaignId)
+    return res.status(409).json({
+      code: ErrorCode.CONFLICT,
+      message: 'The pending transfer is no longer valid — the campaign DM has changed.',
+    })
+  }
+
+  const now = Date.now()
+
+  await prisma.$transaction(async (tx) => {
+    await tx.campaign.update({
+      where: { id: campaignId as UUID },
+      data: { currentDmId: user.userId as UUID },
+    })
+
+    // Demote old DM's campaign membership role.
+    await tx.campaignMembership.update({
+      where: {
+        campaignId_userId: {
+          campaignId: campaignId as UUID,
+          userId: pending.fromUserId as UUID,
+        },
+      },
+      data: { role: 'PLAYER' },
+    })
+
+    // Promote new DM's campaign membership role.
+    await tx.campaignMembership.update({
+      where: {
+        campaignId_userId: {
+          campaignId: campaignId as UUID,
+          userId: user.userId as UUID,
+        },
+      },
+      data: { role: 'DM' },
+    })
+
+    // Promote new DM's global role if needed.
+    await tx.user.update({
+      where: { id: user.userId as UUID },
+      data: { role: 'DM', adminRole: 'CAMPAIGN_DM' },
+    })
+
+    // Demote old DM's global role only if they are no longer DM of any other campaign.
+    const remainingDmCampaigns = await tx.campaign.count({
+      where: {
+        currentDmId: pending.fromUserId as UUID,
+        id: { not: campaignId as UUID },
+        deletedAt: null,
+        retiredAt: null,
+      },
+    })
+    if (remainingDmCampaigns === 0) {
+      await tx.user.updateMany({
+        where: {
+          id: pending.fromUserId as UUID,
+          adminRole: 'CAMPAIGN_DM',
+        },
+        data: { role: 'PLAYER', adminRole: null },
+      })
+    }
+  })
+
+  await consumePendingDmTransfer(campaignId)
+
+  const transferredPayload = {
+    campaignId,
+    campaignName: campaign.name,
+    previousDmId: pending.fromUserId,
+    previousDmUsername: pending.fromUsername,
+    newDmId: user.userId,
+    newDmUsername: user.username,
+    transferredAt: now,
+  }
+
+  // Notify all campaign members.
+  await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:DM_TRANSFERRED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: now,
+    payload: transferredPayload,
+  })
+
+  // Notify the old DM of the accepted response.
+  eventBroadcaster.sendToUser(pending.fromUserId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:DM_TRANSFER_RESPONDED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.PLAYER,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: now,
+    payload: {
+      campaignId,
+      toUserId: user.userId,
+      toUsername: user.username,
+      response: 'ACCEPTED',
+      respondedAt: now,
+    },
+  })
+
+  logger.info('campaign.routes', 'DM transfer accepted', {
+    campaignId,
+    previousDmId: pending.fromUserId,
+    newDmId: user.userId,
+  })
+
+  return res.status(200).json({
+    campaignId,
+    previousDmId: pending.fromUserId,
+    newDmId: user.userId,
+    transferredAt: new Date(now).toISOString(),
+  })
+})
 
 /**
  * POST /:campaignId/dm/handoff/decline
  * Target player declines a pending ownership offer.
  * Clears the pending state and notifies the DM.
  */
-router.post(
-  '/:campaignId/dm/handoff/decline',
-  requireAuth,
-  async (req: Request, res: Response) => {
-    const user = (req as any).user
-    const { campaignId } = req.params
+router.post('/:campaignId/dm/handoff/decline', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
 
-    if (!isValidUUID(campaignId)) {
-      return res
-        .status(400)
-        .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
-    }
-
-    const pending = await getPendingDmTransfer(campaignId)
-    if (!pending) {
-      return res
-        .status(404)
-        .json({ code: ErrorCode.NOT_FOUND, message: 'No pending DM transfer for this campaign' })
-    }
-
-    if (pending.toUserId !== (user.userId as UUID)) {
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: 'You are not the target of this DM transfer',
-      })
-    }
-
-    await clearPendingDmTransfer(campaignId)
-
-    eventBroadcaster.sendToUser(pending.fromUserId as UUID, {
-      type: 'CAMPAIGN:DM_TRANSFER_RESPONDED',
-      sessionId: null as any,
-      payload: {
-        campaignId,
-        toUserId: user.userId,
-        toUsername: user.username,
-        response: 'DECLINED',
-        respondedAt: Date.now(),
-      },
-    })
-
-    logger.info('campaign.routes', 'DM transfer declined', {
-      campaignId,
-      fromUserId: pending.fromUserId,
-      toUserId: user.userId,
-    })
-
-    return res.status(200).json({ declined: true })
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
   }
-)
+
+  const pending = await getPendingDmTransfer(campaignId)
+  if (!pending) {
+    return res
+      .status(404)
+      .json({ code: ErrorCode.NOT_FOUND, message: 'No pending DM transfer for this campaign' })
+  }
+
+  if (pending.toUserId !== (user.userId as UUID)) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'You are not the target of this DM transfer',
+    })
+  }
+
+  await clearPendingDmTransfer(campaignId)
+
+  const declinedAt = Date.now()
+  eventBroadcaster.sendToUser(pending.fromUserId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:DM_TRANSFER_RESPONDED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.PLAYER,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: declinedAt,
+    payload: {
+      campaignId,
+      toUserId: user.userId,
+      toUsername: user.username,
+      response: 'DECLINED',
+      respondedAt: declinedAt,
+    },
+  })
+
+  logger.info('campaign.routes', 'DM transfer declined', {
+    campaignId,
+    fromUserId: pending.fromUserId,
+    toUserId: user.userId,
+  })
+
+  return res.status(200).json({ declined: true })
+})
 
 /**
  * POST /:campaignId/dm/handoff/cancel
  * Current DM cancels their pending outgoing offer.
  * Clears the pending state and notifies the target player.
  */
-router.post(
-  '/:campaignId/dm/handoff/cancel',
-  requireAuth,
-  async (req: Request, res: Response) => {
-    const user = (req as any).user
-    const { campaignId } = req.params
+router.post('/:campaignId/dm/handoff/cancel', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
 
-    if (!isValidUUID(campaignId)) {
-      return res
-        .status(400)
-        .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
-    }
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+  }
 
-    const pending = await getPendingDmTransfer(campaignId)
-    if (!pending) {
-      return res
-        .status(404)
-        .json({ code: ErrorCode.NOT_FOUND, message: 'No pending DM transfer to cancel' })
-    }
+  const pending = await getPendingDmTransfer(campaignId)
+  if (!pending) {
+    return res
+      .status(404)
+      .json({ code: ErrorCode.NOT_FOUND, message: 'No pending DM transfer to cancel' })
+  }
 
-    if (pending.fromUserId !== (user.userId as UUID)) {
-      return res.status(403).json({
-        code: ErrorCode.FORBIDDEN,
-        message: 'Only the DM who initiated the transfer can cancel it',
-      })
-    }
-
-    await clearPendingDmTransfer(campaignId)
-
-    eventBroadcaster.sendToUser(pending.toUserId as UUID, {
-      type: 'CAMPAIGN:DM_TRANSFER_CANCELLED',
-      sessionId: null as any,
-      payload: {
-        campaignId,
-        fromUserId: user.userId,
-        fromUsername: user.username,
-        cancelledAt: Date.now(),
-      },
+  if (pending.fromUserId !== (user.userId as UUID)) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Only the DM who initiated the transfer can cancel it',
     })
+  }
 
-    logger.info('campaign.routes', 'DM transfer cancelled', {
+  await clearPendingDmTransfer(campaignId)
+
+  const cancelledAt = Date.now()
+  eventBroadcaster.sendToUser(pending.toUserId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:DM_TRANSFER_CANCELLED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: cancelledAt,
+    payload: {
       campaignId,
       fromUserId: user.userId,
-      toUserId: pending.toUserId,
-    })
+      fromUsername: user.username,
+      cancelledAt,
+    },
+  })
 
-    return res.status(200).json({ cancelled: true })
-  }
-)
+  logger.info('campaign.routes', 'DM transfer cancelled', {
+    campaignId,
+    fromUserId: user.userId,
+    toUserId: pending.toUserId,
+  })
+
+  return res.status(200).json({ cancelled: true })
+})
 
 router.get('/:campaignId', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
