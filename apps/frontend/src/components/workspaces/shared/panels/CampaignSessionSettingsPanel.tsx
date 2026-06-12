@@ -1,4 +1,5 @@
 import { memo, useState, type CSSProperties } from 'react'
+import { SessionState } from '@shared'
 import { Slider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import {
@@ -8,6 +9,8 @@ import {
 } from '@/constants/sessionUi.constants'
 import type { LateJoinPolicy } from '@/types/sessionUi'
 import { SessionTimerCard } from './CampaignSessionSettingsPanel.Timer'
+import { TransferDMSection } from './CampaignSettingsPanel/TransferDMSection'
+import { useStore } from '@/hooks/useStore'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 /**
@@ -104,6 +107,13 @@ export const CampaignSessionSettingsPanel = memo(function CampaignSessionSetting
 ) {
   const [isSaving, setIsSaving] = useState(false)
   const [isSpectatorsExpanded, setIsSpectatorsExpanded] = useState(false)
+  const [isTransferDmExpanded, setIsTransferDmExpanded] = useState(false)
+
+  const outgoingTransfer = useStore((s) =>
+    props.campaignId
+      ? s.outgoingDmTransfers[props.campaignId as import('@shared').UUID]
+      : undefined
+  )
   const durationMin = 60
   const durationMax = 720
 
@@ -249,7 +259,7 @@ export const CampaignSessionSettingsPanel = memo(function CampaignSessionSetting
         )}
       </div>
 
-      {policy && (
+      {policy && props.campaignId && (
         <div className="csp-card csp-card--collapsible">
           <button
             type="button"
@@ -335,6 +345,37 @@ export const CampaignSessionSettingsPanel = memo(function CampaignSessionSetting
                 disabled={spectatorChildDisabled}
               />
             </div>
+          )}
+        </div>
+      )}
+
+      {policy && props.campaignId && (
+        <div className="csp-card csp-card--collapsible">
+          <button
+            type="button"
+            className="csp-card-collapsible-header"
+            aria-expanded={isTransferDmExpanded}
+            onClick={() => setIsTransferDmExpanded((v) => !v)}
+          >
+            <h5 className="crbs-heading csp-card-heading csp-card-heading--inline">Transfer DM</h5>
+            <span className="csp-card-collapsible-header-right">
+              {outgoingTransfer && (
+                <span className="csp-status-pill csp-status-pill--pending">PENDING</span>
+              )}
+              <span
+                className="material-symbols-outlined csp-card-collapsible-chevron"
+                aria-hidden="true"
+              >
+                {isTransferDmExpanded ? 'expand_more' : 'chevron_right'}
+              </span>
+            </span>
+          </button>
+
+          {isTransferDmExpanded && (
+            <TransferDMSection
+              campaignId={props.campaignId as import('@shared').UUID}
+              sessionState={props.sessionStateLabel}
+            />
           )}
         </div>
       )}

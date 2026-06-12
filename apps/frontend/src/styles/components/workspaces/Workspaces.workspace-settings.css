@@ -641,7 +641,7 @@
 
 .csp-dm-transfer-member-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
   border-radius: var(--radius-sm);
@@ -653,14 +653,42 @@
   background: color-mix(in srgb, var(--color-brand) 8%, transparent);
 }
 
-.csp-dm-transfer-member-name {
+.csp-dm-transfer-member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.csp-dm-transfer-member-primary {
   font-weight: 600;
   color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.csp-dm-transfer-member-class {
+  font-weight: 400;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.csp-dm-transfer-member-secondary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.csp-dm-transfer-member-player {
+  color: var(--color-text-secondary);
 }
 
 .csp-dm-transfer-member-username {
   color: var(--color-text-muted);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
 }
 
 /* DM Transfer — pending state uses a softer amber color instead of danger red */

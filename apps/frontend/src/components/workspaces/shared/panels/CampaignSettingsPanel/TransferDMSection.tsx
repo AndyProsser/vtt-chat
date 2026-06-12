@@ -1,24 +1,36 @@
 import { useState, useEffect, useCallback } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { SessionState } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { showToast } from '@/state/toastCenter'
 import type { UUID } from '@shared'
+
+/** Only online members can receive a handoff offer. */
+const ONLINE_STATUSES = new Set(['HERE', 'AWAY', 'LOBBY'])
 
 interface CampaignMember {
   userId: UUID
   username: string
   displayName: string
+  playerName: string | null
+  characterName: string | null
+  characterClass: string | null
+  level: number | null
 }
 
-interface TransferDMSectionProps {
+export interface TransferDMSectionProps {
   campaignId: UUID
-  /** Disabled when the latest session is ACTIVE, PAUSED, or COOLDOWN. */
-  isSessionBlocking: boolean
+  /**
+   * Current session state string. Transfer is only permitted when this is
+   * SessionState.IDLE (greenroom). Pass null when no session exists.
+   */
+  sessionState: string | null
 }
 
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.trim() || window.location.origin
+const API_URL =
+  (import.meta.env.VITE_API_URL as string | undefined)?.trim() || window.location.origin
 
-async function fetchMembers(campaignId: UUID): Promise<CampaignMember[]> {
+async function fetchOnlineMembers(campaignId: UUID): Promise<CampaignMember[]> {
   const token = sessionStorage.getItem('authToken') ?? ''
   const res = await fetch(`${API_URL}/api/campaigns/${campaignId}/party-presence`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -26,11 +38,15 @@ async function fetchMembers(campaignId: UUID): Promise<CampaignMember[]> {
   if (!res.ok) return []
   const data = await res.json()
   return (data.members ?? [])
-    .filter((m: any) => m.role === 'PLAYER')
+    .filter((m: any) => m.role === 'PLAYER' && ONLINE_STATUSES.has(m.status))
     .map((m: any) => ({
       userId: m.userId,
       username: m.username,
       displayName: m.displayName || m.username,
+      playerName: m.playerName || null,
+      characterName: m.characterName || null,
+      characterClass: m.characterClass || null,
+      level: m.level ?? null,
     }))
 }
 
@@ -62,11 +78,11 @@ async function cancelTransfer(campaignId: UUID): Promise<boolean> {
 }
 
 /**
- * Danger-zone adjacent section for DM → player ownership transfer.
- * Shown only in campaign settings (DM-only context).
- * Only enabled when no session is active (IDLE / no session yet).
+ * DM → player ownership transfer section, rendered inside the in-session
+ * settings panel. Only active when the session is in IDLE (greenroom) state
+ * and the target player is online.
  */
-export function TransferDMSection({ campaignId, isSessionBlocking }: TransferDMSectionProps) {
+export function TransferDMSection({ campaignId, sessionState }: TransferDMSectionProps) {
   const [open, setOpen] = useState(false)
   const [members, setMembers] = useState<CampaignMember[]>([])
   const [selectedUserId, setSelectedUserId] = useState<UUID | null>(null)
@@ -77,19 +93,18 @@ export function TransferDMSection({ campaignId, isSessionBlocking }: TransferDMS
   const setOutgoing = useStore((s) => s.setOutgoingDmTransfer)
   const clearOutgoing = useStore((s) => s.clearOutgoingDmTransfer)
 
-  // Fetch members when the dialog opens.
+  const isIdle = sessionState === SessionState.IDLE
+
+  // Fetch online members when the dialog opens.
   useEffect(() => {
     if (!open) return
-    fetchMembers(campaignId).then(setMembers)
+    fetchOnlineMembers(campaignId).then(setMembers)
   }, [open, campaignId])
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      if (!next) setSelectedUserId(null)
-      setOpen(next)
-    },
-    []
-  )
+  const handleOpenChange = useCallback((next: boolean) => {
+    if (!next) setSelectedUserId(null)
+    setOpen(next)
+  }, [])
 
   const handleInitiate = useCallback(async () => {
     if (!selectedUserId || isInitiating) return
@@ -129,19 +144,9 @@ export function TransferDMSection({ campaignId, isSessionBlocking }: TransferDMS
     }
   }, [isCancelling, campaignId, clearOutgoing])
 
-  const blockReason = isSessionBlocking
-    ? 'DM transfer is not available during an active session.'
-    : null
-
   if (outgoing) {
     return (
-      <section className="csp-danger-zone csp-dm-transfer-pending" aria-label="DM transfer pending">
-        <div className="csp-danger-zone-header">
-          <span className="material-symbols-outlined csp-danger-zone-icon" aria-hidden="true">
-            swap_horiz
-          </span>
-          <h5 className="csp-danger-zone-title">DM Transfer Pending</h5>
-        </div>
+      <div className="csp-card-collapsible-body">
         <p className="csp-danger-zone-body">
           Waiting for <strong>{outgoing.toUsername}</strong> to accept the DM handoff. Until they
           respond, you remain the DM.
@@ -154,22 +159,20 @@ export function TransferDMSection({ campaignId, isSessionBlocking }: TransferDMS
         >
           {isCancelling ? 'Cancelling…' : 'Cancel offer'}
         </button>
-      </section>
+      </div>
     )
   }
 
-  return (
-    <section className="csp-danger-zone" aria-label="Transfer campaign DM">
-      <div className="csp-danger-zone-header">
-        <span className="material-symbols-outlined csp-danger-zone-icon" aria-hidden="true">
-          swap_horiz
-        </span>
-        <h5 className="csp-danger-zone-title">Transfer DM Role</h5>
-      </div>
+  const blockReason = !isIdle
+    ? 'Transfer is only available while the session is in the greenroom (IDLE).'
+    : null
 
+  return (
+    <div className="csp-card-collapsible-body">
       <p className="csp-danger-zone-body">
-        Assign another campaign member as the new DM. You will be demoted to Player. This cannot be
-        undone without the new DM's cooperation.
+        Assign a currently-online player as the new DM. They must accept before the transfer takes
+        effect. You will be demoted to Player — this cannot be undone without the new DM's
+        cooperation.
         {blockReason && (
           <>
             {' '}
@@ -180,11 +183,7 @@ export function TransferDMSection({ campaignId, isSessionBlocking }: TransferDMS
 
       <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange}>
         <DialogPrimitive.Trigger asChild>
-          <button
-            type="button"
-            className="csp-danger-zone-trigger"
-            disabled={!!blockReason}
-          >
+          <button type="button" className="csp-danger-zone-trigger" disabled={!!blockReason}>
             Transfer DM role
           </button>
         </DialogPrimitive.Trigger>
@@ -200,13 +199,14 @@ export function TransferDMSection({ campaignId, isSessionBlocking }: TransferDMS
             </DialogPrimitive.Title>
 
             <DialogPrimitive.Description className="csp-delete-dialog-desc">
-              Choose a player to offer the DM role to. They must accept the offer before the
-              transfer takes effect. You will be notified of their response.
+              Choose an online player to offer the DM role to. They must accept before the transfer
+              takes effect.
             </DialogPrimitive.Description>
 
             {members.length === 0 ? (
               <p className="csp-delete-dialog-desc">
-                No players are available to transfer to. Invite players to the campaign first.
+                No players are online right now. The target player must be present in the greenroom
+                to receive the offer.
               </p>
             ) : (
               <div className="csp-dm-transfer-member-list">
@@ -219,8 +219,17 @@ export function TransferDMSection({ campaignId, isSessionBlocking }: TransferDMS
                       checked={selectedUserId === m.userId}
                       onChange={() => setSelectedUserId(m.userId)}
                     />
-                    <span className="csp-dm-transfer-member-name">{m.displayName}</span>
-                    <span className="csp-dm-transfer-member-username">@{m.username}</span>
+                    <span className="csp-dm-transfer-member-info">
+                      <span className="csp-dm-transfer-member-primary">
+                        {m.characterName ?? m.displayName}
+                      </span>
+                      <span className="csp-dm-transfer-member-secondary">
+                        {m.playerName && (
+                          <span className="csp-dm-transfer-member-player">{m.playerName}</span>
+                        )}
+                        <span className="csp-dm-transfer-member-username">@{m.username}</span>
+                      </span>
+                    </span>
                   </label>
                 ))}
               </div>
@@ -244,6 +253,6 @@ export function TransferDMSection({ campaignId, isSessionBlocking }: TransferDMS
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
-    </section>
+    </div>
   )
 }

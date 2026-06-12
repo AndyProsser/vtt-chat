@@ -1668,7 +1668,7 @@ router.post('/:campaignId/dm/handoff', requireAuth, async (req: Request, res: Re
       sessions: {
         orderBy: { createdAt: 'desc' },
         take: 1,
-        select: { state: true },
+        select: { id: true, state: true },
       },
     },
   })
@@ -1684,12 +1684,29 @@ router.post('/:campaignId/dm/handoff', requireAuth, async (req: Request, res: Re
     })
   }
 
-  const latestSessionState = campaign.sessions[0]?.state ?? null
-  const blockedStates: string[] = [SessionState.ACTIVE, SessionState.PAUSED, SessionState.COOLDOWN]
-  if (latestSessionState && blockedStates.includes(latestSessionState)) {
+  // Transfer is only permitted while the greenroom session is open (IDLE state).
+  const latestSession = campaign.sessions[0]
+  const latestSessionState = latestSession?.state ?? null
+  if (latestSessionState !== SessionState.IDLE) {
     return res.status(409).json({
       code: ErrorCode.CONFLICT,
-      message: `DM transfer is not permitted while the session is ${latestSessionState}. End or wait for the session to reach IDLE first.`,
+      message: latestSessionState
+        ? `DM transfer is only permitted while the session is in the greenroom (IDLE). Current state: ${latestSessionState}.`
+        : 'DM transfer requires an open greenroom session (IDLE state).',
+    })
+  }
+
+  // Target player must be online so they can receive and act on the offer.
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  const activeByUser = wsManager?.getActiveRuntimeSessionsByUser() ?? {}
+  const unassignedUsers = wsManager?.getUsersWithUnassignedConnections() ?? []
+  const targetIsOnline =
+    (activeByUser[targetUserId as UUID] ?? []).length > 0 ||
+    unassignedUsers.includes(targetUserId as UUID)
+  if (!targetIsOnline) {
+    return res.status(409).json({
+      code: ErrorCode.CONFLICT,
+      message: 'The target player must be online to receive a DM transfer offer.',
     })
   }
 
