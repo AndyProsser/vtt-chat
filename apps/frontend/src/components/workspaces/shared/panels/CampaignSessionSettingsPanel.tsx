@@ -1,5 +1,4 @@
-import { useState, useEffect, type CSSProperties } from 'react'
-import { SessionState } from '@shared'
+import { memo, useState, type CSSProperties } from 'react'
 import { Slider } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import {
@@ -8,6 +7,7 @@ import {
   LATE_JOIN_POLICY_OPTIONS,
 } from '@/constants/sessionUi.constants'
 import type { LateJoinPolicy } from '@/types/sessionUi'
+import { SessionTimerCard } from './CampaignSessionSettingsPanel.Timer'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 /**
@@ -56,28 +56,11 @@ export interface CampaignSessionSettingsPanelProps {
   campaignPolicy?: CampaignSessionPolicyBindings
 }
 
-const SESSION_TIMER_VISIBLE_STATES = new Set<SessionState>([
-  SessionState.ACTIVE,
-  SessionState.PAUSED,
-  SessionState.COOLDOWN,
-])
-
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
 function formatSessionDuration(mins: number): string {
   const h = Math.floor(mins / 60)
   const m = mins % 60
   return m === 0 ? `${h}h` : `${h}h ${m}m`
-}
-
-/** Formats elapsed time as "Xh Ym" or "Xm Ys". */
-function formatElapsedTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
-  if (h > 0) {
-    return m === 0 ? `${h}h` : `${h}h ${m}m`
-  }
-  return m === 0 ? `${s}s` : `${m}m ${s}s`
 }
 
 /** Reusable ON/OFF toggle pair matching the editor pattern. */
@@ -116,42 +99,14 @@ function TogglePair({
   )
 }
 
-export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanelProps) {
+export const CampaignSessionSettingsPanel = memo(function CampaignSessionSettingsPanel(
+  props: CampaignSessionSettingsPanelProps
+) {
   const [isSaving, setIsSaving] = useState(false)
-  const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now())
   const [isSpectatorsExpanded, setIsSpectatorsExpanded] = useState(false)
   const durationMin = 60
   const durationMax = 720
 
-  useEffect(() => {
-    if (
-      !props.sessionStartedAt ||
-      !SESSION_TIMER_VISIBLE_STATES.has(props.sessionStateLabel as SessionState)
-    ) {
-      return
-    }
-
-    const interval = setInterval(() => setCurrentTimeMs(Date.now()), 1000)
-    return () => clearInterval(interval)
-  }, [props.sessionStartedAt, props.sessionStateLabel])
-
-  const sessionStartedAtMs = props.sessionStartedAt ? props.sessionStartedAt : 0
-  const showSessionTimer =
-    sessionStartedAtMs > 0 &&
-    SESSION_TIMER_VISIBLE_STATES.has(props.sessionStateLabel as SessionState)
-  const elapsed =
-    sessionStartedAtMs > 0 ? Math.floor((currentTimeMs - sessionStartedAtMs) / 1000) : 0
-  const durationSecs = props.plannedDurationMinutes * 60
-  const remainingSecs = Math.max(0, durationSecs - elapsed)
-  const remainingMins = Math.ceil(remainingSecs / 60)
-
-  const getTimerColor = (): 'default' | 'warning' | 'critical' => {
-    if (sessionStartedAtMs === 0) return 'default'
-    if (elapsed >= durationSecs) return 'critical'
-    if (remainingMins <= 15) return 'warning'
-    return 'default'
-  }
-  const timerColor = getTimerColor()
   const defaultDurationMarkerPercent =
     ((Math.min(durationMax, Math.max(durationMin, props.defaultSessionDurationMinutes)) -
       durationMin) /
@@ -199,29 +154,11 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
 
   const content = (
     <div className="session-campaign-settings-panel session-campaign-settings-workspace-root csp-single-col">
-      {showSessionTimer && (
-        <div className={`csp-card csp-card--timer csp-card--timer-${timerColor}`}>
-          <h5 className="crbs-heading csp-card-heading">Session Timer</h5>
-          <div className="csp-timer-display">
-            <div className="csp-timer-value">{formatElapsedTime(elapsed)}</div>
-            <div className="csp-timer-label">elapsed</div>
-          </div>
-          <div className="csp-timer-remaining">
-            <span className="csp-timer-remaining-label">
-              {elapsed >= durationSecs ? 'Over by' : 'Remaining'}
-            </span>
-            <span className={`csp-timer-remaining-value csp-timer-remaining-${timerColor}`}>
-              {elapsed >= durationSecs
-                ? formatElapsedTime(elapsed - durationSecs)
-                : formatElapsedTime(remainingSecs)}
-            </span>
-          </div>
-          {timerColor === 'warning' && <p className="csp-timer-warning">15 minutes remaining</p>}
-          {timerColor === 'critical' && (
-            <p className="csp-timer-critical">Session duration exceeded</p>
-          )}
-        </div>
-      )}
+      <SessionTimerCard
+        sessionStartedAt={props.sessionStartedAt}
+        sessionStateLabel={props.sessionStateLabel}
+        plannedDurationMinutes={props.plannedDurationMinutes}
+      />
 
       <div className="csp-card">
         <h5 className="crbs-heading csp-card-heading">Session</h5>
@@ -419,4 +356,4 @@ export function CampaignSessionSettingsPanel(props: CampaignSessionSettingsPanel
       {content}
     </>
   )
-}
+})

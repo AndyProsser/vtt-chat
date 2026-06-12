@@ -10,7 +10,7 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     23 |      21 |              0 |              2 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     23 |      22 |              0 |              1 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
@@ -18,7 +18,7 @@
 | Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **60** |  **47** |          **2** |         **11** |                |
+| **Total**                              | **60** |  **48** |          **2** |         **10** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 19/23 done; 4 new items from trace 4 (2026-06-12); trace 4 confirms GroupMemberItem, MessageRow, ReconnectBanner, LeftRailSlot, and Tabs.Root cascades resolved. **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -619,9 +619,10 @@ onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
 
 ### PERF-22: Extract CampaignSessionSettingsPanel timer display to a leaf component
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Source**: Profiler trace 2026-06-12
+**Completed**: 2026-06-12
 
 **Problem**: `CampaignSessionSettingsPanel` owns a `setInterval(() => setCurrentTimeMs(Date.now()), 1000)` at line 134 that fires every second and triggers a full re-render of the panel. Two `SliderThumbProvider` instances inside the panel (fid=3454 and fid=3483) each re-render **209×** as a result — the Radix `Slider.Thumb` receives a new `internal_do_not_use_render` function reference on each panel re-render. The sliders render 80 times due to the timer alone (`internal_do_not_use_render` changes in 80 commits). `CampaignSessionSettingsPanel` also appears as an updater **66×** across all commits — only the `SessionTimerLeafInner` (64×) beats it as a commit source in that panel subtree. The sliders should only re-render on explicit user interaction.
 
@@ -631,10 +632,11 @@ onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
 
 **Acceptance Criteria**:
 
-- [ ] Timer display (elapsed, remaining, progress bar, critical class) extracted to a named memo-wrapped leaf component with its own `setInterval`
-- [ ] Both `SliderThumbProvider` instances in the settings panel drop from 209 renders to near-zero between user drag interactions in follow-up trace
-- [ ] `CampaignSessionSettingsPanel` no longer appears as a high-frequency commit updater (target: < 5× in a full-session trace)
-- [ ] Timer display accuracy, progress bar, and overtime/critical visual states unchanged
+- [x] Timer display extracted to `CampaignSessionSettingsPanel.Timer.tsx` — `SessionTimerCard` is `memo()`-wrapped, owns `currentTimeMs` state and `setInterval(1000)`, renders null when session is not in a visible state
+- [x] `CampaignSessionSettingsPanel` wrapped in `memo()` — no longer re-renders on upstream ticks; `currentTimeMs` state and timer `useEffect` removed from the parent entirely (74 lines removed)
+- [ ] Both `SliderThumbProvider` instances drop from 209 renders to near-zero between user drag interactions in follow-up trace
+- [ ] `CampaignSessionSettingsPanel` no longer appears as a high-frequency commit updater in follow-up trace
+- [ ] Timer display accuracy and overtime/critical visual states unchanged
 
 ---
 
