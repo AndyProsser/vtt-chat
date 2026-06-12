@@ -50,7 +50,13 @@ export interface AppConfig {
     jobIntervalMinutes: number
     minCleanupAgeMinutes: number
     endedDisconnectGraceMs: number
+    /** When true, skip starting the in-process cleanup scheduler (BullMQ queues service owns the schedule). */
+    disableInternalScheduler: boolean
   }
+  /** Shared secret for internal job trigger endpoints — must match INTERNAL_JOB_SECRET in queues service. */
+  internalJobSecret: string
+  /** Base URL of the queues service (e.g. http://queues:3001). When set, emails are enqueued rather than sent inline. */
+  queuesUrl: string
 }
 
 export const config: AppConfig = {
@@ -106,7 +112,12 @@ export const config: AppConfig = {
         10
       )
     ),
+    disableInternalScheduler: ['1', 'true', 'yes'].includes(
+      String(process.env.DISABLE_INTERNAL_CLEANUP_SCHEDULER || '').toLowerCase()
+    ),
   },
+  internalJobSecret: process.env.INTERNAL_JOB_SECRET || '',
+  queuesUrl: process.env.QUEUES_URL || '',
 }
 
 // Validate required environment variables

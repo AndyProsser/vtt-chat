@@ -118,7 +118,11 @@ export async function bootstrap(): Promise<BootstrapResult> {
             }
           }
 
-          sessionCleanupJobService.start()
+          if (config.sessionCleanup.disableInternalScheduler) {
+            logger.info('bootstrap', 'Internal cleanup scheduler disabled — queues service owns the schedule')
+          } else {
+            sessionCleanupJobService.start()
+          }
 
           resolve()
         })

@@ -3,7 +3,7 @@ import type { UUID } from '@shared'
 import { isValidUsername } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 import { createToken, hashPassword } from '@/services/auth.service'
-import { sendPasswordResetEmail } from '@/services/email.service'
+import { enqueuePasswordResetEmail } from '@/services/email.service'
 import { validatePassword } from '@/utils/password'
 import { logger } from '@/utils/logger'
 import { AUTH_EMAIL_REGEX, PASSWORD_RESET_TTL_MS } from '@/constants/auth.constants'
@@ -234,7 +234,7 @@ export async function requestPasswordReset(params: {
   const normalizedBaseUrl = String(params.appBaseUrl || '').replace(/\/$/, '')
   const resetUrl = `${normalizedBaseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`
 
-  await sendPasswordResetEmail({
+  await enqueuePasswordResetEmail({
     toEmail: user.email,
     toName: user.displayName,
     resetUrl,

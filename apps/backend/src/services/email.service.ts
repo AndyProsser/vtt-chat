@@ -1,4 +1,8 @@
 import nodemailer from 'nodemailer'
+import { randomUUID } from 'node:crypto'
+import type { SendEmailPayload } from '@shared/jobs/index'
+import { JOB_TYPES } from '@shared/jobs/index'
+import { config } from '@/infra/config'
 import { logger } from '@/utils/logger'
 
 type PasswordResetEmailParams = {
@@ -35,6 +39,50 @@ function getMailTransportConfig() {
       pass,
     },
   }
+}
+
+/**
+ * Enqueues a password reset email via the queues service when QUEUES_URL is configured,
+ * falling back to direct nodemailer delivery. Callers should use this instead of
+ * sendPasswordResetEmail() so failed deliveries get BullMQ retry/DLQ protection.
+ */
+export async function enqueuePasswordResetEmail(params: PasswordResetEmailParams): Promise<void> {
+  if (config.queuesUrl) {
+    const payload: SendEmailPayload = {
+      to: params.toEmail,
+      subject: 'Reset your VTT-Chat password',
+      templateId: 'password-reset',
+      variables: {
+        toName: params.toName ?? '',
+        resetUrl: params.resetUrl,
+      },
+      correlationId: randomUUID(),
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (config.internalJobSecret) {
+      headers['Authorization'] = `Bearer ${config.internalJobSecret}`
+    }
+
+    const res = await fetch(`${config.queuesUrl}/queues/email/enqueue`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: JOB_TYPES.SEND_EMAIL, data: payload }),
+    })
+
+    if (!res.ok) {
+      throw new Error(`Queues service rejected email enqueue: HTTP ${res.status}`)
+    }
+
+    logger.info('email', 'Password reset email enqueued via queues service', {
+      to: params.toEmail,
+      correlationId: payload.correlationId,
+    })
+    return
+  }
+
+  // Fallback: send inline (queues service not configured or in dev)
+  await sendPasswordResetEmail(params)
 }
 
 export async function sendPasswordResetEmail(params: PasswordResetEmailParams): Promise<void> {

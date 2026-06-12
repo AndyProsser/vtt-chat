@@ -15,6 +15,10 @@ services:
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       NODE_ENV: production
       PRISMA_SCHEMA_SYNC_MODE: deploy
+      QUEUES_URL: http://queues:3001
+      INTERNAL_JOB_SECRET: ${INTERNAL_JOB_SECRET}
+      # Set to 1 once you trust the queues service is stable — disables the in-process scheduler.
+      DISABLE_INTERNAL_CLEANUP_SCHEDULER: ${DISABLE_INTERNAL_CLEANUP_SCHEDULER:-0}
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,8 +53,25 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NODE_ENV: production
       QUEUES_PORT: 3001
+      BACKEND_INTERNAL_URL: http://backend:3000
+      INTERNAL_JOB_SECRET: ${INTERNAL_JOB_SECRET}
+      # Option A: well-known service (e.g. Gmail, Outlook365) — takes priority when set
+      SMTP_SERVICE: ${SMTP_SERVICE:-}
+      # Option B: manual SMTP server — used when SMTP_SERVICE is not set
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-0}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-VTT-Chat}
+      # Optional downstream services — workers skip gracefully when unset
+      LLM_SUMMARY_URL: ${LLM_SUMMARY_URL:-}
+      RECORDING_PROCESSOR_URL: ${RECORDING_PROCESSOR_URL:-}
     depends_on:
       redis:
+        condition: service_healthy
+      backend:
         condition: service_healthy
     healthcheck:
       test:

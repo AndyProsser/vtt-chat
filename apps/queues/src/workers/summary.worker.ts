@@ -2,16 +2,18 @@ import { Worker, type Job, type Queue } from 'bullmq'
 import type IORedis from 'ioredis'
 import { QUEUE_NAMES, JOB_TYPES } from '@shared/jobs/index'
 import type { GenerateSummaryPayload, DlqEntryPayload } from '@shared/jobs/index'
-import { logger } from '@/logger'
 import { config } from '@/config'
+import { logger } from '@/logger'
 
 /**
  * Handles post-session summary generation.
- * Phase 1: stub — logs the request and succeeds.
- * Phase 2: call an LLM summarisation endpoint and persist the result.
  *
- * Long-running summary jobs will checkpoint progress (§6 of QUEUE-JOB-MANAGER.md)
- * once the real implementation lands.
+ * When LLM_SUMMARY_URL is set, POSTs the job payload to that endpoint and waits
+ * for confirmation. When unset, the job succeeds silently — safe to enqueue
+ * ahead of the LLM service being deployed.
+ *
+ * Checkpoint resume (§6 of QUEUE-JOB-MANAGER.md) will be added when the LLM
+ * integration is implemented; the payload already carries the fields needed.
  */
 export function startSummaryWorker(connection: IORedis, dlq: Queue): Worker {
   const worker = new Worker(
@@ -23,16 +25,35 @@ export function startSummaryWorker(connection: IORedis, dlq: Queue): Worker {
       }
 
       const payload = job.data as GenerateSummaryPayload
-      logger.info('summary-worker', 'Processing generate-summary job (stub)', {
+      const llmUrl = config.integrations.llmSummaryUrl
+
+      if (!llmUrl) {
+        logger.info('summary-worker', 'LLM_SUMMARY_URL not configured — job skipped (will activate on deploy)', {
+          jobId: job.id,
+          sessionId: payload.sessionId,
+        })
+        return
+      }
+
+      logger.info('summary-worker', 'Sending summary request to LLM service', {
         jobId: job.id,
         sessionId: payload.sessionId,
         campaignId: payload.campaignId,
-        requestedBy: payload.requestedBy,
-        includeTranscript: payload.includeTranscript,
+        llmUrl,
       })
 
-      // TODO(phase-2): Integrate LLM summary service. Checkpoint completed stages to
-      // Postgres so retries can resume without re-processing.
+      const res = await fetch(llmUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '')
+        throw new Error(`LLM service returned HTTP ${res.status}: ${body}`)
+      }
+
+      logger.info('summary-worker', 'Summary request accepted by LLM service', { jobId: job.id })
     },
     { connection, concurrency: 2 }
   )

@@ -17,6 +17,7 @@ export interface QueueRegistry {
   cleanup: Queue
   email: Queue
   summary: Queue
+  recording: Queue
   dlq: Queue
 }
 
@@ -29,6 +30,7 @@ export function createQueues(connection: IORedis): QueueRegistry {
     cleanup: new Queue(QUEUE_NAMES.CLEANUP, opts),
     email: new Queue(QUEUE_NAMES.EMAIL, opts),
     summary: new Queue(QUEUE_NAMES.SUMMARY, opts),
+    recording: new Queue(QUEUE_NAMES.RECORDING, opts),
     dlq: new Queue(QUEUE_NAMES.DLQ, { connection }), // DLQ jobs are not retried
   }
 }

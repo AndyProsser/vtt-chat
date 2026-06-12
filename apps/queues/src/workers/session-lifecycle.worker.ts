@@ -1,48 +1,50 @@
 import { Worker, type Job } from 'bullmq'
 import type IORedis from 'ioredis'
+import type { Queue } from 'bullmq'
 import { QUEUE_NAMES, JOB_TYPES } from '@shared/jobs/index'
 import type { CleanupOldSessionsPayload, DlqEntryPayload } from '@shared/jobs/index'
-import { logger } from '@/logger'
-import type { Queue } from 'bullmq'
 import { config } from '@/config'
+import { logger } from '@/logger'
 
 /**
- * Handles session lifecycle jobs — currently `cleanup-old-sessions`.
+ * Handles session lifecycle jobs.
  *
- * Phase 1: Logs the job and returns. The backend's in-process SessionCleanupJobService
- * still performs the actual transitions. Phase 2 migrates that logic here so the
- * queues service owns the full lifecycle sweep end-to-end.
- *
- * @see docs/architecture/QUEUE-JOB-MANAGER.md §8
+ * Calls POST /api/internal/jobs/trigger/lifecycle-sweep on the backend, which runs
+ * SessionCleanupJobService.runLifecycleWorkerOnce() (COOLDOWN→ENDED, ENDED→CLEANUP).
+ * The backend owns DB writes and WS broadcasting; this worker owns scheduling + retry.
  */
 export function startSessionLifecycleWorker(connection: IORedis, dlq: Queue): Worker {
   const worker = new Worker(
     QUEUE_NAMES.SESSION_LIFECYCLE,
     async (job: Job) => {
-      switch (job.name) {
-        case JOB_TYPES.CLEANUP_OLD_SESSIONS: {
-          const payload = job.data as CleanupOldSessionsPayload
-          logger.info('session-lifecycle-worker', 'Processing cleanup-old-sessions job', {
-            jobId: job.id,
-            triggeredBy: payload.triggeredBy,
-            maxAgeMs: payload.maxAgeMs,
-          })
-
-          // TODO(phase-2): Replace this stub with the migrated session lifecycle sweep logic
-          // from apps/backend/src/services/session/cleanup-job.service.ts. The worker will
-          // call backend internal HTTP endpoints or share a DB connection (TBD in Phase 2).
-          logger.info('session-lifecycle-worker', 'cleanup-old-sessions job completed (stub)', {
-            jobId: job.id,
-          })
-          break
-        }
-
-        default:
-          logger.warn('session-lifecycle-worker', 'Unknown job type received — discarding', {
-            jobName: job.name,
-            jobId: job.id,
-          })
+      if (job.name !== JOB_TYPES.CLEANUP_OLD_SESSIONS) {
+        logger.warn('session-lifecycle-worker', 'Unknown job type — discarding', {
+          jobName: job.name,
+          jobId: job.id,
+        })
+        return
       }
+
+      const payload = job.data as CleanupOldSessionsPayload
+      logger.info('session-lifecycle-worker', 'Triggering lifecycle sweep on backend', {
+        jobId: job.id,
+        triggeredBy: payload.triggeredBy,
+      })
+
+      const url = `${config.backendInternalUrl}/api/internal/jobs/trigger/lifecycle-sweep`
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (config.internalJobSecret) {
+        headers['Authorization'] = `Bearer ${config.internalJobSecret}`
+      }
+
+      const res = await fetch(url, { method: 'POST', headers })
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '')
+        throw new Error(`Backend lifecycle sweep failed: HTTP ${res.status} — ${body}`)
+      }
+
+      logger.info('session-lifecycle-worker', 'Lifecycle sweep completed', { jobId: job.id })
     },
     {
       connection,
@@ -51,14 +53,13 @@ export function startSessionLifecycleWorker(connection: IORedis, dlq: Queue): Wo
   )
 
   worker.on('completed', (job) => {
-    logger.info('session-lifecycle-worker', 'Job completed', { jobId: job.id, jobName: job.name })
+    logger.info('session-lifecycle-worker', 'Job completed', { jobId: job.id })
   })
 
   worker.on('failed', (job, err) => {
     const exhausted = (job?.attemptsMade ?? 0) >= config.retry.maxAttempts
     logger.warn('session-lifecycle-worker', exhausted ? 'Job moved to DLQ' : 'Job failed — will retry', {
       jobId: job?.id,
-      jobName: job?.name,
       attemptsMade: job?.attemptsMade,
       error: err.message,
     })

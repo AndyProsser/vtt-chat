@@ -1592,12 +1592,16 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] Dead-letter queue for failed jobs after max retries (`vttchat:dlq` queue; workers push `DlqEntryPayload` on terminal failure)
 - [x] Operator can inspect/retry/clear jobs via admin API (`GET/POST/DELETE /queues/*`, secured with `QUEUE_ADMIN_SECRET`)
 
-**Remaining (Phase 2)**:
-- [ ] Migrate `SessionCleanupJobService` logic into `session-lifecycle` worker (workers are functional stubs until then)
-- [ ] Migrate archive verification into `cleanup` worker
-- [ ] Wire `send-email` worker to nodemailer/provider
-- [ ] Wire `generate-summary` worker to LLM summarisation endpoint with checkpoint resume
-- [ ] Add Caddy/admin-app routing to the queues admin API for UI-level inspection
+**Phase 3 complete**:
+- [x] `generate-summary` worker feature-gated on `LLM_SUMMARY_URL` — skips gracefully when not set; activates automatically on deploy
+- [x] `process-recording` worker feature-gated on `RECORDING_PROCESSOR_URL` — dedicated `vttchat:recording` queue; same graceful skip pattern
+- [x] Admin app queue inspection via `GET|POST|DELETE /api/admin/queues/*` — backend proxies to queues service with `adminAuthMiddleware` (no direct browser → queues exposure)
+- [x] `docs/architecture/QUEUE-JOB-MANAGER.md` updated from blueprint to implemented state with ASCII diagram and comm pattern detail
+- [x] `docs/operations/QUEUES.md` created — full operator reference: env vars, queue reference, admin API, DLQ workflow, troubleshooting
+
+**Remaining (Phase 4 / future)**:
+- [ ] LLM checkpoint resume for `generate-summary` (once LLM integration is live)
+- [ ] Set `DISABLE_INTERNAL_CLEANUP_SCHEDULER=1` in production once BullMQ schedule is proven stable
 
 **Related Docs**:
 

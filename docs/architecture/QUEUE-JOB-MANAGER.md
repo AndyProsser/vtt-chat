@@ -1,176 +1,168 @@
 # Queue Job Manager
 
-Status: Planned architecture and implementation blueprint.
+Status: Implemented (Phase 1–3 complete). Phase 3 optional integrations (LLM summarisation, recording processor) activate via env var — safe to deploy without them.
 
-This document defines the durable queue and worker model for backend scheduled and long-running tasks.
+See `docs/operations/QUEUES.md` for operator reference (env vars, admin API, runbook).
+
+---
 
 ## 1. Why This Exists
 
-The current in-process interval jobs are useful for small, frequent work, but they do not provide restart durability for long-running tasks.
+In-process interval jobs tied to the backend process cannot survive a backend restart mid-run. Long-running operations (transcription staging, email delivery, post-session summaries) must be durable: survive restarts, retry on failure, and provide operator visibility.
 
-We need a queue manager that guarantees:
+The queue manager guarantees:
 
-- Job durability across backend restarts
-- Retry and dead-letter handling for transient failures
-- Idempotent execution for state-transition tasks
-- Progress checkpointing for multi-hour jobs
-- Operator visibility into queued/running/failed work
+- Job durability across backend and queues service restarts (state lives in Redis)
+- Exponential-backoff retry per job type
+- Dead-letter queue (DLQ) after max retries exhausted
+- Idempotent execution at handler boundaries
+- Operator API for inspect / retry / clear
+
+---
 
 ## 2. Scope
 
-In scope:
+**In scope:**
 
-- Scheduled lifecycle jobs (for example session cleanup scans)
-- Session transition jobs (for example ENDED -> CLEANUP work units)
-- Post-session processing jobs (transcription, summarization)
-- Any future asynchronous backend workflows that can exceed request/response lifetimes
+- Session lifecycle scheduling (COOLDOWN→ENDED, ENDED→CLEANUP)
+- Archive verification (CLEANUP age check + greenroom purge)
+- Outbound email delivery
+- Post-session summary generation (activates when `LLM_SUMMARY_URL` is set)
+- Recording processing (activates when `RECORDING_PROCESSOR_URL` is set)
+- Progress checkpointing for long-running jobs (planned for LLM/recording phase)
 
-Out of scope:
+**Out of scope:**
 
-- Replacing realtime websocket/event-bus flow for user-facing sub-second actions
+- Replacing real-time WS/event-bus flow for sub-second user-facing actions
 - Replacing PostgreSQL as source of truth for campaign/session state
 
-## 3. Target Architecture
+---
+
+## 3. Architecture
 
 ```text
-Scheduler (repeatable jobs)
-  -> Redis queue (durable job envelopes)
-  -> Worker pool (concurrency-limited processors)
-  -> Result + progress persistence (Postgres)
-  -> WS/API status projection (operator + user visibility)
+┌─────────────────────────────────────────────────────────────────────┐
+│ apps/queues container (port 3001, internal network only)             │
+│                                                                       │
+│  BullMQ Scheduler                                                    │
+│    └─ repeatable: cleanup-old-sessions every 5 min (cron)           │
+│                                                                       │
+│  Workers                                                             │
+│    session-lifecycle  ──► POST backend:3000/api/internal/jobs/...   │
+│    cleanup            ──► POST backend:3000/api/internal/jobs/...   │
+│    email              ──► SMTP (nodemailer, own config)              │
+│    summary            ──► POST LLM_SUMMARY_URL (when set)           │
+│    recording          ──► POST RECORDING_PROCESSOR_URL (when set)   │
+│                                                                       │
+│  Admin HTTP API (secured by QUEUE_ADMIN_SECRET)                     │
+│    GET/POST/DELETE /queues/*                                         │
+│  Enqueue API (secured by INTERNAL_JOB_SECRET)                       │
+│    POST /queues/:queue/enqueue                                       │
+└─────────────────────────────────────────────────────────────────────┘
+           ▲ POST /api/internal/jobs/trigger/*        ▲ enqueue
+           │  (INTERNAL_JOB_SECRET)                   │
+┌──────────┴──────────────┐          ┌────────────────┴─────────────┐
+│ apps/backend (3000)      │          │ backend (producer)            │
+│  SessionCleanupJob       │          │  enqueuePasswordResetEmail()  │
+│  archiveWorker           │          │  (+ future: recording, summ.) │
+│  WS broadcast            │          └──────────────────────────────┘
+└─────────────────────────┘
+           ▼ /api/admin/queues/* (adminAuthMiddleware proxy)
+┌─────────────────────────┐
+│ Admin app / operator     │
+└─────────────────────────┘
 ```
 
-Core components:
+### Communication pattern
 
-1. Queue adapter
+**Queues → Backend (lifecycle, cleanup):**  
+Workers call `POST /api/internal/jobs/trigger/lifecycle-sweep` and `/archive-verify`. The backend runs the actual session state transitions (DB writes, WS broadcast). Workers own scheduling, retry, and DLQ.
 
-- Enqueue, retry, backoff, dead-letter operations
-- Queue namespacing by domain (`session-lifecycle`, `cleanup`, `transcription`, `summary`)
+**Backend → Queues (email, future recording/summary):**  
+Backend calls `POST http://queues:3001/queues/:queue/enqueue`. Both directions are secured with a shared `INTERNAL_JOB_SECRET` bearer token.
 
-2. Scheduler
+**Admin app → Queues (inspection):**  
+Admin frontend calls `/api/admin/queues/*`, which the backend proxies to the queues service after verifying the admin JWT. The queues service never needs to be directly reachable by the browser.
 
-- Registers repeatable scans (for example ended-session scans)
-- Emits per-session work items instead of doing all work inline
+**Queues → External service (summary, recording):**  
+Workers call `LLM_SUMMARY_URL` / `RECORDING_PROCESSOR_URL` directly. When the env var is unset the job completes silently — safe to enqueue ahead of the service being deployed.
 
-3. Workers
+---
 
-- Independent processes; safe to restart without losing queued work
-- Concurrency and rate limits per queue
-- Idempotent handlers
+## 4. Queues and Job Types
 
-4. Job status store
+| Queue name                  | Job type               | Trigger                   | Worker action                    |
+|-----------------------------|------------------------|---------------------------|----------------------------------|
+| `vttchat:session-lifecycle` | `cleanup-old-sessions` | Scheduler (cron, 5 min)   | POST backend lifecycle-sweep     |
+| `vttchat:cleanup`           | _(future types)_       | On-demand                 | POST backend archive-verify      |
+| `vttchat:email`             | `send-email`           | Backend enqueue           | SMTP delivery via nodemailer     |
+| `vttchat:summary`           | `generate-summary`     | Backend enqueue (future)  | POST LLM_SUMMARY_URL             |
+| `vttchat:recording`         | `process-recording`    | Backend enqueue (future)  | POST RECORDING_PROCESSOR_URL     |
+| `vttchat:dlq`               | `dlq-entry`            | Automatic on exhaustion   | Holds failed job metadata        |
 
-- Persistent status and checkpoints in Postgres
-- Stable status transitions for operations visibility
+Job type constants: `packages/shared/jobs/names.ts`  
+Payload interfaces: `packages/shared/jobs/types.ts`
 
-## 4. Durability Contract
+---
 
-Durability requirements:
+## 5. Durability Contract
 
-- A queued job survives backend process restart.
-- A running job interrupted by restart is either resumed from checkpoint or safely retried.
-- Jobs are idempotent at handler boundaries.
-- Every retry preserves correlation identifiers and attempt counters.
+- A queued job survives backend or queues service restart (BullMQ state persisted in Redis).
+- A running job interrupted by restart is automatically retried from the beginning by BullMQ.
+- Job handlers must be idempotent — calling `runLifecycleWorkerOnce()` twice is safe.
+- After `QUEUE_MAX_ATTEMPTS` failures the job is moved to `vttchat:dlq` with a full `DlqEntryPayload`.
+- DLQ jobs are never retried automatically; operator must retry or clear them.
 
-Recommended status model:
+---
 
-- `QUEUED`
-- `RUNNING`
-- `SUCCEEDED`
-- `FAILED_RETRYABLE`
-- `FAILED_TERMINAL`
-- `CANCELLED`
+## 6. Retry Policy
 
-## 5. Idempotency and Safety
+Default (all queues except DLQ):
 
-Each job must include:
+| Setting          | Default  | Env override          |
+|------------------|----------|-----------------------|
+| Max attempts     | 5        | `QUEUE_MAX_ATTEMPTS`  |
+| Backoff type     | exponential | —                  |
+| Initial delay    | 5 000 ms | `QUEUE_BASE_DELAY_MS` |
+| Completed kept   | 500 jobs or 7 days | —         |
+| Failed kept      | indefinite (for DLQ promotion) | — |
 
-- `jobType`
-- `dedupeKey` (for example `session:{id}:cleanup-transition:{window}`)
-- `correlationId`
-- `attempt`
-- `payloadVersion`
+---
 
-Rules:
+## 7. Long-Running Job Checkpointing
 
-- Duplicate enqueues with same `dedupeKey` should no-op or coalesce.
-- Handlers must read authoritative backend state before mutating.
-- State transitions must be valid even if the same job runs more than once.
+Not yet implemented. Planned for the LLM summarisation and recording processing workers once those integrations are live.
 
-## 6. Long-Running Job Checkpointing
-
-For jobs that may run for many minutes/hours (transcription, summaries):
-
-- Persist checkpoint progress every bounded interval or stage completion.
-- On retry/restart, resume from latest checkpoint.
-- Store artifact references (file IDs, chunk offsets, model run IDs) in checkpoint payload.
-
-Checkpoint minimums:
+Minimum checkpoint fields (to be persisted in PostgreSQL):
 
 - `lastCompletedStage`
 - `lastProcessedOffset`
 - `updatedAt`
 - `recoveryHint`
 
-## 7. Operational Policies
+---
 
-Retry policy defaults:
+## 8. Relationship to Backend's In-Process Scheduler
 
-- Retryable failures: exponential backoff with jitter
-- Terminal failures: move to DLQ with error taxonomy
-- Max retry attempts configurable per queue
+The backend runs its own in-process `SessionCleanupJobService` in parallel with BullMQ by default. This belt-and-suspenders approach ensures cleanup is never lost if the queues service is temporarily unavailable.
 
-Observability:
+Once BullMQ is proven stable, set `DISABLE_INTERNAL_CLEANUP_SCHEDULER=1` in the backend's env to let BullMQ own the schedule exclusively.
 
-- Queue depth, throughput, active workers, retry counts, DLQ counts
-- Job latency percentiles by job type
-- Stalled job detector
-- Admin/operator API for requeue/cancel/inspect
+---
 
-## 8. Relationship to Current Cleanup Workers
+## 9. Security
 
-Current cleanup behavior remains the contract baseline:
+- `INTERNAL_JOB_SECRET` secures worker→backend trigger calls and backend→queues enqueue calls.
+- `QUEUE_ADMIN_SECRET` secures direct calls to the queues admin API.
+- Admin app inspection goes through the backend's `adminAuthMiddleware` — `QUEUE_ADMIN_SECRET` never reaches the browser.
+- Job payloads must not contain raw secrets, passwords, or session tokens.
+- Whisper content is excluded from all transcription and summary job payloads by policy.
 
-- Lifecycle worker handles `COOLDOWN -> ENDED` and `ENDED -> CLEANUP`
-- Archive worker handles cleanup verification
+---
 
-Queue migration path:
+## 10. Related Documents
 
-1. Keep scans in scheduler, enqueue per-session transition jobs.
-2. Move transition logic into dedicated queue workers.
-3. Keep current grace and state-validation rules unchanged.
-
-## 9. Security and Privacy
-
-- Job payloads must avoid raw sensitive content unless required.
-- Secrets are never serialized into queue payloads.
-- Recording/transcription jobs must honor off-the-record policies:
-  - Whisper content excluded
-  - Pause runtime content excluded by default
-  - Boundary markers allowed
-
-See [TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md).
-
-## 10. Rollout Plan
-
-Phase 1:
-
-- Queue adapter and one durable queue (`session-cleanup-transition`)
-- Scheduler emits jobs; worker performs transition + purge unit
-
-Phase 2:
-
-- Move archive verification to queue worker
-- Add operator status endpoints and DLQ tooling
-
-Phase 3:
-
-- Add transcription and summary workers with checkpoint resume
-- Add admin observability screens and rerun controls
-
-## 11. Related Documents
-
-- [SESSION-LIFECYCLE.md](docs/architecture/SESSION-LIFECYCLE.md)
-- [STATE-RECOVERY.md](docs/architecture/STATE-RECOVERY.md)
-- [RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
-- [TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
+- [docs/operations/QUEUES.md](../operations/QUEUES.md) — operator reference
+- [docs/architecture/SESSION-LIFECYCLE.md](SESSION-LIFECYCLE.md)
+- [docs/architecture/STATE-RECOVERY.md](STATE-RECOVERY.md)
+- [docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md](TRANSCRIPTION-RECORDING-SYSTEM.md)

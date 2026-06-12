@@ -2,13 +2,13 @@ import { Worker, type Job, type Queue } from 'bullmq'
 import type IORedis from 'ioredis'
 import { QUEUE_NAMES, JOB_TYPES } from '@shared/jobs/index'
 import type { SendEmailPayload, DlqEntryPayload } from '@shared/jobs/index'
-import { logger } from '@/logger'
+import { sendEmail } from '@/email/sender'
 import { config } from '@/config'
+import { logger } from '@/logger'
 
 /**
  * Handles outbound email delivery jobs.
- * Phase 1: stub — logs the intended delivery and succeeds.
- * Phase 2: wire nodemailer (or an email provider SDK) and send the actual email.
+ * Sends email directly via SMTP using the queues service's own SMTP config.
  */
 export function startEmailWorker(connection: IORedis, dlq: Queue): Worker {
   const worker = new Worker(
@@ -20,15 +20,14 @@ export function startEmailWorker(connection: IORedis, dlq: Queue): Worker {
       }
 
       const payload = job.data as SendEmailPayload
-      logger.info('email-worker', 'Processing send-email job (stub)', {
+      logger.info('email-worker', 'Processing send-email job', {
         jobId: job.id,
         to: payload.to,
-        subject: payload.subject,
         templateId: payload.templateId,
         correlationId: payload.correlationId,
       })
 
-      // TODO(phase-2): Integrate nodemailer/email provider to deliver the email.
+      await sendEmail(payload)
     },
     { connection, concurrency: 5 }
   )

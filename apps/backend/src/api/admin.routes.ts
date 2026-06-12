@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { errorHandler, adminAuthMiddleware } from '@/infra/http/middleware'
+import adminQueuesRoutes from './admin-queues.routes'
 import { loadLogRetentionSettings, updateLogRetentionSettings } from '@/infra/telemetry-store'
 import type { AdminAuthToken } from '@/types'
 import { writeAdminAudit } from '@/services/admin/admin-access.service'
@@ -910,5 +911,8 @@ router.get('/telemetry/logs', async (req: Request, res: Response) => {
   })
   res.status(200).json(payload)
 })
+
+// Queue service inspection proxy — protected by adminAuthMiddleware inside adminQueuesRoutes
+router.use('/queues', adminQueuesRoutes)
 
 export default router

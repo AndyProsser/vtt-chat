@@ -4,6 +4,7 @@ import { startSessionLifecycleWorker } from '@/workers/session-lifecycle.worker'
 import { startCleanupWorker } from '@/workers/cleanup.worker'
 import { startEmailWorker } from '@/workers/email.worker'
 import { startSummaryWorker } from '@/workers/summary.worker'
+import { startRecordingWorker } from '@/workers/recording.worker'
 import { logger } from '@/logger'
 
 export interface WorkerRegistry {
@@ -11,6 +12,7 @@ export interface WorkerRegistry {
   cleanup: Worker
   email: Worker
   summary: Worker
+  recording: Worker
 }
 
 /** Starts all BullMQ workers. Call once at startup, after queues are created. */
@@ -22,11 +24,10 @@ export function startAllWorkers(connection: IORedis, dlq: Queue): WorkerRegistry
     cleanup: startCleanupWorker(connection, dlq),
     email: startEmailWorker(connection, dlq),
     summary: startSummaryWorker(connection, dlq),
+    recording: startRecordingWorker(connection, dlq),
   }
 
-  logger.info('workers', 'All workers started', {
-    workers: Object.keys(registry),
-  })
+  logger.info('workers', 'All workers started', { workers: Object.keys(registry) })
 
   return registry
 }

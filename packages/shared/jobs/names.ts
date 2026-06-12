@@ -4,6 +4,7 @@ export const QUEUE_NAMES = {
   CLEANUP: 'vttchat:cleanup',
   EMAIL: 'vttchat:email',
   SUMMARY: 'vttchat:summary',
+  RECORDING: 'vttchat:recording',
   DLQ: 'vttchat:dlq',
 } as const
 

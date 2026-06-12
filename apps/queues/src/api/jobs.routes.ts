@@ -25,6 +25,7 @@ function getQueue(queues: QueueRegistry, name: string): Queue | null {
     cleanup: queues.cleanup,
     email: queues.email,
     summary: queues.summary,
+    recording: queues.recording,
     dlq: queues.dlq,
   }
   return map[name] ?? null
@@ -43,6 +44,7 @@ export function createJobsRouter(queues: QueueRegistry): Router {
           cleanup: queues.cleanup,
           email: queues.email,
           summary: queues.summary,
+          recording: queues.recording,
           dlq: queues.dlq,
         }).map(async ([name, q]) => {
           const counts = await q.getJobCounts('active', 'waiting', 'delayed', 'completed', 'failed', 'paused')
