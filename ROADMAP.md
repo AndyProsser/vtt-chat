@@ -10,7 +10,7 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     23 |      20 |              0 |              3 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     23 |      21 |              0 |              2 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
@@ -18,7 +18,7 @@
 | Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **60** |  **46** |          **2** |         **12** |                |
+| **Total**                              | **60** |  **47** |          **2** |         **11** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 19/23 done; 4 new items from trace 4 (2026-06-12); trace 4 confirms GroupMemberItem, MessageRow, ReconnectBanner, LeftRailSlot, and Tabs.Root cascades resolved. **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -586,9 +586,10 @@ onSelectVoicePreset={(preset) => { ... }}
 
 ### PERF-21: Fix MessageInputComponent typing callbacks in ChatWindow
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Source**: Profiler trace 2026-06-12
+**Completed**: 2026-06-12
 
 **Problem**: `ChatWindow.tsx:420–421` passes inline arrow wrappers for `onTypingStarted` and `onTypingStopped`:
 
@@ -610,7 +611,7 @@ onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
 
 **Acceptance Criteria**:
 
-- [ ] `onTypingStarted` and `onTypingStopped` are `useCallback`-wrapped in `ChatWindow.tsx` — no inline arrows at the JSX call site
+- [x] `onTypingStarted` and `onTypingStopped` extracted to `handleTypingStarted`/`handleTypingStopped` — both `useCallback([emitTypingEvent])` in `ChatWindow.tsx`; `emitTypingEvent` itself is already stable so these are unconditionally stable
 - [ ] `MessageInputComponent` prop-change renders from typing callbacks drop from 149 to 0 in follow-up trace
 - [ ] Typing indicator appearance, WS event emission, and debounce timing unchanged
 

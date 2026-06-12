@@ -293,6 +293,16 @@ function ChatWindowComponent({
     [roomId, sendWsEvent, sessionId, user.id, user.role, user.username]
   )
 
+  const handleTypingStarted = useCallback(
+    () => emitTypingEvent('CHAT:TYPING_STARTED'),
+    [emitTypingEvent]
+  )
+
+  const handleTypingStopped = useCallback(
+    () => emitTypingEvent('CHAT:TYPING_STOPPED'),
+    [emitTypingEvent]
+  )
+
   const retryFailedMessage = useCallback(
     async (entry: OutgoingChatMessage) => {
       setError(null)
@@ -417,8 +427,8 @@ function ChatWindowComponent({
 
       <MessageInput
         onSend={handleSend}
-        onTypingStarted={() => emitTypingEvent('CHAT:TYPING_STARTED')}
-        onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
+        onTypingStarted={handleTypingStarted}
+        onTypingStopped={handleTypingStopped}
         role={user.role}
         sessionId={sessionId}
         currentUserId={user.id}
