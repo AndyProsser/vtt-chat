@@ -8,7 +8,7 @@ COPY packages/shared ./packages/shared
 # Install admin dependencies
 COPY apps/admin/package.json apps/admin/package-lock.json* ./apps/admin/
 WORKDIR /workspace/apps/admin
-RUN npm ci
+RUN npm install
 
 COPY apps/admin/tsconfig.json ./
 COPY apps/admin/index.html ./
