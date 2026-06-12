@@ -15,10 +15,10 @@
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
+| Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **54** |  **44** |          **2** |          **8** |                |
+| **Total**                              | **56** |  **44** |          **2** |         **10** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -1728,6 +1728,84 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Export and Import section (admin variant; DM contract to be appended when implemented)
+
+---
+
+
+### W-Chat-Commands: Chat Command System
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 Medium (post-MVP)
+**Depends on**: Core Reliability complete, W-Inventory-System (for inventory commands)
+
+**Scope**: A slash-command system for the chat input. DM and Players can issue `/roll`, `/me`, `/whisper`, `/OOC`, and `/dm` commands, plus inventory commands (`/take`, `/give`, `/loot`, `/loot-split`, `/drop`). A `[/]` icon button opens a role-aware help popup; typing `/` triggers an inline autocomplete command palette.
+
+**Acceptance Criteria**:
+
+- [ ] Typing `/` in the chat input opens a filtered autocomplete command palette showing available commands
+- [ ] `[/]` icon button on the left of the chat input opens a full help popup (role-aware: players do not see DM-only commands)
+- [ ] Command registry defined in `shared/types/chatCommands.ts` (name, syntax, description, example, roles, availableInStates)
+- [ ] `/roll [dice]` — styled roll card in chat; dice resolved server-side for fairness; visible to all in room
+- [ ] `/me [action]` — italic emote line in chat, scoped to current room, styled as IC
+- [ ] `/whisper @{player} [message]` — shortcut for whisper; same privacy rules as direct whisper
+- [ ] `/OOC [message]` — forces OOC tag/style regardless of current IC/OOC mode toggle
+- [ ] `/dm [message]` — player-to-DM only whisper; not visible to other players
+- [ ] Inventory commands covered in W-Inventory-System acceptance criteria
+- [ ] Unknown command → toast error (not posted to chat)
+- [ ] Permission-denied command → toast error (not posted to chat)
+- [ ] Backend re-validates role and session state before executing any command (client checks are UX only)
+- [ ] Commands unavailable in greenroom/IDLE by default; `availableInStates` per command governs this
+- [ ] Unit tests for command parser in `apps/frontend/tests/`
+- [ ] Backend command handler tests in `apps/backend/tests/`
+
+**Related Docs**:
+
+- [docs/subsystems/CHAT-SYSTEM.md](docs/subsystems/CHAT-SYSTEM.md) — §9 Chat Commands
+
+---
+
+### W-Inventory-System: Character and Party Inventory with SRD Integration
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 Medium (post-MVP)
+**Depends on**: Core Reliability complete, W-Chat-Commands (for command entry UX)
+
+**Scope**: Full campaign-scoped inventory system. Character and party inventories with GP/SP/CP/EP/PP currency. Item search backed by the D&D 5e SRD API (2014 or 2024, DM-selects per campaign). All in-session inventory changes produce a system chat message and an inventory history log entry. Accessible via a new INVENTORY right-rail tab and via chat commands.
+
+**Acceptance Criteria**:
+
+- [ ] New INVENTORY right-rail tab added (after PARTY, before ROOMS in canonical dock order)
+- [ ] INVENTORY tab shows: Party Inventory view, own Character Inventory view; DM sees all character inventories
+- [ ] Spectators see party and all character inventories in read-only mode
+- [ ] Campaign setting: SRD ruleset (2014 or 2024); default 2014
+- [ ] Item search autocomplete calls `GET /api/srd/items?q=` (backend proxy, 24h cache, fails silently if SRD API unreachable)
+- [ ] Custom items supported (free-text name, no SRD backing required)
+- [ ] Item fields: name, quantity, source (SRD/custom), optional notes
+- [ ] Currency per character wallet and party purse (GP/SP/CP/EP/PP)
+- [ ] `[+Add]` button for DM to add items or currency directly from the panel
+- [ ] `[⋯]` per-item action menu: Move to…, Edit notes, Remove (with confirmation)
+- [ ] Inventory history log overlay (within INVENTORY panel): filterable by character, date range, item, action type
+- [ ] Campaign settings for player permissions: Allow players /give and /take (ON default); Allow players /loot (OFF default)
+- [ ] `/loot [item] [qty?]` — DM adds item to party inventory; chat system message in ACTIVE session
+- [ ] `/loot-split [item] [qty?]` — DM proposes split; Loot Split Card appears in chat; players accept in one click; unaccepted shares revert to party after 60s
+- [ ] `/take [item] [qty?]` — player takes from party inventory (campaign setting gated)
+- [ ] `/give @{player\|party} [item] [qty?]` — player gives item to target
+- [ ] `/drop [item] [qty?]` — remove item from own/party inventory (confirmation required)
+- [ ] Currency shorthand: `/give @party 10gp`, `/take 5sp` etc.
+- [ ] All inventory mutations during ACTIVE session → system message in chat + history log entry
+- [ ] Mutations outside ACTIVE session → history log entry only (no chat message)
+- [ ] WS events: `INVENTORY:ITEM_ADDED`, `INVENTORY:ITEM_REMOVED`, `INVENTORY:ITEM_TRANSFERRED`, `INVENTORY:LOOT_SPLIT_PROPOSED`, `INVENTORY:LOOT_SPLIT_ACCEPTED`, `INVENTORY:LOOT_SPLIT_EXPIRED`, `INVENTORY:CURRENCY_CHANGED`
+- [ ] 4-layer state: PostgreSQL persistence (campaign-scoped) → WS broadcast → Zustand `inventorySlice`
+- [ ] `InventoryItem`, `CurrencyWallet`, `InventoryHistoryEntry` Prisma models added and migrated
+- [ ] REST endpoints: party inventory CRUD, character inventory CRUD, transfer, loot-split, SRD proxy, history
+- [ ] Zustand `inventorySlice` rehydrates from REST on panel mount; no Redis (not presence/audio data)
+- [ ] Unit tests for inventory mutations and WS handlers
+- [ ] Integration tests for loot-split flow and permission gating
+
+**Related Docs**:
+
+- [docs/subsystems/INVENTORY-SYSTEM.md](docs/subsystems/INVENTORY-SYSTEM.md)
+- [docs/subsystems/CHAT-SYSTEM.md](docs/subsystems/CHAT-SYSTEM.md) — §9 Chat Commands
 
 ---
 

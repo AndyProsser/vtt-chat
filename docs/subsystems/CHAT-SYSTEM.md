@@ -405,6 +405,59 @@ interface CampaignMessageArchive {
 
 ---
 
+## **9. Chat Commands**
+
+### **9.1 Overview**
+
+Chat commands are slash-prefixed instructions entered in the chat input. They are parsed client-side before send; the backend validates permissions and processes the action. Commands never appear as raw text in the chat stream — they produce styled output cards, system messages, or toast errors.
+
+**Availability:** DM and Players only. Spectators cannot issue commands but see their output.
+
+### **9.2 UX: Help Popup and Autocomplete**
+
+Two entry points:
+
+1. **Type `/`** in the chat input → a filtered autocomplete command palette appears inline, listing all commands available to the current role. Continued typing narrows the list. Pressing Enter or clicking selects and completes the command.
+2. **Click the `[/]` icon** on the left of the chat input → a full help popup opens, showing every available command with its syntax and an example. The popup is role-aware (DM sees DM-only commands; players do not).
+
+The command registry (`shared/types/chatCommands.ts`) is the canonical source of available commands, their syntax, role gates, and descriptions shown in the popup.
+
+### **9.3 Command Registry**
+
+| Command | Syntax | Who | Output |
+| ------- | ------ | --- | ------ |
+| `/roll` | `/roll [dice]` e.g. `/roll 1d20+5` | DM + Players | Styled roll card in chat (visible to all in room). Supports standard dice notation (`NdX[+/-M]`). |
+| `/me` | `/me [action]` | DM + Players | Italic emote line: `* {player} draws their sword *`. Styled as IC, scoped to current room. |
+| `/whisper` | `/whisper @{player} [message]` | DM + Players | Shortcut for whisper targeting; same privacy rules as a direct whisper. |
+| `/OOC` | `/OOC [message]` | DM + Players | Forces OOC message styling and tag regardless of the current IC/OOC mode toggle. |
+| `/dm` | `/dm [message]` | Players | Player-to-DM only whisper. Equivalent to whispering `@DM`. DM sees the message; no other players see it. |
+| `/take` | `/take [item] [qty?]` | Players (campaign setting) | Transfer item from Party Inventory to own character. Logs to inventory history. |
+| `/give` | `/give @{player\|party} [item] [qty?]` | Players | Transfer item from own character to target player or Party Inventory. |
+| `/loot` | `/loot [item] [qty?]` | DM only | Add item to Party Inventory. Generates a loot system message in chat. |
+| `/loot-split` | `/loot-split [item] [qty?]` | DM only | Propose a loot distribution card; players accept their share in one click. |
+| `/drop` | `/drop [item] [qty?]` | DM + Players | Remove item from own inventory (or party inventory for DM). Logs to inventory history. |
+
+Inventory commands are documented fully in `docs/subsystems/INVENTORY-SYSTEM.md`.
+
+### **9.4 Command Parsing Rules**
+
+- Commands must begin with `/` as the first character of the input (leading whitespace is trimmed first).
+- The command word is case-insensitive (`/Roll`, `/roll`, `/ROLL` are all valid).
+- Arguments after the command word are parsed left-to-right; quantity is always the last argument if present and numeric.
+- Unknown command → toast error: `"Unknown command /{word}. Type / to see available commands."` — not posted to chat.
+- Permission denied → toast error: `"/{command} is not available to your role."` — not posted to chat.
+- Malformed arguments → toast error with the correct syntax hint — not posted to chat.
+
+### **9.5 Implementation Notes**
+
+- Command definitions live in `shared/types/chatCommands.ts` — each entry includes: `name`, `syntax`, `description`, `example`, `roles: Role[]`, `availableInStates: SessionState[]`.
+- Frontend `ChatInputParser` detects leading `/`, looks up the command, validates role and state, then either renders the autocomplete palette or dispatches the command action.
+- Backend re-validates role and session state before executing any command action (client-side checks are UX only, not security gates).
+- `/roll` results are server-side authoritative: the roll is seeded server-side and the result broadcast via `CHAT:MESSAGE_SENT` with `type: 'ROLL'` so all clients see the same value.
+- `/me`, `/OOC`, `/whisper`, and `/dm` produce standard chat messages with a `subtype` field (`EMOTE`, `OOC`, `WHISPER`) — they follow all existing visibility and persistence rules for their underlying message type.
+
+---
+
 ## **10. Implementation Notes**
 
 - **Client-side filtering:** Message filtering occurs on the frontend for responsiveness. The visibility algorithm is applied to render only appropriate messages.
