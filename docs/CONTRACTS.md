@@ -1188,9 +1188,116 @@ When a guest upgrades to a full account (`POST /api/auth/upgrade`), all active e
 
 ---
 
+## Session Schedule Contract (W-Session-Schedule)
+
+DMs can configure a repeating session schedule on a campaign. The schedule drives the next session date displayed in the Campaign Info panel for all members.
+
+### Data model
+
+Four fields on Campaign (all nullable; absence means no schedule configured):
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `sessionScheduleType` | `SessionScheduleType` enum | `WEEKLY`, `BIWEEKLY`, or `MONTHLY_NTH` |
+| `sessionScheduleDay` | `Int` (0–6) | Day of week (0 = Sunday) |
+| `sessionScheduleNth` | `Int` (1–4) | Nth occurrence of the day; `MONTHLY_NTH` only |
+| `sessionScheduleHour` | `Int` (0–23) | Hour component of session start time |
+| `sessionScheduleMinute` | `Int` (0–59) | Minute component of session start time |
+| `sessionScheduleTz` | `String` | IANA timezone (e.g. `"America/New_York"`) |
+| `nextSessionDate` | `DateTime?` | Authoritative next session datetime |
+| `nextSessionIsManual` | `Boolean` | `true` when DM has overridden auto-calc for this one session |
+
+### Endpoints
+
+**Update schedule** (extends existing settings endpoint, DM only):
+
+```http
+PATCH /api/campaigns/:id/settings
+Body: {
+  sessionSchedule?: {
+    type: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY_NTH'
+    day: 0–6
+    nth?: 1–4          // required when type === 'MONTHLY_NTH'
+    hour: 0–23
+    minute: 0–59
+    timezone: string   // IANA timezone
+  }
+}
+Response 200: { nextSessionDate: ISO8601 | null, scheduleLabel: string | null }
+```
+
+On success: calculates `nextSessionDate` as the first occurrence after `now()`, persists all fields, emits `CAMPAIGN:SCHEDULE_UPDATED`.
+
+**Manual override for next session** (DM only):
+
+```http
+PUT /api/campaigns/:id/next-session-date
+Body: { date: ISO8601 }
+Response 200: { nextSessionDate: ISO8601 }
+```
+
+Sets `nextSessionIsManual = true`. Does not alter the recurring schedule. Emits `CAMPAIGN:SCHEDULE_UPDATED`. Rejected with `400` if no schedule is configured (use `PATCH /settings` to set the schedule first, or set an explicit one-off date there).
+
+**Clear schedule** (DM only):
+
+```http
+DELETE /api/campaigns/:id/schedule
+Response 204
+```
+
+Clears all `sessionSchedule*` fields and `nextSessionDate`. Emits `CAMPAIGN:SCHEDULE_UPDATED` with all null values.
+
+### Auto-advance on session end
+
+On `SESSION:ENDED`:
+
+1. If `sessionScheduleType` is set: call `calculateNextOccurrence(schedule, now())` and persist the result to `nextSessionDate`.
+2. Reset `nextSessionIsManual = false` unconditionally — the manual override (if any) was consumed by the session that just ended.
+3. Broadcast `CAMPAIGN:SCHEDULE_UPDATED`.
+
+The DM's manual override therefore applies to exactly one session. After that session ends, the schedule resumes automatically.
+
+### WS Event
+
+```ts
+CAMPAIGN:SCHEDULE_UPDATED
+{
+  campaignId:          string
+  scheduleType:        SessionScheduleType | null
+  scheduleDay:         number | null
+  scheduleNth:         number | null
+  scheduleHour:        number | null
+  scheduleMinute:      number | null
+  scheduleTz:          string | null
+  nextSessionDate:     string | null   // ISO8601
+  scheduleLabel:       string | null   // e.g. "Every 2nd Sunday of the month at 1:00 PM"
+  nextSessionIsManual: boolean
+}
+```
+
+Broadcast to all connected campaign members (DM, players, spectators).
+
+### Display contract
+
+The next session date is visible to **all campaign members**. It is shown in the Campaign Info panel when session state is `IDLE`, `ENDED`, `COOLDOWN`, or `CLEANUP`. It is hidden during `ACTIVE` and `PAUSED` (the session is already running). Display format: `"Sun Jun 14 at 1:00 PM · in 2 days"` (date localised to the viewing user's browser timezone; the relative label uses the authoritative `nextSessionDate` from the server).
+
+DM-only controls: pencil icon to open an inline override date/time picker; "Revert to schedule" link to clear the manual override without clearing the schedule.
+
+### Constraints
+
+- Only the campaign DM may set, override, or clear the schedule.
+- `sessionScheduleNth` is required when `type === MONTHLY_NTH` and must be 1–4.
+- `sessionScheduleTz` must be a valid IANA timezone string; backend validates with `Intl.DateTimeFormat`.
+- `nextSessionDate` is always stored in UTC; display conversion happens client-side.
+- Schedule fields persist across session boundaries (campaign-scoped). Exporting a campaign includes all schedule fields.
+- Clearing the schedule does not clear session history or any other campaign state.
+
+---
+
 **Document Version**: 1.1
 **Locked By**: Stage 0 Build Agent
 **Lock Date**: April 17, 2026
 **Amendment Date**: 2026-05-21 — Campaign visibility model, request-to-join, WATCH entry, guest upgrade, campaign retire/resume, admin export/import contracts added.
 **Amendment Date**: 2026-06-04 — Groups panel contracts added: reserved names, group close, group delete, environment apply, DM audio override (GAIN/FILTER/GATE).
 **Amendment Date**: 2026-06-08 — Extension Device Credential Contract added: per-browser persistent credential, 90-day rolling expiry, credential exchange endpoint, expiry behaviour by account type, revocation.
+**Amendment Date**: 2026-06-12 — Session Schedule Contract added: structured recurrence picker, next session date auto-advance, DM manual override, CAMPAIGN:SCHEDULE_UPDATED event.

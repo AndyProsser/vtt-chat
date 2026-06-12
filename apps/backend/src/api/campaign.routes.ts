@@ -75,6 +75,7 @@ import {
   getPendingDmTransfer,
   storePendingDmTransfer,
 } from '@/services/dm-transfer.service'
+import { sendCampaignSystemMessage } from '@/services/chat.service'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -1881,6 +1882,20 @@ router.post('/:campaignId/dm/handoff/accept', requireAuth, async (req: Request, 
     transferredAt: now,
   }
 
+  // Log a campaign-scoped system message so the handoff survives refresh.
+  let systemMessage: Awaited<ReturnType<typeof sendCampaignSystemMessage>> | null = null
+  try {
+    systemMessage = await sendCampaignSystemMessage({
+      campaignId: campaignId as UUID,
+      content: `[DM Role Transferred] ${pending.fromUsername} passed the DM role to ${user.username}.`,
+    })
+  } catch (err) {
+    logger.warn('campaign.routes', 'Failed to post DM transfer system message', {
+      campaignId,
+      err,
+    })
+  }
+
   // Notify all campaign members.
   await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
     id: randomUUID() as UUID,
@@ -1893,6 +1908,32 @@ router.post('/:campaignId/dm/handoff/accept', requireAuth, async (req: Request, 
     timestamp: now,
     payload: transferredPayload,
   })
+
+  // Broadcast the system message to greenroom listeners.
+  if (systemMessage) {
+    await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+      id: randomUUID() as UUID,
+      type: 'CHAT:MESSAGE_SENT',
+      version: 1,
+      userId: user.userId as UUID,
+      userRole: Role.DM,
+      sessionId: null as unknown as UUID,
+      roomId: null,
+      timestamp: systemMessage.createdAt,
+      payload: {
+        messageId: systemMessage.id,
+        roomId: systemMessage.roomId,
+        authorId: systemMessage.authorId,
+        authorUsername: systemMessage.authorUsername,
+        content: systemMessage.content,
+        type: systemMessage.type,
+        isDmOnly: systemMessage.isDmOnly,
+        isOffTheRecord: systemMessage.isOffTheRecord,
+        visibleTo: systemMessage.visibleTo,
+        targetIds: systemMessage.targetIds,
+      },
+    })
+  }
 
   // Notify the old DM of the accepted response.
   eventBroadcaster.sendToUser(pending.fromUserId as UUID, {

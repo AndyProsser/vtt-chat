@@ -1578,7 +1578,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Queues: Durable Queue Manager (BullMQ)
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -1600,10 +1600,9 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] `docs/architecture/QUEUE-JOB-MANAGER.md` updated from blueprint to implemented state with ASCII diagram and comm pattern detail
 - [x] `docs/operations/QUEUES.md` created — full operator reference: env vars, queue reference, admin API, DLQ workflow, troubleshooting
 
-**Remaining (Phase 4 / future)**:
+**Production ops** (non-feature, no code change):
 
-- [ ] LLM checkpoint resume for `generate-summary` (once LLM integration is live)
-- [ ] Set `DISABLE_INTERNAL_CLEANUP_SCHEDULER=1` in production once BullMQ schedule is proven stable
+- Set `DISABLE_INTERNAL_CLEANUP_SCHEDULER=1` in production once BullMQ schedule is proven stable
 
 **Related Docs**:
 
@@ -1692,7 +1691,7 @@ Backend is production-ready for extension integration. All guest auth contracts,
 
 ### W-DM-Handoff: Campaign Ownership Transfer
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🔵 Low (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -1705,11 +1704,7 @@ Backend is production-ready for extension integration. All guest auth contracts,
 - [x] Handoff is not permitted during an active session (must be from greenroom/IDLE)
 - [x] All campaign-scoped data (groups, notes, history) is preserved on transfer
 - [x] Former DM is demoted to PLAYER role automatically
-- [ ] Handoff is logged as a campaign system event (system chat message — deferred)
-
-**Remaining**:
-
-- [ ] System chat message posted to greenroom on successful transfer
+- [x] Handoff is logged as a campaign system event
 
 **Related Docs**:
 
@@ -1719,7 +1714,7 @@ Backend is production-ready for extension integration. All guest auth contracts,
 
 ### W-DM-Campaign-Portability: DM Self-Service Campaign Export and Import
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Complete
 **Priority**: 🔵 Low (post-MVP)
 **Depends on**: W0-Lobby-Admin (shares export format), Core Reliability complete
 
@@ -1730,7 +1725,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 **Acceptance Criteria**:
 
 - [x] `GET /api/campaigns/:id/export` — DM-authenticated (campaign owner only). Returns portable JSON: campaign metadata, groups/environments, session history/chat (IC, OOC, system bookends), notes/journal. Member list includes display names and roles but no emails or passwords.
-- [x] Export respects campaign privacy: Whisper (PRIVATE room messages and WHISPER-type messages) excluded. Paused/cooldown-ephemeral opt-in deferred.
+- [x] Export respects campaign privacy: Whisper (PRIVATE room messages and WHISPER-type messages) excluded. All other persisted messages (including OOC during PAUSED/COOLDOWN) are included.
 - [x] `POST /api/campaigns/import` — authenticated user. Creates a new campaign with fresh UUIDs from the export file; the caller becomes the new DM. Import never overwrites an existing campaign.
 - [x] Import is idempotent for the same file: re-importing always creates a new campaign, never patches an existing one.
 - [x] Lobby offline workspace surfaces "Export Campaign" in the campaign header actions (DM-only, not visible to players or spectators).
@@ -1738,13 +1733,47 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [x] Export and import progress/result surfaces as a toast; errors include a human-readable reason.
 - [x] Imported campaign appears in the DM's lobby list immediately; players must be re-invited via the normal invite flow.
 
-**Remaining**:
-
-- [ ] Paused/cooldown-ephemeral content opt-in (`?includePausedChat=true`) — deferred; requires session-state timestamps on messages.
-
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Export and Import section (admin variant; DM contract to be appended when implemented)
+
+---
+
+### W-Session-Schedule: Next Session Date
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 Medium (post-MVP)
+**Depends on**: Core Reliability complete
+
+**Scope**: DMs configure a repeating session schedule (weekly, biweekly, or monthly on the Nth weekday) via a structured picker in the Campaign Settings panel. The system calculates and surfaces the next session date in the Campaign Info panel for all campaign members. After each session ends the date auto-advances from the schedule. The DM can override the next date for any individual session without disrupting the ongoing schedule.
+
+**Design**:
+
+- **Schedule input**: Structured picker — repeat type (weekly / biweekly / monthly), day of week, optional Nth (1st–4th; monthly only), time, and IANA timezone. A utility function in `packages/shared/utils/session-schedule.ts` generates the human-readable label (`"Every 2nd Sunday of the month at 1:00 PM"`) and calculates the next occurrence. No free-text parsing.
+- **Next session date**: A `nextSessionDate DateTime?` field on Campaign, authoritative on the backend. Auto-recalculated on `SESSION:ENDED`. The DM can override for any single session via `PUT /api/campaigns/:id/next-session-date`; after that session ends, the schedule resumes — the manual flag is consumed once.
+- **Display**: Visible to all members (DM, players, spectators). Shown in the Campaign Info panel whenever no session is running (`IDLE`, `ENDED`, `COOLDOWN`, `CLEANUP`). Hidden during `ACTIVE`/`PAUSED`. Format: date + relative time, e.g. `"Sun Jun 14 at 1:00 PM · in 2 days"`.
+
+**Acceptance Criteria**:
+
+- [ ] Prisma migration: `sessionScheduleType SessionScheduleType?`, `sessionScheduleDay Int?`, `sessionScheduleNth Int?`, `sessionScheduleHour Int?`, `sessionScheduleMinute Int?`, `sessionScheduleTz String?`, `nextSessionDate DateTime?`, `nextSessionIsManual Boolean @default(false)` added to Campaign
+- [ ] New Prisma enum `SessionScheduleType { WEEKLY BIWEEKLY MONTHLY_NTH }` in schema and mirrored in `packages/shared/types/`
+- [ ] `packages/shared/utils/session-schedule.ts`: pure functions `formatScheduleLabel(schedule)` and `calculateNextOccurrence(schedule, after)` — timezone-aware via `date-fns-tz`, no side effects, unit-tested
+- [ ] `PATCH /api/campaigns/:id/settings` extended to accept `sessionSchedule` fields (DM only); calculates and persists `nextSessionDate`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [ ] `PUT /api/campaigns/:id/next-session-date` — DM-only manual override; body `{ date: ISO8601 }`; sets `nextSessionIsManual = true`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [ ] `DELETE /api/campaigns/:id/schedule` — DM only; clears all schedule fields and `nextSessionDate`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [ ] On `SESSION:ENDED`: if `sessionScheduleType` set, call `calculateNextOccurrence(schedule, now())`, persist to Campaign, reset `nextSessionIsManual = false`, broadcast `CAMPAIGN:SCHEDULE_UPDATED`
+- [ ] `CAMPAIGN:SCHEDULE_UPDATED` event type defined in `packages/shared/events/campaign.ts`, registered in `apps/backend/src/ws/index.ts`; payload includes `nextSessionDate`, `scheduleLabel`, `nextSessionIsManual`
+- [ ] `CampaignInformationPanelCampaign` type extended with `nextSessionDate: string | null`, `scheduleLabel: string | null`
+- [ ] `NextSessionDate` — `React.memo` leaf component in `CampaignInformationPanel/`; renders when session state is `IDLE | ENDED | COOLDOWN | CLEANUP`; DM sees pencil edit icon; clicking opens inline date/time override picker with a "Revert to schedule" option that calls `DELETE /api/campaigns/:id/schedule`'s override endpoint
+- [ ] `SessionSchedulePicker` component in `CampaignSettingsPanel/`; structured recurrence controls; live preview of generated label; `[Clear Schedule]` action
+- [ ] Zustand campaign slice updated with schedule fields; rehydrates from GET `/api/campaigns/:id/settings`; updates on `CAMPAIGN:SCHEDULE_UPDATED`
+- [ ] Campaign export payload (`W-DM-Campaign-Portability`) includes schedule fields
+- [ ] Unit tests for `formatScheduleLabel()` and `calculateNextOccurrence()`: weekly, biweekly, monthly-Nth, DST boundary cases
+- [ ] Unit test: `CAMPAIGN:SCHEDULE_UPDATED` Zustand handler
+
+**Related Docs**:
+
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — Session Schedule Contract section
 
 ---
 
@@ -1876,6 +1905,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [ ] Transcription processes asynchronously with retry/dead-letter
 - [ ] Summary generation uses transcript + boundary markers + player actions
 - [ ] Off-the-record content (Whisper, Paused runtime content) is excluded from transcript
+- [ ] LLM checkpoint resume for `generate-summary` worker (allows resuming an interrupted summary job mid-generation)
 
 **Related Docs**:
 
