@@ -8,7 +8,7 @@ It assumes you're using:
 - **Ubuntu 22.04+** (or any modern Debian‑based distro)
 - **WSL 2** (if on Windows — see [Windows Setup](#-windows--wsl-setup) section below)
 
-Frontend beta/runtime debug knobs in `frontend/.env`:
+Frontend beta/runtime debug knobs in `apps/frontend/.env`:
 
 - `VITE_MEMORY_PRESSURE_THRESHOLD_MB` or `VITE_MEMORY_PRESSURE_THRESHOLD_BYTES`: memory-pressure threshold before the workspace recovery toast appears
 - `VITE_MEMORY_PRESSURE_POLL_MS`: how often the browser memory guard samples memory APIs
@@ -208,8 +208,8 @@ cd vtt-chat
 Copy the example env files:
 
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.example apps/frontend/.env
 ```
 
 Fill in:
@@ -299,13 +299,13 @@ ipconfig getifaddr en0
 
 Then in your `.env`:
 
-```
+```text
 LIVEKIT_NODE_IP=192.168.1.50   # replace with your actual LAN IP
 ```
 
 2. **Add the HTTPS origin to `CORS_ALLOWED_ORIGINS`** if the browser sends cross-origin requests:
 
-```
+```text
 CORS_ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173,http://localhost:5174,https://192.168.1.50:8443
 ```
 
@@ -328,6 +328,7 @@ If you use Firefox on Linux, either enable `security.enterprise_roots.enabled` i
 manually via `Settings -> Privacy & Security -> Certificates -> View Certificates -> Authorities -> Import`.
 
 4. **Browse to `https://192.168.x.x:8443`** after trusting the CA.
+
    The issued leaf certificate covers `localhost` and the `LIVEKIT_NODE_IP` value wired into
    Caddy as `DEV_HOST_IP`, so set `LIVEKIT_NODE_IP` before starting the stack when you want
    LAN-IP access without a certificate warning.
@@ -416,7 +417,7 @@ wsl -e bash -lc "cd /mnt/c/Users/<your-user>/dev/vtt-chat && npm run ci:lint"
 ESLint note:
 
 - React linting now runs through `@eslint-react/eslint-plugin`, so the old peer-dependency workaround for `eslint-plugin-react` is no longer needed.
-- The repo root and package-local ESLint entrypoints now use ESM flat config files (`eslint.config.mjs`) so `npm run lint` works consistently from the root, `frontend/`, `admin/`, and `backend/`.
+- The repo root and package-local ESLint entrypoints now use ESM flat config files (`eslint.config.mjs`) so `npm run lint` works consistently from the root, `apps/frontend/`, `apps/admin/`, and `apps/backend/`.
 
 VS Code will auto‑format on save.
 
@@ -541,7 +542,57 @@ docker compose -f docker-compose.dev.yml up --build
 
 ---
 
-## ❤️ 14. Need Help?
+## ⚠️ 14. Docker Compose Path Resolution Gotcha
+
+The `infra/scripts/server.sh` script wraps every `docker compose` call with
+`--project-directory "$INSTALL_DIR"` (the repo root). This is intentional — Docker Compose
+resolves `.env` relative to the project directory, so without it the variables in the
+compose files are empty.
+
+**The side-effect:** every relative path inside `infra/docker-compose*.yml` now resolves
+from the **repo root**, not from `infra/`. This trips up anyone who edits those files.
+
+| What you might write     | What Compose actually resolves                  |
+| ------------------------ | ----------------------------------------------- |
+| `context: ..`            | parent of the repo (wrong)                      |
+| `../apps/backend/src`    | one level above the repo (wrong)                |
+| `./livekit/livekit.yaml` | `<repo>/livekit/` (wrong — it's under `infra/`) |
+| `../.env`                | parent of the repo (wrong)                      |
+
+**Second gotcha — bind mounts must start with `./`.**
+Docker Compose distinguishes bind mounts from named volumes by the leading `./`. A path like
+`apps/backend/src:...` with no leading `./` is treated as a named volume name and you'll get
+`service "X" refers to undefined volume apps/backend/src`. Always use `./apps/backend/src:...`.
+
+**Rule: all paths in `infra/docker-compose*.yml` must be relative to the repo root and prefixed with `./`.**
+
+Correct equivalents:
+
+```yaml
+# build context (. is already unambiguous)
+context: .                              # repo root
+
+# source volume mounts — must start with ./
+- ./apps/backend/src:/workspace/apps/backend/src
+- ./packages/shared:/workspace/packages/shared
+
+# config files that live inside infra/
+- ./infra/livekit/livekit.yaml:/etc/livekit.yaml
+- ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile
+
+# env file
+- .env                                  # repo root .env, not infra/.env
+```
+
+Named volumes (Docker-managed) don't need `./` — those are defined in the top-level `volumes:` block
+and referenced by name (e.g. `backend_node_modules:/workspace/apps/backend/node_modules`).
+
+If you're adding a new bind mount, always start the host-side path with `./` and write it
+relative to the repo root.
+
+---
+
+## ❤️ 15. Need Help?
 
 If you run into issues:
 
@@ -665,8 +716,8 @@ cd vtt-chat
 Copy the example files:
 
 ```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp apps/backend/.env.example apps/backend/.env
+cp apps/frontend/.env.example apps/frontend/.env
 ```
 
 Fill in:
@@ -735,7 +786,7 @@ docker compose -f docker-compose.dev.yml up --build
 
 Notes:
 
-- These vars apply to backend/frontend/admin dev containers.
+- These vars apply to `apps/backend`, `apps/frontend`, and `apps/admin` dev containers.
 - Polling improves reliability on Windows bind mounts, but can increase CPU usage.
 - If possible, store the repo in the WSL filesystem (for example under `~/`) for best watcher performance.
 

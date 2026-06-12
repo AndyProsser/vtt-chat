@@ -1,0 +1,359 @@
+.session-message-list__message {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  width: 100%;
+}
+
+.session-message-list__message-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.42rem;
+  width: 100%;
+  justify-content: flex-start;
+  padding-left: 0.5rem;
+}
+
+.session-message-list__message-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: min(78%, 38rem);
+}
+
+.session-message-list__message--whisper .session-message-list__message-content {
+  max-width: min(86%, 42rem);
+}
+
+.session-message-list__message--grouped {
+  margin-top: -0.12rem;
+}
+
+.session-message-list__message--self {
+  align-items: flex-end;
+}
+
+.session-message-list__message--self .session-message-list__message-row {
+  justify-content: flex-end;
+}
+
+.session-message-list__message--self .session-message-list__message-content {
+  align-items: flex-end;
+}
+
+.session-message-list__message-meta {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.32rem;
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+}
+
+.session-message-list__message-author {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.session-message-list__message-avatar {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 80%, transparent);
+  background: color-mix(in srgb, var(--color-brand) 18%, var(--color-surface-subtle) 82%);
+  color: var(--color-text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.session-message-list__message-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.session-message-list__message-avatar--system {
+  background: color-mix(in srgb, var(--color-warn) 25%, var(--color-surface-subtle) 75%);
+}
+
+.session-message-list__message-avatar--spacer {
+  display: none;
+}
+
+.session-message-list__message--self .session-message-list__message-meta {
+  justify-content: flex-end;
+  padding-inline: 0.08rem 0.18rem;
+}
+
+.session-message-list__message-bubble {
+  position: relative;
+  margin-top: 0;
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 0.95rem;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  padding: 0.6rem 0.75rem 0.52rem;
+  line-height: 1.38;
+  font-size: 0.84rem;
+}
+
+.session-message-list__message:not(.session-message-list__message--grouped)
+  .session-message-list__message-bubble {
+  margin-top: 0.16rem;
+}
+
+.session-message-list__message-bubble-text {
+  display: block;
+}
+
+.session-message-list__message-type-icon {
+  position: absolute;
+  top: -0.42rem;
+  right: 0.45rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 78%, transparent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  line-height: 1;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.35);
+}
+
+.session-message-list__message--self .session-message-list__message-type-icon {
+  left: 0.45rem;
+  right: auto;
+}
+
+.session-message-list__message--self.session-message-list__message--grouped
+  .session-message-list__message-type-icon {
+  left: 0.58rem;
+  top: -0.34rem;
+}
+
+.session-message-list__message-type-icon--ic {
+  border-color: color-mix(in srgb, #60a5fa 52%, var(--color-border-soft));
+  background: color-mix(in srgb, #60a5fa 24%, var(--color-surface) 76%);
+  color: color-mix(in srgb, #dbeafe 88%, var(--color-text-primary));
+}
+
+.session-message-list__message-type-icon--ooc {
+  border-color: color-mix(in srgb, #34d399 52%, var(--color-border-soft));
+  background: color-mix(in srgb, #34d399 24%, var(--color-surface) 76%);
+  color: color-mix(in srgb, #dcfce7 88%, var(--color-text-primary));
+}
+
+.session-message-list__message-type-icon--whisper {
+  border-color: color-mix(in srgb, #c084fc 52%, var(--color-border-soft));
+  background: color-mix(in srgb, #c084fc 24%, var(--color-surface) 76%);
+  color: color-mix(in srgb, #f3e8ff 88%, var(--color-text-primary));
+}
+
+.session-message-list__message-type-icon--dm {
+  border-color: color-mix(in srgb, #f59e0b 52%, var(--color-border-soft));
+  background: color-mix(in srgb, #f59e0b 24%, var(--color-surface) 76%);
+  color: color-mix(in srgb, #ffedd5 88%, var(--color-text-primary));
+}
+
+.session-message-list__message-type-icon--whisper-dm {
+  border-color: color-mix(in srgb, #f59e0b 52%, var(--color-border-soft));
+  background: color-mix(in srgb, #f59e0b 24%, var(--color-surface) 76%);
+  color: color-mix(in srgb, #ffedd5 88%, var(--color-text-primary));
+}
+
+.session-message-list__message-type-icon--system {
+  border-color: color-mix(in srgb, #f59e0b 52%, var(--color-border-soft));
+  background: color-mix(in srgb, #f59e0b 24%, var(--color-surface) 76%);
+  color: color-mix(in srgb, #ffedd5 88%, var(--color-text-primary));
+}
+
+.session-message-list__message-bubble--ic {
+  background: color-mix(in srgb, var(--color-surface) 90%, #60a5fa 10%);
+  border-color: color-mix(in srgb, #60a5fa 28%, var(--color-border-soft) 72%);
+}
+
+.session-message-list__message-bubble--ooc {
+  background: color-mix(in srgb, var(--color-surface) 90%, #34d399 10%);
+  border-color: color-mix(in srgb, #34d399 28%, var(--color-border-soft) 72%);
+}
+
+.session-message-list__message-bubble--whisper {
+  background: color-mix(in srgb, var(--color-surface) 90%, #c084fc 10%);
+  border-color: color-mix(in srgb, #c084fc 28%, var(--color-border-soft) 72%);
+}
+
+.session-message-list__message-bubble--dm {
+  background: color-mix(in srgb, var(--color-surface) 88%, #f59e0b 12%);
+  border-color: color-mix(in srgb, #f59e0b 34%, var(--color-border-soft) 66%);
+}
+
+.session-message-list__message-bubble--whisper-dm {
+  background: color-mix(in srgb, var(--color-surface) 88%, #f59e0b 12%);
+  border-color: color-mix(in srgb, #f59e0b 34%, var(--color-border-soft) 66%);
+}
+
+.session-message-list__message-bubble--system {
+  background: color-mix(in srgb, var(--color-surface) 94%, #f59e0b 6%);
+  border-color: color-mix(in srgb, #f59e0b 16%, var(--color-border-soft) 84%);
+}
+
+/* ── Condition / distance markers — bookend style, no bubble ─────────────── */
+
+.session-message-list__condition-marker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.18rem 0.5rem;
+  margin: 0.08rem 0;
+  color: var(--color-text-secondary);
+  font-size: 0.77rem;
+  line-height: 1.4;
+}
+
+.session-message-list__condition-marker-icon {
+  font-size: 0.88rem;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.session-message-list__condition-marker--condition .session-message-list__condition-marker-icon {
+  color: #c084fc;
+}
+
+.session-message-list__condition-marker--distance .session-message-list__condition-marker-icon {
+  color: #38bdf8;
+}
+
+.session-message-list__condition-marker--removal .session-message-list__condition-marker-icon {
+  color: var(--color-text-secondary);
+}
+
+.session-message-list__condition-marker-text {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.session-message-list__condition-marker-text strong {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.session-message-list__condition-marker-line {
+  flex: 1;
+  border-top: 1px solid color-mix(in srgb, var(--color-border-soft) 45%, transparent);
+  min-width: 0.75rem;
+}
+
+.session-message-list__condition-marker-time {
+  font-size: 0.64rem;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.22));
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.session-message-list__message-bubble--self {
+  border-color: color-mix(in srgb, var(--color-border-soft) 46%, transparent);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+
+.session-message-list__message-bubble--self.session-message-list__message-bubble--ic {
+  background: color-mix(in srgb, var(--color-surface-raised) 86%, #60a5fa 14%);
+  border-color: color-mix(in srgb, #60a5fa 34%, var(--color-border-soft) 66%);
+}
+
+.session-message-list__message-bubble--self.session-message-list__message-bubble--ooc {
+  background: color-mix(in srgb, var(--color-surface-raised) 86%, #34d399 14%);
+  border-color: color-mix(in srgb, #34d399 34%, var(--color-border-soft) 66%);
+}
+
+.session-message-list__message-bubble--self.session-message-list__message-bubble--whisper {
+  background: color-mix(in srgb, var(--color-surface-raised) 86%, #c084fc 14%);
+  border-color: color-mix(in srgb, #c084fc 34%, var(--color-border-soft) 66%);
+}
+
+.session-message-list__message-bubble--self.session-message-list__message-bubble--dm {
+  background: color-mix(in srgb, var(--color-surface-raised) 84%, #f59e0b 16%);
+  border-color: color-mix(in srgb, #f59e0b 38%, var(--color-border-soft) 62%);
+}
+
+.session-message-list__message-bubble--self.session-message-list__message-bubble--whisper-dm {
+  background: color-mix(in srgb, var(--color-surface-raised) 84%, #f59e0b 16%);
+  border-color: color-mix(in srgb, #f59e0b 38%, var(--color-border-soft) 62%);
+}
+
+.session-message-list__message--grouped .session-message-list__message-bubble {
+  border-top-left-radius: 0.55rem;
+}
+
+.session-message-list__message--self.session-message-list__message--grouped
+  .session-message-list__message-bubble {
+  border-top-right-radius: 0.55rem;
+  border-top-left-radius: 0.95rem;
+}
+
+.session-message-list__message-footer {
+  margin-top: 0.09rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.52rem;
+  width: 100%;
+}
+
+.session-message-list__message-footer--whisper {
+  align-items: flex-start;
+  justify-content: flex-end;
+  width: max-content;
+  min-width: 100%;
+}
+
+.session-message-list__message-footer--whisper-incoming {
+  justify-content: flex-start;
+}
+
+.session-message-list__message-footer--whisper-outgoing {
+  justify-content: flex-end;
+}
+
+.session-message-list__message-whisper-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.06rem;
+  margin-left: auto;
+}
+
+.session-message-list__message-whisper-meta--incoming,
+.session-message-list__message-whisper-meta--outgoing {
+  align-items: flex-end;
+}
+
+.session-message-list__message-whisper-meta--incoming {
+  align-items: stretch;
+  margin-left: 0;
+  margin-right: auto;
+  width: 100%;
+}
+
+.session-message-list__message-whisper-meta-row--incoming {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}

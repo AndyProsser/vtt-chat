@@ -78,7 +78,7 @@ On **RESUME** (PAUSED → ACTIVE):
 ### Editor Mode
 
 ```text
-frontend/src/components/workspaces/shared/panels/GroupsPanel/
+apps/frontend/src/components/workspaces/shared/panels/GroupsPanel/
   GroupsPanel.tsx                 # Editor groups panel (campaign-level)
   CreateGroupModal.tsx            # Group creation with environment picker
 ```
@@ -88,7 +88,7 @@ Features: load/create/delete campaign groups; set default environment per group;
 ### Session Mode (Left Rail — Voice Groups)
 
 ```text
-frontend/src/components/workspaces/session/rooms/
+apps/apps/frontend/src/components/workspaces/session/rooms/
   GroupsPanel.tsx                 # Re-export (points to RoomSelector)
   RoomSelector.tsx                # Main orchestrator — all DM group management
   RoomGroupCard.tsx               # Individual group card (exported as GroupCard)
@@ -133,7 +133,7 @@ RoomSelector
 ### Session Mode (Right Rail — Groups Overview)
 
 ```text
-frontend/src/components/workspaces/session/
+apps/frontend/src/components/workspaces/session/
   GroupsPanel.session.tsx         # Right-rail runtime groups overview (DM + spectators)
   GroupCard.session.tsx           # Compact card with member list, environment, close/delete
 ```

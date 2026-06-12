@@ -8,7 +8,24 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ## Unreleased
 
+### Added
+
+- W-Notes-Visibility: Added `NOTES:HANDOUT_SURFACED` WS event to `shared/events/notes.ts` with `excerpt`, `excerptSource` (`AUTO | MANUAL`), `scope` (`PARTY | SELECTED`), and `recipientIds` fields.
+- W-Notes-Visibility: Added `NoteHandoutMessageMetadata` to `shared/types/entities.ts` and added `noteHandout?` field to `MessageMetadataEntity` for excerpt-based handout chat cards.
+- W-Notes-Visibility: Added `backend/src/services/notes/excerpt.service.ts` implementing the deterministic excerpt algorithm (§3.7 of the checklist): strips markdown, prefers first complete sentence ≤ 180 chars, cuts at word boundary, hard cap 220, fallback to note title then "Shared handout".
+- W-Notes-Visibility: Added `POST /api/notes/:noteId/surface` endpoint. Accepts `scope` (`PARTY` | `SELECTED`), `selectedUserIds`, and optional `manualExcerpt`. Resolves recipients, updates note visibility, generates excerpt, persists a system chat message with `noteHandout` metadata, broadcasts `NOTES:HANDOUT_SURFACED` and `CHAT:MESSAGE_SENT` to recipients only, and broadcasts `NOTES:UPDATED` to note-visible audience.
+- W-Notes-Visibility: Registered `NOTES:HANDOUT_SURFACED` handler in `useWebSocket.ts` and added `handleNoteHandoutSurfaced` to `notesSlice.ts` — marks the note as published on all connected clients.
+- W-Notes-Visibility: Updated `parseNoteSharedMessage` in `noteSharedMessage.ts` to parse `noteHandout` metadata (new path) before falling back to legacy `noteShared` and text parsing.
+- W-Notes-Visibility: `NoteSharedCard` now accepts an `isExcerpt` prop; when true, renders an "excerpt" badge on the card header so recipients know to check the Notes tab for the full handout.
+- W-Notes-Visibility: `NoteSharePopover` mode labels updated to match contract: None→Private, Everyone→Party, Limited→Selected.
+- W-Notes-Visibility: Added `NoteSurfaceDialog` component — scope picker (All Players / Choose Players) with player checklist for SELECTED mode and an optional collapsible custom-excerpt field. Replaces `NotePublishDialog` (room picker) in `NoteCard`. `NoteCard.onPublish`/`publishRooms` props replaced by `onSurface: (noteId, NotesSurfaceTarget) => Promise<void>`. `NotesPanel.handlePublish` replaced by `handleSurface` calling `POST /api/notes/:noteId/surface`.
+- W-Journal-and-Popouts: Added pop-out window support for Notes and Journal. `openNotePopout()` and `openJournalPopout()` helpers in `route-view.ts` store the auth token in `sessionStorage` and call `window.open` with a named target (reuses an existing window if already open). New `PopoutRouteView` component renders a minimal note or journal view from `/popout/note/:noteId` and `/popout/journal/:sessionId` routes. Backend `GET /api/notes/by-id/:noteId` endpoint added (with `canViewNote` visibility check). Pop-out buttons (`open_in_new`) added to `NoteCard` header and `JournalEditor` header.
+- W-System-Messages: Added tooltip to condition/distance system message card icons. Wraps the icon with Radix `Tooltip`; body shows `conditionPreset.description` when available. Closes the last remaining item for W-System-Messages.
+- W-DM-Notes-to-Chat: `ParsedNoteSharedMessage` now carries `noteId` (populated from both `noteHandout` and legacy `noteShared` metadata). `NoteSharedCard` excerpt cards show a "Full note available in the Notes tab" hint below the excerpt body. Phase 3 — Notes & Journal Foundation complete.
+
 ### Changed
+
+- RS-Monorepo: Restructured repository from flat layout into `apps/` + `packages/` monorepo. Moved `frontend/` → `apps/frontend/`, `backend/` → `apps/backend/`, `admin/` → `apps/admin/`, `shared/` → `packages/shared/`, docker-compose files → `infra/`. Adopted npm workspaces (`apps/*`, `packages/*`). Updated all Dockerfiles, tsconfigs, vitest configs, vite configs, eslint config, QA scripts, CI workflows, and `.code-workspace` folder paths. All source paths in `CLAUDE.md`, `.github/copilot-instructions.md`, `DEVELOPING.md`, and `docs/architecture/` updated to reflect the new layout. Build and test verified green post-restructure.
 
 - W4-Conversation-Authority: Fixed frontend `ROOM:SESSION_TRANSITION_APPLIED` WS handler to only call `resetSessionAudioState()` and `clearActiveEffects()` for teardown transitions (`IDLE`, `ENDED`, `CLEANUP`). `ACTIVE`, `PAUSED`, and `COOLDOWN` transitions are policy remaps — audio transport identity (LiveKit connections, effect/environment state) is now preserved across pause/resume and cooldown cycles as specified in the W4 contract.
 - W4-Conversation-Authority: Documented session-transition audio continuity policy in `docs/architecture/SESSION-LIFECYCLE.md` section 1.7: transport connections are not reset on state transitions; `roomEnvironmentNames` is always campaign-persistent; Whisper/spectator isolation remains a hard room-routing boundary.

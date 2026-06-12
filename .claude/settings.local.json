@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(npx eslint *)",
+      "Bash(npx vitest *)",
+      "Bash(sort -t'|' -k3 -n)",
+      "Bash(python3 -c ' *)",
+      "Bash(npm --prefix backend run build)",
+      "Bash(npm --prefix frontend run typecheck)",
+      "Bash(npm --prefix frontend run test *)",
+      "Bash(npx playwright *)",
+      "Bash(firefox --version)",
+      "Bash(docker exec *)",
+      "Bash(docker ps *)",
+      "Bash(awk '{print $NF}')",
+      "Bash(grep -c *)",
+      "Bash(xargs basename -a)",
+      "Bash(xargs ls -la)",
+      "Bash(docker compose *)",
+      "Bash(python3 - *)",
+      "Bash(python3 *)",
+      "Bash(sed -n '*,*p' *)"
+    ]
+  }
+}

@@ -1,0 +1,186 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: vttchat-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/vttchat
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      NODE_ENV: production
+      PRISMA_SCHEMA_SYNC_MODE: deploy
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http=require('node:http');const req=http.get({host:'127.0.0.1',port:3000,path:'/health',timeout:2500},res=>{process.exit(res.statusCode===200?0:1)});req.on('error',()=>process.exit(1));req.on('timeout',()=>{req.destroy();process.exit(1);});",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    networks:
+      - vttnet
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://localhost:8443}
+        VITE_WS_URL: ${VITE_WS_URL:-wss://localhost:8443}
+        VITE_LIVEKIT_URL: ${VITE_LIVEKIT_URL:-wss://localhost:7880}
+        VITE_LOG_LEVEL: ${VITE_LOG_LEVEL:-INFO}
+        VITE_DEBUG_BUILD: ${VITE_DEBUG_BUILD:-true}
+    container_name: vttchat-frontend
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http=require('node:http');const req=http.get({host:'127.0.0.1',port:5173,path:'/',timeout:2500},res=>{process.exit(res.statusCode<500?0:1)});req.on('error',()=>process.exit(1));req.on('timeout',()=>{req.destroy();process.exit(1);});",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - vttnet
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    container_name: vttchat-admin
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http=require('node:http');const req=http.get({host:'127.0.0.1',port:5174,path:'/',timeout:2500},res=>{process.exit(res.statusCode<500?0:1)});req.on('error',()=>process.exit(1));req.on('timeout',()=>{req.destroy();process.exit(1);});",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - vttnet
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: vttchat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vttchat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - vttnet
+
+  redis:
+    image: redis:8-alpine
+    container_name: vttchat-redis
+    restart: unless-stopped
+    command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}', '--appendonly', 'yes']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$REDIS_PASSWORD" ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - vttnet
+
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: vttchat-livekit
+    restart: unless-stopped
+    command: ['--config', '/etc/livekit.yaml']
+    environment:
+      # LIVEKIT_KEYS format: "<key>: <secret>" (YAML map, one entry per line for multiple)
+      LIVEKIT_KEYS: '${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}'
+      # Pin the public IP that LiveKit advertises in ICE candidates.
+      # If unset, LiveKit auto-detects via STUN (requires outbound internet).
+      LIVEKIT_NODE_IP: ${LIVEKIT_NODE_IP:-}
+    ports:
+      - '7880:7880'
+      # 1100 ports → up to 1100 concurrent audio streams.
+      # Each WebRTC media track consumes one UDP port.
+      # Expand range and update livekit.yaml port_range_end to scale further.
+      - '7881-8980:7881-8980/udp'
+      - '7881:7881/tcp' # TCP fallback for clients that can't use UDP
+    volumes:
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -T 3 -O - http://127.0.0.1:7880/ | grep -q "^OK$"']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - vttnet
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: vttchat-caddy
+    restart: unless-stopped
+    ports:
+      - '8443:8443'
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./caddy/certs:/certs
+      - caddy_data:/data
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+      livekit:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -T 3 -O - http://127.0.0.1:2019/config >/dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - vttnet
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+
+networks:
+  vttnet:
+    driver: bridge

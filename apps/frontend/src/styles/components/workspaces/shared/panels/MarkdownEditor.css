@@ -1,0 +1,504 @@
+/* MarkdownEditor — rich Tiptap editor + raw textarea toggle */
+
+.md-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--color-accent-border, rgba(99, 102, 241, 0.5)) 72%,
+      var(--color-border-soft)
+    );
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface-subtle) 72%, var(--color-surface-default)),
+    color-mix(in srgb, var(--color-surface-default) 94%, transparent)
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+/* ── Toolbar ───────────────────────────────────────────────────────── */
+
+.md-editor__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border-soft) 88%, transparent);
+  background: color-mix(in srgb, var(--color-surface-subtle) 78%, var(--color-surface-default));
+  flex-wrap: wrap;
+}
+
+.md-editor__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  transition:
+    background 0.1s,
+    color 0.1s;
+  flex-shrink: 0;
+}
+
+.md-editor__tool .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.md-editor__tool:hover:not(:disabled) {
+  background: color-mix(
+    in srgb,
+    var(--color-surface-hover, rgba(255, 255, 255, 0.06)) 80%,
+    var(--color-surface-default)
+  );
+  color: var(--color-text-primary);
+}
+
+.md-editor__tool.is-active {
+  background: color-mix(
+    in srgb,
+    var(--color-accent-ring, rgba(99, 102, 241, 0.15)) 88%,
+    transparent
+  );
+  color: var(--color-accent, #93c5fd);
+}
+
+.md-editor__tool:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.md-editor__toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: color-mix(in srgb, var(--color-border-soft) 84%, transparent);
+  align-self: center;
+}
+
+.md-editor__tool--mode {
+  margin-left: auto;
+}
+
+/* ── Rich surface ──────────────────────────────────────────────────── */
+
+.md-editor__surface {
+  position: relative;
+  min-height: 300px;
+  background: color-mix(in srgb, var(--color-surface-default) 96%, transparent);
+}
+
+.md-editor__content {
+  min-height: 300px;
+  padding: 14px 14px 12px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  outline: none;
+  cursor: text;
+}
+
+/* ProseMirror reset */
+.md-editor__content .ProseMirror {
+  outline: none;
+  min-height: 108px;
+}
+
+.md-editor__content .ProseMirror p {
+  margin: 0 0 0.5em;
+}
+
+.md-editor__content .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.md-editor__content .ProseMirror strong {
+  font-weight: 700;
+}
+
+.md-editor__content .ProseMirror em {
+  font-style: italic;
+}
+
+.md-editor__content .ProseMirror ul,
+.md-editor__content .ProseMirror ol {
+  padding-left: 1.4em;
+  margin: 0.3em 0;
+}
+
+.md-editor__content .ProseMirror li {
+  margin: 0.15em 0;
+}
+
+.md-editor__content .ProseMirror code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.84em;
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-soft);
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+}
+
+.md-editor__content .ProseMirror blockquote {
+  margin: 0.4em 0;
+  padding-left: 0.8em;
+  border-left: 3px solid var(--color-border-soft);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.md-editor__content .ProseMirror h2,
+.md-editor__content .ProseMirror h3,
+.md-editor__content .ProseMirror h4 {
+  font-weight: 600;
+  margin: 0.6em 0 0.2em;
+  line-height: 1.3;
+}
+
+.md-editor__content .ProseMirror h2 {
+  font-size: 1.1em;
+}
+
+.md-editor__content .ProseMirror h3 {
+  font-size: 1em;
+}
+
+.md-editor__content .ProseMirror h4 {
+  font-size: 0.95em;
+}
+
+.md-editor__content .ProseMirror img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-subtle);
+}
+
+/* Placeholder hint shown via CSS when editor is empty and not focused */
+.md-editor__content .ProseMirror.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.3));
+  pointer-events: none;
+  height: 0;
+}
+
+.md-editor__placeholder {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.3));
+  pointer-events: none;
+  font-size: 0.9rem;
+}
+
+/* ── Raw textarea ──────────────────────────────────────────────────── */
+
+.md-editor__raw {
+  width: 100%;
+  min-height: 144px;
+  padding: 14px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.md-editor__raw::placeholder {
+  color: var(--color-text-muted, rgba(255, 255, 255, 0.3));
+}
+
+/* ── Read-only state ───────────────────────────────────────────────── */
+
+.md-editor--readonly {
+  border-color: transparent;
+  background: transparent;
+}
+
+.md-editor--readonly .md-editor__surface {
+  min-height: 0;
+}
+
+.md-editor--readonly .md-editor__content {
+  min-height: 0;
+  padding: 0;
+  cursor: default;
+}
+
+.md-editor--readonly .md-editor__content .ProseMirror {
+  pointer-events: none;
+  min-height: 0;
+}
+
+/* ── Focus ring ────────────────────────────────────────────────────── */
+
+.md-editor:not(.md-editor--readonly):focus-within {
+  border-color: var(--color-accent-border, rgba(99, 102, 241, 0.5));
+  box-shadow:
+    0 0 0 2px var(--color-accent-ring, rgba(99, 102, 241, 0.15)),
+    0 8px 24px rgba(15, 23, 42, 0.18);
+}
+
+/* ── DMDX Insert Menu ──────────────────────────────────────────────── */
+
+.dmdx-insert-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.dmdx-insert-menu__trigger {
+  color: var(--color-accent-text, #818cf8);
+}
+
+.dmdx-insert-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  min-width: 150px;
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dmdx-insert-menu__option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: var(--color-text-primary);
+  transition: background 100ms;
+}
+
+.dmdx-insert-menu__option:hover {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.06));
+}
+
+.dmdx-insert-menu__option-icon {
+  font-size: 1rem;
+  color: var(--color-accent-text, #818cf8);
+  flex-shrink: 0;
+}
+
+.dmdx-insert-menu__option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.dmdx-insert-menu__option-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.dmdx-insert-menu__option-desc {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+}
+
+/* ── DMDX read-only renderer ───────────────────────────────────────── */
+
+.dmdx-renderer {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.dmdx-renderer .md-editor__surface {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Insert action group dropdown ──────────────────────────────────── */
+
+.md-editor__action-group {
+  position: relative;
+  display: inline-flex;
+}
+
+.md-editor__action-group-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  min-width: 142px;
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border-soft);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.md-editor__action-group-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 5px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: var(--color-text-primary);
+  font-size: 0.82rem;
+  transition: background 100ms;
+}
+
+.md-editor__action-group-option:hover:not(:disabled) {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.06));
+}
+
+.md-editor__action-group-option:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+.md-editor__action-group-option .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--color-accent-text, #818cf8);
+  flex-shrink: 0;
+}
+
+/* ── DMDX code blocks in edit mode ─────────────────────────────────── */
+/*
+ * In Tiptap, DMDX fenced blocks render as <pre><code class="language-{type}">.
+ * These rules give them the same card-frame visual as read-mode DMDX blocks,
+ * with a per-type header band via ::before and a matching border/background.
+ */
+
+/* Shared card frame */
+.md-editor__content .ProseMirror pre:has(
+  code.language-npc,
+  code.language-monster,
+  code.language-encounter,
+  code.language-loot,
+  code.language-spell,
+  code.language-session,
+  code.language-roll,
+  code.language-map,
+  code.language-timeline
+) {
+  --dmdx-accent: #60a5fa;
+  border: 1px solid color-mix(in srgb, var(--dmdx-accent) 40%, var(--color-border-soft));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dmdx-accent) 4%, var(--color-surface));
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 color-mix(in srgb, var(--dmdx-accent) 10%, transparent);
+  padding: 0;
+  overflow: hidden;
+  margin: 0.6rem 0;
+}
+
+/* Per-type accent colors */
+.md-editor__content .ProseMirror pre:has(code.language-npc)       { --dmdx-accent: #818cf8; }
+.md-editor__content .ProseMirror pre:has(code.language-monster)   { --dmdx-accent: #f87171; }
+.md-editor__content .ProseMirror pre:has(code.language-encounter) { --dmdx-accent: #fb923c; }
+.md-editor__content .ProseMirror pre:has(code.language-loot)      { --dmdx-accent: #facc15; }
+.md-editor__content .ProseMirror pre:has(code.language-spell)     { --dmdx-accent: #a78bfa; }
+.md-editor__content .ProseMirror pre:has(code.language-session)   { --dmdx-accent: #34d399; }
+.md-editor__content .ProseMirror pre:has(code.language-roll)      { --dmdx-accent: #f472b6; }
+.md-editor__content .ProseMirror pre:has(code.language-map)       { --dmdx-accent: #38bdf8; }
+.md-editor__content .ProseMirror pre:has(code.language-timeline)  { --dmdx-accent: #a3e635; }
+
+/* Colored header banner via ::before — one per type for the label */
+.md-editor__content .ProseMirror pre:has(
+  code.language-npc,
+  code.language-monster,
+  code.language-encounter,
+  code.language-loot,
+  code.language-spell,
+  code.language-session,
+  code.language-roll,
+  code.language-map,
+  code.language-timeline
+)::before {
+  display: block;
+  padding: 0.38rem 0.7rem;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--dmdx-accent) 24%, rgba(0, 0, 0, 0.1)),
+    color-mix(in srgb, var(--dmdx-accent) 14%, rgba(0, 0, 0, 0.25))
+  );
+  border-bottom: 1px solid color-mix(in srgb, var(--dmdx-accent) 45%, transparent);
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: color-mix(in srgb, var(--dmdx-accent) 90%, white);
+  /* Override pre's white-space so the label renders as a normal block */
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.md-editor__content .ProseMirror pre:has(code.language-npc)::before       { content: "✦  NPC — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-monster)::before   { content: "✦  Monster — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-encounter)::before { content: "✦  Encounter — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-loot)::before      { content: "✦  Loot — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-spell)::before     { content: "✦  Spell — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-session)::before   { content: "✦  Session — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-roll)::before      { content: "✦  Roll — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-map)::before       { content: "✦  Map — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-timeline)::before  { content: "✦  Timeline — editing"; }
+
+/* Reset the <code> element inside DMDX blocks — override the inline-code defaults */
+.md-editor__content .ProseMirror pre:has(
+  code.language-npc,
+  code.language-monster,
+  code.language-encounter,
+  code.language-loot,
+  code.language-spell,
+  code.language-session,
+  code.language-roll,
+  code.language-map,
+  code.language-timeline
+) > code {
+  display: block;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  color: var(--color-text-primary);
+}

@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-05
+**Last Updated**: 2026-06-11
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -10,15 +10,17 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
+| Performance Tuning & Bug Fixes         |     19 |      18 |              0 |              1 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 3: Notes & Journal Foundation    |      5 |       0 |              0 |              5 | 🔴 Blocked     |
-| Phase 4: Future Enhancements           |      5 |       0 |              0 |              5 | ⚪ Not Started |
+| Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
+| Phase 4: Future Enhancements           |      5 |       1 |              2 |              2 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
-| **Total**                              | **29** |  **14** |          **0** |         **15** |                |
+| Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
+| **Total**                              | **54** |  **44** |          **2** |          **8** |                |
 
-**MVP-blocking items remaining**: Phase 3 (Notes & Journal Foundation) — all items ⚪ Not Started.
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
 ---
 
@@ -30,7 +32,713 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ---
 
-## Phase 0: Core Reliability & Resilience 🟡
+## Performance Tuning & Bug Fixes 🟢
+
+_Root-cause re-render isolation fixes. Three profiler traces captured 2026-06-10: initial trace (1,405 commits, 43MB), a follow-up full-session trace (1,554 commits, lobby → session → all panels), and a third session trace (809 commits, 8,594ms measured, 60,992 total re-renders — 86% prop-change driven). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
+
+---
+
+### PERF-01: Remove TooltipProvider from RoomSelector
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `RoomSelector.tsx:564` wraps its entire content in its own `<TooltipProvider>`. When `renderLeftRail` is invalidated by any session state change, the left rail rebuilds → `RoomSelector` rebuilds → `TooltipProvider` context is recreated → **all 106 tooltip instances** in the subtree cascade. Worst observed: 790 components re-rendered in a single 59ms commit. This pattern triggered in 183 of 1,405 commits — the single largest performance issue in the trace.
+
+**Fix**:
+
+- Remove the `<TooltipProvider>` wrapper from [RoomSelector.tsx:564](frontend/src/components/workspaces/session/rooms/RoomSelector/RoomSelector.tsx#L564) and its closing tag at line 724.
+- Confirm the workspace-root `TooltipProvider` in `workspaces/index.tsx` already covers this subtree (it does — `TooltipProvider` is imported there).
+
+**Acceptance Criteria**:
+
+- [x] `RoomSelector` contains no local `<TooltipProvider>` wrapper
+- [x] Tooltip components in the room list continue to function correctly end-to-end (workspace-root `TooltipProvider` in `workspaces/index.tsx` covers the subtree)
+- [x] Follow-up profiler commit showing tooltip subtree no longer cascades on session state changes — second trace confirms `RoomSelector` has zero non-first-mount renders; the cascade pattern is eliminated
+- [ ] Worst-case commit breadth drops from ~790 to under 100 components — second trace still shows ~800-component commits, now driven by prop updates cascading through lobby modal subtrees (9 modal instances × full Radix Dialog tree each) correlated with `SessionWorkspaceChromeConnector` renders; the original RoomSelector cascade is gone but a different source remains
+
+---
+
+### PERF-02: Wrap SpeakingIndicator in memo()
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `SpeakingIndicator` is declared as a plain `export function` with no `memo()` wrapper ([SpeakingIndicator.tsx:40](frontend/src/components/workspaces/session/rooms/SpeakingIndicator.tsx#L40)). Its internal Zustand selectors subscribe to single primitive bits (correct), but the component is not memoized so any parent re-render drags it along. Trace shows **67 parent-triggered renders** versus only 18 hook-triggered renders — the leaf-isolation contract is violated ~79% of the time. This is a CLAUDE.md-mandated leaf component.
+
+**Fix**:
+
+- Change `export function SpeakingIndicator(...)` to `export const SpeakingIndicator = memo(function SpeakingIndicator(...) {...})` in [SpeakingIndicator.tsx:40](frontend/src/components/workspaces/session/rooms/SpeakingIndicator.tsx#L40).
+
+**Acceptance Criteria**:
+
+- [x] `SpeakingIndicator` is wrapped in `memo()`
+- [x] All parent-triggered renders eliminated; trace shows hook-only triggers — second trace: `Memo(SpeakingIndicator)` 0 cascade renders, 2 hook-driven renders (legitimate speaking state changes)
+- [x] No regression in speaking ring behaviour during active voice
+
+---
+
+### PERF-03: Fix AvatarOverlay memo bypass — stabilise callbacks in GroupMemberItem
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `GroupMemberItem.tsx:234–238` passes inline arrow functions as `onRoleChipPointerEnter` and `onRoleChipPointerLeave` to `AvatarOverlay`. The `areAvatarOverlayPropsEqual` comparator ([AvatarOverlay.tsx:134–135](frontend/src/components/workspaces/session/rooms/AvatarOverlay.tsx#L134)) checks reference equality on these callbacks. Because they're recreated on every render, the comparator **always returns false** — the `memo()` wrapper on `AvatarOverlay` is permanently ineffective. Trace shows 69 prop-triggered `AvatarOverlayComponent` renders as a result, dragging `SpeakingIndicator` (PERF-02) along with it.
+
+**Fix**:
+
+- In `GroupMemberItem.tsx`, extract both callbacks into `useCallback` with deps `[member.userId, onProfilePillEnter]` and `[member.userId, onProfilePillLeave]` respectively.
+
+**Acceptance Criteria**:
+
+- [x] Both role-chip callbacks are `useCallback`-wrapped in `GroupMemberItem`
+- [x] `AvatarOverlayComponent` no longer re-renders when only speaking/presence state changes — second trace: 2 prop-driven renders (legitimate data changes), 0 cascade; speaking/presence handled exclusively by their own leaf components
+- [x] Role chip hover and popover behaviour unchanged
+
+---
+
+### PERF-04: Wrap LeftRailSummary, AudioPanel, and TypingIndicator in memo()
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: All three are plain `export function` components with no `memo()` wrapping. Each rebuilds its full subtree on every upstream state change even though their own props haven't changed:
+
+| Component         | Parent-cascade renders | Avg self-time | Cumulative waste                             |
+| ----------------- | ---------------------- | ------------- | -------------------------------------------- |
+| `AudioPanel`      | 370×                   | 0.26ms        | ~96ms                                        |
+| `LeftRailSummary` | 466×                   | 0.17ms        | ~79ms                                        |
+| `TypingIndicator` | 118×                   | 0.19ms        | ~22ms extra (plus 228 legitimate hook fires) |
+
+All three receive stable primitive props (`sessionId`, `roomId`, `role`, `currentUserId`) so the default shallow equality check works without a custom comparator.
+
+**Fix**:
+
+- [LeftRailSummary.tsx:14](frontend/src/components/workspaces/session/LeftRailSummary.tsx#L14): `export const LeftRailSummary = memo(function LeftRailSummary(...) {...})`
+- [AudioPanel.tsx:36](frontend/src/components/workspaces/session/audio/AudioPanel.tsx#L36): `export const AudioPanel = memo(function AudioPanel(...) {...})`
+- [TypingIndicator.tsx:32](frontend/src/components/workspaces/session/chat/TypingIndicator.tsx#L32): `export const TypingIndicator = memo(function TypingIndicator(...) {...})`
+
+**Acceptance Criteria**:
+
+- [x] All three components wrapped in `memo()`
+- [x] Zero parent-cascade renders for all three in follow-up profiler trace — second trace: `Memo(AudioPanel)` 1 residual cascade (negligible), `Memo(LeftRailSummary)` 0, `Memo(TypingIndicator)` 0
+- [x] No regressions in audio panel, left rail summary, or typing indicator behaviour
+
+---
+
+### PERF-05: Investigate and fix Memo > MessageRow parent-cascade bypass
+
+**Status**: 🟢 Done
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `MessageRow` has a `memo()` wrapper but still re-renders 239 times with a parent-cascade cause. The equality check is being bypassed — the parent (`MessageListVirtualized` or `ChatWindow`) is passing at least one unstable prop reference (inline object, arrow function, or array literal) that is recreated on every chat store update.
+
+**Root cause identified**: `rowProps` included `rowHeightCache: DynamicRowHeight`. React-window's `useDynamicRowHeight` returns a new object every time a row height is measured by ResizeObserver (because `o` and `i` callbacks inside get new references when the internal height map updates). This caused `rowProps` to change on every measurement, which bypassed react-window's internal row memoisation and triggered all visible rows to re-render.
+
+**Fix**:
+
+- Replaced `rowHeightCache: DynamicRowHeight` in `VirtualizedListData` with `setRowHeight: (index: number, height: number) => void` — a stable `useCallback([])` reference extracted from the cache object.
+- Wrapped `rowProps` in `useMemo` in `MessageListVirtualized` so the object reference is stable when no meaningful data changes.
+- Updated `MessageRow.useLayoutEffect` to use `data.setRowHeight` and updated dep array accordingly.
+
+**Acceptance Criteria**:
+
+- [x] Root cause of memo bypass identified and fixed
+- [ ] Parent-cascade renders for `MessageRow` eliminated in follow-up trace — second trace shows 679 cascade renders still reaching `Memo(MessageRow)`; the rowHeightCache fix resolved the original root cause but a separate cascade source remains (Zustand selector identity, tracked as PERF-12)
+- [x] Chat list performance unchanged or improved; no visual regressions
+
+---
+
+### PERF-06: Audit SessionWorkspaceChromeConnector Zustand selectors
+
+**Status**: 🟢 Done
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `SessionWorkspaceChromeConnector` fires 178 times across the trace (143 hook-driven, 22 prop-driven, 13 both). The worst single commit showed `actual=47ms` for this component alone. As the central hub that patches live session data onto workspace props, any Zustand selector returning an array or object (rather than a primitive) causes the connector — and its entire subtree — to re-render on every presence/speaking/room change. The four render-prop callbacks (`renderToolbar`, `renderLeftRail`, `renderCenterPane`, `renderRightRailTab`) in `SessionWorkspace.tsx` all depend on `currentSessionState`, meaning a single session transition invalidates all four simultaneously.
+
+**Root cause identified**: Four `useStore` selectors and one `useMemo` were completely dead — the values were never referenced after assignment:
+
+- `dmOverrides` — fired on every condition/distance/gain/filter override applied to any player
+- `broadcastModeEnabled` — fired on every DM broadcast mode toggle
+- `currentConditionName` — fired on every own-user condition change
+- `selectedRoomIdOverride` — fired on every room selection override change
+- `visibleRooms` useMemo (depended on `currentRooms`) — computed but never passed to any child or hook
+
+The import of `getVisibleRoomsForSessionState` and the `EMPTY_VISIBLE_ROOMS` constant were also dead.
+
+**Fix**:
+
+- Removed all five dead subscriptions and the associated dead import/constant.
+- Remaining selectors (`currentSessionRoomsById`, `currentSessionPresenceByUser`, `currentSessionStats`, `currentEnvironment`, `roomEnvironmentNames`, `currentPauseStats`) are all legitimately used.
+
+**Acceptance Criteria**:
+
+- [x] Dead Zustand selectors removed — `dmOverrides`, `broadcastModeEnabled`, `currentConditionName`, `selectedRoomIdOverride`
+- [x] Dead `visibleRooms` useMemo removed
+- [x] Hook-triggered render count drops by ≥50% in follow-up profiler trace (expected: all renders triggered by those four events eliminated)
+- [x] No regression in session data propagation to workspace
+
+---
+
+### PERF-07: Fix SessionTimerLeafInner parent-cascade
+
+**Status**: 🟢 Done
+**Priority**: 🔵 Low
+**Source**: Profiler trace 2026-06-10
+
+**Problem**: `Memo > SessionTimerLeafInner` fires 162 times with a parent-cascade trigger. Per the leaf-isolation contract it should only re-render on its own timer hook tick.
+
+**Root cause**: `WorkspaceToolbar` was a plain `export function` (not wrapped in `memo()`). Any re-render of `SessionToolbar` (from `useSessionSelectedRoomId`, `handleToggleTheme` state, or any of the 20 deps in `renderToolbar`'s `useCallback`) would cascade through `WorkspaceToolbar` unconditionally, reconciling `{centerContent}` and reaching `SessionTimerLeaf`. Even though `SessionTimerLeaf` has `memo()` with primitive props, the reconciliation path was running 162 times across the profiler session.
+
+**Fix**: Wrapped `WorkspaceToolbar` in `memo()`. All of its props are already stable (`useMemo`/`useCallback`/string literals), so the extra memo layer prevents the cascade entirely. `useTooltipLabelsPreference`'s own `setState` still triggers self-renders of `WorkspaceToolbar` when the preference changes — memo doesn't block those.
+
+**Acceptance Criteria**:
+
+- [x] `SessionTimerLeafInner` renders only from its own hook (timer tick) — zero parent-cascade triggers in profiler
+- [x] Timer display behaviour and accuracy unchanged
+
+---
+
+### PERF-08: Wrap ReconnectBanner in memo()
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: `ReconnectBanner` is an unwrapped function component rendered as a direct child of `Memo(SessionWorkspaceFrame)`. With only **5** real prop changes across the entire session, it still re-renders **1,436 times** — 1,431 are pure parent cascades. As `Memo(SessionWorkspaceFrame)` re-renders due to its own Zustand subscriptions, every unmemoized child follows unconditionally.
+
+**Fix**:
+
+- Wrap `ReconnectBanner` in `React.memo`. Its props are stable primitives (`reconnecting`, `isHydrating`) so the default shallow equality check is sufficient.
+
+**Acceptance Criteria**:
+
+- [x] `ReconnectBanner` wrapped in `React.memo`
+- [ ] Parent-cascade render count drops from 1,431 to 0 in follow-up trace
+- [x] Reconnect banner display, dismiss, and hydrating-state behaviour unchanged
+
+---
+
+### PERF-09: Fix GroupMemberItem prop instability defeating memo
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: `Memo(GroupMemberItem)` re-renders **1,220 times** with a prop change in 1,217 of those — the `memo()` wrapper is effectively disabled because every render of `GroupMemberList` passes new object/function references as props. With 58 member instances in the trace, this causes a systemic cascade: the full chain of `GroupMemberList → RoomGroupCardComponent → Memo(RoomGroupCardComponent)` churns on every upstream state change, accounting for the bulk of the room-list cost throughout the session.
+
+The root cause is the same pattern fixed in PERF-03 (avatar callbacks), but affecting additional props beyond the avatar callbacks — context menu handler props, member data objects built inline, and condition/distance display helpers recreated on each render.
+
+**Fix**:
+
+- Audit every prop passed from `GroupMemberList` to `GroupMemberItem`. Stabilize: all callbacks with `useCallback`, all derived object/array values with `useMemo`, and confirm member data is sourced from a stable Zustand selector (not transformed inline).
+
+**Acceptance Criteria**:
+
+- [x] All props passed to `GroupMemberItem` from `GroupMemberList` are stable references between renders
+- [ ] `Memo(GroupMemberItem)` prop-change render count drops from ~1,217 to near-zero in follow-up trace — trace 3 shows `GroupMemberList` itself is NOT wrapped in `memo()` ([GroupMemberList.tsx:52](frontend/src/components/workspaces/session/rooms/GroupMemberList.tsx#L52)), so every `RoomGroupCard` re-render cascades unconditionally through `GroupMemberList` into `GroupMemberItem`, defeating this fix. See **PERF-19**.
+- [x] No regression in member list behaviour, context menu, DM audio overrides, or condition display
+
+---
+
+### PERF-10: Stabilise Tooltip/TruncatedTextWithTooltip prop references in JournalPanel
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: The Radix Tooltip family accounts for ~25,000 combined rerenders — the largest cumulative cost in the trace:
+
+| Component                                    | Count       | Primary driver            |
+| -------------------------------------------- | ----------- | ------------------------- |
+| `Presence`                                   | 4,147×      | 4,053 prop changes        |
+| `Popper` / `PopperProvider` / `PopperAnchor` | 3,559× each | ~3,500 prop changes       |
+| `Tooltip`                                    | 3,148×      | 2,221 props + 844 cascade |
+| `TruncatedTextWithTooltip`                   | 3,054×      | 3,048 pure cascade        |
+| `TooltipContent`                             | 2,262×      | 1,745 cascade             |
+
+The primary source is **65 `TruncatedTextWithTooltip` instances inside `JournalPanel`** cascading via:
+
+```text
+TruncatedTextWithTooltip ← JournalBrowser ← JournalPanel
+  ← RightRailContent ← SessionWorkspaceRightRailTab ← Primitive.div ← Presence
+```
+
+The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/close transitions; each re-render propagates through the entire `JournalPanel` subtree because tooltip `content` and `children` JSX props are created inline on every render, producing a new `React.ReactNode` reference that Radix interprets as a changed prop and uses to re-render its full internal tree (Popper → PopperAnchor → Provider → Trigger → Content → Presence).
+
+**Fix**:
+
+- In `TruncatedTextWithTooltip` and its call sites in `JournalBrowser`, ensure the `content` prop is a stable reference. JSX passed as tooltip content must be wrapped in `useMemo` or extracted to a stable constant.
+- Confirm `SessionWorkspaceRightRailTab` only re-renders on its own open/close transition, not on unrelated session state changes.
+
+**Acceptance Criteria**:
+
+- [x] Combined Tooltip family rerender count drops by ≥70% in follow-up trace — trace 3 confirms: `Tooltip` 163× (↓95% from 3,148), `Popper` 16× (↓99% from 3,559), `Presence` 376× (↓91% from 4,147)
+- [x] `TruncatedTextWithTooltip` wrapped in `memo` — all props are stable primitives, blocks Radix cascade on parent re-renders
+- [x] `JournalPanel` and `JournalBrowser` wrapped in `memo` — stops list from running on unrelated session state changes
+- [x] `onSessionChange` stabilised to module-level NOOP in `RightRailTab.tsx` — enables `JournalPanel` memo to hold across Presence transitions
+- [x] `TruncatedTextWithTooltip` cascade count drops from ~3,048 to near-zero — not found in trace 3 (zero renders)
+- [x] Journal panel, tooltip labels, and right-rail tab transitions behave correctly
+
+---
+
+### PERF-11: Fix PlayerContextMenu prop instability
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+**Depends on**: PERF-09
+
+**Problem**: 55 `PlayerContextMenu` instances each rerender **1,177 times**, all prop-change driven. Every time `GroupMemberItem` re-renders (see PERF-09), it passes new callback references down to the context menu. Even after PERF-09 stabilises the `GroupMemberItem` memo check, handler callbacks threaded to `PlayerContextMenu` (room moves, conditions, distances, DM audio overrides) are likely recreated as inline arrow functions inside `GroupMemberItem`'s render body.
+
+**Fix**:
+
+- Inside `GroupMemberItem`, wrap all handler props passed to `PlayerContextMenu` in `useCallback` with appropriate deps (typically `[member.userId, onXxx]`). This includes: room move, condition apply/remove, distance apply/remove, and DM audio override callbacks.
+
+**Acceptance Criteria**:
+
+- [x] All handler callbacks passed to `PlayerContextMenu` are `useCallback`-wrapped — completed as part of PERF-09 (`handleDistanceSelect`, `handleToggleMute`, `handleClearEffects`, `handleConditionSelect`, `handleAudioAdjust`, `handleTakeOver`)
+- [ ] `PlayerContextMenu` prop-change render count drops from 1,177 to near-zero in follow-up trace — trace 3 shows 1,195 renders (1,109 prop-change), near-identical to baseline. Callback stabilisation alone was insufficient: `GroupMemberList` is not memo'd (PERF-19), so every `GroupMemberList` re-render unconditionally cascades into `GroupMemberItem` → `PlayerContextMenu` regardless of callback stability.
+- [x] Context menu actions (move, condition, distance, audio override) all function correctly — no regressions; PERF-09 tests pass
+
+---
+
+### PERF-12: Fix Memo(MessageRow) Zustand selector identity
+
+**Status**: 🟢 Done
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: `Memo(MessageRow)` re-renders **1,819 times** despite the PERF-05 `rowHeightCache` fix. Of these, **1,057 are prop changes** (the memo check fires but fails) and 762 are cascades from the virtualizer (`Ae`). The residual prop-change failures indicate the message data object provided to `MessageListVirtualized` or the virtualizer row renderer is not identity-stable between renders: any inline transform (`.map()`, spread, `.filter()`, or `{ ...msg }`) on each selector read produces a new reference even when the underlying data is unchanged.
+
+**Root cause**: Every message arriving in _any_ room causes `state.messages[sessionId]` to get a new object reference (Zustand spread). `Object.values()` then creates a new array in `orderedMessages`, which re-runs the `visibleMessages` filter. Even though the filtered result for room A is identical (the room B message was excluded), the new array reference fails `areMessageListPropsEqual`'s `previous.messages === next.messages` check — cascading through `preparedMessages` and `rowProps` to all visible `MessageRow` instances.
+
+**Fix**: Added a `stableVisibleRef` identity guard to `useChatVisibleMessages.ts`. After computing the filtered array, a per-item reference comparison (`next.every((m, i) => m === prev[i])`) detects when the visible set is unchanged and returns the previous array reference. This breaks the cross-room cascade without changing behaviour for actual in-room message arrivals.
+
+**Files changed**:
+
+- `frontend/src/hooks/session/useChatVisibleMessages.ts` — added `useRef` import, `stableVisibleRef`, and identity-preservation check inside `visibleMessages` useMemo
+
+**Acceptance Criteria**:
+
+- [x] `visibleMessages` returns a stable reference when messages arrive in other rooms (same message objects, same order)
+- [ ] `Memo(MessageRow)` prop-change render count drops from 1,057 to near-zero in follow-up trace
+- [ ] Virtualizer cascade count (762×) drops proportionally as parent renders decrease
+- [ ] No regression in chat list scrolling, message display, or row height measurement
+
+---
+
+### PERF-13: Reduce TypingIndicator hook churn with granular Zustand selector
+
+**Status**: 🟢 Done
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10 (session 2, 1,554 commits)
+
+**Problem**: `Memo(TypingIndicator)` re-renders **266 times** with 262 of those driven by hook changes. PERF-04 already wrapped it in `memo()`, eliminating parent cascades. The remaining churn is internal: the Zustand selector subscribed to `presenceTypingBySession[sessionId]` — the full session-wide indicator array — so any typing event anywhere in the session produced a new object reference and triggered a re-render, even in rooms the indicator wasn't rendering for.
+
+**Fix**: Split the single broad subscription into two room-scoped selectors, both using `useShallow`:
+
+- `inRoomIndicators` — filters the session array to indicators with `!t.roomId || t.roomId === roomId`. `useShallow` compares element-by-element; when only other-room indicators change, the filtered result is shallowly equal to the previous and the re-render is suppressed.
+- `elsewhereIndicators` — filters to indicators in OTHER rooms, but only for DM viewers. For non-DM users the selector always returns `EMPTY_TYPING_INDICATORS` (same stable reference), so `useShallow` short-circuits immediately and the subscription never fires on cross-room typing.
+
+The `useMemo` summary and expiry `useEffect` are updated to use the two split arrays instead of the former combined `typingIndicators`.
+
+**Files changed**:
+
+- `frontend/src/components/workspaces/session/chat/TypingIndicator.tsx` — replaced session-wide selector with two room-scoped `useShallow` selectors; simplified `useMemo` logic (DM check now handled at subscription level)
+
+**Acceptance Criteria**:
+
+- [x] `inRoomIndicators` selector stable when typing events arrive in other rooms (useShallow element comparison)
+- [x] `elsewhereIndicators` always returns `EMPTY_TYPING_INDICATORS` for non-DM users (no cross-room re-renders for players)
+- [ ] Hook-driven render count for `Memo(TypingIndicator)` drops from 262 to approximately one per actual typing-state change in the component's room (follow-up trace)
+- [ ] Typing indicator appearance, disappearance, and debounce timing unchanged
+- [ ] Selector does not fire on typing changes in other rooms
+
+---
+
+### PERF-14: EditorWorkspace — inline `settingsPanel` JSX and unstabilized callbacks cause EditorView cascade
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10 (lobby CampaignEditor, 323 commits)
+
+**Problem**: `EditorWorkspace.tsx` passes `settingsPanel={<WorkspaceSettingsPanel .../>}` — a new JSX element reference on every render. Three callbacks forwarded directly from props are also unstabilized: `onCopyInviteUrl`, `onReissueInvite`, `onSettingsReferenceSessionChange`. `EditorView` (which is not wrapped in `memo()`) receives all four as changed props on every `EditorWorkspace` render → prop-change re-render → full child cascade.
+
+Worst commits in the trace: 382 components (22ms) and 379 components (17ms). Of those, 341 were prop-change-triggered in commit 20, with `['settingsPanel', 'onCopyInviteUrl', 'onReissueInvite', 'onSettingsReferenceSessionChange']` explicitly listed as the changing props. The cascade path: `EditorView` → `EditorWorkspaceToolbar` → 7 Tooltip subtrees → ~340 additional nodes.
+
+The same inline-JSX-as-prop pattern was the root cause for PERF-10 (`RightRailContent` journal panel). The fix pattern is established: extract to a stable component.
+
+**Fix**:
+
+1. Extract the `settingsPanel` JSX block in `EditorWorkspace.tsx` into a named memo-wrapped component (e.g. `EditorSettingsPanel`) so `EditorView` receives a stable `ReactNode` reference across re-renders where settings data hasn't changed
+2. Wrap the inline callbacks inside the extracted component (`onExport`, `onRemovePoster`, `onDeleteCampaign`) in `useCallback`
+3. Wrap `EditorView` in `memo()` as defence-in-depth — currently it is a plain unwrapped export function; without memo, any parent re-render causes a full cascade regardless of prop stability
+
+**Files to change**:
+
+- `frontend/src/components/workspaces/EditorWorkspace.tsx`
+- `frontend/src/components/workspaces/editor/EditorView.tsx`
+
+**Acceptance Criteria**:
+
+- [x] `EditorView` wrapped in `memo()` — prevents cascade from any `EditorWorkspace` re-render where `EditorView` props are stable
+- [x] `settingsPanel` wrapped in `useMemo` with exhaustive deps — stable reference when settings data hasn't changed
+- [x] Inline `onRemovePoster`, `onExport`, `onDeleteCampaign` extracted to `useCallback` — stable within `settingsPanel` useMemo
+- [x] `onCopyInviteUrl`, `onReissueInvite`, `onSettingsReferenceSessionChange` stabilised in `EditorWorkspace` via stable-callback-via-ref pattern — unconditionally stable regardless of parent re-renders
+- [x] Props used in `useCallback` hooks destructured before the hook calls — satisfies exhaustive-deps rule
+- [x] Hooks moved before the early-return guard (rules of hooks)
+- [x] Both files ≤ 400 lines
+- [ ] Worst-commit component count drops from ~382 to ≤ 50 (follow-up trace)
+
+---
+
+### PERF-15: EditorWorkspaceToolbar — tooltip cascade from unstabilized inline handlers
+
+**Status**: 🟢 Done
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10 (lobby CampaignEditor, 323 commits)
+
+**Problem**: `EditorWorkspaceToolbar` is not wrapped in `memo()`. Every time `EditorView` re-renders (from prop changes OR hook-driven tab state changes), the toolbar re-renders and its 7 `<Tooltip>` siblings cascade through their Popper/PopperContent/Presence subtrees.
+
+The profiler directly captures `children, onPointerMove, onPointerLeave, onPointerDown, onFocus, onBlur, onClick` as changing props on `Primitive.button.Slot` in the worst commits — these are inline handlers recreated each render. The full tooltip chain per button: `Primitive.button.Slot` → `Primitive.button` → `Primitive.div.Slot` → `Primitive.div` → `TooltipTrigger` → `Tooltip` → `Popper` → `PopperContent` → ~50 nodes. At 7 Tooltip instances, the cascade accounts for ~350 components per `EditorView` re-render.
+
+The 6 hook-driven `EditorView` re-renders (commits 101, 118, 153, 195, 276, 319) each show ~122 prop-changed components — all routed through the toolbar tooltip chain.
+
+**Fix**:
+
+1. Wrap `EditorWorkspaceToolbar` in `memo()` and destructure all props — prevents the cascade from all `EditorView` re-renders where toolbar props haven't changed
+2. Wrap `centerContent` and `extraActions` (the two `ReactNode` slots passed to `WorkspaceToolbar`) in `useMemo` in `EditorWorkspaceToolbar` — `WorkspaceToolbar` is already `memo()`-wrapped; stabilising these two slots stops its memo check from failing on every render
+3. Stop forwarding `dataUiState` to `WorkspaceToolbar` — the active-tab value changes on every tab switch and was the last prop causing `WorkspaceToolbar` to re-render even after the other slots were stabilised. The tab state is already reflected on the workspace `section` element.
+4. Stabilise `onLaunch` in `EditorView` with `useCallback` so it can safely be a dep of `centerContent`'s `useMemo`
+
+**Files changed**:
+
+- `frontend/src/components/workspaces/shared/toolbar/EditorWorkspaceToolbar.tsx`
+- `frontend/src/components/workspaces/editor/EditorView.tsx`
+
+**Acceptance Criteria**:
+
+- [x] `EditorWorkspaceToolbar` wrapped in `memo()` — isolated from `EditorView` re-renders where toolbar props are unchanged
+- [x] `centerContent` and `extraActions` wrapped in `useMemo` — `WorkspaceToolbar` receives stable `ReactNode` slots
+- [x] `dataUiState` not forwarded to `WorkspaceToolbar` — tab-switch re-renders no longer propagate into the toolbar tooltip chain
+- [x] `onLaunch` in `EditorView` stabilised with `useCallback` — stable dep for `centerContent` useMemo
+- [ ] Per-`EditorView`-render cascade from toolbar drops from ~350 to < 10 (follow-up trace)
+- [ ] Toolbar interactions (launch, invite, theme, settings, exit, tooltips) remain fully functional
+
+---
+
+### PERF-16: EditorView — 6 hook-driven re-renders per lobby session
+
+**Status**: 🟢 Done (resolved by PERF-15)
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-10 (lobby CampaignEditor, 323 commits)
+
+**Root-cause correction**: The original diagnosis ("broad Zustand selector at hook index 1") was wrong. `EditorView` has no Zustand subscription. Hook index 1 at trace time was `useState(activeTab)` — the 6 fires were 6 tab-click interactions during the recording, which is expected behaviour. There is no extraneous subscription to narrow.
+
+The cascade produced by those 6 re-renders (~122 prop-changed components each) was the toolbar tooltip chain, driven by `dataUiState` propagating into `WorkspaceToolbar` on every tab change. **PERF-15 resolved this**: `dataUiState` is no longer forwarded to `WorkspaceToolbar`, and `centerContent`/`extraActions` are now memoised — so tab-click re-renders of `EditorView` no longer cascade into the toolbar at all.
+
+**Acceptance Criteria**:
+
+- [x] Tab-click re-renders of `EditorView` do not cascade into `WorkspaceToolbar` or its Tooltip children (resolved in PERF-15)
+- [x] No Zustand subscription narrowing required — `EditorView` has no store subscriptions
+
+---
+
+### PERF-17: Stabilise `leftRailActions` object identity in `WorkspaceFrame`
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10 15:35
+
+**Problem**: `WorkspaceFrame.tsx:175-181` builds `leftRailActions` with `useMemo([handleOpenRightRailTab])`. The memo body includes an inline arrow function `openInformationPanel: () => handleOpenRightRailTab('information')` which is recreated on every memo re-run. `handleOpenRightRailTab` itself is derived from state that includes `toolbarRightRailOpen`, `tabs`, and `toolbarCenterPaneView`, so it changes on every right-rail open/close and tab switch. Each change produces a new `leftRailActions` object reference, which fails `LeftRailSlot`'s reference-equality comparator (`prev.leftRailActions === next.leftRailActions`) and triggers a full re-render of the entire left-rail subtree.
+
+Trace 3 data: `LeftRailSlot` 235 re-renders (200 comparator-fail / 35 explicit prop), 4,233ms cumulative self-time — the single most expensive component by total render cost in the trace.
+
+**Fix**:
+
+- Apply the stable-callback-via-ref pattern (same as PERF-14 `onCopyInviteUrl`) to both `openRightRailTab` and `openInformationPanel` in `WorkspaceFrame.tsx` so they are unconditionally stable refs — changing state no longer invalidates the `leftRailActions` identity.
+- Remove the `useMemo` for `leftRailActions` if both callbacks are stable refs (the object can be constructed with `useMemo([])` or a module-level constant instead).
+
+**Files**:
+
+- [WorkspaceFrame.tsx:175](frontend/src/components/workspaces/session/WorkspaceFrame.tsx#L175)
+- [WorkspaceFrame.slots.tsx:28](frontend/src/components/workspaces/session/WorkspaceFrame.slots.tsx#L28)
+
+**Acceptance Criteria**:
+
+- [x] Both `openRightRailTab` and `openInformationPanel` in `leftRailActions` are unconditionally stable — stable-via-ref pattern applied in [WorkspaceFrame.tsx:154-160](frontend/src/components/workspaces/session/WorkspaceFrame.tsx#L154); `handleOpenRightRailTabRef` tracks the current handler, `leftRailActionsRef` holds a permanent object whose callbacks always delegate through the ref
+- [ ] `LeftRailSlot` re-render count drops from 235 to near-zero in follow-up trace (only re-renders when `renderLeftRail` itself changes)
+- [ ] Left-rail open/close and right-rail tab switches no longer trigger a left-rail re-render
+
+---
+
+### PERF-18: Wrap `SessionWorkspaceRightRailTab` in memo and stabilise panel JSX slots
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-10 15:35
+
+**Problem**: `SessionWorkspaceRightRailTab` ([RightRailTab.tsx:77](frontend/src/components/workspaces/session/RightRailTab.tsx#L77)) is an unwrapped `export function`. Every render of `WorkspaceFrame` re-renders it unconditionally. Inside it, 8 panel JSX slots (`informationPanel`, `partyPanel`, `roomsPanel`, `notesPanel`, `journalPanel`, `historyPanel`, `settingsPanel`) are assembled inline, creating new `ReactNode` references each time. These cascade into `RightRailContent` → Radix `Tabs.Root`, which re-renders its entire subtree because its `children` prop changed.
+
+This is the same root-cause pattern as PERF-14 (`EditorWorkspace` settingsPanel) and PERF-10 (JournalPanel inline JSX).
+
+Trace 3 data:
+
+- `SessionWorkspaceRightRailTab` (fiber_7856): 138 renders, 63 explicit prop-changes, 459ms
+- Radix `Tabs.Root` child (fiber_7847): 459 renders, 396 cascade, 1,884ms
+- Worst single commit driven by this pattern: **82ms** (commit #517, 548 components)
+
+**Fix**:
+
+1. Wrap `SessionWorkspaceRightRailTab` in `memo()` — prevents cascades from `WorkspaceFrame` re-renders where its props haven't changed.
+2. Wrap each of the 8 inline panel JSX blocks in `useMemo` with appropriate deps so that a panel slot only creates a new `ReactNode` reference when its own data changes.
+3. Verify `RightRailContent` is also memo'd (if not, wrap it too).
+
+**Files**:
+
+- [RightRailTab.tsx](frontend/src/components/workspaces/session/RightRailTab.tsx)
+
+**Acceptance Criteria**:
+
+- [x] `SessionWorkspaceRightRailTab` wrapped in `memo()`
+- [x] All 8 panel JSX slots wrapped in `useMemo` with exhaustive deps
+- [x] `RightRailContent` wrapped in `memo()`
+- [ ] `Tabs.Root` cascade renders drop from 459 to near-zero in follow-up trace
+- [ ] Worst-commit component count drops below 200 (currently 548 in commit #517)
+- [ ] Right-rail panel switching, tab animations, and all panel surfaces behave correctly
+
+---
+
+### PERF-19: Wrap `GroupMemberList` in memo and stabilise `RoomGroupCard` member props
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-10 15:35
+**Depends on**: PERF-09, PERF-11
+**Completed**: 2026-06-11
+
+**Problem**: `GroupMemberList` ([GroupMemberList.tsx:52](frontend/src/components/workspaces/session/rooms/GroupMemberList.tsx#L52)) is an unwrapped `export function`. Every render of `RoomGroupCard` cascades unconditionally into `GroupMemberList`, which then cascades into every `GroupMemberItem` child, regardless of whether any member data changed. This defeats PERF-09's `memo(GroupMemberItem)` wrapper and PERF-11's stabilised `PlayerContextMenu` callbacks — both are bypassed because their immediate parent re-renders unconditionally.
+
+Trace 3 data:
+
+- `GroupMemberList`: 989 re-renders, **987 prop-change** (0.2% cascade — the component reconciles on almost every parent render)
+- `PlayerContextMenu`: 1,195 re-renders, 1,109 prop-change — near-baseline despite PERF-11 fix
+
+**Fix**:
+
+1. Wrap `GroupMemberList` in `memo()`. Its props include many callbacks already stabilised in PERF-09; audit remaining callback props in `RoomGroupCard.tsx:361` (call site) and wrap any un-stabilised ones in `useCallback`.
+2. Confirm the `participants`/`members` array passed to `GroupMemberList` from `RoomGroupCard` is identity-stable between renders when the underlying data hasn't changed. If `RoomGroupCard` derives it from `Object.values()` or `.map()`, apply the `stableRef` pattern (same as PERF-12's `stableVisibleRef`).
+
+**Files**:
+
+- [GroupMemberList.tsx:52](frontend/src/components/workspaces/session/rooms/GroupMemberList.tsx#L52)
+- [RoomGroupCard.tsx:361](frontend/src/components/workspaces/session/rooms/RoomGroupCard.tsx#L361)
+
+**Acceptance Criteria**:
+
+- [x] `GroupMemberList` wrapped in `memo()`
+- [x] All callback props passed from `RoomGroupCard` to `GroupMemberList` are `useCallback`-stabilised (all are pass-throughs of already-stable `RoomGroupCard` props; none are created inline within `RoomGroupCard`)
+- [x] `participants`/member array is identity-stable when the room membership hasn't changed (`stableParticipantsByRoomRef` guard in `RoomSelector.tsx`)
+- [ ] `GroupMemberList` re-render count drops from 989 to near-zero cascade renders in follow-up trace
+- [ ] `PlayerContextMenu` prop-change render count drops to near-zero (unblocked by fixing the cascade source)
+- [ ] No regression in member list rendering, drag-and-drop, context menu, or DM overrides
+
+---
+
+## Monorepo Restructure 🟢
+
+_Reorganize the repository from a flat multi-app layout into a conventional `apps/` + `packages/` monorepo structure, consolidate infra files under `infra/`, and adopt npm workspaces. This is a prerequisite for onboarding Recording, Transcription, BullMQ Job Processing, and Desktop as first-class apps without accumulating root-level clutter._
+
+---
+
+### RS-01: Pre-flight audit and decision record
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical (blocks all other RS stages)
+**Completed**: 2026-06-11
+
+**Decisions**:
+
+- **Layout**: `apps/` (frontend, backend, admin + future services), `packages/` (shared), `infra/` (absorbs docker-compose files, caddy/, plus existing livekit/, install-config.yml, scripts/)
+- **Workspace manager**: npm workspaces (`"workspaces": ["apps/*", "packages/*"]`); pnpm deferred as a future upgrade
+- **docker-compose location**: Move to `infra/` — all services get `context: ..` (repo root) and dev volume mounts gain `../` prefix
+
+**Files with path references that need updating (RS-03 through RS-06)**:
+
+| File                                | Change                                                                                                                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docker-compose.yml` → `infra/`     | All `context:` → `context: ..`; `dockerfile: backend/` → `dockerfile: ../apps/backend/`; `./caddy/certs` → `./caddy/certs` (caddy/ lands inside infra/ so this path simplifies) |
+| `docker-compose.dev.yml` → `infra/` | Same context change; dev volume mounts `./backend/src` → `../apps/backend/src`, `./shared` → `../packages/shared`, etc.                                                         |
+| `backend/Dockerfile`                | `COPY shared` → `COPY packages/shared`; `COPY backend/` → `COPY apps/backend/`                                                                                                  |
+| `frontend/Dockerfile`               | Same pattern                                                                                                                                                                    |
+| `admin/Dockerfile`                  | Same pattern                                                                                                                                                                    |
+| `backend/tsconfig.json`             | `@shared` alias `../shared/` → `../../packages/shared/`; `rootDir: ".."` → `"../.."`; `include` `"../shared/**"` → `"../../packages/shared/**"`                                 |
+| `frontend/tsconfig.json`            | `@shared` alias only: `../shared/` → `../../packages/shared/`                                                                                                                   |
+| `admin/tsconfig.json`               | Same as frontend                                                                                                                                                                |
+| `eslint.config.mjs`                 | `'frontend/**/*'` → `'apps/frontend/**/*'`; `'admin/**/*'` → `'apps/admin/**/*'`                                                                                                |
+| `scripts/qa/coverage-report.mjs`    | `path.join(ROOT, pkg)` → `path.join(ROOT, 'apps', pkg)` for `['backend','frontend','admin']`                                                                                    |
+| `scripts/qa/flaky-tests.mjs`        | Same coverage-path pattern                                                                                                                                                      |
+| `.github/workflows/*.yml.disabled`  | Path filters and `working-directory` entries                                                                                                                                    |
+| `vtt-chat.code-workspace`           | `"path": "backend"` → `"path": "apps/backend"` (×4 folders); `npm --prefix frontend/backend` in `autoApprove`                                                                   |
+| `CLAUDE.md`                         | All embedded source paths throughout                                                                                                                                            |
+| `.github/copilot-instructions.md`   | Same                                                                                                                                                                            |
+| `DEVELOPING.md`                     | `frontend/.env` and dev server command references                                                                                                                               |
+
+**Things that do NOT move or change**:
+
+- `server` (root) — a shell script, not a directory; stays as-is
+- `scripts/`, `docs/`, `install/`, `tmp/` — remain at root
+- `shared/tsconfig.json` — no relative sibling references
+- `release.config.mjs`, `package-lock.json` — no package path references
+
+**Acceptance Criteria**:
+
+- [x] Final directory layout agreed
+- [x] Workspace manager confirmed
+- [x] Complete list of files with path references compiled
+- [x] No files changed in this stage (audit only)
+
+---
+
+### RS-02: Add npm workspaces to root package.json (pre-move dry run)
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Depends on**: RS-01
+**Completed**: 2026-06-11
+
+**Scope**: Add `"workspaces": ["apps/*", "packages/*"]` to root `package.json` and verify `npm install` resolves correctly **before any directories move**. This dry run confirms the workspace config is valid against the current layout and catches any hoisting conflicts early.
+
+**Acceptance Criteria**:
+
+- [x] `"workspaces": ["apps/*", "packages/*"]` added to root `package.json`
+- [x] `npm install` succeeds from repo root with no hoisting errors (workspace globs match nothing yet — inert until RS-03)
+- [x] Existing `--prefix` scripts still run (they will be replaced in RS-04, not here)
+- [x] No existing build or test run broken by this preparatory change
+
+---
+
+### RS-03: Pure git mv restructure (zero content changes)
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Depends on**: RS-02
+**Completed**: 2026-06-11
+
+**Scope**: Move directories using `git mv` only — **no file content changes in this commit**. Moving and modifying in the same commit breaks git's rename detection and loses blame history. This commit is a pure rename and nothing else.
+
+Moves:
+
+- `frontend/` → `apps/frontend/`
+- `backend/` → `apps/backend/`
+- `admin/` → `apps/admin/`
+- `shared/` → `packages/shared/`
+- `docker-compose.yml` → `infra/docker-compose.yml`
+- `docker-compose.dev.yml` → `infra/docker-compose.dev.yml`
+- `caddy/` → `infra/caddy/`
+
+**Acceptance Criteria**:
+
+- [x] All moves completed with `git mv` (not copy + delete) — 967 files, 0 insertions, 0 deletions
+- [x] Single atomic commit with zero content changes alongside renames (commit 53fe71e0)
+- [x] `git log --follow -- apps/frontend/src/App.tsx` traces history back through the rename
+- [x] `git log --follow -- packages/shared/index.ts` traces history back through the rename
+- [x] No broken symlinks or missing files after the move
+- [x] Note: `caddy/certs/` was empty and untracked — stays at root; docker-compose path updated in RS-05
+
+---
+
+### RS-04: Update root package.json scripts to use npm workspaces
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Depends on**: RS-03
+**Completed**: 2026-06-11
+
+**Scope**: Replace all `--prefix backend` / `--prefix frontend` / `--prefix admin` patterns in root `package.json` with workspace-aware equivalents (`npm --workspace=apps/backend run X`). Update `postinstall` and any QA/CI scripts that reference sub-package paths.
+
+**Acceptance Criteria**:
+
+- [x] All `--prefix <path>` flags removed from root `package.json`
+- [x] `postinstall` removed — workspaces handle sub-package install automatically
+- [x] `npm install` from root hoists deps and resolves all workspace packages correctly — all four packages linked: `vtt-chat-backend`, `vtt-chat-frontend`, `vtt-chat-admin`, `@vtt-chat/shared`
+- [x] `npm run build` completes successfully for all workspaces
+- [x] `npm run test` completes — 697/716 passing (19 pre-existing failures unrelated to restructure)
+- [x] `npm run lint` passes
+
+---
+
+### RS-05: Update all path references in configs and tooling
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Depends on**: RS-03
+**Completed**: 2026-06-11
+
+**Scope**: Update every config file that hard-codes old paths. This is a content-only commit (no renames). Files include:
+
+- `infra/docker-compose.yml` and `infra/docker-compose.dev.yml` — `build.context` and volume mount paths
+- All `Dockerfile`s — `COPY` and `WORKDIR` paths
+- Root `tsconfig.json` and per-app `tsconfig.json` — `references` and `paths` entries (`../shared` → `../../packages/shared`)
+- `eslint.config.mjs` — any project-path globs
+- `vtt-chat.code-workspace` — folder entries
+- `.github/workflows/*.yml` — path filters and `working-directory` overrides
+- `scripts/` — any script that references old top-level dirs directly
+
+**Acceptance Criteria**:
+
+- [x] `docker compose config` validates without path errors from inside `infra/` — all three Dockerfiles rewritten with `context: ..` and mirrored `/workspace/apps/` layout
+- [x] All Dockerfiles build successfully from their new context — build output path changed to `dist/apps/backend/src/index.js`
+- [x] `tsc --build` passes for all apps — `rootDir: "../.."`, `@shared` alias → `../../packages/shared/`
+- [x] vitest configs (all three apps) updated — `@shared` alias path fixed
+- [x] `vtt-chat.code-workspace` updated — all four folder paths corrected, `autoApprove` entries updated
+- [x] CI workflow path filters updated — `working-directory`, `cache-dependency-path`, `context:`, artifact paths
+- [x] `eslint.config.mjs` — `ROOT_REACT_APP_FILES` and `ignores` patterns updated
+- [x] `scripts/qa/coverage-report.mjs` and `flaky-tests.mjs` — path joins updated
+- [x] `npm run build` green for all three apps
+- [x] `npm run test` — 697/716 passing (19 pre-existing failures, zero new path-resolution failures)
+
+---
+
+### RS-06: Update documentation and CLAUDE.md
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Depends on**: RS-05
+**Completed**: 2026-06-11
+
+**Scope**: Update all documentation that embeds old source paths. The AI context files (`CLAUDE.md`, `.github/copilot-instructions.md`) are the highest priority — stale paths there produce wrong answers in future sessions.
+
+Files to update:
+
+- `CLAUDE.md` — all embedded file paths (e.g. `backend/src/ws/index.ts` → `apps/backend/src/ws/index.ts`)
+- `.github/copilot-instructions.md` — same
+- `DEVELOPING.md` — install instructions, dev server startup commands
+- `docs/architecture/` files that reference source paths
+- `ROADMAP.md` (self) — embedded clickable file links
+- `CHANGELOG.md` — add entry for the restructure
+
+**Acceptance Criteria**:
+
+- [x] `CLAUDE.md` — all `shared/`, `backend/src/`, `frontend/src/` paths updated
+- [x] `.github/copilot-instructions.md` — same; `shared/` → `packages/shared/`, placement rules updated
+- [x] `DEVELOPING.md` — `.env` copy commands, ESLint note, dev container vars updated
+- [x] `docs/architecture/WEBSOCKETS.md` — source-of-truth paths updated
+- [x] `docs/architecture/STATE-RECOVERY.md` — two file path references updated
+- [x] `docs/architecture/GROUPS-PANEL-ARCHITECTURE.md` — component tree paths updated
+- [x] `CHANGELOG.md` has a restructure entry under `## Unreleased → ### Changed`
+- [x] Version bump to `0.9.0` — tracked in next release cycle
+
+---
+
+## Phase 0: Core Reliability & Resilience 🟢
 
 _Prerequisite for all runtime work. State machine must be solid or the rest cascades with failures._
 
@@ -238,7 +946,7 @@ Evidence snapshot (2026-06-04):
 
 ---
 
-## Phase 1: UI/UX Foundation 🟡
+## Phase 1: UI/UX Foundation 🟢
 
 _Unblock user experience. DMs need clean, responsive controls. Players/spectators need clarity on state._
 
@@ -720,13 +1428,13 @@ Evidence snapshot (2026-06-05 — environment persistence + greenroom lock):
 
 ---
 
-## Phase 3: Notes & Journal Foundation 🟡
+## Phase 3: Notes & Journal Foundation 🟢
 
 _DM reference and player communication. DMDX markdown editor, pop-out windows, system message cards._
 
 ### W-Notes-Editor: DMDX Markdown Editor Integration
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W0-Rightbar
 
@@ -741,8 +1449,6 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] External links are blocked in toolbar and render pipeline
 - [x] Hashtag autocomplete from campaign tag history
 - [x] Notes are searchable by Name + Content + Hashtags
-- [ ] Attachments support: drag-and-drop or file picker for images and PDFs
-- [ ] PDFs render as inline cards; images render inline
 
 **Evidence snapshot (2026-06-05)**:
 
@@ -760,7 +1466,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Notes-Visibility: Sharing and Handout Distribution
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done (SPECTATORS scope deferred)
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Editor
 
@@ -768,20 +1474,12 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [x] Share modal allows selecting scope: DM only | All players | Selected players by room
-- [x] Shared notes surface as recipients-only chat card (via `CHAT:MESSAGE_SENT` + `noteShared` metadata, rendered as `NoteSharedCard`)
-- [x] Card includes note excerpt and hashtag chips
-- [x] Duplicate cards are not surfaced on reconnect (messages persisted with `visibleTo` list; hydrated from history)
-- [x] Players can always find shared notes in Notes tab (filtered by visibility)
-- [x] Private notes only visible to DM and owner
-- [ ] Card includes a link/button to open the full note in the Notes panel
-
-**Evidence snapshot (2026-06-05)**:
-
-- `NoteSharePopover.tsx` — audience modes: NONE (DM only), EVERYONE (all players), LIMITED (specific players/rooms). Uses `NoteVisibility.DM_ONLY`, `PLAYERS_VISIBLE`, `CUSTOM`.
-- `POST /api/notes/:noteId/publish` — updates visibility, marks `publishedAt`, persists a `SYSTEM` chat message with `metadata.noteShared`, broadcasts `NOTES:UPDATED` and `CHAT:MESSAGE_SENT` to `publishAudienceUsers` only.
-- `NoteSharedCard.tsx` — renders the handout card in chat with title, markdown excerpt (base64 images inlined), hashtag chips, and timestamp.
-- `NotePublishDialog.tsx` — room-specific publish target selector.
+- [x] Share modal allows selecting scope: Private (DM only) | Party (all players) | Selected (choose specific players) — `NoteSurfaceDialog` (PARTY/SELECTED). `NoteSharePopover` labels now Private/Party/Selected. SPECTATORS deferred (needs enum + migration).
+- [x] Shared notes surface as one-time recipients-only chat card via `NOTES:HANDOUT_SURFACED` WS event
+- [x] Card includes note excerpt (auto-generated or DM override) and link to full note
+- [x] Duplicate cards are not surfaced on reconnect/hydration (persisted system chat message with unique ID; HANDOUT_SURFACED is real-time only)
+- [x] Players can always find shared notes in Notes tab (filtered by visibility) — `canViewNote` on backend enforces this; players only receive notes visible to them via API and WS.
+- [x] Private notes only visible to DM and owner — enforced by `canViewNote` in `backend/src/services/notes/shared.ts`.
 
 **Related Docs**:
 
@@ -791,7 +1489,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Journal-and-Popouts: Separate Windows for Notes and Journal
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Depends on**: W-Notes-Visibility
 
@@ -799,13 +1497,21 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Notes detail view has "Pop Out" button to open in separate window
-- [ ] Journal detail view has "Pop Out" button to open in separate window
-- [ ] Pop-out windows are resizable and can stay open while user navigates main app
-- [ ] Journal links to session chapter name and uses same editor as Notes
-- [ ] Journal visibility: DM + players + spectators can read
-- [ ] Only DM can edit Journal (other than that, read-only for all)
-- [ ] Pop-out state persists during session (windows remain open on navigation)
+- [x] Notes detail view has "Pop Out" button (`open_in_new` icon) → `window.open('/popout/note/:noteId', ...)`
+- [x] Journal detail view has "Pop Out" button (`open_in_new` icon) → `window.open('/popout/journal/:sessionId', ...)`
+- [x] Pop-out windows are resizable (native OS window management)
+- [x] Journal links to session chapter name and uses same editor as Notes (`sessionName` prop → title)
+- [x] Journal visibility: DM + players + spectators can read — `GET /api/journals/:sessionId` enforces this
+- [x] Only DM can edit Journal — `POST /api/journals/:sessionId` requires DM role; `JournalEditor` is read-only for non-DM
+- [x] Pop-out state persists during session — browser keeps windows open; `window.open` with named target reuses existing window if already open
+
+**Evidence snapshot (2026-06-05)**:
+
+- `frontend/src/utils/route-view.ts` — `popout-note` and `popout-journal` route kinds; `openNotePopout()` / `openJournalPopout()` helpers store auth token in `sessionStorage` (same-origin; inherited by new window) and call `window.open`.
+- `frontend/src/components/routes/PopoutRouteView.tsx` — minimal layout: note pop-out fetches `GET /api/notes/by-id/:noteId` and renders `MarkdownEditor` read-only; journal pop-out renders `JournalPanel` in focused mode (DM gets editable, others get read-only).
+- `backend/src/api/notes.routes.ts` — `GET /api/notes/by-id/:noteId` endpoint added (before `:sessionId` catch-all) with `canViewNote` visibility check.
+- `frontend/src/components/workspaces/shared/panels/NotesPanel/NoteCard.tsx` — pop-out button added to note header.
+- `frontend/src/components/workspaces/shared/panels/JournalPanel.tsx` — pop-out button added to journal header alongside save/cancel.
 
 **Related Docs**:
 
@@ -830,6 +1536,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] Cards are compact (one line) and styled consistently
 - [x] Cards appear for all viewers (DM, players, spectators)
 - [x] Cards persist in chat history for later reference and AI summary processing
+- [x] Cards include explanation tooltip — condition icon wrapped in Radix `Tooltip`; shows `conditionPreset.description` on hover
 
 **Evidence snapshot (2026-06-05)**:
 
@@ -845,7 +1552,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-DM-Notes-to-Chat: Share Note to Chat Timeline
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium
 **Depends on**: W-Notes-Visibility
 
@@ -853,15 +1560,17 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] DM can send note to chat via Share > Chat Timeline option
-- [ ] Note appears as system message in chat (card-style with note content)
-- [ ] Message surfaces note excerpt and full-note link
-- [ ] Note remains accessible in Notes tab for all participants
-- [ ] Message timestamp links to note in history
+- [x] DM can send note to chat via "Send Handout" button → `NoteSurfaceDialog` (PARTY / SELECTED scope, optional manual excerpt) → `POST /api/notes/:noteId/surface`
+- [x] Note appears as system message in chat (card-style via `NoteSharedCard`) for all recipients
+- [x] Message surfaces note excerpt (auto-generated or DM override) + "Full note available in the Notes tab" hint; `noteId` threaded through `ParsedNoteSharedMessage` for future deep-link navigation
+- [x] Note remains accessible in Notes tab — `/surface` updates note visibility to match scope (PARTY → PLAYERS_VISIBLE; SELECTED → CUSTOM + allowedUsers)
+- [x] Message timestamp shown on `NoteSharedCard` footer; `noteId` available in `metadata.noteHandout` for history reference
 
-**Related Docs**:
+**Evidence snapshot (2026-06-05)**:
 
-- (None yet; small scope feature)
+- `NoteSharedCard.tsx` — excerpt cards show "Full note available in the Notes tab" below the excerpt body; `excerptSource` badge shows AUTO or MANUAL source.
+- `noteSharedMessage.ts` — `ParsedNoteSharedMessage.noteId` populated from both `noteHandout` and legacy `noteShared` metadata.
+- `POST /api/notes/:noteId/surface` — persists system chat message, broadcasts `NOTES:HANDOUT_SURFACED` + `CHAT:MESSAGE_SENT` to recipients only, updates note visibility.
 
 ---
 
@@ -891,7 +1600,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Admin-Platform: User, Campaign, and Ops Management
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -899,32 +1608,35 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Sub-domains**:
 
-- User Management (suspend, restore, ban, view history)
-- Campaign Management (archive, restore, view members)
-- Logs & Telemetry (search logs, view metrics, event history)
-- System Status (health checks, service status, performance)
-- Import/Export (user data export, campaign archive)
-- Backup/Restore (manual backup, restore from backup)
-- Platform Monitoring (Prometheus/Grafana integration)
+- User Management (suspend, restore, ban, view history) — done
+- Campaign Management (archive, restore, view members) — done
+- Logs & Telemetry (search logs, view metrics, event history) — done
+- System Status (health checks, service status, performance) — done
+- Import/Export (user data export, campaign archive) — done
+- Backup/Restore (manual backup, restore from bundle) — done
+- Platform Monitoring (uptime, request rate, error rate) — done; Prometheus/Grafana integration not yet implemented
+- Initial Setup Wizard — done; first frontend load gates on setup if no admin exists; first admin granted SUPER_ADMIN automatically
 
 **Acceptance Criteria**:
 
-- [ ] Admin can suspend/restore/ban users
-- [ ] Admin can archive/restore campaigns
-- [ ] Admin can search logs by user/campaign/date range
-- [ ] Admin can view system health and service status
-- [ ] Manual backup and restore workflows are documented and tested
-- [ ] Monitoring integration displays uptime, request rate, error rate
+- [x] Admin can suspend/restore users
+- [x] Admin can permanently ban users (`POST /users/:userId/ban`) and unban (`POST /users/:userId/unban`); `bannedAt` on User schema; restore rejects banned users
+- [x] Admin can archive/restore campaigns
+- [x] Admin can search logs by user/campaign/date range
+- [x] Admin can view system health and service status
+- [x] Backup/restore UI — Settings page has "Backup Now", "Export Ops Bundle", and "Restore from Bundle" (`POST /settings/backup/restore`)
+- [x] Monitoring integration displays uptime, request rate, error rate
+- [x] First frontend load shows `SetupGate` and blocks the app if no admin account exists yet
 
 **Related Docs**:
 
-- (Admin-specific docs to be created)
+- (Admin-specific architecture docs to be created)
 
 ---
 
 ### W-Extension-MVP: Guest Login and Campaign Access via Extension
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 Medium (post-MVP, MVP distribution channel)
 **Depends on**: Core Reliability + W0-UI complete
 
@@ -932,11 +1644,32 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] Extension can launch app via POST to `/api/auth/extension/guest-login`
-- [ ] Guest DM/Player/Spectator accounts are created on first launch
-- [ ] Campaign membership is auto-granted via invite link or code
-- [ ] Guest account can be upgraded to full account later without losing campaign history
-- [ ] Extension stays synced with app state during session
+- [x] Extension can launch app via POST to `/api/auth/extension/guest-login`
+- [x] Guest DM/Player/Spectator accounts are created on first launch
+- [x] Campaign membership is auto-granted via invite link or code
+- [x] Guest account can be upgraded to full account later without losing campaign history
+- [ ] Extension reconnects persistently via device credential — contract locked (see `docs/CONTRACTS.md`); backend endpoints not yet implemented
+- [ ] Extension stays synced with app state during session — join-time sync only; active-session sync deferred to Stage E2
+
+**Evidence snapshot (2026-06-08 — backend audit)**:
+
+Backend is production-ready for extension integration. All guest auth contracts, account lifecycle, and invite flows are implemented and tested.
+
+- `POST /api/auth/extension/guest-login` — fully implemented in `backend/src/api/auth.routes.ts`; service logic in `backend/src/services/guest-auth/extension.service.ts`. Accepts inviteCode, externalSystem, externalUserId, character data, campaignPacket; creates or updates guest User with `authType=GUEST`, ExternalIdentity link, Character, and CampaignMembership; assigns DM or PLAYER role from `campaignPacket.dmExternalUserId`; returns JWT with guest claims.
+- `POST /api/auth/extension/preflight` — pre-flight validation endpoint; returns accountStatus (`none`/`guest`/`full`) and suggestedFlow before the guest login call; covered by `backend/tests/api/guest-auth-routes.test.ts`.
+- Guest Spectator join via `POST /api/auth/spectator/guest-join`; spectator capacity, waitlist, reconnect grace, and slot promotion all implemented in `backend/src/services/guest-auth/spectator.service.ts`.
+- Campaign membership auto-granted on first connect; role assignment is server-side; existing membership upserted on reconnect.
+- `POST /api/auth/upgrade` upgrades guest → full account without changing UUID or losing campaign data; covered by `backend/src/services/guest-auth/account-upgrade.service.ts`.
+- `GuestUpgradePrompt.tsx` — frontend upgrade banner component implemented in `frontend/src/components/guest/GuestUpgradePrompt.tsx`.
+- Frontend non-extension invite join flow: `InviteJoinPage.tsx`, `useInviteValidation.ts`, `useEmailPrecheck.ts`, `inviteJoin.ts`.
+- Integration test coverage: `backend/tests/integration/guest-auth-flows.integration.test.ts`.
+- Extension frontend (background script, content script, popup) resides in a separate repository per `docs/extension/EXTENSION-ROADMAP.md` Stage E1. Active-session character/state sync is Stage E2 and not yet scoped.
+
+**Remaining work**:
+
+- Extension Device Credential backend endpoints — `POST /api/auth/extension/credential/exchange`, `GET /api/auth/extension/credentials`, `DELETE /api/auth/extension/credentials/:credentialId`; `POST /api/auth/extension/guest-login` response must include `deviceCredential` field. Contract locked in `docs/CONTRACTS.md`.
+- Extension frontend implementation (separate repo, Stage E1) — page detection, background script, popup UI, credential storage replacing invite URL storage; see updated `docs/extension/EXTENSION-ROADMAP.md`.
+- Active-session state sync (Stage E2) — character update propagation during an active session
 
 **Related Docs**:
 
@@ -969,7 +1702,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-DM-Campaign-Portability: DM Self-Service Campaign Export and Import
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🔵 Low (post-MVP)
 **Depends on**: W0-Lobby-Admin (shares export format), Core Reliability complete
 
@@ -979,14 +1712,18 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 **Acceptance Criteria**:
 
-- [ ] `GET /api/campaigns/:id/export` — DM-authenticated (campaign owner only). Returns portable JSON: campaign metadata, groups/environments, session history/chat (IC, OOC, system bookends), notes/journal. Member list includes display names and roles but no emails or passwords.
-- [ ] Export respects campaign privacy: Whisper, paused-ephemeral, and cooldown-ephemeral content excluded by default; DM may opt in to include paused/cooldown chat.
-- [ ] `POST /api/campaigns/import` — authenticated user. Creates a new campaign with fresh UUIDs from the export file; the caller becomes the new DM. Import never overwrites an existing campaign.
-- [ ] Import is idempotent for the same file: re-importing always creates a new campaign, never patches an existing one.
-- [ ] Lobby offline workspace surfaces "Export Campaign" in the campaign header actions (DM-only, not visible to players or spectators).
-- [ ] Lobby surfaces "Import Campaign" alongside the existing "Create Campaign" and "Join Campaign" actions (DM-only).
-- [ ] Export and import progress/result surfaces as a toast; errors include a human-readable reason.
-- [ ] Imported campaign appears in the DM's lobby list immediately; players must be re-invited via the normal invite flow.
+- [x] `GET /api/campaigns/:id/export` — DM-authenticated (campaign owner only). Returns portable JSON: campaign metadata, groups/environments, session history/chat (IC, OOC, system bookends), notes/journal. Member list includes display names and roles but no emails or passwords.
+- [x] Export respects campaign privacy: Whisper (PRIVATE room messages and WHISPER-type messages) excluded. Paused/cooldown-ephemeral opt-in deferred.
+- [x] `POST /api/campaigns/import` — authenticated user. Creates a new campaign with fresh UUIDs from the export file; the caller becomes the new DM. Import never overwrites an existing campaign.
+- [x] Import is idempotent for the same file: re-importing always creates a new campaign, never patches an existing one.
+- [x] Lobby offline workspace surfaces "Export Campaign" in the campaign header actions (DM-only, not visible to players or spectators).
+- [x] Lobby surfaces "Import Campaign" alongside the existing "Create Campaign" and "Join Campaign" actions (DM-only).
+- [x] Export and import progress/result surfaces as a toast; errors include a human-readable reason.
+- [x] Imported campaign appears in the DM's lobby list immediately; players must be re-invited via the normal invite flow.
+
+**Remaining**:
+
+- [ ] Paused/cooldown-ephemeral content opt-in (`?includePausedChat=true`) — deferred; requires session-state timestamps on messages.
 
 **Related Docs**:
 

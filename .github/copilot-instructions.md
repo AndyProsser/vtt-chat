@@ -170,7 +170,7 @@ Use the following transition rules so cleanup and rehydration stay predictable:
 
 ### Session State Machine
 
-The session state machine is the single source of truth for what is and is not permitted at any point in time. All UI rendering, API validation, and Zustand logic must gate on the canonical `SessionState` enum from `shared/types/index.ts` — never on hardcoded strings.
+The session state machine is the single source of truth for what is and is not permitted at any point in time. All UI rendering, API validation, and Zustand logic must gate on the canonical `SessionState` enum from `packages/shared/types/index.ts` — never on hardcoded strings.
 
 **Valid transitions — quick reference:**
 
@@ -192,8 +192,8 @@ IDLE ──► ACTIVE ──► PAUSED ──► ACTIVE (resume)
 
 _Enum usage (never use raw strings):_
 
-- Always import `SessionState` from `shared/types/index.ts`.
-- Always use `shared/utils/session-state.ts` helpers (`isGreenroomSessionState`, `deriveCampaignDisplayState`, `normalizeSessionState`) — never re-implement them.
+- Always import `SessionState` from `packages/shared/types/index.ts`.
+- Always use `packages/shared/utils/session-state.ts` helpers (`isGreenroomSessionState`, `deriveCampaignDisplayState`, `normalizeSessionState`) — never re-implement them.
 
 _API validation:_
 
@@ -441,13 +441,13 @@ If a WebSocket disconnects during an active or paused session:
 
 Every new WS event must satisfy ALL of the following before it is considered done. An event that fails any item is incomplete and must not be shipped:
 
-- [ ] **Shared type** — event name constant and payload type defined in `shared/events/`
+- [ ] **Shared type** — event name constant and payload type defined in `packages/shared/events/`
 - [ ] **Backend emits** — backend emits the event after persisting the relevant state change (never before)
 - [ ] **All affected clients have a handler** — not just the acting user; every client that needs to react has a registered handler
 - [ ] **All affected Zustand slices update** — the handler updates state for every user who is affected, not only the sender
 - [ ] **Redis updated** — if the event carries presence, room membership, or audio state that must survive reconnect
-- [ ] **Unit test** — a test exists in `frontend/tests/state/` and/or `backend/tests/` covering the handler and emission
-- [ ] **Event registered** — the event name is listed in the WS event registry comment block in `backend/src/ws/index.ts`
+- [ ] **Unit test** — a test exists in `apps/frontend/tests/state/` and/or `apps/backend/tests/` covering the handler and emission
+- [ ] **Event registered** — the event name is listed in the WS event registry comment block in `apps/backend/src/ws/index.ts`
 
 **Invalid or malformed WS events:**
 
@@ -501,14 +501,14 @@ Per-user transient state (speaking, presence online/offline, ghost mode, mic mut
 4. Mount the leaf inside the avatar/row component (e.g. `AvatarOverlay`). Do **not** pass the transient value down as a prop.
 5. For cascading visual changes (e.g. ghost dimming the row), use CSS `:has(.leaf-class)` selectors driven by leaf mount/unmount — never parent className threading.
 
-**Canonical leaves in `frontend/src/components/workspaces/session/rooms/`:**
+**Canonical leaves in `apps/frontend/src/components/workspaces/session/rooms/`:**
 
 - `SpeakingIndicator` — speaking state + combined mute
 - `PresenceIndicator` — online/offline dot
 - `GhostIndicator` — ghost-mode badge (drives `:has()` cascade)
 - `MicMutedIndicator` — mic_off badge (variants: `avatar` | `profile`)
 
-**Shared selector hook:** `frontend/src/hooks/useIsUserMuted.ts` combines own-mute + DM `MUTE` override + (for self) device PTT/mic into a single boolean. Any leaf that needs combined mute state must use this hook — never re-derive inline.
+**Shared selector hook:** `apps/frontend/src/hooks/useIsUserMuted.ts` combines own-mute + DM `MUTE` override + (for self) device PTT/mic into a single boolean. Any leaf that needs combined mute state must use this hook — never re-derive inline.
 
 **`AvatarOverlay` contract:** takes a single `presence?: {sessionId, userId, isSelf?, roomType?}` prop and mounts the four leaves itself. Callers must not pass `presenceState`, `ghost`, `isMuted`, or `speaking`.
 
@@ -573,33 +573,33 @@ Naming conventions for split files:
 
 ### Shared Package Boundary
 
-The `shared/` package is the canonical source for anything used by two or more of: `backend`, `frontend`, `admin`.
+The `packages/shared/` package is the canonical source for anything used by two or more of: `apps/backend`, `apps/frontend`, `apps/admin`.
 
 ### Frontend Placement Rule
 
-- Keep React component folders focused on rendering and wiring only; move reusable types into `frontend/src/types`, constants into `frontend/src/constants`, and hooks into `frontend/src/hooks` or the nearest domain-specific hook folder.
+- Keep React component folders focused on rendering and wiring only; move reusable types into `apps/frontend/src/types`, constants into `apps/frontend/src/constants`, and hooks into `apps/frontend/src/hooks` or the nearest domain-specific hook folder.
 - Do not define new feature-local types, constants, or hooks inline inside component trees when they can live in a central frontend location.
 - Component entry points should import the supporting types, constants, and hooks they need rather than re-declaring them in the component folder.
 
-**Always lives in `shared/`:**
+**Always lives in `packages/shared/`:**
 
-- WS event names and payload types → `shared/events/`
-- Session, room, role, message type, and presence enums → `shared/types/`
-- Session state utility functions → `shared/utils/session-state.ts`
-- Permission helpers → `shared/permissions/`
-- Input validators used by API and frontend → `shared/validators/`
+- WS event names and payload types → `packages/shared/events/`
+- Session, room, role, message type, and presence enums → `packages/shared/types/`
+- Session state utility functions → `packages/shared/utils/session-state.ts`
+- Permission helpers → `packages/shared/permissions/`
+- Input validators used by API and frontend → `packages/shared/validators/`
 
-**Must be moved to `shared/` if needed by ≥ 2 sub-apps:**
+**Must be moved to `packages/shared/` if needed by ≥ 2 sub-apps:**
 
 - Any formatting utility
-- Any hook or utility needed by both `frontend/` and `admin/`
-- Any constant or enum that mirrors an existing `shared/` value
+- Any hook or utility needed by both `apps/frontend/` and `apps/admin/`
+- Any constant or enum that mirrors an existing `packages/shared/` value
 
-**Never duplicate in a sub-app what already exists in `shared/`.** If you find yourself defining a type, enum, or utility that mirrors something in `shared/`, stop and import from `shared/` instead.
+**Never duplicate in a sub-app what already exists in `packages/shared/`.** If you find yourself defining a type, enum, or utility that mirrors something in `packages/shared/`, stop and import from `packages/shared/` instead.
 
 ### Frontend + Admin Style Consolidation
 
-`frontend/` and `admin/` are separate React apps but must feel visually consistent:
+`apps/frontend/` and `apps/admin/` are separate React apps but must feel visually consistent:
 
 - Design tokens (colours, spacing, typography) must be defined once and consumed by both apps.
 - If a UI component (modal, badge, button variant, toast, confirmation dialog) is needed in both apps, it belongs in a shared component library — not copy-pasted between them.

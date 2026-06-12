@@ -9,21 +9,21 @@ VTT-Chat is a real-time, multi-user voice and chat platform for tabletop RPGs (T
 | `.github/copilot-instructions.md` | Full product spec and detailed subsystem rules |
 | `docs/CONTRACTS.md` | Locked API and WS event contracts |
 | `docs/architecture/` | Per-subsystem architecture docs |
-| `shared/events/*.ts` | Authoritative WS event type definitions |
-| `backend/src/ws/index.ts` | WS event registry (runtime source of truth) |
+| `packages/shared/events/*.ts` | Authoritative WS event type definitions |
+| `apps/backend/src/ws/index.ts` | WS event registry (runtime source of truth) |
 
 ---
 
 ## Tech Stack
 
-| Layer    | Technology                                        |
-| -------- | ------------------------------------------------- |
-| Frontend | React 19, Zustand, Radix UI, TypeScript           |
-| Admin    | Separate React app, shares design tokens          |
-| Backend  | Node.js (Express), Prisma ORM, WebSocket server   |
-| Database | PostgreSQL (authoritative), Redis (presence)      |
-| Shared   | `shared/` monorepo package — types, events, utils |
-| Infra    | Docker Compose; Caddy for TLS/reverse proxy       |
+| Layer    | Technology                                                  |
+| -------- | ----------------------------------------------------------- |
+| Frontend | React 19, Zustand, Radix UI, TypeScript                     |
+| Admin    | Separate React app, shares design tokens                    |
+| Backend  | Node.js (Express), Prisma ORM, WebSocket server             |
+| Database | PostgreSQL (authoritative), Redis (presence)                |
+| Shared   | `packages/shared/` monorepo package — types, events, utils  |
+| Infra    | Docker Compose; Caddy for TLS/reverse proxy                 |
 
 ---
 
@@ -58,7 +58,7 @@ await fetch('/api/audio/environments/apply', { method: 'POST', body: ... })
 
 ## Session State Machine
 
-Import `SessionState` from `shared/types/index.ts`. Never use raw strings.
+Import `SessionState` from `packages/shared/types/index.ts`. Never use raw strings.
 
 ```
 IDLE ──► ACTIVE ──► PAUSED ──► ACTIVE (resume)
@@ -83,7 +83,7 @@ IDLE ──► ACTIVE ──► PAUSED ──► ACTIVE (resume)
 
 **Rules (apply in order for every DM action):** enum usage → API validation → UI gating → Zustand/effects.
 
-- Always use helpers from `shared/utils/session-state.ts` (`isGreenroomSessionState`, `deriveCampaignDisplayState`, `normalizeSessionState`).
+- Always use helpers from `packages/shared/utils/session-state.ts` (`isGreenroomSessionState`, `deriveCampaignDisplayState`, `normalizeSessionState`).
 - API must read current state from DB before acting. Return `403` with descriptive message on invalid transitions.
 - No state may be skipped — `IDLE → ENDED` is invalid; reject at API layer.
 - Compute a single `isValidForState` at the feature level — do not scatter `if (state === ...)` blocks.
@@ -114,17 +114,17 @@ When this occurs, these must happen in order:
 
 Every new WS event must satisfy ALL before shipping:
 
-- [ ] Shared type defined in `shared/events/`
+- [ ] Shared type defined in `packages/shared/events/`
 - [ ] Backend emits after persisting (never before)
 - [ ] Handler registered for ALL affected clients (not just acting user)
 - [ ] All affected Zustand slices update
 - [ ] Redis updated if state must survive reconnect
-- [ ] Unit test in `frontend/tests/state/` and/or `backend/tests/`
-- [ ] Event name listed in WS registry in `backend/src/ws/index.ts`
+- [ ] Unit test in `apps/frontend/tests/state/` and/or `apps/backend/tests/`
+- [ ] Event name listed in WS registry in `apps/backend/src/ws/index.ts`
 
 **Canonical WS events (high-risk subset — not exhaustive):**
 
-The authoritative list is `backend/src/ws/index.ts`. Type definitions live in `shared/events/*.ts`. The events below are the ones most likely to cause bugs if missed or mishandled.
+The authoritative list is `apps/backend/src/ws/index.ts`. Type definitions live in `packages/shared/events/*.ts`. The events below are the ones most likely to cause bugs if missed or mishandled.
 
 - Audio: `AUDIO:ENVIRONMENT_SET`, `AUDIO:DM_OVERRIDE_APPLIED`, `AUDIO:DM_OVERRIDE_REMOVED`, `AUDIO:BROADCAST_STATE_CHANGED`, `AUDIO:DM_VOICE_MODE_CHANGED`
 - Rooms: `ROOM:CREATED`, `ROOM:DELETED`, `ROOM:USER_JOINED`, `ROOM:USER_LEFT`, `ROOM:SESSION_TRANSITION_APPLIED`
@@ -158,13 +158,13 @@ Per-user transient state (speaking, presence, ghost, mic mute, typing) **must no
 4. Mount the leaf inside the avatar/row component — do not pass the value down as a prop.
 5. For cascading visual changes, use CSS `:has(.leaf-class)` — never parent className threading.
 
-**Canonical leaves in `frontend/src/components/workspaces/session/rooms/`:**
+**Canonical leaves in `apps/frontend/src/components/workspaces/session/rooms/`:**
 
 - `SpeakingIndicator`, `PresenceIndicator`, `GhostIndicator`, `MicMutedIndicator`
 
 **`AvatarOverlay` contract:** takes `presence?: {sessionId, userId, isSelf?, roomType?}` and mounts the four leaves itself. Callers must not pass `presenceState`, `ghost`, `isMuted`, or `speaking`.
 
-**Combined mute:** Use `frontend/src/hooks/useIsUserMuted.ts` — never re-derive inline.
+**Combined mute:** Use `apps/frontend/src/hooks/useIsUserMuted.ts` — never re-derive inline.
 
 ### Scroll Containment
 
@@ -254,23 +254,23 @@ No source file > 400 lines (excluding blank lines and imports). Split by logical
 
 ### Shared Package Boundary
 
-`shared/` is the canonical source for anything used by 2+ of: `backend`, `frontend`, `admin`.
+`packages/shared/` is the canonical source for anything used by 2+ of: `apps/backend`, `apps/frontend`, `apps/admin`.
 
-**Always in `shared/`:**
+**Always in `packages/shared/`:**
 
-- WS event names and payload types → `shared/events/`
-- Session, room, role, message, presence enums → `shared/types/`
-- Session state utilities → `shared/utils/session-state.ts`
-- Permission helpers → `shared/permissions/`
-- Input validators used by API and frontend → `shared/validators/`
+- WS event names and payload types → `packages/shared/events/`
+- Session, room, role, message, presence enums → `packages/shared/types/`
+- Session state utilities → `packages/shared/utils/session-state.ts`
+- Permission helpers → `packages/shared/permissions/`
+- Input validators used by API and frontend → `packages/shared/validators/`
 
-**Never duplicate in a sub-app what exists in `shared/`.** If you find yourself mirroring a type or utility, stop and import from `shared/` instead.
+**Never duplicate in a sub-app what exists in `packages/shared/`.** If you find yourself mirroring a type or utility, stop and import from `packages/shared/` instead.
 
 ### Frontend Placement
 
-- Types → `frontend/src/types`
-- Constants → `frontend/src/constants`
-- Hooks → `frontend/src/hooks` or nearest domain hook folder
+- Types → `apps/frontend/src/types`
+- Constants → `apps/frontend/src/constants`
+- Hooks → `apps/frontend/src/hooks` or nearest domain hook folder
 - Do not declare these inline in component trees.
 
 ### UI Controls
@@ -307,7 +307,7 @@ No source file > 400 lines (excluding blank lines and imports). Split by logical
 | `docs/CONTRACTS.md`                      | Any API endpoint or WS event contract changes           |
 | `docs/architecture/SESSION-LIFECYCLE.md` | Session state machine changes or new lifecycle rules    |
 | `docs/architecture/WEBSOCKETS.md`        | New WS event families or transport behavior changes     |
-| `shared/events/*.ts`                     | Source of truth — update before implementing handlers   |
+| `packages/shared/events/*.ts`            | Source of truth — update before implementing handlers   |
 
 `ROADMAP.md` is tracking-only. Detailed design decisions and acceptance criteria belong in `docs/` files, not inline in the roadmap.
 

@@ -710,22 +710,23 @@ function download_source() {
 
   mkdir -p "$INSTALL_DIR"
 
-  if [[ -d "$REPO_ROOT/backend" && -d "$REPO_ROOT/frontend" && -f "$REPO_ROOT/infra/install-config.yml" ]]; then
+  if [[ -d "$REPO_ROOT/apps/backend" && -d "$REPO_ROOT/apps/frontend" && -f "$REPO_ROOT/infra/install-config.yml" ]]; then
     print_info "Using local repository source (repo-safe copy to install dir)."
     run_logged_step "Sync repository into install directory" rsync -a --delete \
       --exclude '.git' \
       --exclude 'node_modules' \
-      --exclude 'backend/node_modules' \
-      --exclude 'frontend/node_modules' \
-      --exclude 'admin/node_modules' \
+      --exclude 'apps/backend/node_modules' \
+      --exclude 'apps/frontend/node_modules' \
+      --exclude 'apps/admin/node_modules' \
+      --exclude 'packages/shared/node_modules' \
       --exclude 'dist' \
       --exclude 'coverage' \
       --exclude 'caddy/certs' \
       --exclude 'infra/install-config.yml' \
       --exclude 'config.yml' \
       --exclude '.env' \
-      --exclude 'backend/.env' \
-      --exclude 'frontend/.env' \
+      --exclude 'apps/backend/.env' \
+      --exclude 'apps/frontend/.env' \
       "$REPO_ROOT/" "$INSTALL_DIR/"
   else
     print_info "Downloading repository archive from $REPO_ARCHIVE_URL"
@@ -735,17 +736,18 @@ function download_source() {
     run_logged_step "Sync extracted archive into install directory" rsync -a --delete \
       --exclude '.git' \
       --exclude 'node_modules' \
-      --exclude 'backend/node_modules' \
-      --exclude 'frontend/node_modules' \
-      --exclude 'admin/node_modules' \
+      --exclude 'apps/backend/node_modules' \
+      --exclude 'apps/frontend/node_modules' \
+      --exclude 'apps/admin/node_modules' \
+      --exclude 'packages/shared/node_modules' \
       --exclude 'dist' \
       --exclude 'coverage' \
       --exclude 'caddy/certs' \
       --exclude 'infra/install-config.yml' \
       --exclude 'config.yml' \
       --exclude '.env' \
-      --exclude 'backend/.env' \
-      --exclude 'frontend/.env' \
+      --exclude 'apps/backend/.env' \
+      --exclude 'apps/frontend/.env' \
       "$tmpdir/" "$INSTALL_DIR/"
     rm -rf "$tmpdir" >>"$LOG_FILE" 2>&1 || true
   fi

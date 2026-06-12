@@ -1,0 +1,575 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Session {
+  id                     String              @id @default(uuid()) @db.Uuid
+  campaignId             String?             @db.Uuid
+  campaign               Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  name                   String
+  description            String?
+  plannedDurationMinutes Int?
+  cumulativePauseMs      Int                 @default(0)
+  pauseCount             Int                 @default(0)
+  pauseStartedAt         DateTime?
+  dmId                   String              @db.Uuid
+  state                  SessionState        @default(IDLE)
+  members                SessionMember[]
+  rooms                  Room[]
+  presence               PresenceSnapshot[]
+  messages               ChatMessage[]
+  notes                  Note[]
+  logs                   SessionLog[]
+  recordings             RecordingMetadata[]
+  audioRoomStates        AudioRoomState[]
+  audioDMOverrides       AudioDMOverride[]
+  createdAt              DateTime            @default(now())
+  startedAt              DateTime?
+  endedAt                DateTime?
+  updatedAt              DateTime            @updatedAt
+
+  @@index([dmId])
+  @@index([campaignId])
+  @@index([state])
+  @@index([createdAt])
+}
+
+model Room {
+  id         String              @id @default(uuid()) @db.Uuid
+  sessionId  String              @db.Uuid
+  session    Session             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name       String
+  type       RoomType            @default(MAIN)
+  createdBy  String              @db.Uuid
+  recordings RecordingMetadata[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@index([sessionId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model PresenceSnapshot {
+  id            String        @id @default(uuid()) @db.Uuid
+  sessionId     String        @db.Uuid
+  session       Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  campaignId    String?       @db.Uuid
+  userId        String        @db.Uuid
+  username      String
+  primaryRoomId String?       @db.Uuid
+  privateRoomId String?       @db.Uuid
+  state         PresenceState @default(ONLINE)
+  lastSeenAt    DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([lastSeenAt])
+}
+
+model User {
+  id                       String                 @id @default(uuid()) @db.Uuid
+  email                    String?                @unique
+  username                 String                 @unique
+  displayName              String
+  avatarUrl                String?
+  authType                 AuthType               @default(FULL)
+  password                 String? // null for guest accounts; required for admin operations
+  role                     Role                   @default(PLAYER)
+  adminRole                AdminRole? // null if not an admin; automatically set to CAMPAIGN_DM for DMs
+  isActive                 Boolean                @default(true)
+  bannedAt                 DateTime?
+  tokenInvalidBefore       DateTime?
+  dmVoiceMode              DmVoiceMode            @default(TARGET_GROUP)
+  dmBackgroundVolume       Float                  @default(0.3)
+  campaignsDm              Campaign[]             @relation("CampaignCurrentDm")
+  campaignLinks            CampaignMembership[]
+  characters               Character[]
+  externalIdentities       ExternalIdentity[]
+  linkedExternalCampaigns  CampaignExternalLink[] @relation("CampaignExternalLinkLinkedBy")
+  passwordResetTokens      PasswordResetToken[]
+  spectatorWaitlistEntries SpectatorWaitlist[]
+  portabilityArtifacts     ImportExportArtifact[]
+  joinRequests             CampaignJoinRequest[]
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+
+  @@index([username])
+  @@index([email])
+  @@index([adminRole])
+}
+
+model Campaign {
+  id                            String                 @id @default(uuid()) @db.Uuid
+  name                          String
+  description                   String?
+  posterUrl                     String?                @db.Text
+  inviteCode                    String                 @unique
+  inviteActive                  Boolean                @default(true)
+  spectatorInviteCode           String?                @unique
+  spectatorInviteActive         Boolean                @default(false)
+  spectatorPolicy               SpectatorPolicy        @default(NONE)
+  lateJoinPolicy                LateJoinPolicy         @default(OPEN)
+  lateJoinGraceMinutes          Int                    @default(30)
+  spectatorMax                  Int?
+  spectatorWaitlistEnabled      Boolean                @default(false)
+  spectatorReconnectGraceSecs   Int                    @default(60)
+  dmAutoTargetOnFirstPlayerJoin Boolean                @default(true)
+  postSessionChatEnabled        Boolean                @default(true)
+  postSessionChatDurationMs     Int                    @default(300000)
+  discoverable                  Boolean                @default(false)
+  extensionSyncPolicy           ExtensionSyncPolicy    @default(DM_AND_PLAYERS)
+  defaultSessionDurationMins    Int                    @default(240)
+  supportedPlatforms            SupportedPlatform[]    @default([ANY])
+  currentDmId                   String                 @db.Uuid
+  retiredAt                     DateTime?
+  deletedAt                     DateTime?
+  currentDm                     User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
+  members                       CampaignMembership[]
+  characters                    Character[]
+  externalLinks                 CampaignExternalLink[]
+  spectatorWaitlist             SpectatorWaitlist[]
+  sessions                      Session[]
+  notes                         Note[]
+  greenroomMessages             ChatMessage[]
+  recordings                    RecordingMetadata[]
+  portabilityArtifacts          ImportExportArtifact[]
+  joinRequests                  CampaignJoinRequest[]
+  createdAt                     DateTime               @default(now())
+  updatedAt                     DateTime               @updatedAt
+
+  @@index([currentDmId])
+  @@index([discoverable])
+  @@index([spectatorPolicy])
+  @@index([createdAt])
+  @@index([retiredAt])
+  @@index([deletedAt])
+}
+
+model CampaignMembership {
+  id         String            @id @default(uuid()) @db.Uuid
+  campaignId String            @db.Uuid
+  userId     String            @db.Uuid
+  role       Role              @default(PLAYER)
+  joinedAt   DateTime          @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@index([campaignId])
+  @@index([userId])
+}
+
+model CampaignJoinRequest {
+  id          String                  @id @default(uuid()) @db.Uuid
+  campaignId  String                  @db.Uuid
+  userId      String                  @db.Uuid
+  message     String?                 @db.VarChar(300)
+  status      CampaignJoinRequestStatus @default(PENDING)
+  requestedAt DateTime                @default(now())
+  resolvedAt  DateTime?
+  campaign    Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Character {
+  id             String          @id @default(uuid()) @db.Uuid
+  userId         String          @db.Uuid
+  campaignId     String          @db.Uuid
+  name           String
+  status         CharacterStatus @default(ALIVE)
+  race           String?
+  class          String?
+  subclass       String?
+  avatarUrl      String?
+  externalSystem String?
+  externalId     String?
+  isActive       Boolean         @default(false)
+  metadata       Json?
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign       Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([campaignId])
+  @@index([campaignId, userId])
+  @@index([externalSystem, externalId])
+}
+
+model ExternalIdentity {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  externalSystem String
+  externalUserId String
+  email          String
+  lastSeenAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@unique([externalSystem, externalUserId])
+  @@unique([userId, externalSystem])
+  @@index([email])
+  @@index([userId])
+}
+
+model CampaignExternalLink {
+  id             String   @id @default(uuid()) @db.Uuid
+  campaignId     String   @db.Uuid
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  externalSystem String
+  externalId     String
+  linkedAt       DateTime @default(now())
+  linkedBy       String   @db.Uuid
+  linkedByUser   User     @relation("CampaignExternalLinkLinkedBy", fields: [linkedBy], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, externalSystem])
+  @@index([externalSystem, externalId])
+  @@index([linkedBy])
+}
+
+model SpectatorWaitlist {
+  id            String    @id @default(uuid()) @db.Uuid
+  campaignId    String    @db.Uuid
+  campaign      Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  userId        String    @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt      DateTime  @default(now())
+  waitlistToken String    @unique
+  promoted      Boolean   @default(false)
+  promotedAt    DateTime?
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, joinedAt])
+  @@index([waitlistToken])
+}
+
+model SessionMember {
+  id        String  @id @default(uuid()) @db.Uuid
+  sessionId String  @db.Uuid
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String  @db.Uuid
+  username  String
+  role      Role
+
+  joinedAt DateTime @default(now())
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id             String      @id @default(uuid()) @db.Uuid
+  sessionId      String?     @db.Uuid
+  session        Session?    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  campaignId     String?     @db.Uuid
+  campaign       Campaign?   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  authorId       String      @db.Uuid
+  authorUsername String
+  content        String      @db.Text
+  type           MessageType
+  isDmOnly       Boolean     @default(false)
+  isOffTheRecord Boolean     @default(false)
+  visibleTo      Json?
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  deletedBy      String?     @db.Uuid
+
+  @@index([sessionId])
+  @@index([campaignId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model Note {
+  id             String         @id @default(uuid()) @db.Uuid
+  campaignId     String         @db.Uuid
+  campaign       Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sessionId      String?        @db.Uuid
+  session        Session?       @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  authorId       String         @db.Uuid
+  authorUsername String
+  title          String
+  content        String         @db.Text
+  visibility     NoteVisibility @default(DM_ONLY)
+  tags           Json?
+  allowedUsers   Json?
+  attachments    Json?
+  publishedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([campaignId])
+  @@index([sessionId])
+  @@index([authorId])
+  @@index([visibility])
+  @@index([createdAt])
+}
+
+model SessionLog {
+  id        String              @id @default(uuid()) @db.Uuid
+  sessionId String              @db.Uuid
+  session   Session             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String?             @db.Uuid
+  username  String
+  eventType SessionLogEventType
+  detail    String?
+  createdAt DateTime            @default(now())
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @db.Uuid
+  actorName   String
+  actorRole   String?
+  action      String
+  targetType  String
+  targetId    String?
+  outcome     String   @default("SUCCESS")
+  reason      String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt])
+}
+
+model AdminInvite {
+  id              String    @id @default(uuid()) @db.Uuid
+  token           String    @unique
+  invitedRole     AdminRole
+  email           String?
+  invitedByUserId String    @db.Uuid
+  expiresAt       DateTime
+  usedAt          DateTime?
+  usedByUserId    String?   @db.Uuid
+  createdAt       DateTime  @default(now())
+
+  @@index([token])
+  @@index([invitedByUserId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model RecordingMetadata {
+  id              String    @id @default(uuid()) @db.Uuid
+  campaignId      String    @db.Uuid
+  campaign        Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sessionId       String?   @db.Uuid
+  session         Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  roomId          String?   @db.Uuid
+  room            Room?     @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  title           String
+  storageKey      String?
+  sourceUrl       String?
+  durationSeconds Int?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  journalSummary  String?   @db.Text
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([campaignId])
+  @@index([sessionId])
+  @@index([roomId])
+  @@index([createdAt])
+}
+
+model ImportExportArtifact {
+  id              String                  @id @default(uuid()) @db.Uuid
+  type            PortabilityArtifactType
+  campaignId      String?                 @db.Uuid
+  campaign        Campaign?               @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  createdByUserId String?                 @db.Uuid
+  createdBy       User?                   @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  formatVersion   Int                     @default(1)
+  payload         Json
+  metadata        Json?
+  createdAt       DateTime                @default(now())
+
+  @@index([type])
+  @@index([campaignId])
+  @@index([createdByUserId])
+  @@index([createdAt])
+}
+
+model AudioRoomState {
+  id              String   @id @default(uuid()) @db.Uuid
+  sessionId       String   @db.Uuid
+  session         Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  roomId          String   @db.Uuid
+  environmentName String
+  environmentId   String
+  parameters      Json?
+  setBy           String   @db.Uuid
+  setAt           DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([sessionId, roomId])
+  @@index([sessionId])
+}
+
+model AudioDMOverride {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionId    String   @db.Uuid
+  session      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  targetUserId String   @db.Uuid
+  overrideType String
+  parameters   Json?
+  appliedBy    String   @db.Uuid
+  appliedAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([sessionId, targetUserId, overrideType])
+  @@index([sessionId])
+  @@index([targetUserId])
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  CAMPAIGN_DM
+  READ_ONLY
+}
+
+enum AuthType {
+  FULL
+  GUEST
+}
+
+enum CampaignJoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SpectatorPolicy {
+  NONE
+  GUESTS
+  USERS
+}
+
+enum LateJoinPolicy {
+  OPEN
+  SCREENED
+  BLOCKED
+}
+
+enum ExtensionSyncPolicy {
+  NONE
+  DM_ONLY
+  DM_AND_PLAYERS
+}
+
+enum SupportedPlatform {
+  ANY
+  DDB
+  ROLL20
+  FOUNDRY
+}
+
+enum Role {
+  DM
+  PLAYER
+  SPECTATOR
+  SYSTEM
+}
+
+enum MessageType {
+  IC
+  OOC
+  WHISPER
+  DM
+  SYSTEM
+}
+
+enum SessionState {
+  IDLE
+  ACTIVE
+  PAUSED
+  COOLDOWN
+  ENDED
+  CLEANUP
+}
+
+enum NoteVisibility {
+  DM_ONLY
+  PLAYERS_VISIBLE
+  CUSTOM
+}
+
+enum CharacterStatus {
+  ALIVE
+  DEAD
+  LEFT
+  UNKNOWN
+}
+
+enum RoomType {
+  MAIN
+  GROUP
+  PRIVATE
+}
+
+enum PresenceState {
+  ONLINE
+  TYPING
+  SPEAKING
+  IDLE
+  OFFLINE
+}
+
+enum SessionLogEventType {
+  JOINED
+  LEFT
+  STATE_CHANGED
+}
+
+enum PortabilityArtifactType {
+  CAMPAIGN_EXPORT
+  CAMPAIGN_IMPORT
+  OPERATIONS_EXPORT
+}
+
+enum DmVoiceMode {
+  TARGET_GROUP
+  BROADCAST
+}

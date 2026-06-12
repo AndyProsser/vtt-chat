@@ -1098,8 +1098,67 @@ Broadcasts `AUDIO:DM_OVERRIDE_APPLIED` / `AUDIO:DM_OVERRIDE_REMOVED` to all sess
 
 ---
 
+## Extension Device Credential Contract
+
+The extension device credential is a **per-user, per-browser opaque token** issued after the first successful extension authentication. It replaces the invite URL as the reconnection mechanism so extensions remain connected even when the campaign invite code is rotated or regenerated.
+
+### Credential issuance
+
+- Issued in the response body of `POST /api/auth/extension/guest-login` on success as the field `deviceCredential`.
+- Preserved (not re-issued) when a guest upgrades via `POST /api/auth/upgrade` — the credential automatically becomes associated with the now-full account.
+- The extension **must** store `deviceCredential` in browser `localStorage`. The original invite URL or code **must not** be stored for reconnection purposes.
+- Each browser or installation generates and persists a stable `deviceId` (UUID v4) in `localStorage` on first install. This `deviceId` is sent on the initial join call and on every subsequent credential exchange.
+
+### Credential exchange
+
+`POST /api/auth/extension/credential/exchange`
+
+Request body: `{ credential: string, deviceId: string }`
+
+On success (`200`): returns `{ token: string, credential: string }` — a fresh short-lived JWT and a **rotated** credential. The old credential is immediately invalidated. The extension must replace the stored credential on every successful exchange.
+
+`lastUsedAt` and `expiresAt` (= `lastUsedAt + 90 days`) are updated on every successful exchange.
+
+On failure (`401`):
+
+| Code | Meaning | Required extension behaviour |
+| ---- | ------- | ---------------------------- |
+| `CREDENTIAL_INVALID` | Token not found, already rotated, or explicitly revoked | Treat as first launch — prompt for invite code |
+| `CREDENTIAL_EXPIRED_GUEST` | 90-day inactivity window elapsed; account is still guest | Prompt user to re-enter a fresh invite code |
+| `CREDENTIAL_EXPIRED_FULL` | 90-day inactivity window elapsed; account is full | Prompt user for email and password to re-authenticate |
+
+### Expiry policy
+
+- Credentials expire 90 days after `lastUsedAt` (rolling window — refreshed on every successful exchange).
+- Explicit revocation invalidates the credential immediately, regardless of remaining window.
+- On expiry, the path to restore access differs by account type: guest users need a fresh invite code (the join flow re-runs); full users are prompted for their password (no invite code required).
+
+### Credential scope
+
+- One credential per browser/device per user account. A single user may hold multiple active credentials across different browsers or installations.
+- A credential grants the right to obtain a JWT for any campaign the user is already a member of. It does not grant new campaign memberships — access is still governed by `CampaignMembership`.
+
+### Revocation
+
+- `DELETE /api/auth/extension/credentials/:credentialId` — requires valid JWT. A user may revoke their own credentials; admin may revoke any.
+- `GET /api/auth/extension/credentials` — requires valid JWT. Returns active credentials for the authenticated user with `deviceId`, `createdAt`, `lastUsedAt`, `expiresAt`. Intended for an account settings "Connected Devices" panel.
+
+### Account upgrade preservation
+
+When a guest upgrades to a full account (`POST /api/auth/upgrade`), all active extension credentials are preserved unchanged. The next credential exchange by any of those extensions returns a full-account JWT automatically — no re-authentication required from the extension.
+
+### Security constraints
+
+- Credentials are stored server-side as salted hashes; the plaintext is never persisted.
+- Credential exchange is rate-limited: maximum 10 exchanges per `deviceId` per minute.
+- All extension credential endpoints require HTTPS.
+- Rotation on every exchange prevents replay of intercepted tokens.
+
+---
+
 **Document Version**: 1.1
 **Locked By**: Stage 0 Build Agent
 **Lock Date**: April 17, 2026
 **Amendment Date**: 2026-05-21 — Campaign visibility model, request-to-join, WATCH entry, guest upgrade, campaign retire/resume, admin export/import contracts added.
 **Amendment Date**: 2026-06-04 — Groups panel contracts added: reserved names, group close, group delete, environment apply, DM audio override (GAIN/FILTER/GATE).
+**Amendment Date**: 2026-06-08 — Extension Device Credential Contract added: per-browser persistent credential, 90-day rolling expiry, credential exchange endpoint, expiry behaviour by account type, revocation.
