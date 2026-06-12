@@ -19,7 +19,7 @@
     "@fontsource-variable/roboto-mono": "^5.2.8",
     "@livekit/components-react": "^2.9.20",
     "@livekit/components-styles": "^1.2.0",
-    "@material-symbols/font-400": "^0.44.4",
+    "@material-symbols/font-400": "^0.45.1",
     "@radix-ui/react-context-menu": "^2.2.16",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-form": "^0.1.8",
