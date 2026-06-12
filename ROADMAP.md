@@ -10,7 +10,7 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     25 |      23 |              0 |              2 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     25 |      24 |              0 |              1 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
@@ -18,9 +18,9 @@
 | Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **62** |  **49** |          **2** |         **11** |                |
+| **Total**                              | **62** |  **50** |          **2** |         **10** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 23/25 done; 2 new items (PERF-24, PERF-25) added from trace 5 (2026-06-12 17:06) — lobby modal cascade and EditorWorkspace callback churn remain. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 24/25 done; PERF-24 (lobby modal cascade) resolved — 10 `useCallback` handlers + 10 `memo()` wraps across modal containers and leaf modals. PERF-25 (EditorWorkspace callback churn) remains. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
 ---
 
@@ -672,9 +672,10 @@ onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
 
 ### PERF-24: Lobby modal cascade — WorkspaceInitialization cascades through 9 unmemoized modal subtrees
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔴 Critical
 **Source**: Profiler trace 2026-06-12 17:06 (lobby trace, 446 commits)
+**Completed**: 2026-06-12
 
 **Problem**: Every `WorkspaceInitialization` state change cascades through all 9 always-mounted modal components (`CreateCampaignModal`, `JoinCampaignModal`, `CampaignSettingsModal`, `ReissueInviteModal`, `UserSettingsModal`, `ExitSessionModal`, `StopSessionModal`, `LobbyModals`, `SharedModals`). None are wrapped in `memo()`. Each modal mounts a full Radix Dialog tree; the cascade accounts for ~37 nodes per modal × 9 instances = ~333 unnamed Radix Primitive nodes per commit.
 
@@ -688,8 +689,8 @@ Worst observed: commits #20 and #21, 368 components each (21ms / 13ms), triggere
 
 **Acceptance Criteria**:
 
-- [ ] All 9 modal components wrapped in `memo()`
-- [ ] All callback props passed from `WorkspaceInitialization` to each modal are `useCallback`-stabilized
+- [x] All 9 modal components wrapped in `memo()` — `LobbyModals`, `SharedModals`, `SessionModals` (containers) + `CreateCampaignModal`, `JoinCampaignModal`, `CampaignSettingsModal`, `ReissueInviteModal`, `UserSettingsModal`, `ExitSessionModal`, `StopSessionModal` (leaf modals)
+- [x] All callback props stabilized — 11 new `useCallback` handlers in `WorkspaceInitialization` for close/confirm/async wrappers; all `(x) => campaignSettingsActions.setX(x)` one-liner wrappers replaced with direct `campaignSettingsActions.setX` method refs (the actions object is `useMemo`'d with stable `useState` setter deps, so its methods are unconditionally stable)
 - [ ] Worst-commit component count drops from 368 to ≤ 50 in follow-up lobby trace
 - [ ] All modal surfaces (create campaign, join, settings, reissue invite, user settings, exit, stop session) remain fully functional
 

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { ModalsProps } from '@/types/modals'
 import { UserSettingsModal } from './UserSettingsModal'
 
@@ -12,7 +13,7 @@ type SharedModalsProps = Pick<
   | 'user'
 >
 
-export function SharedModals(props: SharedModalsProps) {
+export const SharedModals = memo(function SharedModals(props: SharedModalsProps) {
   return (
     <UserSettingsModal
       showUserSettingsModal={props.showUserSettingsModal}
@@ -24,4 +25,4 @@ export function SharedModals(props: SharedModalsProps) {
       user={props.user}
     />
   )
-}
+})

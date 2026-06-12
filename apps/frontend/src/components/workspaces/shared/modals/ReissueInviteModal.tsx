@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import type { ModalsProps } from '@/types/modals'
 
@@ -10,7 +11,7 @@ type ReissueInviteModalProps = Pick<
   | 'onConfirmReissueInvite'
 >
 
-export function ReissueInviteModal(props: ReissueInviteModalProps) {
+export const ReissueInviteModal = memo(function ReissueInviteModal(props: ReissueInviteModalProps) {
   return (
     <DialogPrimitive.Root
       open={props.showReissueInviteModal}
@@ -51,4 +52,4 @@ export function ReissueInviteModal(props: ReissueInviteModalProps) {
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   )
-}
+})

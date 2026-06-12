@@ -1054,6 +1054,39 @@ export function WorkspaceInitialization({
     ]
   )
 
+  // Stable modal close/action handlers — useState setters are guaranteed stable by React,
+  // so all close handlers can use []. Async wrappers dep on their own useCallback source.
+  const handleCloseCreateCampaign = useCallback(() => {
+    setShowCreateCampaignModal(false)
+    setPendingImportBundle(null)
+    setConflictCampaign(null)
+  }, [])
+  const handleCloseJoinCampaign = useCallback(() => setShowJoinCampaignModal(false), [])
+  const handleCloseCampaignSettings = useCallback(() => setShowCampaignSettingsModal(false), [])
+  const handleCloseReissueInviteModal = useCallback(() => setPendingInviteReissueType(null), [])
+  const handleConfirmReissueInviteWrapper = useCallback(
+    () => void handleConfirmInviteReissue(),
+    [handleConfirmInviteReissue]
+  )
+  const handleCopyInviteUrlModal = useCallback(
+    (inviteType: 'PLAYER' | 'SPECTATOR') => void copyInviteUrl(inviteType),
+    [copyInviteUrl]
+  )
+  const handleReissueInviteModal = useCallback(
+    (inviteType: 'PLAYER' | 'SPECTATOR') => requestInviteReissue(inviteType),
+    [requestInviteReissue]
+  )
+  const handleCloseExitSession = useCallback(() => setShowExitSessionModal(false), [])
+  const handleCloseStopSession = useCallback(() => setShowStopSessionModal(false), [])
+  const handleUpgradeAndExitWrapper = useCallback(
+    () => void handleUpgradeAndExit(),
+    [handleUpgradeAndExit]
+  )
+  const handleConfirmStopSessionWrapper = useCallback(
+    () => void handleConfirmStopSession(),
+    [handleConfirmStopSession]
+  )
+
   const lobbyModalsProps = buildLobbyModalsProps({
     showCreateCampaignModal,
     user,
@@ -1061,11 +1094,7 @@ export function WorkspaceInitialization({
     isCreatingCampaign,
     pendingImportBundle,
     conflictCampaign,
-    onCloseCreateCampaign: () => {
-      setShowCreateCampaignModal(false)
-      setPendingImportBundle(null)
-      setConflictCampaign(null)
-    },
+    onCloseCreateCampaign: handleCloseCreateCampaign,
     onCreateCampaignSubmit: handleCreateCampaign,
     onNewCampaignNameChange: setNewCampaignName,
     showJoinCampaignModal,
@@ -1073,66 +1102,51 @@ export function WorkspaceInitialization({
     isJoiningCampaign,
     onJoinCampaignSubmit: handleJoinCampaign,
     onJoinInviteInputChange: setJoinInviteInput,
-    onCloseJoinCampaign: () => setShowJoinCampaignModal(false),
+    onCloseJoinCampaign: handleCloseJoinCampaign,
     showCampaignSettingsModal,
     settingsHomeTab,
-    onSettingsHomeTabChange: (tab) => campaignSettingsActions.setSettingsHomeTab(tab),
+    onSettingsHomeTabChange: campaignSettingsActions.setSettingsHomeTab,
     settingsCampaignSessions,
     settingsReferenceSessionId,
-    onSettingsReferenceSessionChange: (sessionId) =>
-      campaignSettingsActions.setSettingsReferenceSessionId(sessionId),
+    onSettingsReferenceSessionChange: campaignSettingsActions.setSettingsReferenceSessionId,
     settingsReferenceSession: settingsReferenceSession || null,
     isSettingsLoading,
     settingsData,
     isSettingsSaving,
-    onCloseCampaignSettings: () => setShowCampaignSettingsModal(false),
+    onCloseCampaignSettings: handleCloseCampaignSettings,
     onSaveCampaignSettings: handleSaveCampaignSettingsSubmit,
     settingsName,
-    onSettingsNameChange: (name) => campaignSettingsActions.setSettingsName(name),
+    onSettingsNameChange: campaignSettingsActions.setSettingsName,
     settingsDescription,
-    onSettingsDescriptionChange: (desc) => campaignSettingsActions.setSettingsDescription(desc),
+    onSettingsDescriptionChange: campaignSettingsActions.setSettingsDescription,
     onPosterFileSelected: handlePosterFileSelected,
     isInviteReissuing,
-    onCopyInviteUrl: (inviteType) => {
-      void copyInviteUrl(inviteType)
-    },
-    onReissueInvite: (inviteType) => {
-      requestInviteReissue(inviteType)
-    },
+    onCopyInviteUrl: handleCopyInviteUrlModal,
+    onReissueInvite: handleReissueInviteModal,
     showReissueInviteModal: pendingInviteReissueType !== null,
     reissueInviteType: pendingInviteReissueType,
-    onCloseReissueInviteModal: () => setPendingInviteReissueType(null),
-    onConfirmReissueInvite: () => {
-      void handleConfirmInviteReissue()
-    },
+    onCloseReissueInviteModal: handleCloseReissueInviteModal,
+    onConfirmReissueInvite: handleConfirmReissueInviteWrapper,
     settingsVisibility,
-    onSettingsVisibilityChange: (vis) => campaignSettingsActions.setSettingsVisibility(vis),
+    onSettingsVisibilityChange: campaignSettingsActions.setSettingsVisibility,
     settingsSpectatorsEnabled,
-    onSettingsSpectatorsEnabledChange: (enabled) =>
-      campaignSettingsActions.setSettingsSpectatorsEnabled(enabled),
+    onSettingsSpectatorsEnabledChange: campaignSettingsActions.setSettingsSpectatorsEnabled,
     settingsSpectatorMax,
-    onSettingsSpectatorMaxChange: (max) => campaignSettingsActions.setSettingsSpectatorMax(max),
+    onSettingsSpectatorMaxChange: campaignSettingsActions.setSettingsSpectatorMax,
     settingsSpectatorWaitlistEnabled,
-    onSettingsSpectatorWaitlistEnabledChange: (enabled) =>
-      campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(enabled),
+    onSettingsSpectatorWaitlistEnabledChange: campaignSettingsActions.setSettingsSpectatorWaitlistEnabled,
     settingsSpectatorReconnectGraceSecs,
-    onSettingsSpectatorReconnectGraceSecsChange: (secs) =>
-      campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(secs),
+    onSettingsSpectatorReconnectGraceSecsChange: campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs,
     settingsPostSessionChatEnabled,
-    onSettingsPostSessionChatEnabledChange: (enabled) =>
-      campaignSettingsActions.setSettingsPostSessionChatEnabled(enabled),
+    onSettingsPostSessionChatEnabledChange: campaignSettingsActions.setSettingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
-    onSettingsPostSessionChatDurationMinutesChange: (value) =>
-      campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(value),
+    onSettingsPostSessionChatDurationMinutesChange: campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
     settingsExtensionSyncPolicy,
-    onSettingsExtensionSyncPolicyChange: (policy) =>
-      campaignSettingsActions.setSettingsExtensionSyncPolicy(policy),
+    onSettingsExtensionSyncPolicyChange: campaignSettingsActions.setSettingsExtensionSyncPolicy,
     settingsLateJoinPolicy,
-    onSettingsLateJoinPolicyChange: (policy) =>
-      campaignSettingsActions.setSettingsLateJoinPolicy(policy),
+    onSettingsLateJoinPolicyChange: campaignSettingsActions.setSettingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
-    onSettingsLateJoinGraceMinutesChange: (mins) =>
-      campaignSettingsActions.setSettingsLateJoinGraceMinutes(mins),
+    onSettingsLateJoinGraceMinutesChange: campaignSettingsActions.setSettingsLateJoinGraceMinutes,
     selectedCampaignName: selectedCampaign?.name,
   })
 
@@ -1154,17 +1168,13 @@ export function WorkspaceInitialization({
     onExitUpgradePasswordChange: setExitUpgradePassword,
     exitUpgradeLoading,
     exitUpgradeError,
-    onCloseExitSession: () => setShowExitSessionModal(false),
+    onCloseExitSession: handleCloseExitSession,
     onSkipGuestUpgrade: handleSkipGuestUpgrade,
-    onUpgradeAndExit: () => {
-      void handleUpgradeAndExit()
-    },
+    onUpgradeAndExit: handleUpgradeAndExitWrapper,
     onConfirmExitAsFullAccount: handleConfirmExitAsFullAccount,
     showStopSessionModal,
-    onCloseStopSession: () => setShowStopSessionModal(false),
-    onConfirmStopSession: () => {
-      void handleConfirmStopSession()
-    },
+    onCloseStopSession: handleCloseStopSession,
+    onConfirmStopSession: handleConfirmStopSessionWrapper,
   })
 
   return (

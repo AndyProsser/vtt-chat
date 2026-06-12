@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import {
   CampaignSettingsModal,
   CreateCampaignModal,
@@ -70,7 +71,7 @@ type LobbyModalsProps = Pick<
   | 'onConfirmReissueInvite'
 >
 
-export function LobbyModals(props: LobbyModalsProps) {
+export const LobbyModals = memo(function LobbyModals(props: LobbyModalsProps) {
   return (
     <>
       <CreateCampaignModal
@@ -151,4 +152,4 @@ export function LobbyModals(props: LobbyModalsProps) {
       />
     </>
   )
-}
+})

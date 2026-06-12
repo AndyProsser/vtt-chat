@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
@@ -50,7 +51,7 @@ type CampaignSettingsModalProps = Pick<
   | 'onSettingsLateJoinGraceMinutesChange'
 >
 
-export function CampaignSettingsModal(props: CampaignSettingsModalProps) {
+export const CampaignSettingsModal = memo(function CampaignSettingsModal(props: CampaignSettingsModalProps) {
   if (!props.showCampaignSettingsModal) {
     return null
   }
@@ -252,4 +253,4 @@ export function CampaignSettingsModal(props: CampaignSettingsModalProps) {
       </div>
     </div>
   )
-}
+})

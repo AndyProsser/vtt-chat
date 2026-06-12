@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import type { ModalsProps } from '@/types/modals'
 import type { CampaignExportBundle } from '@/types/session/campaign'
 
@@ -15,7 +15,7 @@ type CreateCampaignModalProps = Pick<
   | 'conflictCampaign'
 >
 
-export function CreateCampaignModal(props: CreateCampaignModalProps) {
+export const CreateCampaignModal = memo(function CreateCampaignModal(props: CreateCampaignModalProps) {
   const [importedBundle, setImportedBundle] = useState<CampaignExportBundle | null>(null)
   const [importConflictMode, setImportConflictMode] = useState<'replace' | 'duplicate'>('replace')
 
@@ -164,4 +164,4 @@ export function CreateCampaignModal(props: CreateCampaignModalProps) {
       </div>
     </div>
   )
-}
+})
