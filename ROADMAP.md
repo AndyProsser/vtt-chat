@@ -10,7 +10,7 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     23 |      23 |              0 |              0 | 🟢 Done        |
+| Performance Tuning & Bug Fixes         |     25 |      23 |              0 |              2 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
@@ -18,9 +18,9 @@
 | Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **60** |  **49** |          **2** |          **9** |                |
+| **Total**                              | **62** |  **49** |          **2** |         **11** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 23/23 done; all items from trace 4 (2026-06-12) resolved. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 23/25 done; 2 new items (PERF-24, PERF-25) added from trace 5 (2026-06-12 17:06) — lobby modal cascade and EditorWorkspace callback churn remain. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
 ---
 
@@ -32,9 +32,9 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ---
 
-## Performance Tuning & Bug Fixes 🟢
+## Performance Tuning & Bug Fixes 🟡
 
-_Root-cause re-render isolation fixes. Four profiler traces: initial (2026-06-10, 1,405 commits, 43MB), full-session follow-up (2026-06-10, 1,554 commits, lobby → session → all panels), third session trace (2026-06-10 15:35, 809 commits, 60,992 total re-renders — 86% prop-change driven), and a fourth session trace (2026-06-12, 1,769 commits, 87,630 total render events — median commit 1ms, max 73ms, 120 commits > 16ms). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
+_Root-cause re-render isolation fixes. Five profiler traces: initial (2026-06-10, 1,405 commits, 43MB), full-session follow-up (2026-06-10, 1,554 commits, lobby → session → all panels), third session trace (2026-06-10 15:35, 809 commits, 60,992 total re-renders — 86% prop-change driven), fourth session trace (2026-06-12, 1,769 commits, 87,630 total render events — median commit 1ms, max 73ms, 120 commits > 16ms), and fifth lobby trace (2026-06-12 17:06, 446 commits — dominant source: lobby modal cascade 368 components, EditorWorkspace callback churn). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
 
 ---
 
@@ -667,6 +667,54 @@ onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
 - [ ] `SessionWorkspaceChromeConnector` hook[6] change count drops by ≥80% in follow-up trace
 - [ ] `RoomSelector` `rooms` prop change count drops from 74× to near-zero between actual room membership changes
 - [ ] No regression in broadcast mode toggle, room selection, or left-rail participant display
+
+---
+
+### PERF-24: Lobby modal cascade — WorkspaceInitialization cascades through 9 unmemoized modal subtrees
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-12 17:06 (lobby trace, 446 commits)
+
+**Problem**: Every `WorkspaceInitialization` state change cascades through all 9 always-mounted modal components (`CreateCampaignModal`, `JoinCampaignModal`, `CampaignSettingsModal`, `ReissueInviteModal`, `UserSettingsModal`, `ExitSessionModal`, `StopSessionModal`, `LobbyModals`, `SharedModals`). None are wrapped in `memo()`. Each modal mounts a full Radix Dialog tree; the cascade accounts for ~37 nodes per modal × 9 instances = ~333 unnamed Radix Primitive nodes per commit.
+
+Worst observed: commits #20 and #21, 368 components each (21ms / 13ms), triggered by `WorkspaceInitialization`. This is the dominant remaining source of wide commits in the lobby — first flagged as a residual in PERF-01's unchecked criterion and now confirmed as the primary regression driver after the editor cascade (PERF-14, PERF-15) was eliminated.
+
+**Fix**:
+
+1. Wrap each of the 9 modal components in `memo()`. Most receive only `isOpen` (boolean) and a small set of stable callback props — default shallow equality should be sufficient without a custom comparator.
+2. Audit props passed from `WorkspaceInitialization` to each modal. Any inline function or object literal must be stabilized with `useCallback`/`useMemo` before `memo()` can hold.
+3. Confirm `LobbyModals` and `SharedModals` (container components) are also memo'd, since they mount multiple modals internally.
+
+**Acceptance Criteria**:
+
+- [ ] All 9 modal components wrapped in `memo()`
+- [ ] All callback props passed from `WorkspaceInitialization` to each modal are `useCallback`-stabilized
+- [ ] Worst-commit component count drops from 368 to ≤ 50 in follow-up lobby trace
+- [ ] All modal surfaces (create campaign, join, settings, reissue invite, user settings, exit, stop session) remain fully functional
+
+---
+
+### PERF-25: Stabilise WorkspaceInitialization → EditorWorkspace callback props
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-12 17:06 (lobby trace, 446 commits)
+**Depends on**: PERF-24
+
+**Problem**: `WorkspaceInitialization` passes ~23 callback props to `EditorWorkspace`, all recreated as inline functions on every render: `onSettingsNameChange`, `onSettingsDescriptionChange`, `onSettingsPosterUrlChange`, `onSettingsVisibilityChange`, `onSettingsSpectatorsEnabledChange`, `onSettingsSpectatorMaxChange`, `onSettingsSpectatorWaitlistEnabledChange`, `onSettingsSpectatorReconnectGraceSecsChange`, `onSettingsPostSessionChatEnabledChange`, `onSettingsPostSessionChatDurationMinutesChange`, `onSettingsExtensionSyncPolicyChange`, `onSettingsLateJoinPolicyChange`, `onSettingsLateJoinGraceMinutesChange`, `onSettingsDmAutoTargetOnFirstPlayerJoinChange`, `onSettingsDefaultSessionDurationMinsChange`, `onSettingsSupportedPlatformsChange`, `onCopyInviteUrl`, `onReissueInvite`, `onSaveCampaignSettings`, `onSaveCharacterSettings`, `onSettingsReferenceSessionChange`, `onSaveCampaignInfo`, `onDeleteCampaign`.
+
+Every `WorkspaceInitialization` re-render (triggered by the lobby modal cascade fixed in PERF-24, or any other state change) causes `EditorWorkspace` to receive all 23 callbacks as changed props and re-render. PERF-14 stabilised these callbacks _within_ `EditorWorkspace` so they don't cascade further into `EditorView`, but the upstream churn still causes 5 unnecessary `EditorWorkspace` renders in the trace — all 5 commits containing `EditorWorkspace` show pure-callback prop changes with no meaningful data change.
+
+**Fix**:
+
+- In `WorkspaceInitialization`, apply `useCallback` (or the stable-callback-via-ref pattern from PERF-14) to all 23 settings callbacks. After stabilization, `EditorWorkspace` should re-render only when data props genuinely change (`settingsData`, `isSettingsLoading`, `settingsReferenceSessionId`, `editorWorkspaceView`).
+
+**Acceptance Criteria**:
+
+- [ ] All 23 `onSettings*` and action callbacks in `WorkspaceInitialization` are `useCallback`-stabilized
+- [ ] `EditorWorkspace` prop-change renders in follow-up trace drop from 5 to the number of genuine data changes (expected: ≤ 2 — initial load + one settings fetch)
+- [ ] Campaign settings save, invite copy/reissue, and session reference selection all function correctly
 
 ---
 
