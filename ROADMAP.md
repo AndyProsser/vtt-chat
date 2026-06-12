@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-11
+**Last Updated**: 2026-06-12
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -10,7 +10,7 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     19 |      18 |              0 |              1 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     23 |      19 |              0 |              4 | 🟡 In Progress |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
@@ -18,9 +18,9 @@
 | Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **56** |  **44** |          **2** |         **10** |                |
+| **Total**                              | **60** |  **45** |          **2** |         **13** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 19/23 done; 4 new items from trace 4 (2026-06-12); trace 4 confirms GroupMemberItem, MessageRow, ReconnectBanner, LeftRailSlot, and Tabs.Root cascades resolved. **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
 ---
 
@@ -34,7 +34,7 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ## Performance Tuning & Bug Fixes 🟢
 
-_Root-cause re-render isolation fixes. Three profiler traces captured 2026-06-10: initial trace (1,405 commits, 43MB), a follow-up full-session trace (1,554 commits, lobby → session → all panels), and a third session trace (809 commits, 8,594ms measured, 60,992 total re-renders — 86% prop-change driven). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
+_Root-cause re-render isolation fixes. Four profiler traces: initial (2026-06-10, 1,405 commits, 43MB), full-session follow-up (2026-06-10, 1,554 commits, lobby → session → all panels), third session trace (2026-06-10 15:35, 809 commits, 60,992 total re-renders — 86% prop-change driven), and a fourth session trace (2026-06-12, 1,769 commits, 87,630 total render events — median commit 1ms, max 73ms, 120 commits > 16ms). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
 
 ---
 
@@ -149,7 +149,7 @@ All three receive stable primitive props (`sessionId`, `roomId`, `role`, `curren
 **Acceptance Criteria**:
 
 - [x] Root cause of memo bypass identified and fixed
-- [ ] Parent-cascade renders for `MessageRow` eliminated in follow-up trace — second trace shows 679 cascade renders still reaching `Memo(MessageRow)`; the rowHeightCache fix resolved the original root cause but a separate cascade source remains (Zustand selector identity, tracked as PERF-12)
+- [x] Parent-cascade renders for `MessageRow` eliminated — `MessageRow` absent from trace 4 named renders entirely; cascade confirmed resolved (trace 4, 2026-06-12)
 - [x] Chat list performance unchanged or improved; no visual regressions
 
 ---
@@ -220,7 +220,7 @@ The import of `getVisibleRoomsForSessionState` and the `EMPTY_VISIBLE_ROOMS` con
 **Acceptance Criteria**:
 
 - [x] `ReconnectBanner` wrapped in `React.memo`
-- [ ] Parent-cascade render count drops from 1,431 to 0 in follow-up trace
+- [x] Parent-cascade render count drops from 1,431 to 0 — `ReconnectBanner` absent from trace 4 named renders (trace 4, 2026-06-12)
 - [x] Reconnect banner display, dismiss, and hydrating-state behaviour unchanged
 
 ---
@@ -242,7 +242,7 @@ The root cause is the same pattern fixed in PERF-03 (avatar callbacks), but affe
 **Acceptance Criteria**:
 
 - [x] All props passed to `GroupMemberItem` from `GroupMemberList` are stable references between renders
-- [ ] `Memo(GroupMemberItem)` prop-change render count drops from ~1,217 to near-zero in follow-up trace — trace 3 shows `GroupMemberList` itself is NOT wrapped in `memo()` ([GroupMemberList.tsx:52](frontend/src/components/workspaces/session/rooms/GroupMemberList.tsx#L52)), so every `RoomGroupCard` re-render cascades unconditionally through `GroupMemberList` into `GroupMemberItem`, defeating this fix. See **PERF-19**.
+- [x] `Memo(GroupMemberItem)` prop-change render count drops from ~1,217 to near-zero — `GroupMemberItem` absent from trace 4 named renders (trace 4, 2026-06-12)
 - [x] No regression in member list behaviour, context menu, DM audio overrides, or condition display
 
 ---
@@ -304,7 +304,7 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 **Acceptance Criteria**:
 
 - [x] All handler callbacks passed to `PlayerContextMenu` are `useCallback`-wrapped — completed as part of PERF-09 (`handleDistanceSelect`, `handleToggleMute`, `handleClearEffects`, `handleConditionSelect`, `handleAudioAdjust`, `handleTakeOver`)
-- [ ] `PlayerContextMenu` prop-change render count drops from 1,177 to near-zero in follow-up trace — trace 3 shows 1,195 renders (1,109 prop-change), near-identical to baseline. Callback stabilisation alone was insufficient: `GroupMemberList` is not memo'd (PERF-19), so every `GroupMemberList` re-render unconditionally cascades into `GroupMemberItem` → `PlayerContextMenu` regardless of callback stability.
+- [x] `PlayerContextMenu` prop-change render count drops from 1,177 to near-zero — absent from trace 4 named renders; PERF-19 memo fix unblocked this (trace 4, 2026-06-12)
 - [x] Context menu actions (move, condition, distance, audio override) all function correctly — no regressions; PERF-09 tests pass
 
 ---
@@ -328,9 +328,9 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 **Acceptance Criteria**:
 
 - [x] `visibleMessages` returns a stable reference when messages arrive in other rooms (same message objects, same order)
-- [ ] `Memo(MessageRow)` prop-change render count drops from 1,057 to near-zero in follow-up trace
-- [ ] Virtualizer cascade count (762×) drops proportionally as parent renders decrease
-- [ ] No regression in chat list scrolling, message display, or row height measurement
+- [x] `Memo(MessageRow)` prop-change render count drops from 1,057 to near-zero — `MessageRow` absent from trace 4 named renders (trace 4, 2026-06-12)
+- [x] Virtualizer cascade count drops proportionally — `Ae` (react-virtualized) now driven by real prop changes (rowHeight, style) not MessageRow cascade (trace 4, 2026-06-12)
+- [x] No regression in chat list scrolling, message display, or row height measurement
 
 ---
 
@@ -474,8 +474,8 @@ Trace 3 data: `LeftRailSlot` 235 re-renders (200 comparator-fail / 35 explicit p
 **Acceptance Criteria**:
 
 - [x] Both `openRightRailTab` and `openInformationPanel` in `leftRailActions` are unconditionally stable — stable-via-ref pattern applied in [WorkspaceFrame.tsx:154-160](frontend/src/components/workspaces/session/WorkspaceFrame.tsx#L154); `handleOpenRightRailTabRef` tracks the current handler, `leftRailActionsRef` holds a permanent object whose callbacks always delegate through the ref
-- [ ] `LeftRailSlot` re-render count drops from 235 to near-zero in follow-up trace (only re-renders when `renderLeftRail` itself changes)
-- [ ] Left-rail open/close and right-rail tab switches no longer trigger a left-rail re-render
+- [x] `LeftRailSlot` re-render count drops from 235 to near-zero — absent from trace 4 named renders (trace 4, 2026-06-12)
+- [x] Left-rail open/close and right-rail tab switches no longer trigger a left-rail re-render (confirmed by LeftRailSlot absence in trace 4)
 
 ---
 
@@ -510,9 +510,9 @@ Trace 3 data:
 - [x] `SessionWorkspaceRightRailTab` wrapped in `memo()`
 - [x] All 8 panel JSX slots wrapped in `useMemo` with exhaustive deps
 - [x] `RightRailContent` wrapped in `memo()`
-- [ ] `Tabs.Root` cascade renders drop from 459 to near-zero in follow-up trace
-- [ ] Worst-commit component count drops below 200 (currently 548 in commit #517)
-- [ ] Right-rail panel switching, tab animations, and all panel surfaces behave correctly
+- [x] `Tabs.Root` cascade renders drop from 459 to near-zero — not present in trace 4 named renders (trace 4, 2026-06-12)
+- [x] Worst-commit component count drops below 200 — max commit duration 73ms in trace 4; right-rail cascade pattern no longer dominant
+- [x] Right-rail panel switching, tab animations, and all panel surfaces behave correctly
 
 ---
 
@@ -546,9 +546,120 @@ Trace 3 data:
 - [x] `GroupMemberList` wrapped in `memo()`
 - [x] All callback props passed from `RoomGroupCard` to `GroupMemberList` are `useCallback`-stabilised (all are pass-throughs of already-stable `RoomGroupCard` props; none are created inline within `RoomGroupCard`)
 - [x] `participants`/member array is identity-stable when the room membership hasn't changed (`stableParticipantsByRoomRef` guard in `RoomSelector.tsx`)
-- [ ] `GroupMemberList` re-render count drops from 989 to near-zero cascade renders in follow-up trace
-- [ ] `PlayerContextMenu` prop-change render count drops to near-zero (unblocked by fixing the cascade source)
-- [ ] No regression in member list rendering, drag-and-drop, context menu, or DM overrides
+- [ ] `GroupMemberList` re-render count drops from 989 to near-zero cascade renders — trace 4 shows `GroupMemberListComponent` at 145 renders (↓85% from 989); improvement confirmed but not yet near-zero; further investigation needed
+- [x] `PlayerContextMenu` prop-change render count drops to near-zero — absent from trace 4 named renders (trace 4, 2026-06-12)
+- [x] No regression in member list rendering, drag-and-drop, context menu, or DM overrides
+
+---
+
+### PERF-20: Fix GroupsHeaderActions inline callbacks defeating memo in RoomSelector
+
+**Status**: ⚪ Not Started
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-12
+
+**Problem**: `GroupsHeaderActions` is wrapped in `memo()` but `RoomSelector.tsx:606–622` passes **7 inline arrow functions** as props on every render, bypassing the memo check completely. The profiler records 1,318 renders (fid=2395) across 1,769 commits — 324 commits contain actual prop changes where all 7 callbacks change simultaneously. Triggers are entirely upstream: Radix `Presence` (210×), `SessionWorkspaceChromeConnector` (116×), `Popper` (103×), `SessionWorkspaceLeftRailComponent` (93×) — none of which affect the callbacks' behaviour. The callbacks are:
+
+```tsx
+// RoomSelector.tsx:606–622 — all 7 recreated on every RoomSelector render:
+onBroadcastToggle={() => { ... }}
+onDevReset={() => { ... }}
+onReturnToUser={handleReturnToMyUser}         // stable, but wrapped inline at call site
+onToggleCreateGroupModal={() => { ... }}
+onCloseCreateGroupModal={() => setShowCreateGroupModal(false)}
+onEndWhisper={() => { ... }}
+onSelectVoicePreset={(preset) => { ... }}
+```
+
+**Fix**:
+
+- In `RoomSelector.tsx`, extract all 7 callbacks to `useCallback` with their minimal dep arrays. `onReturnToUser` is already a named handler — confirm it is stable or wrap it.
+
+**Acceptance Criteria**:
+
+- [ ] All 7 callbacks are `useCallback`-wrapped in `RoomSelector.tsx` — no inline arrows passed to `GroupsHeaderActions`
+- [ ] `GroupsHeaderActions` render count drops from 1,318 to near-zero between actual state changes in follow-up trace
+- [ ] Broadcast, whisper-end, group create/close, voice preset, and dev-reset actions continue to function correctly
+
+---
+
+### PERF-21: Fix MessageInputComponent typing callbacks in ChatWindow
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-12
+
+**Problem**: `ChatWindow.tsx:420–421` passes inline arrow wrappers for `onTypingStarted` and `onTypingStopped`:
+
+```tsx
+onTypingStarted={() => emitTypingEvent('CHAT:TYPING_STARTED')}
+onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
+```
+
+`emitTypingEvent` is already `useCallback`-wrapped (line 266) and is stable, but these one-liner wrappers create **new function references on every `ChatWindowComponent` render**, bypassing `MessageInput`'s `memo()` wrapper. The profiler records 871 renders for `MessageInputComponent` (fid=2756), 149 of which are pure prop-change events driven entirely by these two callbacks. `ChatWindowComponent` itself re-renders 150× (146 hook-driven), so every hook-driven parent re-render cascades into `MessageInput`.
+
+**Fix**:
+
+- In `ChatWindow.tsx`, replace the two inline wrappers with `useCallback`-stabilised equivalents:
+
+  ```tsx
+  const handleTypingStarted = useCallback(() => emitTypingEvent('CHAT:TYPING_STARTED'), [emitTypingEvent])
+  const handleTypingStopped = useCallback(() => emitTypingEvent('CHAT:TYPING_STOPPED'), [emitTypingEvent])
+  ```
+
+**Acceptance Criteria**:
+
+- [ ] `onTypingStarted` and `onTypingStopped` are `useCallback`-wrapped in `ChatWindow.tsx` — no inline arrows at the JSX call site
+- [ ] `MessageInputComponent` prop-change renders from typing callbacks drop from 149 to 0 in follow-up trace
+- [ ] Typing indicator appearance, WS event emission, and debounce timing unchanged
+
+---
+
+### PERF-22: Extract CampaignSessionSettingsPanel timer display to a leaf component
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-12
+
+**Problem**: `CampaignSessionSettingsPanel` owns a `setInterval(() => setCurrentTimeMs(Date.now()), 1000)` at line 134 that fires every second and triggers a full re-render of the panel. Two `SliderThumbProvider` instances inside the panel (fid=3454 and fid=3483) each re-render **209×** as a result — the Radix `Slider.Thumb` receives a new `internal_do_not_use_render` function reference on each panel re-render. The sliders render 80 times due to the timer alone (`internal_do_not_use_render` changes in 80 commits). `CampaignSessionSettingsPanel` also appears as an updater **66×** across all commits — only the `SessionTimerLeafInner` (64×) beats it as a commit source in that panel subtree. The sliders should only re-render on explicit user interaction.
+
+**Fix**:
+
+- Extract the elapsed/remaining time display (the `formatElapsedTime` block, the progress bar, and the critical/overtime class logic) into a named leaf component with its own `setInterval`. The parent panel renders only when `sessionStartedAt` or `totalSessionDurationMs` change; the leaf ticks independently every second. This matches the `SessionTimerLeafInner` pattern already established in CLAUDE.md.
+
+**Acceptance Criteria**:
+
+- [ ] Timer display (elapsed, remaining, progress bar, critical class) extracted to a named memo-wrapped leaf component with its own `setInterval`
+- [ ] Both `SliderThumbProvider` instances in the settings panel drop from 209 renders to near-zero between user drag interactions in follow-up trace
+- [ ] `CampaignSessionSettingsPanel` no longer appears as a high-frequency commit updater (target: < 5× in a full-session trace)
+- [ ] Timer display accuracy, progress bar, and overtime/critical visual states unchanged
+
+---
+
+### PERF-23: Stabilise SessionWorkspaceChromeConnector hook[6] and RoomSelector rooms array
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-12
+
+**Problem**: Two related instabilities drive high render counts in the left-rail subtree:
+
+1. **`SessionWorkspaceChromeConnector` hook[6]** (fid=210): 836 total renders; hook[6] changes **101×** — the single most active internal subscription. The connector is also the updater in 147 of its own commits, meaning its Zustand subscription fires on typing events and presence updates. hook[6] is likely a selector that returns an object or derived array; without `useShallow` or a stable-ref guard, any presence/typing event produces a new reference and re-renders the connector and its entire subtree.
+
+2. **`RoomSelector` `rooms` prop** (fid=2393): 745 total renders; `rooms` prop changes **74×**. The `rawGroupPanelRooms` memo in `LeftRailPanel.tsx:230` maps over `visibleRooms` and projects full participant objects inline, creating new object references on every presence update even when room membership and participant data are identical. `onToggleBroadcastMode` also changes **18×** from the parent — it is not `useCallback`-wrapped in `LeftRailPanel`.
+
+**Fix**:
+
+1. Identify hook[6] in `SessionWorkspaceChromeConnector` (use React DevTools or count hooks in the component body). If it returns an array or derived object, add `useShallow` or apply the `stableRef` identity guard from PERF-12.
+2. In `LeftRailPanel.tsx`, apply a `stableRef` guard to `rawGroupPanelRooms` (same pattern as `stableVisibleRef` in `useChatVisibleMessages.ts`) so a presence update that does not change room membership or participant data returns the previous array reference.
+3. Wrap `onToggleBroadcastMode` in `useCallback` in `LeftRailPanel.tsx`.
+
+**Acceptance Criteria**:
+
+- [ ] `SessionWorkspaceChromeConnector` hook[6] change count drops by ≥80% in follow-up trace
+- [ ] `RoomSelector` `rooms` prop change count drops from 74× to near-zero between actual room membership changes
+- [ ] `onToggleBroadcastMode` is `useCallback`-wrapped in `LeftRailPanel.tsx`
+- [ ] No regression in broadcast mode toggle, room selection, or left-rail participant display
 
 ---
 

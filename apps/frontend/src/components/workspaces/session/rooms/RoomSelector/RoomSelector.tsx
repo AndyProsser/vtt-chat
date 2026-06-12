@@ -517,6 +517,13 @@ export function RoomSelector({
     [dmFlavorLine]
   )
 
+  const handleToggleCreateGroupModal = useCallback(() => {
+    setEnvironmentPickerRoomId(null)
+    setShowCreateGroupModal((cur) => !cur)
+  }, [])
+
+  const handleCloseCreateGroupModal = useCallback(() => setShowCreateGroupModal(false), [])
+
   const renderRoomCard = (room: GroupPanelGroupWithParticipants) => (
     <GroupCard
       key={room.id}
