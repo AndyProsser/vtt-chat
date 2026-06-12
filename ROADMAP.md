@@ -15,10 +15,10 @@
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
+| Phase 4: Future Enhancements           |      8 |       1 |              2 |              5 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **56** |  **44** |          **2** |         **10** |                |
+| **Total**                              | **57** |  **44** |          **2** |         **11** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -1817,6 +1817,87 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 - [docs/subsystems/INVENTORY-SYSTEM.md](docs/subsystems/INVENTORY-SYSTEM.md)
 - [docs/subsystems/CHAT-SYSTEM.md](docs/subsystems/CHAT-SYSTEM.md) — §9 Chat Commands
+
+---
+
+### W-Email-Templates: Transactional Email System
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 Medium (post-MVP)
+**Depends on**: W-Queues (email worker live), Core Reliability complete
+
+**Scope**: Build all transactional emails the platform needs — auth, campaign invites, session notifications, and offline digests — as styled HTML emails with React Email. Each email uses the VTT-Chat logo, design tokens, and DMDX-style markdown rendering. Users control non-auth emails via per-category opt-out preferences stored in the database.
+
+**Email categories and types**:
+
+| Category | Type | Opt-out? | Notes |
+| -------- | ---- | -------- | ----- |
+| Auth | Email verification | No | Sent when a new full account is created |
+| Auth | Password reset | No | Stub already in email worker — needs real template |
+| Campaign | Join invite | Yes | Sent to invited user; links to `/join/:code` |
+| Campaign | Watch invite | Yes | Sent to spectator; links to `/watch/:code` |
+| Campaign | Join request received | Yes | DM notified when a player requests to join |
+| Campaign | Join request resolved | Yes | Player notified of approval or rejection |
+| Session | Session reminder | Yes | Sent X hours before a scheduled session (requires `scheduledAt` on Session) |
+| Session | Session summary ready | Yes | Player/DM notified when AI summary is published; links to journal entry |
+| Offline | Shared handout | Yes | Player emailed when DM shares a note while they are offline |
+| Offline | Weekly campaign digest | Yes | Summary of recent activity, new notes, and upcoming sessions for users not recently connected |
+
+**Technical pieces**:
+
+1. **React Email** — add `@react-email/components` to `apps/queues`; build a `BaseEmailTemplate` wrapper with VTT-Chat logo header, DMDX-style body typography, dark/light safe tokens, and `Markdown` block support via `@react-email/markdown`. All per-type templates extend the base.
+
+2. **Email preview dev server** — React Email's built-in preview server (`email dev`) runnable via `npm run email:dev` in `apps/queues`; no additional tooling needed.
+
+3. **User email preferences** — new `UserEmailPreferences` Prisma model linked to `User`:
+
+   ```prisma
+   model UserEmailPreferences {
+     userId          String  @id
+     user            User    @relation(fields: [userId], references: [id])
+     campaignEmails  Boolean @default(true)
+     sessionEmails   Boolean @default(true)
+     offlineEmails   Boolean @default(true)
+   }
+   ```
+
+   Auth emails (`emailVerification`, `passwordReset`) are always sent regardless of preferences.
+
+4. **Preferences API** — `GET /api/profile/email-preferences` + `PUT /api/profile/email-preferences`; surfaced in the user settings panel.
+
+5. **Enqueueing guards** — before enqueuing any non-auth email, backend checks `UserEmailPreferences.{category}Emails`; if false, skip silently.
+
+6. **Session reminder prerequisite** — requires an optional `scheduledAt: DateTime?` field on the `Session` model. DM sets this in campaign settings or session editor. A BullMQ `delayed` job fires `X hours before scheduledAt` (configurable, default 1h).
+
+7. **Digest cron** — a weekly BullMQ scheduled job (`QUEUE_DIGEST_CRON`, default `0 9 * * 1` — Monday 09:00) generates digest payloads for users who have not connected in the last 7 days; enqueues one `send-email` job per user.
+
+**Acceptance Criteria**:
+
+- [ ] `BaseEmailTemplate` component in `apps/queues/src/email/templates/` — logo, dark/light safe, DMDX-style markdown block
+- [ ] React Email dev preview runnable: `npm run email:dev` in `apps/queues`
+- [ ] All 10 email types have a React Email template component
+- [ ] Templates render valid email HTML: tested in at least one email client (Gmail web)
+- [ ] `UserEmailPreferences` model migrated and linked to `User`
+- [ ] `GET/PUT /api/profile/email-preferences` endpoints implemented and covered by tests
+- [ ] User settings panel exposes opt-out toggles per category (Campaign / Session / Offline)
+- [ ] Backend checks prefs before enqueueing all non-auth emails
+- [ ] Auth emails (verification, password reset) are always sent regardless of prefs
+- [ ] Email verification flow: account creation sends verification email; `GET /api/auth/verify-email?token=` marks email as verified; unverified accounts shown a banner
+- [ ] Campaign invite emails: `POST /api/campaigns/:id/invite` (player) and `POST /api/campaigns/:id/invite-watch` (spectator) trigger email delivery via queue
+- [ ] Join request emails: `CAMPAIGN:JOIN_REQUEST_RECEIVED` triggers DM email; resolution triggers player email (respects DM and player prefs respectively)
+- [ ] Session reminder: `Session.scheduledAt` field added to Prisma; DM can set it in session/campaign settings; a BullMQ delayed job fires 1h before (configurable via `SESSION_REMINDER_HOURS_BEFORE`)
+- [ ] Session summary email: fired when `generate-summary` job completes successfully and `LLM_SUMMARY_URL` is active; links directly to the journal entry pop-out URL
+- [ ] Shared handout email: backend checks recipient presence (Redis); if user is offline, enqueues `send-email` with `templateId: 'shared-handout'` instead of (or in addition to) the WS push
+- [ ] Weekly digest: BullMQ repeatable job, configurable via `QUEUE_DIGEST_CRON`; only sends to users with `offlineEmails: true` who have not connected in 7+ days
+- [ ] All email templates include a one-click unsubscribe link for non-auth emails (links to `/api/profile/email-preferences/unsubscribe?token=` with a signed token)
+- [ ] `SMTP_SERVICE=Gmail` works end-to-end for all template types (verified in dev with Mailtrap or similar interceptor)
+- [ ] `docs/operations/QUEUES.md` updated with the digest cron var and new template list
+
+**Related Docs**:
+
+- [docs/architecture/EMAIL-SYSTEM.md](docs/architecture/EMAIL-SYSTEM.md) — full design doc (templates, preferences, flows)
+- [docs/operations/QUEUES.md](docs/operations/QUEUES.md) — SMTP config and email job flow
+- [docs/architecture/QUEUE-JOB-MANAGER.md](docs/architecture/QUEUE-JOB-MANAGER.md)
 
 ---
 

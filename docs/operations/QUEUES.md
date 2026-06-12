@@ -39,13 +39,15 @@ The backend retains an in-process cleanup scheduler as a safety fallback by defa
 
 ### Queue tuning
 
-| Variable              | Default          | Description                                    |
-| --------------------- | ---------------- | ---------------------------------------------- |
-| `QUEUES_PORT`         | `3001`           | HTTP port for admin + enqueue API              |
-| `QUEUE_ADMIN_SECRET`  | _(empty = open)_ | Bearer token for admin API. Set in production. |
-| `QUEUE_MAX_ATTEMPTS`  | `5`              | Retry attempts before DLQ promotion            |
-| `QUEUE_BASE_DELAY_MS` | `5000`           | Initial exponential backoff delay (ms)         |
-| `QUEUE_CLEANUP_CRON`  | `*/5 * * * *`    | Cron for the repeatable lifecycle sweep        |
+| Variable                        | Default          | Description                                                                   |
+| ------------------------------- | ---------------- | ----------------------------------------------------------------------------- |
+| `QUEUES_PORT`                   | `3001`           | HTTP port for admin + enqueue API                                             |
+| `QUEUE_ADMIN_SECRET`            | _(empty = open)_ | Bearer token for admin API. Set in production.                                |
+| `QUEUE_MAX_ATTEMPTS`            | `5`              | Retry attempts before DLQ promotion                                           |
+| `QUEUE_BASE_DELAY_MS`           | `5000`           | Initial exponential backoff delay (ms)                                        |
+| `QUEUE_CLEANUP_CRON`            | `*/5 * * * *`    | Cron for the repeatable lifecycle sweep                                       |
+| `QUEUE_DIGEST_CRON`             | `0 9 * * 1`      | Cron for the weekly campaign digest email (Monday 09:00 UTC)                  |
+| `SESSION_REMINDER_HOURS_BEFORE` | `1`              | Hours before `Session.scheduledAt` to send the session reminder email         |
 
 ### SMTP (email worker)
 
