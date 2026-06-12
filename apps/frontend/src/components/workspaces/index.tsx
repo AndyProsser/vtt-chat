@@ -761,6 +761,34 @@ export function WorkspaceInitialization({
     onError: setError,
   })
 
+  const handleCopyInviteUrlModal = useCallback(
+    (inviteType: 'PLAYER' | 'SPECTATOR') => void copyInviteUrl(inviteType),
+    [copyInviteUrl]
+  )
+  const handleReissueInviteModal = useCallback(
+    (inviteType: 'PLAYER' | 'SPECTATOR') => requestInviteReissue(inviteType),
+    [requestInviteReissue]
+  )
+  const handleSaveCampaignSettingsWrapper = useCallback(
+    () => void saveCampaignSettings(),
+    [saveCampaignSettings]
+  )
+  const handleSaveCharacterSettingsWrapper = useCallback(
+    () => void saveCharacterSettings(),
+    [saveCharacterSettings]
+  )
+  const handleDeleteCampaignWrapper = useCallback(
+    async (campaignId: UUID) => {
+      setIsDeletingCampaign(true)
+      try {
+        await handleDeleteCampaign(campaignId)
+      } finally {
+        setIsDeletingCampaign(false)
+      }
+    },
+    [handleDeleteCampaign]
+  )
+
   const editorWorkspaceProps = buildEditorWorkspaceProps({
     hasSessionSelected,
     editorWorkspaceView,
@@ -804,63 +832,36 @@ export function WorkspaceInitialization({
     characterSettingsPanel,
     isCharacterSettingsLoading,
     isCharacterSettingsSaving,
-    onSettingsNameChange: (value) => campaignSettingsActions.setSettingsName(value),
-    onSettingsDescriptionChange: (value) => campaignSettingsActions.setSettingsDescription(value),
+    onSettingsNameChange: campaignSettingsActions.setSettingsName,
+    onSettingsDescriptionChange: campaignSettingsActions.setSettingsDescription,
     onPosterFileSelected: handlePosterFileSelected,
-    onSettingsPosterUrlChange: (value) => campaignSettingsActions.setSettingsPosterUrl(value),
-    onSettingsVisibilityChange: (value) => campaignSettingsActions.setSettingsVisibility(value),
-    onSettingsSpectatorsEnabledChange: (value) =>
-      campaignSettingsActions.setSettingsSpectatorsEnabled(value),
-    onSettingsSpectatorMaxChange: (value) => campaignSettingsActions.setSettingsSpectatorMax(value),
-    onSettingsSpectatorWaitlistEnabledChange: (value) =>
-      campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(value),
-    onSettingsSpectatorReconnectGraceSecsChange: (value) =>
-      campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(value),
-    onSettingsPostSessionChatEnabledChange: (value) =>
-      campaignSettingsActions.setSettingsPostSessionChatEnabled(value),
-    onSettingsPostSessionChatDurationMinutesChange: (value) =>
-      campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(value),
-    onSettingsExtensionSyncPolicyChange: (value) =>
-      campaignSettingsActions.setSettingsExtensionSyncPolicy(value),
-    onSettingsLateJoinPolicyChange: (value) =>
-      campaignSettingsActions.setSettingsLateJoinPolicy(value),
-    onSettingsLateJoinGraceMinutesChange: (value) =>
-      campaignSettingsActions.setSettingsLateJoinGraceMinutes(value),
-    onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value) =>
-      campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value),
-    onSettingsDefaultSessionDurationMinsChange: (value) =>
-      campaignSettingsActions.setSettingsDefaultSessionDurationMins(value),
-    onSettingsSupportedPlatformsChange: (value) =>
-      campaignSettingsActions.setSettingsSupportedPlatforms(value),
+    onSettingsPosterUrlChange: campaignSettingsActions.setSettingsPosterUrl,
+    onSettingsVisibilityChange: campaignSettingsActions.setSettingsVisibility,
+    onSettingsSpectatorsEnabledChange: campaignSettingsActions.setSettingsSpectatorsEnabled,
+    onSettingsSpectatorMaxChange: campaignSettingsActions.setSettingsSpectatorMax,
+    onSettingsSpectatorWaitlistEnabledChange: campaignSettingsActions.setSettingsSpectatorWaitlistEnabled,
+    onSettingsSpectatorReconnectGraceSecsChange: campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs,
+    onSettingsPostSessionChatEnabledChange: campaignSettingsActions.setSettingsPostSessionChatEnabled,
+    onSettingsPostSessionChatDurationMinutesChange: campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
+    onSettingsExtensionSyncPolicyChange: campaignSettingsActions.setSettingsExtensionSyncPolicy,
+    onSettingsLateJoinPolicyChange: campaignSettingsActions.setSettingsLateJoinPolicy,
+    onSettingsLateJoinGraceMinutesChange: campaignSettingsActions.setSettingsLateJoinGraceMinutes,
+    onSettingsDmAutoTargetOnFirstPlayerJoinChange: campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin,
+    onSettingsDefaultSessionDurationMinsChange: campaignSettingsActions.setSettingsDefaultSessionDurationMins,
+    onSettingsSupportedPlatformsChange: campaignSettingsActions.setSettingsSupportedPlatforms,
     onSessionNameChange: setSessionSettingsName,
-    onCopyInviteUrl: (inviteType) => {
-      void copyInviteUrl(inviteType)
-    },
-    onReissueInvite: (inviteType) => {
-      requestInviteReissue(inviteType)
-    },
-    onSaveCampaignSettings: () => {
-      void saveCampaignSettings()
-    },
+    onCopyInviteUrl: handleCopyInviteUrlModal,
+    onReissueInvite: handleReissueInviteModal,
+    onSaveCampaignSettings: handleSaveCampaignSettingsWrapper,
     onCharacterFieldChange: handleCharacterFieldChange,
-    onSaveCharacterSettings: () => {
-      void saveCharacterSettings()
-    },
-    onSettingsReferenceSessionChange: (sessionId) =>
-      campaignSettingsActions.setSettingsReferenceSessionId(sessionId),
+    onSaveCharacterSettings: handleSaveCharacterSettingsWrapper,
+    onSettingsReferenceSessionChange: campaignSettingsActions.setSettingsReferenceSessionId,
     onBackToLobby: handleBackToLobbyWorkspace,
     onToggleTheme: handleToggleTheme,
     onOpenUserSettings: handleOpenUserSettingsModal,
     onLaunch: handleLaunchFromEditor,
     onSaveCampaignInfo: handleSaveCampaignInfoPanel,
-    onDeleteCampaign: async (campaignId) => {
-      setIsDeletingCampaign(true)
-      try {
-        await handleDeleteCampaign(campaignId)
-      } finally {
-        setIsDeletingCampaign(false)
-      }
-    },
+    onDeleteCampaign: handleDeleteCampaignWrapper,
     isDeletingCampaign,
     showToast,
   })
@@ -1067,14 +1068,6 @@ export function WorkspaceInitialization({
   const handleConfirmReissueInviteWrapper = useCallback(
     () => void handleConfirmInviteReissue(),
     [handleConfirmInviteReissue]
-  )
-  const handleCopyInviteUrlModal = useCallback(
-    (inviteType: 'PLAYER' | 'SPECTATOR') => void copyInviteUrl(inviteType),
-    [copyInviteUrl]
-  )
-  const handleReissueInviteModal = useCallback(
-    (inviteType: 'PLAYER' | 'SPECTATOR') => requestInviteReissue(inviteType),
-    [requestInviteReissue]
   )
   const handleCloseExitSession = useCallback(() => setShowExitSessionModal(false), [])
   const handleCloseStopSession = useCallback(() => setShowStopSessionModal(false), [])

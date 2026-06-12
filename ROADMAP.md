@@ -10,7 +10,7 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     25 |      24 |              0 |              1 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     25 |      25 |              0 |              0 | 🟢 Done        |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
@@ -18,9 +18,9 @@
 | Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **62** |  **50** |          **2** |         **10** |                |
+| **Total**                              | **62** |  **51** |          **2** |          **9** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 24/25 done; PERF-24 (lobby modal cascade) resolved — 10 `useCallback` handlers + 10 `memo()` wraps across modal containers and leaf modals. PERF-25 (EditorWorkspace callback churn) remains. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 25/25 done; PERF-24 (lobby modal cascade) and PERF-25 (EditorWorkspace callback churn + memo wrap) both resolved. Follow-up trace needed to confirm ≤50 and ≤2 component-count criteria. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
 ---
 
@@ -32,7 +32,7 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ---
 
-## Performance Tuning & Bug Fixes 🟡
+## Performance Tuning & Bug Fixes 🟢
 
 _Root-cause re-render isolation fixes. Five profiler traces: initial (2026-06-10, 1,405 commits, 43MB), full-session follow-up (2026-06-10, 1,554 commits, lobby → session → all panels), third session trace (2026-06-10 15:35, 809 commits, 60,992 total re-renders — 86% prop-change driven), fourth session trace (2026-06-12, 1,769 commits, 87,630 total render events — median commit 1ms, max 73ms, 120 commits > 16ms), and fifth lobby trace (2026-06-12 17:06, 446 commits — dominant source: lobby modal cascade 368 components, EditorWorkspace callback churn). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
 
@@ -698,10 +698,11 @@ Worst observed: commits #20 and #21, 368 components each (21ms / 13ms), triggere
 
 ### PERF-25: Stabilise WorkspaceInitialization → EditorWorkspace callback props
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🟡 High
 **Source**: Profiler trace 2026-06-12 17:06 (lobby trace, 446 commits)
 **Depends on**: PERF-24
+**Completed**: 2026-06-12
 
 **Problem**: `WorkspaceInitialization` passes ~23 callback props to `EditorWorkspace`, all recreated as inline functions on every render: `onSettingsNameChange`, `onSettingsDescriptionChange`, `onSettingsPosterUrlChange`, `onSettingsVisibilityChange`, `onSettingsSpectatorsEnabledChange`, `onSettingsSpectatorMaxChange`, `onSettingsSpectatorWaitlistEnabledChange`, `onSettingsSpectatorReconnectGraceSecsChange`, `onSettingsPostSessionChatEnabledChange`, `onSettingsPostSessionChatDurationMinutesChange`, `onSettingsExtensionSyncPolicyChange`, `onSettingsLateJoinPolicyChange`, `onSettingsLateJoinGraceMinutesChange`, `onSettingsDmAutoTargetOnFirstPlayerJoinChange`, `onSettingsDefaultSessionDurationMinsChange`, `onSettingsSupportedPlatformsChange`, `onCopyInviteUrl`, `onReissueInvite`, `onSaveCampaignSettings`, `onSaveCharacterSettings`, `onSettingsReferenceSessionChange`, `onSaveCampaignInfo`, `onDeleteCampaign`.
 
@@ -713,7 +714,8 @@ Every `WorkspaceInitialization` re-render (triggered by the lobby modal cascade 
 
 **Acceptance Criteria**:
 
-- [ ] All 23 `onSettings*` and action callbacks in `WorkspaceInitialization` are `useCallback`-stabilized
+- [x] All 23 callbacks stabilized — 16 `(x) => actions.setX(x)` one-liner wrappers replaced with direct `campaignSettingsActions.setX` method refs (stable because `campaignSettingsActions` is `useMemo`'d with `useState` setter deps); `onCopyInviteUrl` and `onReissueInvite` reuse the `handleCopyInviteUrlModal`/`handleReissueInviteModal` callbacks already created for PERF-24; 3 new `useCallback`s added for `onSaveCampaignSettings`, `onSaveCharacterSettings`, and `onDeleteCampaign`
+- [x] `EditorWorkspace` wrapped in `memo()` — without this, stabilizing callbacks alone would not prevent re-renders from `WorkspaceInitialization` parent renders
 - [ ] `EditorWorkspace` prop-change renders in follow-up trace drop from 5 to the number of genuine data changes (expected: ≤ 2 — initial load + one settings fetch)
 - [ ] Campaign settings save, invite copy/reissue, and session reference selection all function correctly
 

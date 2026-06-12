@@ -1,11 +1,11 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useMemo, useRef } from 'react'
 import type { UUID } from '@shared'
 import { EditorView } from '@/components/workspaces/editor/EditorView'
 import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
 import { DmTransferOfferBanner } from '@/components/workspaces/shared/DmTransferOfferBanner'
 import type { EditorWorkspaceProps } from '@/types/editorWorkspace'
 
-export function EditorWorkspace(props: EditorWorkspaceProps) {
+export const EditorWorkspace = memo(function EditorWorkspace(props: EditorWorkspaceProps) {
   // Destructure props used inside useCallback hooks so deps reference named
   // variables, satisfying exhaustive-deps without listing the whole props object.
   const {
@@ -300,4 +300,4 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     />
     </>
   )
-}
+})
