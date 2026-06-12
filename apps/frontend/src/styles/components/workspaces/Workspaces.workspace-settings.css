@@ -548,7 +548,7 @@
   transform: translateX(-50%);
   max-height: calc(100dvh - 88px);
   overflow-y: auto;
-  width: min(480px, 90vw);
+  width: min(380px, 90vw);
 }
 
 .csp-delete-dialog-title {
@@ -630,12 +630,12 @@
 .csp-dm-transfer-member-list {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  max-height: 220px;
+  gap: 0.2rem;
+  max-height: 320px;
   overflow-y: auto;
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
-  padding: 0.4rem;
+  padding: 0.3rem;
   background: var(--color-surface-subtle);
 }
 
@@ -643,14 +643,36 @@
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
   border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
   cursor: pointer;
   font-size: 0.83rem;
+  text-align: left;
+  color: inherit;
 }
 
 .csp-dm-transfer-member-row:hover {
   background: color-mix(in srgb, var(--color-brand) 8%, transparent);
+}
+
+.csp-dm-transfer-member-row.is-selected {
+  background: color-mix(in srgb, var(--color-brand) 15%, transparent);
+  border-color: color-mix(in srgb, var(--color-brand) 50%, transparent);
+}
+
+.csp-dm-transfer-member-row.is-selected .csp-dm-transfer-member-primary {
+  color: var(--color-brand);
+}
+
+.csp-dm-transfer-member-check {
+  margin-left: auto;
+  font-size: 1.1rem;
+  color: var(--color-brand);
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .csp-dm-transfer-member-info {

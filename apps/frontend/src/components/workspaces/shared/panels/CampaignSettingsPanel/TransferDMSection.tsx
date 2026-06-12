@@ -209,29 +209,46 @@ export function TransferDMSection({ campaignId, sessionState }: TransferDMSectio
                 to receive the offer.
               </p>
             ) : (
-              <div className="csp-dm-transfer-member-list">
-                {members.map((m) => (
-                  <label key={m.userId} className="csp-dm-transfer-member-row">
-                    <input
-                      type="radio"
-                      name="dm-transfer-target"
-                      value={m.userId}
-                      checked={selectedUserId === m.userId}
-                      onChange={() => setSelectedUserId(m.userId)}
-                    />
-                    <span className="csp-dm-transfer-member-info">
-                      <span className="csp-dm-transfer-member-primary">
-                        {m.characterName ?? m.displayName}
+              <div className="csp-dm-transfer-member-list" role="listbox" aria-label="Select player">
+                {members.map((m) => {
+                  const isSelected = selectedUserId === m.userId
+                  return (
+                    <button
+                      key={m.userId}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      className={`csp-dm-transfer-member-row${isSelected ? ' is-selected' : ''}`}
+                      onClick={() => setSelectedUserId(m.userId)}
+                    >
+                      <span className="csp-dm-transfer-member-info">
+                        <span className="csp-dm-transfer-member-primary">
+                          {m.characterName ?? m.displayName}
+                          {m.characterClass && (
+                            <span className="csp-dm-transfer-member-class">
+                              {m.level != null ? ` Lv${m.level} ` : ' '}
+                              {m.characterClass}
+                            </span>
+                          )}
+                        </span>
+                        <span className="csp-dm-transfer-member-secondary">
+                          {m.playerName && (
+                            <span className="csp-dm-transfer-member-player">{m.playerName}</span>
+                          )}
+                          <span className="csp-dm-transfer-member-username">@{m.username}</span>
+                        </span>
                       </span>
-                      <span className="csp-dm-transfer-member-secondary">
-                        {m.playerName && (
-                          <span className="csp-dm-transfer-member-player">{m.playerName}</span>
-                        )}
-                        <span className="csp-dm-transfer-member-username">@{m.username}</span>
-                      </span>
-                    </span>
-                  </label>
-                ))}
+                      {isSelected && (
+                        <span
+                          className="material-symbols-outlined csp-dm-transfer-member-check"
+                          aria-hidden="true"
+                        >
+                          check
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             )}
 
