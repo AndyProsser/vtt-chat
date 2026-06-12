@@ -49,6 +49,45 @@ services:
     networks:
       - vttnet
 
+  queues:
+    build:
+      context: .
+      dockerfile: apps/queues/Dockerfile
+      target: builder
+    container_name: vttchat-queues-dev
+    working_dir: /workspace/apps/queues
+    command: sh -c "npm install && npm run dev"
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      NODE_ENV: development
+      QUEUES_PORT: 3001
+      CHOKIDAR_USEPOLLING: ${DEV_WATCH_USE_POLLING:-false}
+      CHOKIDAR_INTERVAL: ${DEV_WATCH_INTERVAL_MS:-150}
+    volumes:
+      - ./apps/queues/src:/workspace/apps/queues/src
+      - ./packages/shared:/workspace/packages/shared
+      - queues_node_modules:/workspace/apps/queues/node_modules
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http=require('node:http');const req=http.get({host:'127.0.0.1',port:3001,path:'/health',timeout:2500},res=>{process.exit(res.statusCode===200?0:1)});req.on('error',()=>process.exit(1));req.on('timeout',()=>{req.destroy();process.exit(1);});",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - vttnet
+
   frontend:
     build:
       context: .
@@ -221,6 +260,7 @@ volumes:
   backend_node_modules:
   frontend_node_modules:
   admin_node_modules:
+  queues_node_modules:
   caddy_data_dev:
 
 networks:

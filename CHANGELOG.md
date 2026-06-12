@@ -10,6 +10,8 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ### Added
 
+- W-Queues: Added `apps/queues` — a standalone BullMQ worker container running alongside the backend. Includes four workers (`session-lifecycle`, `cleanup`, `email`, `summary`) each with exponential-backoff retry and terminal-failure DLQ (`vttchat:dlq`). A BullMQ scheduler registers a repeatable `cleanup-old-sessions` job (default: every 5 minutes, configurable via `QUEUE_CLEANUP_CRON`). An admin HTTP API (port 3001, Bearer-token auth via `QUEUE_ADMIN_SECRET`) exposes `GET /queues`, job listing, retry, delete, and obliterate endpoints for operator tooling. Job payload types and queue name constants live in `packages/shared/jobs/`. Both `docker-compose.yml` and `docker-compose.dev.yml` include the new `queues` service (with hot-reload volume mounts in dev). Workers are functional stubs in Phase 1; Phase 2 migrates the backend's in-process `SessionCleanupJobService` and subsequent job logic into dedicated workers.
+
 - W-Notes-Visibility: Added `NOTES:HANDOUT_SURFACED` WS event to `shared/events/notes.ts` with `excerpt`, `excerptSource` (`AUTO | MANUAL`), `scope` (`PARTY | SELECTED`), and `recipientIds` fields.
 - W-Notes-Visibility: Added `NoteHandoutMessageMetadata` to `shared/types/entities.ts` and added `noteHandout?` field to `MessageMetadataEntity` for excerpt-based handout chat cards.
 - W-Notes-Visibility: Added `backend/src/services/notes/excerpt.service.ts` implementing the deterministic excerpt algorithm (§3.7 of the checklist): strips markdown, prefers first complete sentence ≤ 180 chars, cuts at word boundary, hard cap 220, fallback to note title then "Shared handout".

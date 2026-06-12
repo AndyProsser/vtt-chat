@@ -37,6 +37,36 @@ services:
     networks:
       - vttnet
 
+  queues:
+    build:
+      context: .
+      dockerfile: apps/queues/Dockerfile
+    container_name: vttchat-queues
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      NODE_ENV: production
+      QUEUES_PORT: 3001
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http=require('node:http');const req=http.get({host:'127.0.0.1',port:3001,path:'/health',timeout:2500},res=>{process.exit(res.statusCode===200?0:1)});req.on('error',()=>process.exit(1));req.on('timeout',()=>{req.destroy();process.exit(1);});",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - vttnet
+
   frontend:
     build:
       context: .

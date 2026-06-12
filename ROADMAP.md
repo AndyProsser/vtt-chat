@@ -1578,7 +1578,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Queues: Durable Queue Manager (BullMQ)
 
-**Status**: ⚪ Not Started
+**Status**: 🟡 In Progress
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -1586,11 +1586,18 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 **Acceptance Criteria**:
 
-- [ ] BullMQ container runs alongside backend
-- [ ] Job types: cleanup-old-sessions, process-recording, send-email, generate-summary
-- [ ] Failed jobs have retry policy with exponential backoff
-- [ ] Dead-letter queue for failed jobs after max retries
-- [ ] Operator can inspect/retry/clear jobs via admin API
+- [x] BullMQ container runs alongside backend (`apps/queues/` service, port 3001 internally)
+- [x] Job types: cleanup-old-sessions, process-recording, send-email, generate-summary (workers + shared payload types in `packages/shared/jobs/`)
+- [x] Failed jobs have retry policy with exponential backoff (BullMQ `exponential` backoff, configurable via `QUEUE_MAX_ATTEMPTS` / `QUEUE_BASE_DELAY_MS`)
+- [x] Dead-letter queue for failed jobs after max retries (`vttchat:dlq` queue; workers push `DlqEntryPayload` on terminal failure)
+- [x] Operator can inspect/retry/clear jobs via admin API (`GET/POST/DELETE /queues/*`, secured with `QUEUE_ADMIN_SECRET`)
+
+**Remaining (Phase 2)**:
+- [ ] Migrate `SessionCleanupJobService` logic into `session-lifecycle` worker (workers are functional stubs until then)
+- [ ] Migrate archive verification into `cleanup` worker
+- [ ] Wire `send-email` worker to nodemailer/provider
+- [ ] Wire `generate-summary` worker to LLM summarisation endpoint with checkpoint resume
+- [ ] Add Caddy/admin-app routing to the queues admin API for UI-level inspection
 
 **Related Docs**:
 
