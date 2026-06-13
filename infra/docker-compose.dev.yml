@@ -29,6 +29,7 @@ services:
       - ./apps/backend/prisma:/workspace/apps/backend/prisma
       - ./apps/backend/tsconfig.json:/workspace/apps/backend/tsconfig.json
       - ./packages/shared:/workspace/packages/shared
+      - shared_node_modules:/workspace/packages/shared/node_modules
       - backend_node_modules:/workspace/apps/backend/node_modules
     depends_on:
       postgres:
@@ -87,6 +88,7 @@ services:
     volumes:
       - ./apps/queues/src:/workspace/apps/queues/src
       - ./packages/shared:/workspace/packages/shared
+      - shared_node_modules:/workspace/packages/shared/node_modules
       - queues_node_modules:/workspace/apps/queues/node_modules
     depends_on:
       redis:
@@ -131,6 +133,7 @@ services:
       - ./apps/frontend/src:/workspace/apps/frontend/src
       - ./apps/frontend/public:/workspace/apps/frontend/public
       - ./packages/shared:/workspace/packages/shared
+      - shared_node_modules:/workspace/packages/shared/node_modules
       - frontend_node_modules:/workspace/apps/frontend/node_modules
     depends_on:
       backend:
@@ -277,6 +280,7 @@ services:
 
 volumes:
   postgres_data_dev:
+  shared_node_modules:
   backend_node_modules:
   frontend_node_modules:
   admin_node_modules:

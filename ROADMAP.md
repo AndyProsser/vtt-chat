@@ -605,8 +605,14 @@ onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
 - In `ChatWindow.tsx`, replace the two inline wrappers with `useCallback`-stabilised equivalents:
 
   ```tsx
-  const handleTypingStarted = useCallback(() => emitTypingEvent('CHAT:TYPING_STARTED'), [emitTypingEvent])
-  const handleTypingStopped = useCallback(() => emitTypingEvent('CHAT:TYPING_STOPPED'), [emitTypingEvent])
+  const handleTypingStarted = useCallback(
+    () => emitTypingEvent('CHAT:TYPING_STARTED'),
+    [emitTypingEvent]
+  )
+  const handleTypingStopped = useCallback(
+    () => emitTypingEvent('CHAT:TYPING_STOPPED'),
+    [emitTypingEvent]
+  )
   ```
 
 **Acceptance Criteria**:
@@ -1910,7 +1916,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 ### W-Session-Schedule: Next Session Date
 
-**Status**: ✅ Done
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete
 
