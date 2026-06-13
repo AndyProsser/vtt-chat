@@ -5,6 +5,9 @@ WORKDIR /workspace
 # Copy shared package because admin uses @shared aliases
 COPY packages/shared ./packages/shared
 
+# Install shared package dependencies so Vite can resolve them from the shared source path
+RUN cd packages/shared && npm install
+
 # Install admin dependencies
 COPY apps/admin/package.json apps/admin/package-lock.json* ./apps/admin/
 WORKDIR /workspace/apps/admin
