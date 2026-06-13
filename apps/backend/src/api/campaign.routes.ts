@@ -1714,6 +1714,77 @@ router.put('/:campaignId/next-session-date', requireAuth, async (req: Request, r
 })
 
 // ---------------------------------------------------------------------------
+// DELETE /:campaignId/next-session-date — Revert manual override; recalculates nextSessionDate from the schedule rule
+// ---------------------------------------------------------------------------
+router.delete('/:campaignId/next-session-date', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only the campaign DM can revert the date override' })
+  }
+
+  // Recalculate from schedule if one exists; otherwise clear nextSessionDate entirely
+  let nextDate: Date | null = null
+  let schedLabel: string | null = null
+
+  if (
+    campaign.sessionScheduleType &&
+    campaign.sessionScheduleDay != null &&
+    campaign.sessionScheduleHour != null &&
+    campaign.sessionScheduleMinute != null &&
+    campaign.sessionScheduleTz
+  ) {
+    const schedule: SessionSchedule = {
+      type: campaign.sessionScheduleType as SessionScheduleType,
+      dayOfWeek: campaign.sessionScheduleDay,
+      nth: campaign.sessionScheduleNth ?? undefined,
+      hour: campaign.sessionScheduleHour,
+      minute: campaign.sessionScheduleMinute,
+      timezone: campaign.sessionScheduleTz,
+    }
+    nextDate = calculateNextOccurrence(schedule, new Date())
+    schedLabel = formatScheduleLabel(schedule)
+  }
+
+  await prisma.campaign.update({
+    where: { id: campaignId as UUID },
+    data: { nextSessionDate: nextDate, nextSessionIsManual: false },
+  })
+
+  await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:SCHEDULE_UPDATED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: {
+      campaignId: campaignId as UUID,
+      nextSessionDate: nextDate?.toISOString() ?? null,
+      scheduleLabel: schedLabel,
+      nextSessionIsManual: false,
+    },
+  })
+
+  return res.status(204).send()
+})
+
+// ---------------------------------------------------------------------------
 // DELETE /:campaignId/schedule — DM clears the entire recurrence schedule
 // ---------------------------------------------------------------------------
 router.delete('/:campaignId/schedule', requireAuth, async (req: Request, res: Response) => {

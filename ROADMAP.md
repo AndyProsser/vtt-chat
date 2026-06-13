@@ -1910,7 +1910,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 ### W-Session-Schedule: Next Session Date
 
-**Status**: ⚪ Not Started
+**Status**: ✅ Done
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -1924,21 +1924,21 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 **Acceptance Criteria**:
 
-- [ ] Prisma migration: `sessionScheduleType SessionScheduleType?`, `sessionScheduleDay Int?`, `sessionScheduleNth Int?`, `sessionScheduleHour Int?`, `sessionScheduleMinute Int?`, `sessionScheduleTz String?`, `nextSessionDate DateTime?`, `nextSessionIsManual Boolean @default(false)` added to Campaign
-- [ ] New Prisma enum `SessionScheduleType { WEEKLY BIWEEKLY MONTHLY_NTH }` in schema and mirrored in `packages/shared/types/`
-- [ ] `packages/shared/utils/session-schedule.ts`: pure functions `formatScheduleLabel(schedule)` and `calculateNextOccurrence(schedule, after)` — timezone-aware via `date-fns-tz`, no side effects, unit-tested
-- [ ] `PATCH /api/campaigns/:id/settings` extended to accept `sessionSchedule` fields (DM only); calculates and persists `nextSessionDate`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
-- [ ] `PUT /api/campaigns/:id/next-session-date` — DM-only manual override; body `{ date: ISO8601 }`; sets `nextSessionIsManual = true`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
-- [ ] `DELETE /api/campaigns/:id/schedule` — DM only; clears all schedule fields and `nextSessionDate`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
-- [ ] On `SESSION:ENDED`: if `sessionScheduleType` set, call `calculateNextOccurrence(schedule, now())`, persist to Campaign, reset `nextSessionIsManual = false`, broadcast `CAMPAIGN:SCHEDULE_UPDATED`
-- [ ] `CAMPAIGN:SCHEDULE_UPDATED` event type defined in `packages/shared/events/campaign.ts`, registered in `apps/backend/src/ws/index.ts`; payload includes `nextSessionDate`, `scheduleLabel`, `nextSessionIsManual`
-- [ ] `CampaignInformationPanelCampaign` type extended with `nextSessionDate: string | null`, `scheduleLabel: string | null`
-- [ ] `NextSessionDate` — `React.memo` leaf component in `CampaignInformationPanel/`; renders when session state is `IDLE | ENDED | COOLDOWN | CLEANUP`; DM sees pencil edit icon; clicking opens inline date/time override picker with a "Revert to schedule" option that calls `DELETE /api/campaigns/:id/schedule`'s override endpoint
-- [ ] `SessionSchedulePicker` component in `CampaignSettingsPanel/`; structured recurrence controls; live preview of generated label; `[Clear Schedule]` action
-- [ ] Zustand campaign slice updated with schedule fields; rehydrates from GET `/api/campaigns/:id/settings`; updates on `CAMPAIGN:SCHEDULE_UPDATED`
-- [ ] Campaign export payload (`W-DM-Campaign-Portability`) includes schedule fields
-- [ ] Unit tests for `formatScheduleLabel()` and `calculateNextOccurrence()`: weekly, biweekly, monthly-Nth, DST boundary cases
-- [ ] Unit test: `CAMPAIGN:SCHEDULE_UPDATED` Zustand handler
+- [x] Prisma migration: `sessionScheduleType SessionScheduleType?`, `sessionScheduleDay Int?`, `sessionScheduleNth Int?`, `sessionScheduleHour Int?`, `sessionScheduleMinute Int?`, `sessionScheduleTz String?`, `nextSessionDate DateTime?`, `nextSessionIsManual Boolean @default(false)` added to Campaign
+- [x] New Prisma enum `SessionScheduleType { WEEKLY BIWEEKLY MONTHLY_NTH }` in schema and mirrored in `packages/shared/types/`
+- [x] `packages/shared/utils/session-schedule.ts`: pure functions `formatScheduleLabel(schedule)` and `calculateNextOccurrence(schedule, after)` — timezone-aware via `date-fns-tz`, no side effects, unit-tested
+- [x] `PATCH /api/campaigns/:id/settings` extended to accept `sessionSchedule` fields (DM only); calculates and persists `nextSessionDate`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] `PUT /api/campaigns/:id/next-session-date` — DM-only manual override; body `{ date: ISO8601 }`; sets `nextSessionIsManual = true`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] `DELETE /api/campaigns/:id/schedule` — DM only; clears all schedule fields and `nextSessionDate`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] `DELETE /api/campaigns/:id/next-session-date` — DM only; reverts manual override; recalculates `nextSessionDate` from schedule rule (or clears if no schedule); broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] On `SESSION:ENDED`: if `sessionScheduleType` set, call `calculateNextOccurrence(schedule, now())`, persist to Campaign, reset `nextSessionIsManual = false`, broadcast `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] `CAMPAIGN:SCHEDULE_UPDATED` event type defined in `packages/shared/events/campaign.ts`, registered in `apps/backend/src/ws/index.ts`; payload includes `nextSessionDate`, `scheduleLabel`, `nextSessionIsManual`
+- [x] `NextSessionDate` — `React.memo` leaf component in `CampaignInformationPanel/`; renders when session state is `IDLE | ENDED | COOLDOWN | CLEANUP`; DM sees pencil edit icon; clicking opens inline date/time override picker with a "Revert to schedule" option
+- [x] `SessionSchedulePicker` component in `CampaignSettingsPanel/`; structured recurrence controls; live preview of generated label; `[Clear Schedule]` action
+- [x] Dedicated `campaignScheduleSlice` in Zustand; updates on `CAMPAIGN:SCHEDULE_UPDATED`; `CAMPAIGN:SCHEDULE_UPDATED` allowed sessionless in dispatcher
+- [ ] Campaign export payload (`W-DM-Campaign-Portability`) includes schedule fields — deferred to that feature
+- [x] Unit tests for `formatScheduleLabel()` and `calculateNextOccurrence()`: weekly, biweekly, monthly-Nth, DST boundary cases
+- [x] Unit test: `CAMPAIGN:SCHEDULE_UPDATED` Zustand handler
 
 **Related Docs**:
 
