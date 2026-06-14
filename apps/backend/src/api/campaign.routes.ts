@@ -1311,8 +1311,13 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
   }
   const effectiveSupportedPlatforms = effectiveSupportedPlatformsRaw as SupportedPlatform[]
 
+  // Preserve existing values when fields are omitted from a partial update (e.g. schedule-only PATCH)
   const normalizedPosterUrl =
-    typeof posterUrl === 'string' && posterUrl.trim().length > 0 ? posterUrl.trim() : null
+    posterUrl === undefined
+      ? campaign.posterUrl
+      : typeof posterUrl === 'string' && posterUrl.trim().length > 0
+        ? posterUrl.trim()
+        : null
 
   const normalizedPostSessionChatEnabled =
     typeof postSessionChatEnabled === 'boolean'
@@ -1531,9 +1536,11 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     data: {
       name: effectiveName,
       description:
-        typeof description === 'string' && description.trim().length > 0
-          ? description.trim()
-          : null,
+        description === undefined
+          ? campaign.description
+          : typeof description === 'string' && description.trim().length > 0
+            ? description.trim()
+            : null,
       posterUrl: normalizedPosterUrl,
       discoverable: effectiveDiscoverable,
       spectatorPolicy: effectiveSpectatorsEnabled ? 'GUESTS' : 'NONE',

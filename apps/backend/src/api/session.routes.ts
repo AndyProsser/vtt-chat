@@ -1981,6 +1981,18 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
     if (session.state === SessionStateEnum.ENDED) {
       await disableMockSimulationForSessionExit(session.id)
       await openMainRoomMessageHistory(session.id)
+
+      // Advance campaign's next session date from the recurrence rule (mirrors cleanup-job path)
+      prisma.session.findUnique({ where: { id: session.id }, select: { campaignId: true } })
+        .then((row) => {
+          if (row?.campaignId) {
+            return advanceSessionScheduleOnEnded(row.campaignId as UUID, session.dmId as UUID)
+          }
+        })
+        .catch((err) => console.error('[session] Failed to advance session schedule on manual cooldown end', {
+          sessionId: session.id,
+          err,
+        }))
     }
 
     const users = await getSessionUsers(id as UUID)
