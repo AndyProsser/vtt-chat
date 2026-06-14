@@ -8,6 +8,7 @@ export function CampaignInformationReadOnlyBody({
   campaignDescription,
   currentPoster,
   statusLine,
+  nextSessionCard,
 }: CampaignInformationReadOnlyBodyProps) {
   return (
     <>
@@ -15,6 +16,8 @@ export function CampaignInformationReadOnlyBody({
       <p className="cip-description">{campaignDescription || 'No description provided.'}</p>
 
       {statusLine}
+
+      {nextSessionCard}
 
       <div className="cip-poster-controls">
         <span className="cip-field-label">Poster image</span>

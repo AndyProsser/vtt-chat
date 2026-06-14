@@ -373,9 +373,11 @@ export const CampaignSessionSettingsPanel = memo(function CampaignSessionSetting
           </button>
 
           {isScheduleExpanded && (
-            <SessionSchedulePicker
-              campaignId={props.campaignId as import('@shared').UUID}
-            />
+            <div className="csp-card-collapsible-body">
+              <SessionSchedulePicker
+                campaignId={props.campaignId as import('@shared').UUID}
+              />
+            </div>
           )}
         </div>
       )}

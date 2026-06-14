@@ -187,15 +187,16 @@ export function CampaignInformationPanel({
               campaignDescription={campaign.description}
               currentPoster={currentPoster}
               statusLine={statusLine}
+              nextSessionCard={
+                <NextSessionDate
+                  campaignId={campaign.id}
+                  sessionState={campaign.latestSessionState}
+                  canEdit={canEdit}
+                />
+              }
             />
           )}
         </div>
-
-        <NextSessionDate
-          campaignId={campaign.id}
-          sessionState={campaign.latestSessionState}
-          canEdit={canEdit}
-        />
       </TooltipProvider>
     </section>
   )

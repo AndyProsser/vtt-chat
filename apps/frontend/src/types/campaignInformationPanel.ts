@@ -87,6 +87,7 @@ export type CampaignInformationReadOnlyBodyProps = {
   campaignDescription?: string | null
   currentPoster: string | null | undefined
   statusLine: ReactNode
+  nextSessionCard?: ReactNode
 }
 
 export type CampaignInformationFooterActionsProps = {

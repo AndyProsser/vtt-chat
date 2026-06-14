@@ -120,16 +120,19 @@ export const NextSessionDate = React.memo(function NextSessionDate({
           event
         </span>
         <div className="nsd-content">
-          {scheduleState?.nextSessionDate ? (
-            <span className="nsd-date">{formatNextDate(scheduleState.nextSessionDate)}</span>
-          ) : (
-            <span className="nsd-no-date">No next session scheduled</span>
-          )}
+          <span className="nsd-header-label">Next Session</span>
+          <div className="nsd-date-row">
+            {scheduleState?.nextSessionDate ? (
+              <span className="nsd-date">{formatNextDate(scheduleState.nextSessionDate)}</span>
+            ) : (
+              <span className="nsd-no-date">No next session scheduled</span>
+            )}
+            {scheduleState?.nextSessionIsManual && (
+              <span className="nsd-manual-badge">override</span>
+            )}
+          </div>
           {scheduleState?.scheduleLabel && (
             <span className="nsd-label">{scheduleState.scheduleLabel}</span>
-          )}
-          {scheduleState?.nextSessionIsManual && (
-            <span className="nsd-manual-badge">manual override</span>
           )}
         </div>
         {canEdit && (

@@ -12,6 +12,7 @@ import type { SessionSchedule } from '@shared'
 import type { UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { showToast } from '@/state/toastCenter'
+import '@/styles/components/workspaces/shared/panels/SessionSchedulePicker.css'
 
 const API_URL =
   (import.meta.env.VITE_API_URL as string | undefined)?.trim() || window.location.origin
