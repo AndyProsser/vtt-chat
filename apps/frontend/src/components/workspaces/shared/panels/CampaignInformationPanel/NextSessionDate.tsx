@@ -67,10 +67,6 @@ export const NextSessionDate = React.memo(function NextSessionDate({
   const [dateInput, setDateInput] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
-  // Only render when no session is actively running
-  if (!VISIBLE_STATES.has(sessionState)) return null
-  if (!scheduleState?.nextSessionDate && !canEdit) return null
-
   const handleOverrideSave = useCallback(async () => {
     if (!dateInput) return
     setIsSaving(true)
@@ -95,8 +91,6 @@ export const NextSessionDate = React.memo(function NextSessionDate({
     if (!scheduleState?.scheduleLabel) return
     setIsSaving(true)
     try {
-      // Clearing and re-setting the schedule recalculates nextSessionDate from the rule.
-      // We POST to settings with the existing schedule to trigger a recalculate.
       const token = sessionStorage.getItem('authToken') ?? ''
       const res = await fetch(`${API_URL}/api/campaigns/${campaignId}/next-session-date`, {
         method: 'DELETE',
@@ -112,6 +106,10 @@ export const NextSessionDate = React.memo(function NextSessionDate({
       setIsSaving(false)
     }
   }, [campaignId, scheduleState?.scheduleLabel])
+
+  // Only render when no session is actively running
+  if (!VISIBLE_STATES.has(sessionState)) return null
+  if (!scheduleState?.nextSessionDate && !canEdit) return null
 
   return (
     <div className="nsd-container">

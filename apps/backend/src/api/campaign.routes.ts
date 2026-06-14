@@ -1169,12 +1169,6 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
   }
 
-  if (!name || typeof name !== 'string' || !name.trim()) {
-    return res
-      .status(400)
-      .json({ code: ErrorCode.INVALID_INPUT, message: 'Campaign name is required', field: 'name' })
-  }
-
   if (posterUrl != null && (typeof posterUrl !== 'string' || posterUrl.trim().length > 2_000_000)) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
@@ -1194,6 +1188,10 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       .status(403)
       .json({ code: ErrorCode.FORBIDDEN, message: 'Only campaign DM can manage campaign settings' })
   }
+
+  // name is optional for partial updates (e.g. schedule-only); fall back to existing value
+  const effectiveName =
+    typeof name === 'string' && name.trim() ? name.trim() : campaign.name
 
   // Optional boolean fields — fall back to existing campaign values if not provided
   const effectiveDiscoverable =
@@ -1531,7 +1529,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
   const updated = await prisma.campaign.update({
     where: { id: campaignId as UUID },
     data: {
-      name: name.trim(),
+      name: effectiveName,
       description:
         typeof description === 'string' && description.trim().length > 0
           ? description.trim()

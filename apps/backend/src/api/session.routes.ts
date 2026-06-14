@@ -68,6 +68,7 @@ import { sessionDisconnectCascadeService } from '@/services/session/disconnect-c
 import { resolveRoleForSessionJoin } from '@/services/session/authz.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
+import { advanceSessionScheduleOnEnded } from '@/services/campaign-schedule.service'
 import { resolveCooldownControlAuthorization } from '@/services/session/cooldown-authz.service'
 import { broadcastLobbyStatsUpdated } from '@/services/lobby/lobby-stats.service'
 import {
