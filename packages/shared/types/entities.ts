@@ -90,10 +90,24 @@ export interface ConditionMessageMetadata {
   overrideType?: 'CONDITION' | 'DISTANCE'
 }
 
+/** Stored when a /roll command is resolved server-side. */
+export interface RollResultMessageMetadata {
+  kind: 'ROLL_RESULT'
+  /** Original dice expression as typed, e.g. "2d6+3" */
+  expression: string
+  /** Individual die results in roll order */
+  rolls: number[]
+  /** Modifier value (positive or negative), 0 if absent */
+  modifier: number
+  /** Sum of rolls + modifier */
+  total: number
+}
+
 export interface MessageMetadataEntity {
   noteShared?: NoteSharedMessageMetadata
   noteHandout?: NoteHandoutMessageMetadata
   conditionMessage?: ConditionMessageMetadata
+  rollResult?: RollResultMessageMetadata
 }
 
 export interface MessageEntity {

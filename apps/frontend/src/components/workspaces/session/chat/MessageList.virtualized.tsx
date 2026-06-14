@@ -5,6 +5,8 @@ import type { MessageListProps, PreparedMessage } from './MessageList'
 import type { VirtualizedListData } from '@/types/messageList'
 import { MessageListSystemRow } from './rows/MessageListSystemRow'
 import { MessageListChatRow } from './rows/MessageListChatRow'
+import { MessageListRollRow } from './rows/MessageListRollRow'
+import { MessageType } from '@shared'
 
 interface MessageListVirtualizedProps extends Omit<MessageListProps, 'messages'> {
   preparedMessages: PreparedMessage[]
@@ -41,6 +43,10 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
     prepared.noteShared
   ) {
     return <MessageListSystemRow prepared={prepared} />
+  }
+
+  if (prepared.msg.type === MessageType.ROLL) {
+    return <MessageListRollRow prepared={prepared} />
   }
 
   return <MessageListChatRow prepared={prepared} activeRoomId={data.activeRoomId} />

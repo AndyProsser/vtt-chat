@@ -41,6 +41,7 @@ export enum MessageType {
   WHISPER = 'WHISPER',
   DM = 'DM',
   SYSTEM = 'SYSTEM',
+  ROLL = 'ROLL',
 }
 
 export enum PresenceState {
@@ -182,4 +183,5 @@ export type {
   NoteAttachmentEntity,
   NoteSharedMessageMetadata,
   PresenceEntity,
+  RollResultMessageMetadata,
 } from './entities'

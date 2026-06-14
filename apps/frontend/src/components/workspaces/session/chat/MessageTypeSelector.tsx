@@ -7,6 +7,7 @@ const TYPE_META: Record<MessageType, { label: string; icon: string; tone: string
   [MessageType.WHISPER]: { label: 'WHISPER', icon: 'visibility_off', tone: 'whisper' },
   [MessageType.DM]: { label: 'DM', icon: 'mail', tone: 'dm' },
   [MessageType.SYSTEM]: { label: 'System', icon: 'info', tone: 'system' },
+  [MessageType.ROLL]: { label: 'Roll', icon: 'casino', tone: 'roll' },
 }
 
 type MessageTypeSelectorProps = {

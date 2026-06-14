@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express'
 import authJoinRoutes from './auth-join.routes'
 import sessionRoutes from './session.routes'
 import chatRoutes from './chat.routes'
+import chatCommandRoutes from './chat-command.routes'
 import adminRoutes from './admin.routes'
 import notesRoutes from './notes.routes'
 import journalsRoutes from './journals.routes'
@@ -48,6 +49,7 @@ router.use('/integrations', integrationsRoutes)
 
 router.use('/platform', platformRoutes)
 router.use('/chat', chatRoutes)
+router.use('/chat/command', chatCommandRoutes)
 router.use('/admin', adminRoutes)
 router.use('/notes', notesRoutes)
 router.use('/journals', journalsRoutes)

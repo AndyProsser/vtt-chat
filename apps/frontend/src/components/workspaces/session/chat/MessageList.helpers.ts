@@ -3,12 +3,13 @@ import { MessageType, findDistancePreset } from '@shared'
 import type { SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import { SESSION_SUMMARY_PREFIX } from '@/constants/workspaces.constants'
 
-export const TYPE_LABEL_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system', string> = {
+export const TYPE_LABEL_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system' | 'roll', string> = {
   ic: 'In Character',
   ooc: 'Out of Character',
   whisper: 'Whisper',
   dm: 'DM',
   system: 'System',
+  roll: 'Roll',
 }
 
 export const BOOKEND_META: Record<
@@ -62,20 +63,22 @@ export const EMPTY_SESSION_PRESENCE: Record<
 
 export const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000'
 
-export const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'> = {
+export const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'dm' | 'system' | 'roll'> = {
   [MessageType.IC]: 'ic',
   [MessageType.OOC]: 'ooc',
   [MessageType.WHISPER]: 'whisper',
   [MessageType.DM]: 'dm',
   [MessageType.SYSTEM]: 'system',
+  [MessageType.ROLL]: 'roll',
 }
 
-export const TYPE_ICON_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system', string> = {
+export const TYPE_ICON_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system' | 'roll', string> = {
   ic: 'swords',
   ooc: 'chat_bubble',
   whisper: 'visibility_off',
   dm: 'mail',
   system: 'info',
+  roll: 'casino',
 }
 
 export function countOwnKeys(record: Record<string, unknown>): number {

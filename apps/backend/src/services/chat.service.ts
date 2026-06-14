@@ -197,7 +197,7 @@ function mapStoredMessage(row: {
   authorUsername: string
   authorCharacterName?: string | null
   content: string
-  type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+  type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
   isDmOnly: boolean
   isOffTheRecord: boolean
   visibleTo: unknown

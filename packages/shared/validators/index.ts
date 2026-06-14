@@ -87,7 +87,12 @@ export function isValidTag(value: unknown): boolean {
  */
 export function isValidMessageType(value: unknown): value is MessageType {
   return (
-    value === 'IC' || value === 'OOC' || value === 'WHISPER' || value === 'DM' || value === 'SYSTEM'
+    value === 'IC' ||
+    value === 'OOC' ||
+    value === 'WHISPER' ||
+    value === 'DM' ||
+    value === 'SYSTEM' ||
+    value === 'ROLL'
   )
 }
 
