@@ -1136,6 +1136,14 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       inviteActive: membership.campaign.inviteActive,
       spectatorInviteCode: membership.campaign.spectatorInviteCode,
       spectatorInviteActive: membership.campaign.spectatorInviteActive,
+      sessionScheduleType: (membership.campaign as any).sessionScheduleType ?? null,
+      sessionScheduleDay: (membership.campaign as any).sessionScheduleDay ?? null,
+      sessionScheduleNth: (membership.campaign as any).sessionScheduleNth ?? null,
+      sessionScheduleHour: (membership.campaign as any).sessionScheduleHour ?? null,
+      sessionScheduleMinute: (membership.campaign as any).sessionScheduleMinute ?? null,
+      sessionScheduleTz: (membership.campaign as any).sessionScheduleTz ?? null,
+      nextSessionDate: (membership.campaign as any).nextSessionDate?.toISOString() ?? null,
+      nextSessionIsManual: (membership.campaign as any).nextSessionIsManual ?? false,
     },
   })
 })

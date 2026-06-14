@@ -36,6 +36,14 @@ export interface CampaignSummary {
   spectatorsEnabled?: boolean
   activeConnectedCount?: number
   isMember?: boolean
+  sessionScheduleType?: string | null
+  sessionScheduleDay?: number | null
+  sessionScheduleNth?: number | null
+  sessionScheduleHour?: number | null
+  sessionScheduleMinute?: number | null
+  sessionScheduleTz?: string | null
+  nextSessionDate?: string | null
+  nextSessionIsManual?: boolean
 }
 
 export interface CampaignJoinRequestSummary {
@@ -94,6 +102,14 @@ export type CampaignSettingsPayload = {
   dmAutoTargetOnFirstPlayerJoin: boolean
   defaultSessionDurationMins: number
   supportedPlatforms: SupportedPlatform[]
+  sessionScheduleType?: string | null
+  sessionScheduleDay?: number | null
+  sessionScheduleNth?: number | null
+  sessionScheduleHour?: number | null
+  sessionScheduleMinute?: number | null
+  sessionScheduleTz?: string | null
+  nextSessionDate?: string | null
+  nextSessionIsManual?: boolean
 }
 
 export type CampaignEntryAction =

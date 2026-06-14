@@ -18,6 +18,8 @@ import {
   DEFAULT_CHARACTER_SETTINGS,
   toValidPostSessionDurationMinutes,
 } from '@/utils/session/workspaces'
+import { SessionScheduleType, formatScheduleLabel } from '@shared'
+import { useStore } from '@/state/store'
 
 export function applyCampaignSettingsPayload(
   campaignSettingsActions: UseCampaignSettingsActions,
@@ -53,6 +55,29 @@ export function applyCampaignSettingsPayload(
   campaignSettingsActions.setSettingsSupportedPlatforms(
     (settings.supportedPlatforms ?? ['ANY']) as SupportedPlatform[]
   )
+
+  // Hydrate campaign schedule slice — needed for NextSessionDate on refresh and after info edits
+  const schedLabel =
+    settings.sessionScheduleType &&
+    settings.sessionScheduleDay != null &&
+    settings.sessionScheduleHour != null &&
+    settings.sessionScheduleMinute != null &&
+    settings.sessionScheduleTz
+      ? formatScheduleLabel({
+          type: settings.sessionScheduleType as SessionScheduleType,
+          dayOfWeek: settings.sessionScheduleDay,
+          nth: settings.sessionScheduleNth ?? undefined,
+          hour: settings.sessionScheduleHour,
+          minute: settings.sessionScheduleMinute,
+          timezone: settings.sessionScheduleTz,
+        })
+      : null
+
+  useStore.getState().setCampaignSchedule(settings.id, {
+    nextSessionDate: settings.nextSessionDate ?? null,
+    scheduleLabel: schedLabel,
+    nextSessionIsManual: settings.nextSessionIsManual ?? false,
+  })
 }
 
 export function buildCampaignSettingsSavePayload(params: {

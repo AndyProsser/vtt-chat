@@ -156,6 +156,14 @@ export async function listCampaignsForUser(userId: string): Promise<
     discoverable: boolean
     retiredAt: Date | null
     pendingJoinRequests: number
+    sessionScheduleType: string | null
+    sessionScheduleDay: number | null
+    sessionScheduleNth: number | null
+    sessionScheduleHour: number | null
+    sessionScheduleMinute: number | null
+    sessionScheduleTz: string | null
+    nextSessionDate: Date | null
+    nextSessionIsManual: boolean
   }>
 > {
   let memberships: any[]
@@ -340,6 +348,14 @@ export async function listCampaignsForUser(userId: string): Promise<
       discoverable: m.campaign.discoverable ?? false,
       retiredAt: m.campaign.retiredAt ?? null,
       pendingJoinRequests: (m.campaign.joinRequests || []).length,
+      sessionScheduleType: (m.campaign as any).sessionScheduleType ?? null,
+      sessionScheduleDay: (m.campaign as any).sessionScheduleDay ?? null,
+      sessionScheduleNth: (m.campaign as any).sessionScheduleNth ?? null,
+      sessionScheduleHour: (m.campaign as any).sessionScheduleHour ?? null,
+      sessionScheduleMinute: (m.campaign as any).sessionScheduleMinute ?? null,
+      sessionScheduleTz: (m.campaign as any).sessionScheduleTz ?? null,
+      nextSessionDate: (m.campaign as any).nextSessionDate ?? null,
+      nextSessionIsManual: (m.campaign as any).nextSessionIsManual ?? false,
     }))
 }
 
