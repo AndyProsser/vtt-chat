@@ -430,6 +430,37 @@
   color: var(--color-text-primary);
 }
 
+.session-roll-card__die--dropped {
+  opacity: 0.38;
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.session-roll-card__advantage-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.32rem;
+  border-radius: 0.25rem;
+  border: 1px solid;
+  line-height: 1.4;
+  align-self: center;
+}
+
+.session-roll-card__advantage-badge--adv {
+  background: color-mix(in srgb, #22c55e 15%, transparent);
+  border-color: color-mix(in srgb, #22c55e 35%, transparent);
+  color: #4ade80;
+}
+
+.session-roll-card__advantage-badge--dis {
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  border-color: color-mix(in srgb, #f59e0b 35%, transparent);
+  color: #fbbf24;
+}
+
 .session-roll-card__modifier {
   font-family: monospace;
   font-size: 0.82rem;

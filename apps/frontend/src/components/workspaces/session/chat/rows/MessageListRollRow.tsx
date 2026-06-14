@@ -65,15 +65,27 @@ export function MessageListRollRow({ prepared }: MessageListRollRowProps) {
                 <div className="session-roll-card__expression">
                   <span className="material-symbols-outlined session-roll-card__expression-icon" aria-hidden="true">casino</span>
                   <span className="session-roll-card__expression-text">{rollResult.expression}</span>
+                  {rollResult.advantage ? (
+                    <span className={`session-roll-card__advantage-badge session-roll-card__advantage-badge--${rollResult.advantage.toLowerCase()}`}>
+                      {rollResult.advantage}
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="session-roll-card__result">
                   <div className="session-roll-card__dice">
-                    {rollResult.rolls.map((roll: number, i: number) => (
-                      <span key={i} className="session-roll-card__die">
-                        {roll}
-                      </span>
-                    ))}
+                    {rollResult.rolls.map((roll: number, i: number) => {
+                      const isDropped = rollResult.advantage != null && i !== rollResult.keptIndex
+                      return (
+                        <span
+                          key={i}
+                          className={`session-roll-card__die${isDropped ? ' session-roll-card__die--dropped' : ''}`}
+                          aria-label={isDropped ? `${roll} (dropped)` : String(roll)}
+                        >
+                          {roll}
+                        </span>
+                      )
+                    })}
                     {rollResult.modifier !== 0 ? (
                       <span className="session-roll-card__modifier">
                         {rollResult.modifier > 0 ? '+' : ''}{rollResult.modifier}

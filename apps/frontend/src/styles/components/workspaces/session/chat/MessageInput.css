@@ -342,9 +342,12 @@
   cursor: pointer;
   font-size: 0.78rem;
   font-weight: 600;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-  align-self: flex-end;
-  margin-bottom: 0.05rem;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+  margin-right: 0.4rem;
+  margin-top: 2px;
 }
 
 .chat-command-help__trigger:hover {

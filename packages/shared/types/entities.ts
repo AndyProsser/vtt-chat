@@ -93,14 +93,18 @@ export interface ConditionMessageMetadata {
 /** Stored when a /roll command is resolved server-side. */
 export interface RollResultMessageMetadata {
   kind: 'ROLL_RESULT'
-  /** Original dice expression as typed, e.g. "2d6+3" */
+  /** Original dice expression as typed, e.g. "2d6+3" or "ADVd20+5" */
   expression: string
-  /** Individual die results in roll order */
+  /** Individual die results in roll order (always 2 for ADV/DIS) */
   rolls: number[]
+  /** For ADV/DIS: index into rolls[] that was kept to compute the total */
+  keptIndex?: number
   /** Modifier value (positive or negative), 0 if absent */
   modifier: number
-  /** Sum of rolls + modifier */
+  /** Final result: kept die (ADV/DIS) or sum of all dice, plus modifier */
   total: number
+  /** Set when an advantage or disadvantage roll was used */
+  advantage?: 'ADV' | 'DIS'
 }
 
 export interface MessageMetadataEntity {

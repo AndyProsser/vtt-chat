@@ -15,13 +15,11 @@ import { MessageTypeSelector } from './MessageTypeSelector'
 import { MessageInputWhisperPicker } from './MessageInputWhisperPicker'
 import { CommandPalette } from './CommandPalette'
 import { CommandHelpPopover } from './CommandHelpPopover'
+import { WhisperMentionPicker } from './WhisperMentionPicker'
 import { useWhisperRecipients } from '@/hooks/session/useWhisperRecipients'
 import { useTypingEmitter } from '@/hooks/session/useTypingEmitter'
 import { MESSAGE_TYPE_ORDER, ROLE_ALLOWED_TYPES } from '@/constants/chatComposer.constants'
-import {
-  parseChatInput,
-  filterCommandsForAutocomplete,
-} from '@/utils/chatCommandParser'
+import { parseChatInput, filterCommandsForAutocomplete } from '@/utils/chatCommandParser'
 import type { ComposerMode } from '@/types/chat'
 
 interface MessageInputProps {
@@ -122,6 +120,7 @@ function MessageInputComponent({
   const [isSending, setIsSending] = useState(false)
   const [isWhisperPickerOpen, setIsWhisperPickerOpen] = useState(false)
   const [paletteCommands, setPaletteCommands] = useState<ChatCommandDefinition[]>([])
+  const [mentionSuggestions, setMentionSuggestions] = useState<{ id: string; label: string }[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previousComposerModeRef = useRef<ComposerMode | null>(null)
 
@@ -209,12 +208,14 @@ function MessageInputComponent({
   }, [isWhisperGroupMode, selectedRecipient, type])
 
   const isPaletteVisible = paletteCommands.length > 0
+  const isMentionPickerVisible = mentionSuggestions.length > 0
 
   const canSend =
     !!content.trim() &&
     !disabled &&
     !isSending &&
     !isPaletteVisible &&
+    !isMentionPickerVisible &&
     (type !== MessageType.WHISPER || isWhisperGroupMode || !!validRecipientId.trim())
 
   useEffect(() => {
@@ -242,6 +243,12 @@ function MessageInputComponent({
     if (!allowedTypes.includes(selectedType)) setSelectedType(MessageType.OOC)
     previousComposerModeRef.current = composerMode
   }, [allowedTypes, composerMode, forceMessageType, isWhisperPickerOpen, selectedType])
+
+  const handleMentionSelect = (label: string) => {
+    setContent(`/whisper @${label} `)
+    setMentionSuggestions([])
+    textareaRef.current?.focus()
+  }
 
   const handleCommandSelect = (cmd: ChatCommandDefinition) => {
     setContent(cmd.slash + ' ')
@@ -282,6 +289,7 @@ function MessageInputComponent({
             return
           }
           await onRollCommand?.(command.args)
+          // No selector change — ROLL is not a persistent compose mode
         } else if (command.name === 'me') {
           if (!command.args) {
             onCommandError?.('Usage: /me [action]')
@@ -289,18 +297,21 @@ function MessageInputComponent({
           }
           const author = username ?? 'Someone'
           await onSend(`* ${author} ${command.args} *`, MessageType.IC)
+          setSelectedType(MessageType.IC)
         } else if (command.name === 'ooc') {
           if (!command.args) {
             onCommandError?.('Usage: /OOC [message]')
             return
           }
           await onSend(command.args, MessageType.OOC)
+          setSelectedType(MessageType.OOC)
         } else if (command.name === 'dm') {
           if (!command.args) {
             onCommandError?.('Usage: /dm [message]')
             return
           }
           await onSend(command.args, MessageType.DM)
+          setSelectedType(MessageType.DM)
         } else if (command.name === 'whisper') {
           // Parse /whisper @username message
           const atMatch = command.args.match(/^@(\S+)\s+(.+)$/)
@@ -314,12 +325,12 @@ function MessageInputComponent({
             (r) => r.label.toLowerCase() === targetName
           )
           if (!recipient) {
-            onCommandError?.(
-              `No player named "@${atMatch[1]}" found in this room.`
-            )
+            onCommandError?.(`No player named "@${atMatch[1]}" found in this room.`)
             return
           }
           await onSend(messageText, MessageType.WHISPER, recipient.id)
+          setSelectedType(MessageType.WHISPER)
+          setRecipientId(recipient.id)
         }
 
         setContent('')
@@ -352,6 +363,14 @@ function MessageInputComponent({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isMentionPickerVisible && (e.key === 'Tab' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      return // WhisperMentionPicker handles these via capture listener
+    }
+    if (isMentionPickerVisible && e.key === 'Escape') {
+      e.preventDefault()
+      setMentionSuggestions([])
+      return
+    }
     // Let the CommandPalette handle Enter/ArrowUp/ArrowDown when visible
     if (isPaletteVisible && (e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       return
@@ -377,6 +396,10 @@ function MessageInputComponent({
           }}
           onMouseLeave={() => setIsWhisperPickerOpen(false)}
         >
+          {composerMode === 'active' || composerMode === 'active-whisper' ? (
+            <CommandHelpPopover role={role} onInsert={handleCommandInsert} />
+          ) : null}
+
           <MessageTypeSelector
             visibleTypes={visibleTypes}
             activeType={type}
@@ -412,8 +435,6 @@ function MessageInputComponent({
       ) : null}
 
       <div className="session-message-input__composer">
-        <CommandHelpPopover role={role} onInsert={handleCommandInsert} />
-
         <div className="session-message-input__textarea-wrap">
           {isPaletteVisible ? (
             <CommandPalette
@@ -422,14 +443,32 @@ function MessageInputComponent({
               onDismiss={() => setPaletteCommands([])}
             />
           ) : null}
+          {isMentionPickerVisible ? (
+            <WhisperMentionPicker
+              options={mentionSuggestions}
+              onSelect={handleMentionSelect}
+              onDismiss={() => setMentionSuggestions([])}
+            />
+          ) : null}
           <textarea
             ref={textareaRef}
             value={content}
             onChange={(e) => {
               const nextValue = e.target.value
               setContent(nextValue)
-              // Update autocomplete palette
               setPaletteCommands(filterCommandsForAutocomplete(nextValue, role))
+              // Show @name autocomplete after "/whisper @<partial>" (no space after @partial yet)
+              const mentionMatch = nextValue.match(/^\/whisper\s+@(\S*)$/i)
+              if (mentionMatch) {
+                const partial = mentionMatch[1].toLowerCase()
+                setMentionSuggestions(
+                  effectiveWhisperRecipients
+                    .filter((r) => r.label.toLowerCase().startsWith(partial))
+                    .map((r) => ({ id: r.id, label: r.label }))
+                )
+              } else {
+                setMentionSuggestions([])
+              }
               if (!nextValue.trim()) {
                 emitTypingStopped()
                 return

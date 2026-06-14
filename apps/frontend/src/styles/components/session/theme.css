@@ -46,6 +46,9 @@
   --color-brand: #0284c7;
   --color-brand-hover: #0369a1;
 
+  /* Accent (indigo — used for roll cards, timeline markers, notes highlights) */
+  --color-accent: #6366f1;
+
   /* Status: success */
   --color-success: #22c55e;
   --color-success-surface: #dcfce7;
@@ -155,6 +158,8 @@
   --color-brand: #38bdf8;
   --color-brand-hover: #7dd3fc;
 
+  --color-accent: #818cf8;
+
   --color-success-surface: #14532d;
   --color-success-text: #86efac;
 
@@ -184,6 +189,8 @@
 
     --color-brand: #38bdf8;
     --color-brand-hover: #7dd3fc;
+
+    --color-accent: #818cf8;
 
     --color-success-surface: #14532d;
     --color-success-text: #86efac;
