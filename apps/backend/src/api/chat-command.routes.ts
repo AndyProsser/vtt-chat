@@ -244,8 +244,10 @@ async function handleRollCommand({
         kind: 'ROLL_RESULT',
         expression: result.expression,
         rolls: result.rolls,
+        keptIndex: result.keptIndex,
         modifier: result.modifier,
         total: result.total,
+        advantage: result.advantage,
       },
     },
   })

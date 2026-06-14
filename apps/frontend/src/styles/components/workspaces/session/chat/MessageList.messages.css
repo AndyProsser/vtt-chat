@@ -432,9 +432,20 @@
 
 .session-roll-card__die--dropped {
   opacity: 0.38;
-  text-decoration: line-through;
-  text-decoration-color: var(--color-text-muted);
+  position: relative;
   border-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+/* text-decoration doesn't apply to inline-flex — draw the strikethrough manually */
+.session-roll-card__die--dropped::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: currentColor;
+  transform: translateY(-50%);
 }
 
 .session-roll-card__advantage-badge {

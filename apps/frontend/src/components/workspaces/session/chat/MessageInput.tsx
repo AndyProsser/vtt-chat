@@ -371,8 +371,8 @@ function MessageInputComponent({
       setMentionSuggestions([])
       return
     }
-    // Let the CommandPalette handle Enter/ArrowUp/ArrowDown when visible
-    if (isPaletteVisible && (e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    // Let the CommandPalette handle Tab/Enter/ArrowUp/ArrowDown when visible
+    if (isPaletteVisible && (e.key === 'Tab' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       return
     }
     if (isPaletteVisible && e.key === 'Escape') {

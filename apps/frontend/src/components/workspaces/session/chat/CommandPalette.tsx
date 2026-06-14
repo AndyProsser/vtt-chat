@@ -30,7 +30,7 @@ function CommandPaletteComponent({ commands, onSelect, onDismiss }: CommandPalet
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
         setActiveIndex((i) => Math.max(i - 1, 0))
-      } else if (e.key === 'Enter') {
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault()
         if (commands[activeIndex]) onSelect(commands[activeIndex])
       } else if (e.key === 'Escape') {
