@@ -15,8 +15,8 @@
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 4: Future Enhancements           |      8 |       6 |              2 |              0 | 🟡 In Progress |
-| Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
+| Phase 4: Future Enhancements           |      9 |       6 |              2 |              1 | 🟡 In Progress |
+| Phase 5: Optional / Far Future         |      4 |       0 |              0 |              4 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
 | **Total**                              | **63** |  **56** |          **2** |          **5** |                |
 
@@ -2030,6 +2030,28 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 ---
 
+### W-Recording-Transcription-Summary: Async Post-Session Processing
+
+**Status**: ⚪ Not Started
+**Priority**: 🔵 Low (requires Queue Manager)
+**Depends on**: W-Queues
+
+**Scope**: After session ends, record finalization, transcription, and AI summary generation via durable queue.
+
+**Acceptance Criteria**:
+
+- [ ] Recording finalizes after session ENDED state
+- [ ] Transcription processes asynchronously with retry/dead-letter
+- [ ] Summary generation uses transcript + boundary markers + player actions
+- [ ] Off-the-record content (Whisper, Paused runtime content) is excluded from transcript
+- [ ] LLM checkpoint resume for `generate-summary` worker (allows resuming an interrupted summary job mid-generation)
+
+**Related Docs**:
+
+- [docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
+
+---
+
 ## Phase 5: Optional and Far Future ⚪
 
 ### W-Desktop-App: Tauri-based Desktop Client
@@ -2065,27 +2087,6 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 **Priority**: 🔵 Low (optional, post-launch)
 
 **Scope**: Translation framework, extraction tooling, multi-language support.
-
----
-
-### W-Recording-Transcription-Summary: Async Post-Session Processing
-
-**Status**: ⚪ Not Started
-**Priority**: 🔵 Low (far future, requires Queue Manager)
-
-**Scope**: After session ends, record finalization, transcription, and AI summary generation via durable queue.
-
-**Acceptance Criteria**:
-
-- [ ] Recording finalizes after session ENDED state
-- [ ] Transcription processes asynchronously with retry/dead-letter
-- [ ] Summary generation uses transcript + boundary markers + player actions
-- [ ] Off-the-record content (Whisper, Paused runtime content) is excluded from transcript
-- [ ] LLM checkpoint resume for `generate-summary` worker (allows resuming an interrupted summary job mid-generation)
-
-**Related Docs**:
-
-- [docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
 
 ---
 
