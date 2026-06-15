@@ -196,9 +196,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
                 className={[
                   'inventory-item-row__move-card',
                   t.ownerType === 'party' ? ' inventory-item-row__move-card--party' : '',
-                  t.ownerType !== 'party' && !t.isOnline
-                    ? 'inventory-item-row__move-card--offline'
-                    : '',
+                  !t.isOnline ? 'inventory-item-row__move-card--offline' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}

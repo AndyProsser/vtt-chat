@@ -20,6 +20,13 @@
   border-bottom: 1px solid var(--color-border-soft);
 }
 
+.inventory-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
 .inventory-panel__history-btn {
   margin-left: auto;
   display: flex;

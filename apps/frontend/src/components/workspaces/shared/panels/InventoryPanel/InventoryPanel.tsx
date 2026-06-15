@@ -15,6 +15,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Role, InventoryItemSource, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { useStore } from '@/state/store'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import '@/styles/components/workspaces/shared/panels/InventoryPanel.css'
 import type { InventoryItem, CurrencyWalletState } from '@/types/inventory'
@@ -67,6 +68,7 @@ export function InventoryPanel({
   const [view, setView] = useState<InventoryView>(defaultView)
   const [showAddForm, setShowAddForm] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [showOfflinePlayers, setShowOfflinePlayers] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Static profiles (label + avatar) for all campaign players, fetched once on mount
   const [playerProfiles, setPlayerProfiles] = useState<CampaignPlayerProfile[]>(EMPTY_PROFILES)
@@ -166,6 +168,29 @@ export function InventoryPanel({
     [playerProfiles, sessionPresenceByUser]
   )
 
+  // DM toggle: show offline players in picker and move targets.
+  // Players always see only online players.
+  const visibleMembers = useMemo<CharacterPickerMember[]>(
+    () => (isDM && showOfflinePlayers ? pickerMembers : pickerMembers.filter((m) => m.isOnline)),
+    [isDM, showOfflinePlayers, pickerMembers]
+  )
+
+  const toggleOfflinePlayers = () => {
+    setShowOfflinePlayers((prev) => {
+      const next = !prev
+      // If hiding offline while viewing an offline character, snap back to party
+      if (!next && view !== 'party') {
+        const member = pickerMembers.find((m) => m.userId === view)
+        if (member && !member.isOnline) {
+          setView('party')
+          setShowAddForm(false)
+          setShowHistory(false)
+        }
+      }
+      return next
+    })
+  }
+
   // ─── Derived data ─────────────────────────────────────────────────────────
   const currentOwnerId = view === 'party' ? null : (view as UUID)
   const currentOwnerType = view === 'party' ? ('party' as const) : ('character' as const)
@@ -199,29 +224,27 @@ export function InventoryPanel({
     [allWallets, currentOwnerType, currentOwnerId]
   )
 
-  // Move targets include offline players so all roles can give items to them
+  // Move targets respect the same online/offline filter as the picker
   const moveTargets = useMemo(
     () => [
-      { label: 'Party', ownerType: 'party' as const, ownerId: null, avatarUrl: null },
-      ...playerProfiles
-        .map((p) => ({
-          label: p.label,
+      {
+        label: 'Party',
+        ownerType: 'party' as const,
+        ownerId: null,
+        avatarUrl: null,
+        isOnline: true,
+      },
+      ...visibleMembers
+        .map((m) => ({
+          label: m.label,
           ownerType: 'character' as const,
-          ownerId: p.userId,
-          avatarUrl: p.avatarUrl,
-          isOnline: p.userId in sessionPresenceByUser,
+          ownerId: m.userId,
+          avatarUrl: m.avatarUrl,
+          isOnline: m.isOnline,
         }))
-        .sort((a, b) => {
-          // Primary: ONLINE before OFFLINE
-          if (a.isOnline !== b.isOnline) {
-            return a.isOnline ? -1 : 1
-          }
-
-          // Secondary: name
-          return a.label.localeCompare(b.label)
-        }),
+        .sort((a, b) => a.label.localeCompare(b.label)),
     ],
-    [playerProfiles]
+    [visibleMembers]
   )
 
   // ─── Mutation helpers ─────────────────────────────────────────────────────
@@ -301,15 +324,40 @@ export function InventoryPanel({
           <Icon name="inventory" />
           Inventory
         </h4>
-        <button
-          type="button"
-          className={`inventory-panel__history-btn${showHistory ? ' inventory-panel__history-btn--active' : ''}`}
-          aria-label="View history"
-          title="History"
-          onClick={() => setShowHistory((v) => !v)}
-        >
-          <Icon name="receipt_long" />
-        </button>
+        <div className="inventory-panel__header-actions">
+          {isDM && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className={`inventory-panel__history-btn${showOfflinePlayers ? ' inventory-panel__history-btn--active' : ''}`}
+                  aria-label={showOfflinePlayers ? 'Hide offline players' : 'Show offline players'}
+                  onClick={toggleOfflinePlayers}
+                >
+                  <Icon name={showOfflinePlayers ? 'visibility' : 'visibility_off'} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {showOfflinePlayers ? 'Hide offline players' : 'Show offline players'}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={`inventory-panel__history-btn${showHistory ? ' inventory-panel__history-btn--active' : ''}`}
+                aria-label={showHistory ? 'Hide history' : 'Show history'}
+                onClick={() => setShowHistory((v) => !v)}
+              >
+                <Icon name="receipt_long" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {showHistory ? 'Hide history' : 'Show history'}
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </header>
 
       {/* Player: Mine + Party tabs */}
@@ -325,6 +373,7 @@ export function InventoryPanel({
           >
             Mine
           </button>
+
           <button
             type="button"
             role="tab"
@@ -341,7 +390,7 @@ export function InventoryPanel({
       {/* DM: avatar-strip character picker (includes Party as first slot) */}
       {isDM && (
         <InventoryCharacterPicker
-          members={pickerMembers}
+          members={visibleMembers}
           selectedUserId={view === 'party' ? null : (view as UUID)}
           onSelect={(userId) => switchView(userId ?? 'party')}
         />
