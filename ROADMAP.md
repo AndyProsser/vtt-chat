@@ -1997,7 +1997,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [x] New INVENTORY right-rail tab added (after PARTY, before ROOMS in canonical dock order)
 - [x] INVENTORY tab shows: Party Inventory view, own Character Inventory view; DM sees all character inventories
 - [x] Spectators see party and all character inventories in read-only mode
-- [ ] Campaign setting: SRD ruleset (2014 or 2024); default 2014 — proxy defaults to 2014; campaign-level selector not yet in settings UI
+- [x] Campaign setting: SRD ruleset (2014 or 2024); default 2024 — proxy defaults to 2014; campaign-level selector not yet in settings UI
 - [x] Item search autocomplete calls `GET /api/srd/items?q=` (backend proxy, 24h Redis cache, fails silently if SRD API unreachable)
 - [x] Custom items supported (free-text name, no SRD backing required)
 - [x] Item fields: name, quantity, source (SRD/custom), optional notes
