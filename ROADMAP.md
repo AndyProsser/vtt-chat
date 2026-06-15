@@ -15,10 +15,10 @@
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 4: Future Enhancements           |      7 |       1 |              2 |              4 | 🟡 In Progress |
+| Phase 4: Future Enhancements           |      8 |       6 |              2 |              0 | 🟡 In Progress |
 | Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **62** |  **51** |          **2** |          **9** |                |
+| **Total**                              | **63** |  **56** |          **2** |          **5** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 25/25 done; PERF-24 (lobby modal cascade) and PERF-25 (EditorWorkspace callback churn + memo wrap) both resolved. Follow-up trace needed to confirm ≤50 and ≤2 component-count criteria. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
