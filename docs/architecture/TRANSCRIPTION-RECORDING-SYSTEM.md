@@ -10,34 +10,77 @@ This document defines the backend recording, transcription, and summary processi
 - Preserve privacy boundaries and off-the-record rules.
 - Support restart-safe processing for multi-hour jobs.
 - Keep user-facing session controls responsive while background processing runs asynchronously.
+- Run entirely offline by default — no cloud dependency required.
+- Allow cloud AI as an optional, opt-in enhancement for summarization only.
 
 ## 2. Policy Contract (Privacy First)
 
 Recording/transcription must enforce these rules:
 
 1. Whisper bubble (`PRIVATE`) is always off-the-record.
-
-- Never record
-- Never transcribe
-- Never persist transcript text
+   - Never record
+   - Never transcribe
+   - Never persist transcript text
 
 2. Paused runtime content is off-the-record by default.
-
-- Runtime pause voice/chat excluded from transcript by default
-- Configurable campaign policy may allow pause transcript inclusion if explicitly enabled
+   - Runtime pause voice/chat excluded from transcript by default
+   - Configurable campaign policy may allow pause transcript inclusion if explicitly enabled
 
 3. Boundary markers are always retained.
-
-- `[Session Started]`
-- `[Session Paused]`
-- `[Session Resumed]`
-- `[Session Ended]`
+   - `[Session Started]`
+   - `[Session Paused]`
+   - `[Session Resumed]`
+   - `[Session Ended]`
 
 4. Spectator-only cooldown chatter follows cooldown persistence policy.
+   - If cooldown runtime is ephemeral for campaign policy, transcript artifacts exclude it.
 
-- If cooldown runtime is ephemeral for campaign policy, transcript artifacts exclude it.
+## 3. Capability Gate
 
-## 3. High-Level Pipeline
+This module is disabled by default and must be opted in at install/init time.
+
+Canonical runtime gate: `VTTCHAT_SUMMARY_PROCESSING_ENABLED` (`true` | `false`)
+
+Production default: `false`
+
+When `false`:
+
+- Recording/transcription/summarization workers do not run
+- Frontend and admin show disabled controls with: "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
+- Backend endpoints that mutate this feature return a capability error
+
+When `true`:
+
+- Workers start and listen for BullMQ jobs
+- UI exposes job progress and summary artifacts
+
+## 4. Offline-First Processing Stack
+
+All stages default to local processing. No audio, transcript, or summary data leaves the machine unless the operator explicitly enables a cloud AI provider.
+
+| Stage               | Default technology                           | Notes                                   |
+| ------------------- | -------------------------------------------- | --------------------------------------- |
+| Audio transcription | Whisper.cpp or FasterWhisper                 | Runs on CPU or GPU; no API key required |
+| Summarization       | llama.cpp with Mistral, Phi-3, or equivalent | Compact model suited for home hardware  |
+| Timeline merge      | Node.js service (pure local)                 | Deterministic merge; no model needed    |
+| Storage             | Local filesystem under `/data/`              | Operator controls backup and retention  |
+
+Model selection is configured at install time. The system does not download models at runtime; models must be present at the configured path before the worker starts.
+
+## 5. Cloud AI Enhancement (Opt-In Only)
+
+Cloud AI may be enabled as an optional enhancement layer for the summarization stage only. It does not replace or alter transcription.
+
+Rules:
+
+- Opt-in is per deployment, configured in admin settings
+- The operator must explicitly enable a cloud provider and supply API credentials
+- Only processed text (summaries, window payloads) is ever sent to a cloud provider — raw audio is never uploaded
+- Whisper bubble and off-the-record pause content is stripped before any cloud call, identical to the local path
+- The cloud provider is swappable without re-running the transcription stage
+- If the cloud call fails, the system falls back to local summarization and surfaces a warning to the operator
+
+## 6. High-Level Pipeline
 
 ```text
 Session boundary reaches ENDED
@@ -50,26 +93,22 @@ Session boundary reaches ENDED
 
 All jobs are queue-managed and restart-safe.
 
-## 4. Job Types
+## 7. Job Types
 
 1. `recording.finalize`
-
-- Closes ingest streams and seals runtime media segments
+   - Closes ingest streams and seals runtime media segments
 
 2. `transcription.generate`
-
-- Converts eligible audio segments into text
-- Emits checkpoint progress by segment/chunk
+   - Converts eligible audio segments into text
+   - Emits checkpoint progress by segment/chunk
 
 3. `summary.generate`
-
-- Produces chapter/session summaries from transcript windows and boundary markers
+   - Produces chapter/session summaries from transcript windows and boundary markers
 
 4. `artifact.publish`
+   - Stores and indexes generated transcript/summary outputs
 
-- Stores and indexes generated transcript/summary outputs
-
-## 5. Data Model Expectations
+## 8. Data Model Expectations
 
 Minimum durable entities:
 
@@ -97,27 +136,27 @@ Minimum fields per processing job status:
 - `checkpoint`
 - `lastError`
 
-## 6. Restart and Resume Rules
+## 9. Restart and Resume Rules
 
 - Every long-running job persists checkpoints.
 - Worker crash/restart resumes from latest checkpoint.
 - If checkpoint is unavailable, restart from last safe stage boundary.
 - Failed jobs move to retry or terminal-failed state with explicit operator action path.
 
-## 7. State and UX Integration
+## 10. State and UX Integration
 
 - Session lifecycle transitions remain authoritative and fast.
 - Transcription/summarization runs asynchronously after lifecycle transitions.
 - UI shows processing state from persisted job status, not in-memory worker state.
 - Reconnect/refresh must recover artifact/job status from backend APIs.
 
-## 8. Ordering and Dependencies
+## 11. Ordering and Dependencies
 
 Required ordering:
 
 1. `recording.finalize` succeeds before transcript generation.
-2. `transcription.generate` succeeds before summary generation.
-3. `artifact.publish` runs after summary generation completes.
+1. `transcription.generate` succeeds before summary generation.
+1. `artifact.publish` runs after summary generation completes.
 
 If dependency fails:
 
@@ -125,7 +164,7 @@ If dependency fails:
 - Status reflects blocked dependency reason
 - Operator can retry upstream job
 
-## 9. Queue Integration
+## 12. Queue Integration
 
 This pipeline depends on the durable queue manager.
 
@@ -138,17 +177,20 @@ Queue requirements:
 
 See [QUEUE-JOB-MANAGER.md](docs/architecture/QUEUE-JOB-MANAGER.md).
 
-## 10. Acceptance Criteria
+## 13. Acceptance Criteria
 
 - Restarting backend during transcription does not lose work.
 - Transcript excludes whisper and off-the-record pause content by default.
 - Boundary markers remain present and ordered.
 - Operator can inspect job progress and retry failures.
 - Session UI remains responsive while processing occurs in background.
+- All processing completes locally when cloud AI is not configured.
 
-## 11. Related Documents
+## 14. Related Documents
 
 - [SESSION-LIFECYCLE.md](docs/architecture/SESSION-LIFECYCLE.md)
 - [STATE-RECOVERY.md](docs/architecture/STATE-RECOVERY.md)
 - [QUEUE-JOB-MANAGER.md](docs/architecture/QUEUE-JOB-MANAGER.md)
 - [RUNTIME-STATE-AND-AUDIT-CONTRACT.md](docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md)
+- [AI-CONTEXT-SUMMARY-PROCESSING.md](docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md)
+- [AI-WRITING-ASSISTANT.md](docs/ai/AI-WRITING-ASSISTANT.md)

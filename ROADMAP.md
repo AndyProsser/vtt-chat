@@ -2036,19 +2036,115 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 **Priority**: 🔵 Low (requires Queue Manager)
 **Depends on**: W-Queues
 
-**Scope**: After session ends, record finalization, transcription, and AI summary generation via durable queue.
+**Scope**: After session ends, record finalization, transcription, and AI summary generation via durable queue. Runs entirely offline by default — all audio and transcript processing happens on the host machine. Cloud AI is an optional, opt-in enhancement layer for summarization only. Must be explicitly enabled at install time via capability gate.
+
+**Processing Model**:
+
+| Stage            | Default (Offline)                       | Cloud Enhancement (Opt-in)     |
+| ---------------- | --------------------------------------- | ------------------------------ |
+| Recording ingest | Local — LiveKit webhook + file download | —                              |
+| Transcription    | Whisper.cpp or FasterWhisper (local)    | —                              |
+| Timeline merge   | Local deterministic merge               | —                              |
+| Summarization    | llama.cpp / Mistral / Phi-3 (local)     | Cloud LLM for richer summaries |
+
+Capability gate: `VTTCHAT_SUMMARY_PROCESSING_ENABLED` — `false` by default; must be explicitly opted in at install/init time. When `false`, all workers are dormant and UI surfaces explanatory disabled state.
 
 **Acceptance Criteria**:
 
-- [ ] Recording finalizes after session ENDED state
-- [ ] Transcription processes asynchronously with retry/dead-letter
-- [ ] Summary generation uses transcript + boundary markers + player actions
-- [ ] Off-the-record content (Whisper, Paused runtime content) is excluded from transcript
-- [ ] LLM checkpoint resume for `generate-summary` worker (allows resuming an interrupted summary job mid-generation)
+- [ ] Recording ingest service triggers on LiveKit `recording.finished` webhook
+- [ ] Audio tracks downloaded and stored locally to `/data/recordings/<sessionId>/`
+- [ ] Recording finalizes after session ENDED state via BullMQ `recording.finalize` job
+- [ ] Off-the-record content boundary enforced at ingest: Whisper (`PRIVATE`) room and paused runtime audio never recorded
+
+- [ ] Transcription worker runs Whisper.cpp or FasterWhisper locally — no cloud call
+- [ ] Transcription job runs asynchronously via BullMQ with retry and dead-letter queue
+- [ ] Progress checkpoints written per audio segment; crash/restart resumes from checkpoint
+- [ ] Boundary markers (`[Session Started]`, `[Session Paused]`, `[Session Resumed]`, `[Session Ended]`) retained in transcript output
+
+- [ ] Transcript segments, chat logs, and system events merged into canonical `TimelineEvent[]`
+- [ ] Merge output is deterministic and reproducible from raw inputs
+- [ ] Timeline windows created at scene/room changes, time gaps, and GM markers
+
+- [ ] Local LLM (llama.cpp / Mistral / Phi-3) generates per-window summaries and a full session summary
+- [ ] Multi-pass: window summaries → session summary → "Previously on…" recap
+- [ ] LLM checkpoint resume supported for `generate-summary` worker (mid-generation restart safe)
+- [ ] Cloud LLM enhancement is opt-in only; configurable per campaign without reprocessing audio
+- [ ] Raw audio and transcript text are never transmitted to cloud without explicit user consent
+- [ ] Whisper and off-the-record content excluded from all LLM context windows
+
+- [ ] When `VTTCHAT_SUMMARY_PROCESSING_ENABLED=false`, admin/DM UI shows disabled controls with: "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
+- [ ] DM can view processing job progress and status from the session panel
+- [ ] Operator can inspect, retry, and clear failed jobs via admin API
+- [ ] Session UI remains responsive during background processing (no blocking)
+- [ ] Generated summary surfaced to DM in session panel after job completion
 
 **Related Docs**:
 
 - [docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
+- [docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md](docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md)
+
+---
+
+### W-AI-Writing-Assistant: In-Editor AI Assistance
+
+**Status**: ⚪ Not Started
+**Priority**: 🔵 Low (optional enhancement)
+**Depends on**: W-Notes (notes/journal editor must be complete)
+**Optional context from**: W-Recording-Transcription-Summary (session summaries enrich AI context when available, but are not required)
+
+**Scope**: Surface AI writing assistance via an "Ask AI" button in the Notes and Journal markdown editor. Operates with a local offline AI model or cloud AI (if enabled). Fully functional without the recording/transcription pipeline — session summary context is injected silently when available, but the feature stands alone.
+
+**AI Provider Model**:
+
+| Provider                                | When used       | Notes                                                                          |
+| --------------------------------------- | --------------- | ------------------------------------------------------------------------------ |
+| Local LLM (llama.cpp / Mistral / Phi-3) | Default         | Same model pool as summary pipeline if installed                               |
+| Cloud LLM                               | Opt-in only     | Inherits campaign-level cloud AI config; requires explicit per-content consent |
+| None configured                         | Always possible | "Ask AI" button disabled with explanatory tooltip                              |
+
+**Capabilities**:
+
+- Expand, condense, or rewrite selected text
+- Generate DMDX blocks (`npc`, `encounter`, `loot`, `session`, `timeline`, etc.) from a natural language prompt
+- Suggest narrative continuations
+- Answer questions about session history (when session summary context is available)
+- Generate "Previously on…" recap from session summary
+- Rewrite in a different tone or register (e.g. "make this more dramatic")
+
+**UI Contract**:
+
+- "Ask AI" button in the Notes/Journal editor toolbar
+- Opens an inline prompt panel — non-blocking, does not obscure content
+- Output rendered as a diff-preview below the prompt; user accepts or discards
+- Streamed output preferred; single-response fallback if local model does not support streaming
+- Available to DM always; available to players for their own private notes only
+- Works in both rich markdown mode and raw code view
+
+**Privacy**:
+
+- Local AI: note content never leaves the machine
+- Cloud AI: explicit per-session consent confirmation shown on first use per campaign
+- DM-private notes and Whisper content are never included in AI context regardless of provider
+
+**Acceptance Criteria**:
+
+- [ ] "Ask AI" button present in Notes and Journal editor toolbar
+- [ ] Inline prompt panel opens without blocking the editor or requiring a full-screen mode
+- [ ] Local AI responds without any cloud dependency when a local model is configured
+- [ ] Cloud AI opt-in confirmation shown the first time per campaign when cloud provider is enabled
+- [ ] Output rendered as diff-preview; user explicitly accepts or discards before content is written
+- [ ] Session summary context injected automatically and silently when available
+- [ ] Works with all 9 DMDX block types as generation targets
+- [ ] DM-private and Whisper content excluded from AI context regardless of provider
+- [ ] When no AI provider is configured, "Ask AI" button is disabled with explanatory tooltip
+- [ ] Feature remains functional when `VTTCHAT_SUMMARY_PROCESSING_ENABLED=false`
+
+**Related Docs**:
+
+- [docs/ai/AI-WRITING-ASSISTANT.md](docs/ai/AI-WRITING-ASSISTANT.md)
+- [docs/subsystems/NOTES-SYSTEM.md](docs/subsystems/NOTES-SYSTEM.md)
+- [docs/subsystems/DMDX-MARKDOWN-EXTENSION.md](docs/subsystems/DMDX-MARKDOWN-EXTENSION.md)
+- [docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md](docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md)
 
 ---
 
