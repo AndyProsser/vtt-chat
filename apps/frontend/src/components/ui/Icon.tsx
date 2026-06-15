@@ -38,6 +38,7 @@ type IconName =
   | 'effects'
   | 'overrides'
   | 'party'
+  | 'inventory'
   | 'restart_alt'
 
 interface IconProps extends HTMLAttributes<HTMLSpanElement> {
@@ -82,6 +83,7 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   effects: 'tune',
   overrides: 'supervisor_account',
   party: 'groups',
+  inventory: 'inventory_2',
   restart_alt: 'restart_alt',
 }
 

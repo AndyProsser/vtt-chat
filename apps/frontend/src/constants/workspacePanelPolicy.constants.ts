@@ -4,6 +4,7 @@ import type { WorkspacePanelTab } from '@/types/ui'
 export const WORKSPACE_PANEL_CANONICAL_ORDER: WorkspacePanelTab[] = [
   'information',
   'party',
+  'inventory',
   'rooms',
   'journal',
   'notes',
@@ -30,7 +31,7 @@ export const WORKSPACE_PANEL_ROLE_EXCEPTIONS: Record<Role, WorkspacePanelRoleExc
     rationale: 'Spectator role is observation-focused and excludes mutation/control tools.',
   },
   [Role.SYSTEM]: {
-    hidden: ['party', 'rooms', 'journal', 'notes', 'history', 'settings'],
+    hidden: ['party', 'inventory', 'rooms', 'journal', 'notes', 'history', 'settings'],
     rationale: 'System role only needs information panel access for diagnostics fallback.',
   },
 }

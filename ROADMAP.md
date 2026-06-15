@@ -1954,7 +1954,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 ### W-Chat-Commands: Chat Command System
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Complete
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete, W-Inventory-System (for inventory commands)
 
@@ -1962,21 +1962,21 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 **Acceptance Criteria**:
 
-- [ ] Typing `/` in the chat input opens a filtered autocomplete command palette showing available commands
-- [ ] `[/]` icon button on the left of the chat input opens a full help popup (role-aware: players do not see DM-only commands)
-- [ ] Command registry defined in `shared/types/chatCommands.ts` (name, syntax, description, example, roles, availableInStates)
-- [ ] `/roll [dice]` — styled roll card in chat; dice resolved server-side for fairness; visible to all in room
-- [ ] `/me [action]` — italic emote line in chat, scoped to current room, styled as IC
-- [ ] `/whisper @{player} [message]` — shortcut for whisper; same privacy rules as direct whisper
-- [ ] `/OOC [message]` — forces OOC tag/style regardless of current IC/OOC mode toggle
-- [ ] `/dm [message]` — player-to-DM only whisper; not visible to other players
+- [x] Typing `/` in the chat input opens a filtered autocomplete command palette showing available commands
+- [x] `[/]` icon button on the left of the chat input opens a full help popup (role-aware: players do not see DM-only commands)
+- [x] Command registry defined in `shared/types/chatCommands.ts` (name, syntax, description, example, roles, availableInStates)
+- [x] `/roll [dice]` — styled roll card in chat; dice resolved server-side for fairness; visible to all in room
+- [x] `/me [action]` — italic emote line in chat, scoped to current room, styled as IC
+- [x] `/whisper @{player} [message]` — shortcut for whisper; same privacy rules as direct whisper
+- [x] `/OOC [message]` — forces OOC tag/style regardless of current IC/OOC mode toggle
+- [x] `/dm [message]` — player-to-DM only whisper; not visible to other players
 - [ ] Inventory commands covered in W-Inventory-System acceptance criteria
-- [ ] Unknown command → toast error (not posted to chat)
-- [ ] Permission-denied command → toast error (not posted to chat)
-- [ ] Backend re-validates role and session state before executing any command (client checks are UX only)
-- [ ] Commands unavailable in greenroom/IDLE by default; `availableInStates` per command governs this
-- [ ] Unit tests for command parser in `apps/frontend/tests/`
-- [ ] Backend command handler tests in `apps/backend/tests/`
+- [x] Unknown command → toast error (not posted to chat)
+- [x] Permission-denied command → toast error (not posted to chat)
+- [x] Backend re-validates role and session state before executing any command (client checks are UX only)
+- [x] Commands unavailable in greenroom/IDLE by default; `availableInStates` per command governs this
+- [x] Unit tests for command parser in `apps/frontend/tests/`
+- [x] Backend command handler tests in `apps/backend/tests/`
 
 **Related Docs**:
 

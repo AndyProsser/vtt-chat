@@ -5,6 +5,7 @@ export type CenterPaneView = 'chat' | 'notes'
 export type WorkspacePanelTab =
   | 'information'
   | 'party'
+  | 'inventory'
   | 'rooms'
   | 'journal'
   | 'notes'

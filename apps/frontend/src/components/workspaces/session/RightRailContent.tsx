@@ -6,6 +6,7 @@ interface RightRailContentProps {
   tab: RightRailTab
   informationPanel: ReactNode
   partyPanel: ReactNode
+  inventoryPanel: ReactNode
   roomsPanel: ReactNode
   notesPanel: ReactNode
   journalPanel: ReactNode
@@ -17,6 +18,7 @@ export const RightRailContent = memo(function RightRailContent({
   tab,
   informationPanel,
   partyPanel,
+  inventoryPanel,
   roomsPanel,
   notesPanel,
   journalPanel,
@@ -28,6 +30,8 @@ export const RightRailContent = memo(function RightRailContent({
       return <>{informationPanel}</>
     case 'party':
       return <>{partyPanel}</>
+    case 'inventory':
+      return <>{inventoryPanel}</>
     case 'rooms':
       return <>{roomsPanel}</>
     case 'notes':
