@@ -2013,6 +2013,14 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [ ] `/give @{player\|party} [item] [qty?]` — player gives item to target
 - [ ] `/drop [item] [qty?]` — remove item from own/party inventory (confirmation required)
 - [ ] Currency shorthand: `/give @party 10gp`, `/take 5sp` etc.
+- [ ] Currency transfer form always shows current balance of both source and destination before confirming
+- [ ] Transfer and Remove amounts capped at available balance per denomination — validated at UI and at API layer (returns `400` with denomination breakdown on insufficient funds)
+- [ ] Take from Party (player): atomically credits character wallet and debits party purse; only available when player has `/take` campaign permission
+- [ ] Give to Party (player/DM): atomically debits sender wallet and credits party purse
+- [ ] Give to Online Player (player/DM): atomically debits sender wallet and credits recipient wallet; only online players shown as eligible targets (offline players pull from party on rejoin)
+- [ ] Add currency (inflow — loot award, sale proceeds): credits wallet or purse without requiring a debit source; form shows current balance; DM can add to any owner; players can add to own wallet
+- [ ] Remove currency (outflow — purchase, expenditure): debits wallet or purse without a destination; form shows current balance; capped at available balance; requires confirmation
+- [ ] `POST /api/campaigns/:id/inventory/transfer/currency` — atomic two-sided debit/credit in a single PostgreSQL transaction; emits `INVENTORY:CURRENCY_CHANGED` for both owners on commit
 - [x] All inventory mutations during ACTIVE session → system message in chat + history log entry
 - [x] Mutations outside ACTIVE session → history log entry only (no chat message)
 - [x] WS events: `INVENTORY:ITEM_ADDED`, `INVENTORY:ITEM_REMOVED`, `INVENTORY:ITEM_TRANSFERRED`, `INVENTORY:LOOT_SPLIT_PROPOSED`, `INVENTORY:LOOT_SPLIT_ACCEPTED`, `INVENTORY:LOOT_SPLIT_EXPIRED`, `INVENTORY:CURRENCY_CHANGED`

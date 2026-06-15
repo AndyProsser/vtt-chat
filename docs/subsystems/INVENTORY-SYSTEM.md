@@ -173,6 +173,45 @@ Each entry shows: timestamp, actor, action, item, quantity, from/to owner, and a
 
 ---
 
+### 5.5 Currency Transfers
+
+The currency area in the INVENTORY panel exposes three actions per wallet/purse:
+
+| Action       | Description                                                                     |
+| ------------ | ------------------------------------------------------------------------------- |
+| **Add**      | Credit the wallet/purse from an external source (loot, sale proceeds, DM award) |
+| **Remove**   | Debit the wallet/purse (purchase, expenditure) without a destination            |
+| **Transfer** | Move currency between two owners with both sides balanced atomically            |
+
+**Rules:**
+
+- The form always shows the current balance of **both** source and destination before the user confirms.
+- **Remove** and **Transfer** amounts are hard-capped at the available balance per denomination. The UI disables submission and the API returns `400` (with a per-denomination breakdown) if the amount would produce a negative balance.
+- For **Transfer**, only online players are shown as eligible character targets. Offline players' wallets cannot be credited unattended — they pull from the party purse on rejoin instead.
+- DM can add/remove/transfer on behalf of any owner (party or any character).
+- Players can add/remove from their own wallet. Players can also transfer **to** party or any online player, and can **take** from the party purse — both subject to the same campaign permission gate as `/take`.
+
+**UI pattern (modal / inline form):**
+
+```text
+┌──────────────────────────────────────────────────┐
+│  Transfer Currency                               │
+│  ──────────────────────────────────────────────  │
+│  From:  [Tavita's Wallet]   Current: 12gp 5sp    │
+│  To:    [Party Purse]       Current: 200gp 0sp   │
+│                                                  │
+│  PP [0]  GP [10]  EP [0]  SP [0]  CP [0]         │
+│                                                  │
+│  [Transfer]  [Cancel]                            │
+└──────────────────────────────────────────────────┘
+```
+
+For **Add** and **Remove**, "From / To" collapses to a single "Wallet / Purse" label showing the current balance. Denomination fields follow the same layout. Remove fields are disabled per denomination when the balance for that coin type is 0.
+
+**Atomic guarantee:** The backend applies both the debit and credit in a single PostgreSQL transaction. If either write fails, neither side changes. `INVENTORY:CURRENCY_CHANGED` fires for both affected owners after the transaction commits.
+
+---
+
 ## 6. Chat Commands
 
 See `docs/subsystems/CHAT-SYSTEM.md` §9.3 for the full command table. Inventory-specific behaviour:
@@ -259,11 +298,12 @@ WS dispatch rules:
 
 ### Transfer
 
-| Method | Path                                                      | Description                                              |
-| ------ | --------------------------------------------------------- | -------------------------------------------------------- |
-| `POST` | `/api/campaigns/:id/inventory/transfer`                   | Move item between any two owners (validates permissions) |
-| `POST` | `/api/campaigns/:id/inventory/loot-split`                 | DM proposes a loot split                                 |
-| `POST` | `/api/campaigns/:id/inventory/loot-split/:splitId/accept` | Player accepts their split share                         |
+| Method | Path                                                      | Description                                                                                             |
+| ------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/campaigns/:id/inventory/transfer`                   | Move item between any two owners (validates permissions)                                                |
+| `POST` | `/api/campaigns/:id/inventory/loot-split`                 | DM proposes a loot split                                                                                |
+| `POST` | `/api/campaigns/:id/inventory/loot-split/:splitId/accept` | Player accepts their split share                                                                        |
+| `POST` | `/api/campaigns/:id/inventory/transfer/currency`          | Atomic two-sided currency transfer between any two owners; validates available balance per denomination |
 
 ### SRD Proxy
 
