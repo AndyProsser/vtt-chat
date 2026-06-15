@@ -99,12 +99,35 @@ export async function getCampaignInventory(campaignId: UUID): Promise<{
   return { items: items.map(mapItem), wallets: wallets.map(mapWallet) }
 }
 
+export interface InventoryHistoryDto {
+  id: string
+  campaignId: string
+  itemId: string | null
+  sessionId: string | null
+  actorUserId: string
+  actionType: string
+  fromOwnerType: string | null
+  fromOwnerId: string | null
+  toOwnerType: string | null
+  toOwnerId: string | null
+  quantity: number | null
+  currencyDelta: unknown
+  itemName: string | null
+  notes: string | null
+  createdAt: number
+}
+
+function mapHistory(row: InventoryHistoryRow): InventoryHistoryDto {
+  return { ...row, createdAt: row.createdAt.getTime() }
+}
+
 export async function getInventoryHistory(
   campaignId: UUID,
   limit = 50,
   offset = 0
-): Promise<InventoryHistoryRow[]> {
-  return listInventoryHistory({ campaignId, limit, offset })
+): Promise<InventoryHistoryDto[]> {
+  const rows = await listInventoryHistory({ campaignId, limit, offset })
+  return rows.map(mapHistory)
 }
 
 // ─── Item mutations ───────────────────────────────────────────────────────────

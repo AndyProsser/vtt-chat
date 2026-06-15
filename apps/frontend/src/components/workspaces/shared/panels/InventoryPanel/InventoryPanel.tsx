@@ -15,6 +15,7 @@ import type { InventoryItem, CurrencyWalletState } from '@/types/inventory'
 import { InventoryItemRow } from './InventoryPanel.ItemRow'
 import { InventoryCurrencyRow } from './InventoryPanel.CurrencyRow'
 import { InventoryAddItemForm } from './InventoryPanel.AddItemForm'
+import { InventoryHistoryOverlay } from './InventoryPanel.History'
 
 export interface InventoryPanelProps {
   campaignId: UUID
@@ -44,6 +45,7 @@ export function InventoryPanel({
 }: InventoryPanelProps) {
   const [view, setView] = useState<InventoryView>('party')
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const hydrateInventory = useStore((state) => state.hydrateInventory)
@@ -178,7 +180,7 @@ export function InventoryPanel({
   )
 
   const handleAddItem = useCallback(
-    async (name: string, quantity: number, notes: string) => {
+    async (name: string, quantity: number, notes: string, isSrd: boolean) => {
       await fetch(`${apiUrl}/api/inventory/${campaignId}/items`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
@@ -187,7 +189,7 @@ export function InventoryPanel({
           ownerId: currentOwnerId,
           name,
           quantity,
-          source: InventoryItemSource.CUSTOM,
+          source: isSrd ? InventoryItemSource.SRD : InventoryItemSource.CUSTOM,
           notes: notes || undefined,
         }),
       })
@@ -199,6 +201,7 @@ export function InventoryPanel({
   const switchView = (v: InventoryView) => {
     setView(v)
     setShowAddForm(false)
+    setShowHistory(false)
   }
 
   // Transfer destinations for the Move To menu
@@ -218,6 +221,15 @@ export function InventoryPanel({
           <Icon name="inventory" />
           Inventory
         </h4>
+        <button
+          type="button"
+          className={`inventory-panel__history-btn${showHistory ? ' inventory-panel__history-btn--active' : ''}`}
+          aria-label="View history"
+          title="History"
+          onClick={() => setShowHistory((v) => !v)}
+        >
+          <Icon name="notes" />
+        </button>
       </header>
 
       <div className="inventory-panel__view-tabs" role="tablist" aria-label="Inventory view">
@@ -246,7 +258,14 @@ export function InventoryPanel({
         ))}
       </div>
 
-      {isLoading ? (
+      {showHistory ? (
+        <InventoryHistoryOverlay
+          campaignId={campaignId}
+          apiUrl={apiUrl}
+          authToken={authToken}
+          onClose={() => setShowHistory(false)}
+        />
+      ) : isLoading ? (
         <div className="inventory-panel__state inventory-panel__state--loading" aria-live="polite">
           <Icon name="hourglass" />
           <span>Loading inventory…</span>
@@ -281,7 +300,12 @@ export function InventoryPanel({
           </div>
 
           {showAddForm && (
-            <InventoryAddItemForm onAdd={handleAddItem} onCancel={() => setShowAddForm(false)} />
+            <InventoryAddItemForm
+              onAdd={handleAddItem}
+              onCancel={() => setShowAddForm(false)}
+              apiUrl={apiUrl}
+              authToken={authToken}
+            />
           )}
 
           {currentItems.length === 0 && !showAddForm ? (

@@ -15,10 +15,30 @@
 .inventory-panel__header {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   padding-bottom: 0.45rem;
   border-bottom: 1px solid var(--color-border-soft);
 }
+
+.inventory-panel__history-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.inventory-panel__history-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.inventory-panel__history-btn--active { color: var(--color-accent); }
 
 .inventory-panel__title {
   display: flex;
@@ -537,4 +557,182 @@
 .inventory-add-form__cancel:hover {
   color: var(--color-text-primary);
   border-color: var(--color-border);
+}
+
+/* ─── Add form — name autocomplete ────────────────────────────────────────── */
+
+.inventory-add-form__name-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.inventory-add-form__name-wrap .inventory-add-form__name {
+  width: 100%;
+}
+
+.inventory-add-form__suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  list-style: none;
+  margin: 2px 0 0;
+  padding: var(--space-1) 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+.inventory-add-form__suggestion {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.inventory-add-form__suggestion:hover,
+.inventory-add-form__suggestion[aria-selected='true'] {
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  color: var(--color-accent);
+}
+
+/* ─── History overlay ──────────────────────────────────────────────────────── */
+
+.inventory-history {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  height: 100%;
+}
+
+.inventory-history__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.inventory-history__title {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.inventory-history__filter {
+  flex: 1;
+}
+
+.inventory-history__filter-select {
+  width: 100%;
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+}
+
+.inventory-history__close {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.inventory-history__close:hover { color: var(--color-text-primary); }
+
+.inventory-history__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) 0;
+}
+
+.inventory-history__state {
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.inventory-history__state--error { color: var(--color-error); }
+
+.inventory-history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inventory-history__entry {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.inventory-history__entry:hover { background: var(--color-surface-hover); }
+
+.inventory-history__entry-badge {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--color-text-muted) 15%, transparent);
+  color: var(--color-text-muted);
+}
+
+.inventory-history__entry--item-added .inventory-history__entry-badge {
+  background: color-mix(in srgb, var(--color-success, #4caf50) 15%, transparent);
+  color: var(--color-success, #4caf50);
+}
+
+.inventory-history__entry--item-removed .inventory-history__entry-badge {
+  background: color-mix(in srgb, var(--color-error) 15%, transparent);
+  color: var(--color-error);
+}
+
+.inventory-history__entry--item-transferred .inventory-history__entry-badge {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+}
+
+.inventory-history__entry--currency-changed .inventory-history__entry-badge {
+  background: color-mix(in srgb, #f0a500 15%, transparent);
+  color: #f0a500;
+}
+
+.inventory-history__entry-desc {
+  flex: 1;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-history__entry-time {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
 }

@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-12
+**Last Updated**: 2026-06-15
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -1997,14 +1997,15 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [x] New INVENTORY right-rail tab added (after PARTY, before ROOMS in canonical dock order)
 - [x] INVENTORY tab shows: Party Inventory view, own Character Inventory view; DM sees all character inventories
 - [x] Spectators see party and all character inventories in read-only mode
-- [ ] Campaign setting: SRD ruleset (2014 or 2024); default 2014
-- [ ] Item search autocomplete calls `GET /api/srd/items?q=` (backend proxy, 24h cache, fails silently if SRD API unreachable)
+- [ ] Campaign setting: SRD ruleset (2014 or 2024); default 2014 — proxy defaults to 2014; campaign-level selector not yet in settings UI
+- [x] Item search autocomplete calls `GET /api/srd/items?q=` (backend proxy, 24h Redis cache, fails silently if SRD API unreachable)
 - [x] Custom items supported (free-text name, no SRD backing required)
 - [x] Item fields: name, quantity, source (SRD/custom), optional notes
 - [x] Currency per character wallet and party purse (GP/SP/CP/EP/PP)
 - [x] `[+Add]` button for DM to add items or currency directly from the panel
-- [ ] `[⋯]` per-item action menu: Move to…, Edit notes, Remove (with confirmation) — remove only wired; full menu pending
-- [ ] Inventory history log overlay (within INVENTORY panel): filterable by character, date range, item, action type
+- [x] Per-item action menu: Edit (inline), Move to… (transfer), Remove (with confirmation) — all three modes wired via state machine in `InventoryPanel.ItemRow.tsx`
+- [x] Inventory history log overlay (within INVENTORY panel): toggle via header button; filterable by action type; shows action badge, description, relative time
+- [ ] Inventory history filter by character and date range
 - [ ] Campaign settings for player permissions: Allow players /give and /take (ON default); Allow players /loot (OFF default)
 - [ ] `/loot [item] [qty?]` — DM adds item to party inventory; chat system message in ACTIVE session
 - [ ] `/loot-split [item] [qty?]` — DM proposes split; Loot Split Card appears in chat; players accept in one click; unaccepted shares revert to party after 60s
@@ -2012,12 +2013,12 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [ ] `/give @{player\|party} [item] [qty?]` — player gives item to target
 - [ ] `/drop [item] [qty?]` — remove item from own/party inventory (confirmation required)
 - [ ] Currency shorthand: `/give @party 10gp`, `/take 5sp` etc.
-- [ ] All inventory mutations during ACTIVE session → system message in chat + history log entry
-- [ ] Mutations outside ACTIVE session → history log entry only (no chat message)
+- [x] All inventory mutations during ACTIVE session → system message in chat + history log entry
+- [x] Mutations outside ACTIVE session → history log entry only (no chat message)
 - [x] WS events: `INVENTORY:ITEM_ADDED`, `INVENTORY:ITEM_REMOVED`, `INVENTORY:ITEM_TRANSFERRED`, `INVENTORY:LOOT_SPLIT_PROPOSED`, `INVENTORY:LOOT_SPLIT_ACCEPTED`, `INVENTORY:LOOT_SPLIT_EXPIRED`, `INVENTORY:CURRENCY_CHANGED`
 - [x] 4-layer state: PostgreSQL persistence (campaign-scoped) → WS broadcast → Zustand `inventorySlice`
 - [x] `InventoryItem`, `CurrencyWallet`, `InventoryHistoryEntry` Prisma models added and migrated
-- [x] REST endpoints: party inventory CRUD, character inventory CRUD, transfer, loot-split, SRD proxy, history
+- [x] REST endpoints: party inventory CRUD, character inventory CRUD, transfer, SRD proxy, history
 - [x] Zustand `inventorySlice` rehydrates from REST on panel mount; no Redis (not presence/audio data)
 - [ ] Unit tests for inventory mutations and WS handlers
 - [ ] Integration tests for loot-split flow and permission gating
