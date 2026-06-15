@@ -8,11 +8,14 @@ interface MoveTarget {
   ownerType: 'party' | 'character'
   ownerId: UUID | null
   avatarUrl?: string | null
+  isOnline?: boolean
 }
 
 interface InventoryItemRowProps {
   item: InventoryItem
   isReadOnly: boolean
+  /** When false, Remove is hidden (DM viewing offline player's inventory). */
+  canRemove?: boolean
   onRemove: (itemId: UUID) => Promise<void>
   onEdit: (
     itemId: UUID,
@@ -31,6 +34,7 @@ type RowMode = 'view' | 'edit' | 'confirm-remove' | 'move'
 export const InventoryItemRow = memo(function InventoryItemRow({
   item,
   isReadOnly,
+  canRemove = true,
   onRemove,
   onEdit,
   onMove,
@@ -175,18 +179,29 @@ export const InventoryItemRow = memo(function InventoryItemRow({
         <span className="inventory-item-row__move-title">Move {item.name} to:</span>
         <div className="inventory-item-row__move-grid" role="listbox" aria-label="Move destination">
           {moveTargets.map((t) => {
-            const avatarContent = t.ownerType === 'party'
-              ? <Icon name="party" />
-              : t.avatarUrl
-                ? <img src={t.avatarUrl} alt="" />
-                : (t.label.trim()[0] ?? '?').toUpperCase()
+            const avatarContent =
+              t.ownerType === 'party' ? (
+                <Icon name="party" />
+              ) : t.avatarUrl ? (
+                <img src={t.avatarUrl} alt="" />
+              ) : (
+                (t.label.trim()[0] ?? '?').toUpperCase()
+              )
             return (
               <button
                 key={`${t.ownerType}-${t.ownerId}`}
                 type="button"
                 role="option"
                 aria-selected={false}
-                className={`inventory-item-row__move-card${t.ownerType === 'party' ? ' inventory-item-row__move-card--party' : ''}`}
+                className={[
+                  'inventory-item-row__move-card',
+                  t.ownerType === 'party' ? ' inventory-item-row__move-card--party' : '',
+                  t.ownerType !== 'party' && !t.isOnline
+                    ? 'inventory-item-row__move-card--offline'
+                    : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
                 onClick={() => handleMove(t)}
                 disabled={isBusy}
               >
@@ -240,15 +255,17 @@ export const InventoryItemRow = memo(function InventoryItemRow({
               <Icon name="move_item" />
             </button>
           )}
-          <button
-            type="button"
-            className="inventory-item-row__action-icon inventory-item-row__action-icon--danger"
-            aria-label={`Remove ${item.name}`}
-            title="Remove"
-            onClick={() => setMode('confirm-remove')}
-          >
-            <Icon name="close" />
-          </button>
+          {canRemove && (
+            <button
+              type="button"
+              className="inventory-item-row__action-icon inventory-item-row__action-icon--danger"
+              aria-label={`Remove ${item.name}`}
+              title="Remove"
+              onClick={() => setMode('confirm-remove')}
+            >
+              <Icon name="close" />
+            </button>
+          )}
         </div>
       )}
     </li>

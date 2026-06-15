@@ -1,8 +1,14 @@
 /**
  * InventoryPanel — character and party inventory for the session workspace.
  * Rehydrates from REST on mount; stays in sync via INVENTORY:* WS events.
- * DM sees all character inventories (one tab per connected player + party).
- * Player sees own + party; Spectator reads all in read-only mode.
+ *
+ * Role-based tab behaviour:
+ *   Player    → "Mine" (default) + "Party" tabs
+ *   DM        → horizontal avatar-strip picker (Party + all characters; default Party)
+ *   Spectator → Party only, read-only
+ *
+ * DM viewing an offline character's inventory: Add/Move allowed, Remove blocked.
+ * Online status is derived live from sessionPresenceByUser (WS-updated).
  */
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
@@ -16,6 +22,8 @@ import { InventoryItemRow } from './InventoryPanel.ItemRow'
 import { InventoryCurrencyRow } from './InventoryPanel.CurrencyRow'
 import { InventoryAddItemForm } from './InventoryPanel.AddItemForm'
 import { InventoryHistoryOverlay } from './InventoryPanel.History'
+import { InventoryCharacterPicker } from './InventoryPanel.CharacterPicker'
+import type { CharacterPickerMember } from './InventoryPanel.CharacterPicker'
 
 export interface InventoryPanelProps {
   campaignId: UUID
@@ -27,18 +35,20 @@ export interface InventoryPanelProps {
   authToken: string
 }
 
-interface CharacterTab {
-  userId: UUID
-  label: string
-  avatarUrl?: string | null
-}
-
 type InventoryView = 'party' | UUID
 
 // Stable fallbacks — must live outside the component to avoid Zustand snapshot loops
 const EMPTY_ITEMS: InventoryItem[] = []
 const EMPTY_WALLETS: CurrencyWalletState[] = []
 const EMPTY_PRESENCE: Record<string, never> = {}
+
+interface CampaignPlayerProfile {
+  userId: UUID
+  label: string
+  avatarUrl: string | null
+}
+
+const EMPTY_PROFILES: CampaignPlayerProfile[] = []
 
 export function InventoryPanel({
   campaignId,
@@ -49,10 +59,17 @@ export function InventoryPanel({
   apiUrl,
   authToken,
 }: InventoryPanelProps) {
-  const [view, setView] = useState<InventoryView>('party')
+  const isReadOnly = effectiveSessionRole === Role.SPECTATOR
+  const isDM = effectiveSessionRole === Role.DM
+  const isPlayer = effectiveSessionRole === Role.PLAYER
+
+  const defaultView: InventoryView = isPlayer ? currentUserId : 'party'
+  const [view, setView] = useState<InventoryView>(defaultView)
   const [showAddForm, setShowAddForm] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Static profiles (label + avatar) for all campaign players, fetched once on mount
+  const [playerProfiles, setPlayerProfiles] = useState<CampaignPlayerProfile[]>(EMPTY_PROFILES)
 
   const hydrateInventory = useStore((state) => state.hydrateInventory)
   const setInventoryLoading = useStore((state) => state.setInventoryLoading)
@@ -71,38 +88,20 @@ export function InventoryPanel({
     [walletsBucket]
   )
 
-  // Get connected session members for DM character tabs
+  // Live presence — WS-updated, used to derive online/offline status in real time
   const sessionPresenceByUser = useStore(
     (state) => state.sessionPresence[sessionId] ?? EMPTY_PRESENCE
   )
 
-  const isReadOnly = effectiveSessionRole === Role.SPECTATOR
-  const isDM = effectiveSessionRole === Role.DM
-
-  // Character tabs: DM sees all connected players; Player sees only their own
-  const characterTabs = useMemo<CharacterTab[]>(() => {
-    if (isDM) {
-      return Object.values(sessionPresenceByUser)
-        .filter((p) => p.role === Role.PLAYER || p.role === undefined)
-        .map((p) => ({
-          userId: p.userId as UUID,
-          label: p.characterName || p.username,
-          avatarUrl: p.avatarUrl ?? null,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label))
-    }
-    return [{ userId: currentUserId, label: 'My Character' }]
-  }, [isDM, sessionPresenceByUser, currentUserId])
-
-  // ─── Fetch on mount ───────────────────────────────────────────────────────
+  // ─── Fetch inventory + campaign player profiles on mount ──────────────────
   useEffect(() => {
     let cancelled = false
     setInventoryLoading(true)
     setError(null)
 
-    fetch(`${apiUrl}/api/inventory/${campaignId}`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    })
+    const headers = { Authorization: `Bearer ${authToken}` }
+
+    const fetchInventory = fetch(`${apiUrl}/api/inventory/${campaignId}`, { headers })
       .then((res) => {
         if (!res.ok) throw new Error(`${res.status}`)
         return res.json()
@@ -110,21 +109,73 @@ export function InventoryPanel({
       .then((data: { items: InventoryItem[]; wallets: CurrencyWalletState[] }) => {
         if (!cancelled) hydrateInventory(campaignId, data.items, data.wallets)
       })
-      .catch(() => {
-        if (!cancelled) {
-          setError('Failed to load inventory.')
-          setInventoryLoading(false)
-        }
-      })
+
+    // Fetch all campaign member profiles (online + offline) for character picker and move targets.
+    // Not needed for spectators (read-only, no move targets).
+    const fetchProfiles = !isReadOnly
+      ? fetch(`${apiUrl}/api/campaigns/${campaignId}/party-presence`, { headers })
+          .then((res) => (res.ok ? res.json() : null))
+          .then(
+            (
+              data: {
+                members: Array<{
+                  userId: string
+                  role: string
+                  playerName: string
+                  avatarUrl: string | null
+                  characterName: string | null
+                }>
+              } | null
+            ) => {
+              if (cancelled || !data) return
+              setPlayerProfiles(
+                data.members
+                  .filter((m) => m.role === 'PLAYER')
+                  .map((m) => ({
+                    userId: m.userId as UUID,
+                    label: m.characterName || m.playerName,
+                    avatarUrl: m.avatarUrl,
+                  }))
+              )
+            }
+          )
+          .catch(() => {
+            /* non-critical */
+          })
+      : Promise.resolve()
+
+    Promise.all([fetchInventory, fetchProfiles]).catch(() => {
+      if (!cancelled) {
+        setError('Failed to load inventory.')
+        setInventoryLoading(false)
+      }
+    })
 
     return () => {
       cancelled = true
     }
-  }, [campaignId, apiUrl, authToken, hydrateInventory, setInventoryLoading])
+  }, [campaignId, apiUrl, authToken, hydrateInventory, setInventoryLoading, isReadOnly])
+
+  // ─── Character picker members — profile + live online status ─────────────
+  const pickerMembers = useMemo<CharacterPickerMember[]>(
+    () =>
+      playerProfiles.map((p) => ({
+        ...p,
+        isOnline: p.userId in sessionPresenceByUser,
+      })),
+    [playerProfiles, sessionPresenceByUser]
+  )
 
   // ─── Derived data ─────────────────────────────────────────────────────────
   const currentOwnerId = view === 'party' ? null : (view as UUID)
   const currentOwnerType = view === 'party' ? ('party' as const) : ('character' as const)
+
+  // DM viewing an offline character → Remove blocked, but Add/Move still allowed
+  const viewedMember = useMemo(
+    () => (view !== 'party' ? (pickerMembers.find((m) => m.userId === view) ?? null) : null),
+    [view, pickerMembers]
+  )
+  const canRemove = !(isDM && viewedMember !== null && !viewedMember.isOnline)
 
   const currentItems = useMemo(
     () =>
@@ -146,6 +197,31 @@ export function InventoryPanel({
           (currentOwnerType === 'party' ? w.ownerId === null : w.ownerId === currentOwnerId)
       ) ?? null,
     [allWallets, currentOwnerType, currentOwnerId]
+  )
+
+  // Move targets include offline players so all roles can give items to them
+  const moveTargets = useMemo(
+    () => [
+      { label: 'Party', ownerType: 'party' as const, ownerId: null, avatarUrl: null },
+      ...playerProfiles
+        .map((p) => ({
+          label: p.label,
+          ownerType: 'character' as const,
+          ownerId: p.userId,
+          avatarUrl: p.avatarUrl,
+          isOnline: p.userId in sessionPresenceByUser,
+        }))
+        .sort((a, b) => {
+          // Primary: ONLINE before OFFLINE
+          if (a.isOnline !== b.isOnline) {
+            return a.isOnline ? -1 : 1
+          }
+
+          // Secondary: name
+          return a.label.localeCompare(b.label)
+        }),
+    ],
+    [playerProfiles]
   )
 
   // ─── Mutation helpers ─────────────────────────────────────────────────────
@@ -217,22 +293,6 @@ export function InventoryPanel({
     setShowHistory(false)
   }
 
-  // Transfer destinations for the Move To menu
-  const moveTargets = useMemo<
-    Array<{ label: string; ownerType: 'party' | 'character'; ownerId: UUID | null; avatarUrl?: string | null }>
-  >(
-    () => [
-      { label: 'Party', ownerType: 'party', ownerId: null, avatarUrl: null },
-      ...characterTabs.map((t) => ({
-        label: t.label,
-        ownerType: 'character' as const,
-        ownerId: t.userId,
-        avatarUrl: t.avatarUrl,
-      })),
-    ],
-    [characterTabs]
-  )
-
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <section className="inventory-panel" aria-label="Inventory">
@@ -252,31 +312,40 @@ export function InventoryPanel({
         </button>
       </header>
 
-      <div className="inventory-panel__view-tabs" role="tablist" aria-label="Inventory view">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === 'party'}
-          className="inventory-panel__view-tab"
-          data-active={view === 'party'}
-          onClick={() => switchView('party')}
-        >
-          Party
-        </button>
-        {characterTabs.map((tab) => (
+      {/* Player: Mine + Party tabs */}
+      {isPlayer && (
+        <div className="inventory-panel__view-tabs" role="tablist" aria-label="Inventory view">
           <button
-            key={tab.userId}
             type="button"
             role="tab"
-            aria-selected={view === tab.userId}
+            aria-selected={view === currentUserId}
             className="inventory-panel__view-tab"
-            data-active={view === tab.userId}
-            onClick={() => switchView(tab.userId)}
+            data-active={view === currentUserId}
+            onClick={() => switchView(currentUserId)}
           >
-            {tab.label}
+            Mine
           </button>
-        ))}
-      </div>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'party'}
+            className="inventory-panel__view-tab"
+            data-active={view === 'party'}
+            onClick={() => switchView('party')}
+          >
+            Party
+          </button>
+        </div>
+      )}
+
+      {/* DM: avatar-strip character picker (includes Party as first slot) */}
+      {isDM && (
+        <InventoryCharacterPicker
+          members={pickerMembers}
+          selectedUserId={view === 'party' ? null : (view as UUID)}
+          onSelect={(userId) => switchView(userId ?? 'party')}
+        />
+      )}
 
       {showHistory ? (
         <InventoryHistoryOverlay
@@ -296,6 +365,16 @@ export function InventoryPanel({
         </div>
       ) : (
         <div className="inventory-panel__body">
+          {/* "Brom's Inventory" label when DM has a character selected */}
+          {viewedMember && (
+            <p className="inventory-panel__char-label">
+              {viewedMember.label}'s Inventory
+              {!viewedMember.isOnline && (
+                <span className="inventory-panel__char-label-offline"> · offline</span>
+              )}
+            </p>
+          )}
+
           <InventoryCurrencyRow
             wallet={currentWallet}
             isReadOnly={isReadOnly}
@@ -337,6 +416,7 @@ export function InventoryPanel({
                   key={item.id}
                   item={item}
                   isReadOnly={isReadOnly}
+                  canRemove={canRemove}
                   onRemove={removeItem}
                   onEdit={editItem}
                   onMove={moveItem}

@@ -97,6 +97,126 @@
   border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
+/* ─── DM character picker strip ────────────────────────────────────────────── */
+
+.inventory-char-picker {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.inventory-char-picker__strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+  width: calc(var(--knowledge-panels__right-rail-width) - 6.25rem);
+  max-width: calc(var(--knowledge-panels__right-rail-width) - 5.25rem);
+}
+
+.inventory-char-picker__strip::-webkit-scrollbar {
+  display: none;
+}
+
+.inventory-char-picker__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    color 0.12s,
+    background 0.12s;
+}
+
+.inventory-char-picker__arrow:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.inventory-char-picker__arrow--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.inventory-char-picker__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface-subtle) 82%);
+  color: var(--color-text-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    opacity 0.15s,
+    background 0.15s;
+}
+
+.inventory-char-picker__avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.inventory-char-picker__avatar:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+
+.inventory-char-picker__avatar--selected {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 28%, var(--color-surface-subtle) 72%);
+}
+
+.inventory-char-picker__avatar--offline {
+  opacity: 0.38;
+  filter: grayscale(60%);
+}
+
+.inventory-char-picker__avatar--party {
+  border-radius: var(--radius-sm);
+  background: color-mix(
+    in srgb,
+    var(--color-success, #4caf50) 18%,
+    var(--color-surface-subtle) 82%
+  );
+  color: var(--color-success, #4caf50);
+  font-size: 1rem;
+}
+
+/* ─── Selected character label ──────────────────────────────────────────────── */
+
+.inventory-panel__char-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.inventory-panel__char-label-offline {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
 /* ─── Loading / error states ───────────────────────────────────────────────── */
 
 .inventory-panel__state {
@@ -118,7 +238,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-height: 0;
+  min-height: calc(var(--session-knowledge-panel-height) - 0.5rem);
   overflow-y: auto;
   padding: var(--space-2) 0;
 }
@@ -187,6 +307,7 @@
   border-radius: var(--radius-sm);
   background: var(--color-surface-subtle);
   border: 1px solid transparent;
+  justify-content: space-between;
   min-height: 2rem;
   transition:
     border-color 0.12s,
@@ -397,6 +518,12 @@
   min-width: 0;
 }
 
+.inventory-item-row__move-card--offline {
+  opacity: 0.58;
+  filter: grayscale(60%);
+  cursor: not-allowed;
+}
+
 .inventory-item-row__move-card:hover:not(:disabled),
 .inventory-item-row__move-card:focus-visible {
   background: var(--color-surface-subtle);
@@ -424,7 +551,11 @@
 }
 
 .inventory-item-row__move-card--party .inventory-item-row__move-card-avatar {
-  background: color-mix(in srgb, var(--color-success, #4caf50) 22%, var(--color-surface-subtle) 78%);
+  background: color-mix(
+    in srgb,
+    var(--color-success, #4caf50) 22%,
+    var(--color-surface-subtle) 78%
+  );
   color: var(--color-success, #4caf50);
   font-size: 0.85rem;
   border-radius: var(--radius-sm);
@@ -692,7 +823,7 @@
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-sm);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-  max-height: 10rem;
+  max-height: 15rem;
   overflow-y: auto;
 }
 
