@@ -8,11 +8,12 @@
 import crypto from 'node:crypto'
 import { Router } from 'express'
 import type { Request, Response, NextFunction } from 'express'
-import { InventoryItemSource, isValidUUID } from '@shared'
+import { InventoryItemSource, MessageType, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
 import { verifyToken } from '@/services/auth.service'
 import { getCampaignForUser } from '@/repositories/campaign.repository'
-import { getSession } from '@/services/session/core.service'
+import { listSessionsByCampaign } from '@/repositories/session.repository'
+import { sendMessage } from '@/services/chat.service'
 import {
   getCampaignInventory,
   getInventoryHistory,
@@ -54,12 +55,59 @@ async function resolveCampaignRole(
   return (campaign.memberRole as 'PLAYER' | 'SPECTATOR') ?? null
 }
 
-/** Resolves the active session for a campaign if one exists. Returns null if none. */
+/** Resolves the ACTIVE or PAUSED session for a campaign. Returns null if none. */
 async function getActiveSession(campaignId: UUID) {
   try {
-    return await getSession(campaignId)
+    const sessions = await listSessionsByCampaign(campaignId)
+    return sessions.find((s) => s.state === 'ACTIVE' || s.state === 'PAUSED') ?? null
   } catch {
     return null
+  }
+}
+
+/**
+ * Emit a CHAT:MESSAGE_SENT system message and WS event after an inventory mutation.
+ * Only fires if the session is ACTIVE (paused sessions don't chat).
+ */
+async function broadcastInventorySystemMessage(params: {
+  session: { id: string; dmId: string; state: string }
+  content: string
+  actorUserId: UUID
+  wsManager: WebSocketManager | undefined
+}): Promise<void> {
+  const { session, content, actorUserId, wsManager } = params
+  if (session.state !== 'ACTIVE') return
+
+  const message = await sendMessage({
+    sessionId: session.id as UUID,
+    authorId: actorUserId,
+    authorUsername: 'SYSTEM',
+    dmId: session.dmId as UUID,
+    content,
+    type: MessageType.SYSTEM,
+  })
+
+  if (wsManager) {
+    const event: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'CHAT:MESSAGE_SENT',
+      version: 1,
+      userId: actorUserId,
+      userRole: 'SYSTEM' as any,
+      sessionId: session.id as UUID,
+      roomId: null,
+      timestamp: message.createdAt,
+      payload: {
+        messageId: message.id,
+        authorId: message.authorId,
+        authorUsername: message.authorUsername,
+        content: message.content,
+        type: message.type,
+        isDmOnly: false,
+        isOffTheRecord: false,
+      },
+    }
+    wsManager.broadcastEventToSession(session.id as UUID, event)
   }
 }
 
@@ -185,6 +233,16 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
       wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
     }
 
+    if (session) {
+      const dest = ownerType === 'party' ? 'party inventory' : 'character inventory'
+      await broadcastInventorySystemMessage({
+        session,
+        content: `[Inventory] ${item.name} ×${item.quantity} added to ${dest}.`,
+        actorUserId: user.userId as UUID,
+        wsManager,
+      })
+    }
+
     return res.status(201).json({ item })
   } catch (err) {
     logger.error('inventory.routes', 'Failed to add item', { campaignId, err })
@@ -247,6 +305,15 @@ router.patch('/:campaignId/items/:itemId', requireAuth, async (req: Request, res
       wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
     }
 
+    if (session) {
+      await broadcastInventorySystemMessage({
+        session,
+        content: `[Inventory] ${item.name} updated (×${item.quantity}).`,
+        actorUserId: user.userId as UUID,
+        wsManager,
+      })
+    }
+
     return res.json({ item })
   } catch (err) {
     logger.error('inventory.routes', 'Failed to edit item', { campaignId, itemId, err })
@@ -302,6 +369,15 @@ router.delete('/:campaignId/items/:itemId', requireAuth, async (req: Request, re
       }
       const memberIds = await listCampaignMemberIds(campaignId as UUID)
       wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
+    }
+
+    if (session) {
+      await broadcastInventorySystemMessage({
+        session,
+        content: `[Inventory] ${item.name} ×${item.quantity} removed.`,
+        actorUserId: user.userId as UUID,
+        wsManager,
+      })
     }
 
     return res.json({ success: true })
@@ -370,6 +446,16 @@ router.post(
         }
         const memberIds = await listCampaignMemberIds(campaignId as UUID)
         wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
+      }
+
+      if (session) {
+        const dest = toOwnerType === 'party' ? 'party inventory' : 'character inventory'
+        await broadcastInventorySystemMessage({
+          session,
+          content: `[Inventory] ${item.name} ×${item.quantity} moved to ${dest}.`,
+          actorUserId: user.userId as UUID,
+          wsManager,
+        })
       }
 
       return res.json({ item })
@@ -443,6 +529,22 @@ router.post('/:campaignId/currency', requireAuth, async (req: Request, res: Resp
       }
       const memberIds = await listCampaignMemberIds(campaignId as UUID)
       wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
+    }
+
+    if (session) {
+      const parts = (['pp', 'gp', 'ep', 'sp', 'cp'] as const)
+        .filter((k) => delta[k] && delta[k] !== 0)
+        .map((k) => `${delta[k] > 0 ? '+' : ''}${delta[k]}${k}`)
+        .join(', ')
+      const dest = ownerType === 'party' ? 'party purse' : 'character wallet'
+      if (parts) {
+        await broadcastInventorySystemMessage({
+          session,
+          content: `[Inventory] Currency updated (${parts}) in ${dest}.`,
+          actorUserId: user.userId as UUID,
+          wsManager,
+        })
+      }
     }
 
     return res.json({ wallet })

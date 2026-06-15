@@ -1,12 +1,13 @@
 /**
  * InventoryPanel — character and party inventory for the session workspace.
  * Rehydrates from REST on mount; stays in sync via INVENTORY:* WS events.
- * DM sees all character inventories; Player sees own + party; Spectator reads all.
+ * DM sees all character inventories (one tab per connected player + party).
+ * Player sees own + party; Spectator reads all in read-only mode.
  */
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import { Role, InventoryItemSource } from '@shared'
-import type { SessionState, UUID } from '@shared'
+import { Role, InventoryItemSource, SessionState } from '@shared'
+import type { UUID } from '@shared'
 import { useStore } from '@/state/store'
 import { Icon } from '@/components/ui/Icon'
 import '@/styles/components/workspaces/shared/panels/InventoryPanel.css'
@@ -23,6 +24,11 @@ export interface InventoryPanelProps {
   effectiveSessionRole: Role
   apiUrl: string
   authToken: string
+}
+
+interface CharacterTab {
+  userId: UUID
+  label: string
 }
 
 type InventoryView = 'party' | UUID
@@ -53,8 +59,27 @@ export function InventoryPanel({
     return bucket ? (Object.values(bucket) as CurrencyWalletState[]) : []
   })
 
+  // Get connected session members for DM character tabs
+  const sessionPresenceByUser = useStore(
+    (state) => state.sessionPresence[sessionId] ?? {}
+  )
+
   const isReadOnly = effectiveSessionRole === Role.SPECTATOR
   const isDM = effectiveSessionRole === Role.DM
+
+  // Character tabs: DM sees all connected players; Player sees only their own
+  const characterTabs = useMemo<CharacterTab[]>(() => {
+    if (isDM) {
+      return Object.values(sessionPresenceByUser)
+        .filter((p) => p.role === Role.PLAYER || p.role === undefined)
+        .map((p) => ({
+          userId: p.userId as UUID,
+          label: p.characterName || p.username,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+    }
+    return [{ userId: currentUserId, label: 'My Character' }]
+  }, [isDM, sessionPresenceByUser, currentUserId])
 
   // ─── Fetch on mount ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -79,36 +104,34 @@ export function InventoryPanel({
         }
       })
 
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [campaignId, apiUrl, authToken, hydrateInventory, setInventoryLoading])
 
   // ─── Derived data ─────────────────────────────────────────────────────────
-  const partyItems = useMemo(
-    () => allItems.filter((i) => i.ownerType === 'party').sort((a, b) => a.name.localeCompare(b.name)),
-    [allItems]
-  )
-  const myItems = useMemo(
+  const currentOwnerId = view === 'party' ? null : (view as UUID)
+  const currentOwnerType = view === 'party' ? ('party' as const) : ('character' as const)
+
+  const currentItems = useMemo(
     () =>
       allItems
-        .filter((i) => i.ownerType === 'character' && i.ownerId === currentUserId)
+        .filter(
+          (i) =>
+            i.ownerType === currentOwnerType &&
+            (currentOwnerType === 'party' ? true : i.ownerId === currentOwnerId)
+        )
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [allItems, currentUserId]
-  )
-  const partyWallet = useMemo(
-    () => allWallets.find((w) => w.ownerType === 'party') ?? null,
-    [allWallets]
-  )
-  const myWallet = useMemo(
-    () => allWallets.find((w) => w.ownerType === 'character' && w.ownerId === currentUserId) ?? null,
-    [allWallets, currentUserId]
+    [allItems, currentOwnerType, currentOwnerId]
   )
 
-  const currentItems = view === 'party' ? partyItems : myItems
-  const currentWallet = view === 'party' ? partyWallet : myWallet
-  const currentOwnerId = view === 'party' ? null : currentUserId
-  const currentOwnerType = view === 'party' ? ('party' as const) : ('character' as const)
+  const currentWallet = useMemo(
+    () =>
+      allWallets.find(
+        (w) =>
+          w.ownerType === currentOwnerType &&
+          (currentOwnerType === 'party' ? w.ownerId === null : w.ownerId === currentOwnerId)
+      ) ?? null,
+    [allWallets, currentOwnerType, currentOwnerId]
+  )
 
   // ─── Mutation helpers ─────────────────────────────────────────────────────
   const removeItem = useCallback(
@@ -121,14 +144,44 @@ export function InventoryPanel({
     [apiUrl, campaignId, authToken]
   )
 
+  const editItem = useCallback(
+    async (itemId: UUID, updates: { name?: string; quantity?: number; notes?: string | null }) => {
+      await fetch(`${apiUrl}/api/inventory/${campaignId}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+    },
+    [apiUrl, campaignId, authToken]
+  )
+
+  const moveItem = useCallback(
+    async (itemId: UUID, toOwnerType: 'party' | 'character', toOwnerId: UUID | null) => {
+      await fetch(`${apiUrl}/api/inventory/${campaignId}/items/${itemId}/transfer`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toOwnerType, toOwnerId }),
+      })
+    },
+    [apiUrl, campaignId, authToken]
+  )
+
+  const adjustCurrency = useCallback(
+    async (delta: Record<string, number>) => {
+      await fetch(`${apiUrl}/api/inventory/${campaignId}/currency`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ownerType: currentOwnerType, ownerId: currentOwnerId, delta }),
+      })
+    },
+    [apiUrl, campaignId, authToken, currentOwnerType, currentOwnerId]
+  )
+
   const handleAddItem = useCallback(
     async (name: string, quantity: number, notes: string) => {
       await fetch(`${apiUrl}/api/inventory/${campaignId}/items`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ownerType: currentOwnerType,
           ownerId: currentOwnerId,
@@ -141,6 +194,20 @@ export function InventoryPanel({
       setShowAddForm(false)
     },
     [apiUrl, campaignId, authToken, currentOwnerType, currentOwnerId]
+  )
+
+  const switchView = (v: InventoryView) => {
+    setView(v)
+    setShowAddForm(false)
+  }
+
+  // Transfer destinations for the Move To menu
+  const moveTargets = useMemo<Array<{ label: string; ownerType: 'party' | 'character'; ownerId: UUID | null }>>(
+    () => [
+      { label: 'Party', ownerType: 'party', ownerId: null },
+      ...characterTabs.map((t) => ({ label: t.label, ownerType: 'character' as const, ownerId: t.userId })),
+    ],
+    [characterTabs]
   )
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -160,22 +227,23 @@ export function InventoryPanel({
           aria-selected={view === 'party'}
           className="inventory-panel__view-tab"
           data-active={view === 'party'}
-          onClick={() => { setView('party'); setShowAddForm(false) }}
+          onClick={() => switchView('party')}
         >
           Party
         </button>
-        {!isDM && (
+        {characterTabs.map((tab) => (
           <button
+            key={tab.userId}
             type="button"
             role="tab"
-            aria-selected={view === currentUserId}
+            aria-selected={view === tab.userId}
             className="inventory-panel__view-tab"
-            data-active={view === currentUserId}
-            onClick={() => { setView(currentUserId); setShowAddForm(false) }}
+            data-active={view === tab.userId}
+            onClick={() => switchView(tab.userId)}
           >
-            My Character
+            {tab.label}
           </button>
-        )}
+        ))}
       </div>
 
       {isLoading ? (
@@ -189,7 +257,11 @@ export function InventoryPanel({
         </div>
       ) : (
         <div className="inventory-panel__body">
-          <InventoryCurrencyRow wallet={currentWallet} isReadOnly={isReadOnly} />
+          <InventoryCurrencyRow
+            wallet={currentWallet}
+            isReadOnly={isReadOnly}
+            onAdjust={adjustCurrency}
+          />
 
           <div className="inventory-panel__items-header">
             <span className="inventory-panel__items-label">
@@ -222,10 +294,11 @@ export function InventoryPanel({
                   item={item}
                   isReadOnly={isReadOnly}
                   onRemove={removeItem}
-                  apiUrl={apiUrl}
-                  authToken={authToken}
-                  campaignId={campaignId}
-                  sessionId={sessionId}
+                  onEdit={editItem}
+                  onMove={moveItem}
+                  moveTargets={moveTargets.filter(
+                    (t) => !(t.ownerType === item.ownerType && t.ownerId === item.ownerId)
+                  )}
                 />
               ))}
             </ul>

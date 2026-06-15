@@ -37,10 +37,14 @@
   gap: var(--space-1);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border-soft);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
+.inventory-panel__view-tabs::-webkit-scrollbar { display: none; }
+
 .inventory-panel__view-tab {
-  flex: 1;
+  flex-shrink: 0;
   padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-xs);
   font-weight: 500;
@@ -49,6 +53,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  white-space: nowrap;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 
@@ -74,9 +79,7 @@
   color: var(--color-text-muted);
 }
 
-.inventory-panel__state--error {
-  color: var(--color-error);
-}
+.inventory-panel__state--error { color: var(--color-error); }
 
 /* ─── Body ─────────────────────────────────────────────────────────────────── */
 
@@ -121,7 +124,6 @@
 
 .inventory-panel__add-btn:hover {
   background: color-mix(in srgb, var(--color-accent) 18%, transparent);
-  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
 }
 
 .inventory-panel__empty {
@@ -142,30 +144,51 @@
   gap: 2px;
 }
 
-/* ─── Item row ─────────────────────────────────────────────────────────────── */
+/* ─── Item row — view ──────────────────────────────────────────────────────── */
 
 .inventory-item-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   background: var(--color-surface-subtle);
   border: 1px solid transparent;
+  min-height: 2rem;
   transition: border-color 0.12s, background 0.12s;
 }
 
-.inventory-item-row:hover {
-  border-color: var(--color-border-soft);
+.inventory-item-row:hover { border-color: var(--color-border-soft); }
+
+.inventory-item-row--danger {
+  border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
+  background: color-mix(in srgb, var(--color-error) 6%, var(--color-surface-subtle));
+}
+
+.inventory-item-row--edit,
+.inventory-item-row--move {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 .inventory-item-row__qty {
+  flex-shrink: 0;
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text-secondary);
   min-width: 2rem;
   text-align: right;
+}
+
+.inventory-item-row__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
 }
 
 .inventory-item-row__name {
@@ -177,39 +200,167 @@
 }
 
 .inventory-item-row__notes {
-  display: none; /* shown only on wider panels via container query if needed */
+  font-size: 10px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.inventory-item-row__remove {
+/* ─── Item row — actions ───────────────────────────────────────────────────── */
+
+.inventory-item-row__actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.inventory-item-row:hover .inventory-item-row__actions { opacity: 1; }
+
+.inventory-item-row__action-icon {
   display: flex;
   align-items: center;
   padding: 2px;
+  font-size: 14px;
   color: var(--color-text-muted);
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.12s, color 0.12s;
+  transition: color 0.12s, background 0.12s;
 }
 
-.inventory-item-row:hover .inventory-item-row__remove {
-  opacity: 1;
+.inventory-item-row__action-icon:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
 }
 
-.inventory-item-row__remove:hover {
-  color: var(--color-error);
+.inventory-item-row__action-icon--danger:hover { color: var(--color-error); }
+
+/* ─── Item row — edit mode ─────────────────────────────────────────────────── */
+
+.inventory-item-row__edit-fields {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inventory-item-row__edit-name,
+.inventory-item-row__edit-notes {
+  flex: 1;
+  padding: 3px var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.inventory-item-row__edit-name:focus,
+.inventory-item-row__edit-notes:focus { border-color: var(--color-accent); }
+
+.inventory-item-row__edit-qty {
+  width: 3.5rem;
+  padding: 3px var(--space-1);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.inventory-item-row__edit-notes { width: 100%; }
+
+.inventory-item-row__edit-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inventory-item-row__action-btn {
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.inventory-item-row__action-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.inventory-item-row__action-btn--primary {
+  color: var(--color-surface);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.inventory-item-row__action-btn--primary:hover { opacity: 0.85; }
+.inventory-item-row__action-btn--primary:disabled { opacity: 0.5; cursor: default; }
+
+.inventory-item-row__action-btn--danger {
+  color: var(--color-surface);
+  background: var(--color-error);
+  border-color: var(--color-error);
+}
+
+/* ─── Item row — move mode ─────────────────────────────────────────────────── */
+
+.inventory-item-row__move-targets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.inventory-item-row__move-target {
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.inventory-item-row__move-target:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
 }
 
 /* ─── Currency row ─────────────────────────────────────────────────────────── */
 
 .inventory-currency-row {
   display: flex;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-1);
   border-radius: var(--radius-sm);
   background: var(--color-surface-subtle);
   border: 1px solid var(--color-border-soft);
+}
+
+.inventory-currency-row--edit {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+.inventory-currency-row__coins {
+  display: flex;
+  gap: var(--space-1);
+  flex: 1;
   flex-wrap: wrap;
 }
 
@@ -219,13 +370,11 @@
   align-items: center;
   flex: 1;
   min-width: 2.5rem;
-  opacity: 0.45;
+  opacity: 0.4;
   transition: opacity 0.15s;
 }
 
-.inventory-currency-row__coin[data-has-value='true'] {
-  opacity: 1;
-}
+.inventory-currency-row__coin[data-has-value='true'] { opacity: 1; }
 
 .inventory-currency-row__amount {
   font-size: var(--font-size-sm);
@@ -245,7 +394,65 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   align-self: center;
-  padding: 0 var(--space-1);
+}
+
+.inventory-currency-row__edit-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+
+.inventory-currency-row:hover .inventory-currency-row__edit-btn { opacity: 1; }
+.inventory-currency-row__edit-btn:hover { color: var(--color-accent); }
+
+/* ─── Currency edit mode ───────────────────────────────────────────────────── */
+
+.inventory-currency-row__edit-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.inventory-currency-row__edit-coins {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.inventory-currency-row__edit-coin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 2.5rem;
+}
+
+.inventory-currency-row__edit-input {
+  width: 100%;
+  padding: 2px var(--space-1);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.inventory-currency-row__edit-input:focus { border-color: var(--color-accent); }
+
+.inventory-currency-row__edit-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 /* ─── Add item form ────────────────────────────────────────────────────────── */
@@ -279,9 +486,7 @@
 }
 
 .inventory-add-form__name:focus,
-.inventory-add-form__notes:focus {
-  border-color: var(--color-accent);
-}
+.inventory-add-form__notes:focus { border-color: var(--color-accent); }
 
 .inventory-add-form__qty {
   width: 3.5rem;
@@ -295,13 +500,8 @@
   text-align: center;
 }
 
-.inventory-add-form__qty:focus {
-  border-color: var(--color-accent);
-}
-
-.inventory-add-form__notes {
-  width: 100%;
-}
+.inventory-add-form__qty:focus { border-color: var(--color-accent); }
+.inventory-add-form__notes { width: 100%; }
 
 .inventory-add-form__actions {
   display: flex;
@@ -321,10 +521,7 @@
   transition: opacity 0.15s;
 }
 
-.inventory-add-form__save:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
+.inventory-add-form__save:disabled { opacity: 0.5; cursor: default; }
 
 .inventory-add-form__cancel {
   padding: var(--space-1) var(--space-2);
