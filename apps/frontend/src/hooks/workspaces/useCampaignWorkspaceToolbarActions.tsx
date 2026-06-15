@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef } from 'react'
 import { type CoreWsState } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import type { CampaignExportBundle } from '@/types/session/campaign'
+import { Icon } from '@/components/ui/Icon'
 
 function isValidExportBundle(raw: unknown): raw is CampaignExportBundle {
   if (!raw || typeof raw !== 'object') return false
@@ -73,9 +74,7 @@ export function useCampaignWorkspaceToolbarActions({
             disabled={isCreatingCampaign}
             aria-label="Create campaign"
           >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              add_circle
-            </span>
+            <Icon name="add_circle" />
           </TooltipTrigger>
           <TooltipContent side="bottom" align="end">
             Create Campaign
@@ -90,9 +89,7 @@ export function useCampaignWorkspaceToolbarActions({
             disabled={isJoiningCampaign}
             aria-label="Join campaign"
           >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              group_add
-            </span>
+            <Icon name="group_add" />
           </TooltipTrigger>
           <TooltipContent side="bottom" align="end">
             Join Campaign
@@ -108,9 +105,7 @@ export function useCampaignWorkspaceToolbarActions({
               disabled={isCreatingCampaign}
               aria-label="Import campaign"
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                upload_file
-              </span>
+              <Icon name="upload_file" />
             </TooltipTrigger>
             <TooltipContent side="bottom" align="end">
               Import Campaign

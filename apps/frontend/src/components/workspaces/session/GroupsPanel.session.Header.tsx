@@ -39,9 +39,7 @@ export function GroupsPanelSessionHeader({
             onClick={onCreateGroup}
             disabled={isCreating || !newGroupName.trim()}
           >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              group_add
-            </span>
+            <Icon name="group_add" />
           </button>
         </div>
       ) : null}

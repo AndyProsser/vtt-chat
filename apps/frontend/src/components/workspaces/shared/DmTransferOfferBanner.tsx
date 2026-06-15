@@ -2,17 +2,16 @@ import { useCallback, useState } from 'react'
 import { useStore } from '@/hooks/useStore'
 import { showToast } from '@/state/toastCenter'
 import type { UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 
 interface DmTransferOfferBannerProps {
   campaignId: UUID
 }
 
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.trim() || window.location.origin
+const API_URL =
+  (import.meta.env.VITE_API_URL as string | undefined)?.trim() || window.location.origin
 
-async function respondToTransfer(
-  campaignId: UUID,
-  action: 'accept' | 'decline'
-): Promise<boolean> {
+async function respondToTransfer(campaignId: UUID, action: 'accept' | 'decline'): Promise<boolean> {
   const token = sessionStorage.getItem('authToken') ?? ''
   const res = await fetch(`${API_URL}/api/campaigns/${campaignId}/dm/handoff/${action}`, {
     method: 'POST',
@@ -67,9 +66,7 @@ export function DmTransferOfferBanner({ campaignId }: DmTransferOfferBannerProps
   return (
     <div className="dm-transfer-offer-banner" role="alert" aria-live="polite">
       <div className="dm-transfer-offer-banner__icon">
-        <span className="material-symbols-outlined" aria-hidden="true">
-          swap_horiz
-        </span>
+        <Icon name="swap_horiz" />
       </div>
       <div className="dm-transfer-offer-banner__body">
         <strong className="dm-transfer-offer-banner__title">DM Handoff Offer</strong>

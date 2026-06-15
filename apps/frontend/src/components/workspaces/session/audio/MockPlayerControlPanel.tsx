@@ -7,6 +7,7 @@ import {
 import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { MockSimulationConfig, MockSimulationStatusResponse } from '@/types/mockSimulation'
 import '@/styles/components/workspaces/session/audio/MockPlayerControlPanel.css'
+import { Icon } from '@/components/ui/Icon'
 
 interface MockPlayerControlPanelProps {
   apiUrl: string
@@ -302,9 +303,7 @@ export function MockPlayerControlPanel({
                   disabled={isLoading}
                   aria-label="Reroll with same player count"
                 >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    refresh
-                  </span>
+                  <Icon name="refresh" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top">Reroll with same player count</TooltipContent>
@@ -393,9 +392,7 @@ export function MockPlayerControlPanel({
           onClick={handleRemoveAll}
           disabled={isLoading}
         >
-          <span className="material-symbols-outlined" aria-hidden="true">
-            delete
-          </span>
+          <Icon name="delete" />
           REMOVE ALL MOCKS
         </button>
 

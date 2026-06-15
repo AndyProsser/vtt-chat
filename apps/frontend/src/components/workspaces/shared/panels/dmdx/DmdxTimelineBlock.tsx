@@ -1,5 +1,6 @@
 import type { DmdxParsed } from '@/utils/dmdx/dmdxParser'
 import { dmdxArr, dmdxStr } from '@/utils/dmdx/dmdxParser'
+import { Icon } from '@/components/ui/Icon'
 
 interface TimelineEvent {
   label: string
@@ -33,9 +34,7 @@ export function DmdxTimelineBlock({ parsed }: { parsed: DmdxParsed }) {
   return (
     <div className="dmdx-block dmdx-block--timeline">
       <div className="dmdx-block__header">
-        <span className="material-symbols-outlined dmdx-timeline__icon" aria-hidden="true">
-          timeline
-        </span>
+        <Icon name="timeline" className="dmdx-timeline__icon" />
         <div className="dmdx-block__header-text">
           <span className="dmdx-block__type-label">Timeline</span>
           {title ? <h4 className="dmdx-block__title">{title}</h4> : null}

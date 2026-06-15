@@ -585,9 +585,7 @@ export function RoomSelector({
           <Icon name="rooms" /> Groups
           {activeTakeoverUserId ? (
             <span className="room-selector-header__takeover-pill" role="status" aria-live="polite">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                swap_horiz
-              </span>
+              <Icon name="swap_horiz" />
               Takeover Active
             </span>
           ) : null}

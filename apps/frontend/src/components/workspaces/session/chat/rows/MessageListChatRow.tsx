@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { PreparedMessage } from '../MessageList'
 import { TYPE_LABEL_BY_VARIANT } from '../MessageList.helpers'
 import { getAuthorInitial } from '@/utils/format'
+import { Icon } from '@/components/ui/Icon'
 
 interface MessageListChatRowProps {
   prepared: PreparedMessage
@@ -220,9 +221,7 @@ export function MessageListChatRow({ prepared, activeRoomId }: MessageListChatRo
                               className="session-message-list__message-whisper-connector"
                               aria-hidden="true"
                             >
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                subdirectory_arrow_right
-                              </span>
+                              <Icon name="subdirectory_arrow_right" />
                             </span>
                             <span className="session-message-list__message-whisper-route-label">
                               {line}
@@ -248,9 +247,7 @@ export function MessageListChatRow({ prepared, activeRoomId }: MessageListChatRo
                               className="session-message-list__message-whisper-connector"
                               aria-hidden="true"
                             >
-                              <span className="material-symbols-outlined" aria-hidden="true">
-                                subdirectory_arrow_left
-                              </span>
+                              <Icon name="subdirectory_arrow_left" />
                             </span>
                           </div>
                         ))}

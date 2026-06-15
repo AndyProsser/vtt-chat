@@ -37,9 +37,7 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
               disabled={props.isSaving}
               onClick={props.onExport}
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                file_download
-              </span>
+              <Icon name="file_download" />
             </button>
             <button
               type="button"

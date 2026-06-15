@@ -4,6 +4,7 @@ import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import type { NotesShareUser } from '@/types/notesShare'
 import type { NotesSurfaceTarget } from '@/types/notesPublish'
+import { Icon } from '@/components/ui/Icon'
 
 interface NoteSurfacePopoverProps {
   open: boolean
@@ -103,12 +104,7 @@ export function NoteSurfaceDialog({
               onClick={() => setScope('PARTY')}
               className={`notes-surface-popover__scope${scope === 'PARTY' ? ' is-selected' : ''}`}
             >
-              <span
-                className="material-symbols-outlined notes-surface-popover__scope-icon"
-                aria-hidden="true"
-              >
-                groups
-              </span>
+              <Icon name="groups" className="notes-surface-popover__scope-icon" />
               <span className="notes-surface-popover__scope-label">All Players</span>
             </button>
 
@@ -120,12 +116,7 @@ export function NoteSurfaceDialog({
               onClick={() => setScope('SELECTED')}
               className={`notes-surface-popover__scope${scope === 'SELECTED' ? ' is-selected' : ''}`}
             >
-              <span
-                className="material-symbols-outlined notes-surface-popover__scope-icon"
-                aria-hidden="true"
-              >
-                person_check
-              </span>
+              <Icon name="person_check" className="notes-surface-popover__scope-icon" />
               <span className="notes-surface-popover__scope-label">Choose Players</span>
             </button>
           </div>

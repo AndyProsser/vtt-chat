@@ -6,6 +6,7 @@
 
 import React from 'react'
 import type { CampaignGroup } from '@/state/campaignGroupsSlice'
+import { Icon } from '@/components/ui/Icon'
 
 interface GroupCardProps {
   group: CampaignGroup
@@ -31,9 +32,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
       <div className="editor-group-card__header">
         <div>
           <div className="editor-group-card__badge">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              group_work
-            </span>
+            <Icon name="group_work" />
             Group
           </div>
           <h3 className="editor-group-card__title">{group.name}</h3>
@@ -46,9 +45,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
           disabled={isDeleting}
           className="editor-groups-button editor-groups-button--danger"
         >
-          <span className="material-symbols-outlined" aria-hidden="true">
-            delete
-          </span>
+          <Icon name="delete" />
           Delete
         </button>
       </div>
@@ -68,9 +65,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
             onClick={onSetEnvironment}
             className="editor-groups-button editor-groups-button--primary"
           >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              forest
-            </span>
+            <Icon name="forest" />
             Set
           </button>
           {group.defaultEnvironmentName && (

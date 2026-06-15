@@ -9,6 +9,7 @@ import { memo } from 'react'
 import * as Popover from '@radix-ui/react-popover'
 import type { ChatCommandDefinition, Role } from '@shared'
 import { getCommandsForRole } from '@/utils/chatCommandParser'
+import { Icon } from '@/components/ui/Icon'
 
 interface CommandHelpPopoverProps {
   role: Role | string
@@ -76,7 +77,7 @@ function CommandHelpPopoverComponent({ role, onInsert }: CommandHelpPopoverProps
           <div className="chat-command-help__header">
             <span className="chat-command-help__title">Chat Commands</span>
             <Popover.Close className="chat-command-help__close" aria-label="Close">
-              <span className="material-symbols-outlined" aria-hidden="true">close</span>
+              <Icon name="close" />
             </Popover.Close>
           </div>
 

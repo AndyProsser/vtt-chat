@@ -165,9 +165,7 @@ export const GroupsPanel: React.FC<GroupsPanelProps> = ({
             disabled={isLoading}
             className="editor-groups-button editor-groups-button--primary"
           >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              add
-            </span>
+            <Icon name="add" />
             Create Group
           </button>
         </div>
@@ -193,9 +191,7 @@ export const GroupsPanel: React.FC<GroupsPanelProps> = ({
           <div className="editor-groups-panel__empty">
             <div className="editor-groups-panel__empty-card">
               <div className="editor-groups-panel__empty-icon">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  groups
-                </span>
+                <Icon name="groups" />
               </div>
               <h3 className="editor-groups-panel__empty-title">No groups planned yet</h3>
               <p className="editor-groups-panel__empty-copy">
@@ -207,9 +203,7 @@ export const GroupsPanel: React.FC<GroupsPanelProps> = ({
                 disabled={isLoading}
                 className="editor-groups-button editor-groups-button--primary"
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  add
-                </span>
+                <Icon name="add" />
                 Create First Group
               </button>
             </div>

@@ -4,6 +4,7 @@ import { SessionState } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { showToast } from '@/state/toastCenter'
 import type { UUID } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 
 /** Only online members can receive a handoff offer. */
 const ONLINE_STATUSES = new Set(['HERE', 'AWAY', 'LOBBY'])
@@ -192,9 +193,7 @@ export function TransferDMSection({ campaignId, sessionState }: TransferDMSectio
           <DialogPrimitive.Overlay className="session-modal-backdrop session-modal-backdrop--overlay" />
           <DialogPrimitive.Content className="session-modal session-modal--confirm-dialog session-modal--floating csp-delete-dialog csp-delete-dialog--anchored">
             <DialogPrimitive.Title className="csp-delete-dialog-title">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                swap_horiz
-              </span>
+              <Icon name="swap_horiz" />
               Transfer DM Role
             </DialogPrimitive.Title>
 
@@ -209,7 +208,11 @@ export function TransferDMSection({ campaignId, sessionState }: TransferDMSectio
                 to receive the offer.
               </p>
             ) : (
-              <div className="csp-dm-transfer-member-list" role="listbox" aria-label="Select player">
+              <div
+                className="csp-dm-transfer-member-list"
+                role="listbox"
+                aria-label="Select player"
+              >
                 {members.map((m) => {
                   const isSelected = selectedUserId === m.userId
                   return (
@@ -238,14 +241,7 @@ export function TransferDMSection({ campaignId, sessionState }: TransferDMSectio
                           <span className="csp-dm-transfer-member-username">@{m.username}</span>
                         </span>
                       </span>
-                      {isSelected && (
-                        <span
-                          className="material-symbols-outlined csp-dm-transfer-member-check"
-                          aria-hidden="true"
-                        >
-                          check
-                        </span>
-                      )}
+                      {isSelected && <Icon name="check" className="csp-dm-transfer-member-check" />}
                     </button>
                   )
                 })}

@@ -195,13 +195,9 @@ function RoomGroupCardComponent({
           >
             <span className="room-selector-item-name">
               {isWhisperRoomGroup ? (
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  lock
-                </span>
+                <Icon name="lock" />
               ) : room.type === RoomType.GROUP ? (
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  groups
-                </span>
+                <Icon name="groups" />
               ) : (
                 <Icon name="voice" />
               )}
@@ -261,9 +257,7 @@ function RoomGroupCardComponent({
                           void onSetDmVoiceRoom(room.id)
                         }}
                       >
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          record_voice_over
-                        </span>
+                        <Icon name="record_voice_over" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top">

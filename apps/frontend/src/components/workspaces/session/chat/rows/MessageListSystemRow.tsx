@@ -2,6 +2,7 @@ import { NoteSharedCard } from '@/components/workspaces/shared/panels/NoteShared
 import type { PreparedMessage } from '../MessageList'
 import { BOOKEND_META } from '../MessageList.helpers'
 import { formatDuration } from '../MessageList.helpers'
+import { Icon } from '@/components/ui/Icon'
 
 interface MessageListSystemRowProps {
   prepared: PreparedMessage
@@ -36,12 +37,7 @@ export function MessageListSystemRow({ prepared }: MessageListSystemRowProps) {
     return (
       <article className="session-message-list__session-summary">
         <div className="session-message-list__session-summary-header">
-          <span
-            className="session-message-list__session-summary-icon material-symbols-outlined"
-            aria-hidden="true"
-          >
-            summarize
-          </span>
+          <Icon name="summarize" className="session-message-list__session-summary-icon" />
           <span className="session-message-list__session-summary-title">{stats.sessionName}</span>
         </div>
         <dl className="session-message-list__session-summary-stats">
@@ -79,12 +75,7 @@ export function MessageListSystemRow({ prepared }: MessageListSystemRowProps) {
     const recapLabel = recapPrefix === '[Campaign Brief]' ? 'Campaign Brief' : 'Last Session'
     return (
       <article className="session-message-list__session-recap">
-        <span
-          className="session-message-list__session-recap-icon material-symbols-outlined"
-          aria-hidden="true"
-        >
-          menu_book
-        </span>
+        <Icon name="menu_book" className="session-message-list__session-recap-icon" />
         <div className="session-message-list__session-recap-body">
           <span className="session-message-list__session-recap-label">{recapLabel}</span>
           <p className="session-message-list__session-recap-text">{recapBody}</p>

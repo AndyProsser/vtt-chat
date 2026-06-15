@@ -99,9 +99,7 @@ export const CampaignSettingsModal = memo(function CampaignSettingsModal(props: 
                   aria-label="Close settings"
                   onClick={props.onCloseCampaignSettings}
                 >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    close
-                  </span>
+                  <Icon name="close" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Close settings</TooltipContent>

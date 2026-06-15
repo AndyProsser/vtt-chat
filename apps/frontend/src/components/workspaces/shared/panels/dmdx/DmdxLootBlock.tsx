@@ -1,5 +1,6 @@
 import type { DmdxParsed } from '@/utils/dmdx/dmdxParser'
 import { dmdxArr, dmdxStr } from '@/utils/dmdx/dmdxParser'
+import { Icon } from '@/components/ui/Icon'
 
 export function DmdxLootBlock({ parsed, id }: { parsed: DmdxParsed; id?: string }) {
   const items = dmdxArr(parsed, 'items')
@@ -21,9 +22,7 @@ export function DmdxLootBlock({ parsed, id }: { parsed: DmdxParsed; id?: string 
         <ul className="dmdx-loot__items">
           {items.map((item, index) => (
             <li key={index} className="dmdx-loot__item">
-              <span className="material-symbols-outlined dmdx-loot__item-icon" aria-hidden="true">
-                diamond
-              </span>
+              <Icon name="diamond" className="dmdx-loot__item-icon" />
               {item}
             </li>
           ))}

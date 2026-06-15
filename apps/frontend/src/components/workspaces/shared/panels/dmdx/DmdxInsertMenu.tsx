@@ -8,6 +8,7 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { Icon } from '@/components/ui/Icon'
 
 interface DmdxBlockOption {
   type: string
@@ -211,9 +212,7 @@ export function DmdxInsertMenu({ onInsert }: DmdxInsertMenuProps) {
                 setOpen((prev) => !prev)
               }}
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                add_box
-              </span>
+              <Icon name="add_box" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="top">Insert DMDX block</TooltipContent>

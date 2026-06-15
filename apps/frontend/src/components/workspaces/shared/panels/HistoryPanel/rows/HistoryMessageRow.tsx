@@ -1,6 +1,7 @@
 import type { SessionHistoryMessage } from '@/types/history'
 import { getAuthorInitial } from '@/utils/format'
 import { toMessageVariant, toTypeIcon } from '../HistoryPanel.helpers'
+import { Icon } from '@/components/ui/Icon'
 
 interface HistoryMessageRowProps {
   message: SessionHistoryMessage
@@ -84,9 +85,7 @@ export function HistoryMessageRow({
                             className="session-message-list__message-whisper-connector"
                             aria-hidden="true"
                           >
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              subdirectory_arrow_right
-                            </span>
+                            <Icon name="subdirectory_arrow_right" />
                           </span>
                           <span className="session-message-list__message-whisper-route-label">
                             {line}
@@ -112,9 +111,7 @@ export function HistoryMessageRow({
                             className="session-message-list__message-whisper-connector"
                             aria-hidden="true"
                           >
-                            <span className="material-symbols-outlined" aria-hidden="true">
-                              subdirectory_arrow_left
-                            </span>
+                            <Icon name="subdirectory_arrow_left" />
                           </span>
                         </div>
                       ))}

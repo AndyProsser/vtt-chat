@@ -20,6 +20,7 @@ import React from 'react'
 import { type UUID } from '@shared'
 import { useIsUserMuted } from '@/hooks/useIsUserMuted'
 import { useStore } from '@/state/store'
+import { Icon } from '@/components/ui/Icon'
 
 interface MicMutedIndicatorProps {
   sessionId: UUID
@@ -54,9 +55,7 @@ function MicMutedIndicatorImpl({
 
   return (
     <span className={composed} aria-label="Muted microphone" role="img">
-      <span className="material-symbols-outlined" aria-hidden="true">
-        mic_off
-      </span>
+      <Icon name="mic_off" />
     </span>
   )
 }

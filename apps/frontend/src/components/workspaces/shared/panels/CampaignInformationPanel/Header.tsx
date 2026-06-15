@@ -56,9 +56,7 @@ export function CampaignInformationHeader({
                 onClick={onCancel}
                 disabled={isSaving}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  undo
-                </span>
+                <Icon name="undo" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Cancel editing</TooltipContent>
@@ -84,9 +82,7 @@ export function CampaignInformationHeader({
                 aria-label="Edit campaign information"
                 onClick={onStartEditing}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  edit
-                </span>
+                <Icon name="edit" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Edit</TooltipContent>

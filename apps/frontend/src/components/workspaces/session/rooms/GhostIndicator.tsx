@@ -12,6 +12,7 @@
 import React from 'react'
 import { type UUID } from '@shared'
 import { useStore } from '@/state/store'
+import { Icon } from '@/components/ui/Icon'
 
 interface GhostIndicatorProps {
   sessionId: UUID
@@ -29,9 +30,7 @@ function GhostIndicatorImpl({ sessionId, userId, className }: GhostIndicatorProp
 
   return (
     <span className={composed} aria-label="Ghost mode" role="img">
-      <span className="material-symbols-outlined" aria-hidden="true">
-        visibility_off
-      </span>
+      <Icon name="visibility_off" />
     </span>
   )
 }

@@ -25,6 +25,7 @@ import type { Message } from '@/types/chat'
 import { generateClientId } from '@/utils/uuid'
 import { showToast } from '@/state/toastCenter'
 import '@/styles/components/workspaces/session/chat/ChatWindow.css'
+import { Icon } from '@/components/ui/Icon'
 
 interface ChatWindowProps {
   apiUrl: string
@@ -387,12 +388,7 @@ function ChatWindowComponent({
                 onClick={revealOlderGreenroomHistory}
                 aria-label="Load earlier messages"
               >
-                <span
-                  className="material-symbols-outlined session-chat-window__hidden-older-icon"
-                  aria-hidden="true"
-                >
-                  history
-                </span>
+                <Icon name="history" className="session-chat-window__hidden-older-icon" />
                 <span className="session-chat-window__hidden-older-text">
                   Load earlier messages
                 </span>

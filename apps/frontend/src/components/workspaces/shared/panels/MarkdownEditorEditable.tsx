@@ -7,6 +7,7 @@ import { Fragment, useEffect, useRef, useState, useCallback, useMemo } from 'rea
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { DmdxInsertMenu } from './dmdx/DmdxInsertMenu'
 import type { MarkdownEditorInsertAction, MarkdownEditorProps } from './MarkdownEditor'
+import { Icon } from '@/components/ui/Icon'
 
 const FULL_HEADING_LEVELS: Level[] = [2, 3, 4]
 
@@ -283,9 +284,7 @@ export function MarkdownEditorEditable({
                 aria-label="Bullet list"
                 aria-pressed={isActive('bulletList')}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  format_list_bulleted
-                </span>
+                <Icon name="format_list_bulleted" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Bullet list</TooltipContent>
@@ -303,9 +302,7 @@ export function MarkdownEditorEditable({
                 aria-label="Ordered list"
                 aria-pressed={isActive('orderedList')}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  format_list_numbered
-                </span>
+                <Icon name="format_list_numbered" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Ordered list</TooltipContent>
@@ -324,9 +321,7 @@ export function MarkdownEditorEditable({
                   aria-label="Blockquote"
                   aria-pressed={isActive('blockquote')}
                 >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    format_quote
-                  </span>
+                  <Icon name="format_quote" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top">Blockquote</TooltipContent>

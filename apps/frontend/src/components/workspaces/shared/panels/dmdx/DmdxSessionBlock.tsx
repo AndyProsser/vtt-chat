@@ -1,5 +1,6 @@
 import type { DmdxParsed } from '@/utils/dmdx/dmdxParser'
 import { dmdxArr, dmdxStr } from '@/utils/dmdx/dmdxParser'
+import { Icon } from '@/components/ui/Icon'
 
 export function DmdxSessionBlock({ parsed }: { parsed: DmdxParsed }) {
   const date = dmdxStr(parsed, 'date')
@@ -13,9 +14,7 @@ export function DmdxSessionBlock({ parsed }: { parsed: DmdxParsed }) {
       <div className="dmdx-block__header">
         <div className="dmdx-block__header-text">
           <span className="dmdx-block__type-label">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              menu_book
-            </span>
+            <Icon name="menu_book" />
             Session Log
           </span>
           <div className="dmdx-block__tag-row">

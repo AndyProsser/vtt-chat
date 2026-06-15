@@ -8,13 +8,24 @@
 import { Fragment } from 'react'
 import type { PreparedMessage } from '../MessageList'
 import type { RollResultMessageMetadata } from '@shared'
+import { Icon } from '@/components/ui/Icon'
 
 interface MessageListRollRowProps {
   prepared: PreparedMessage
 }
 
 export function MessageListRollRow({ prepared }: MessageListRollRowProps) {
-  const { msg, isSelf, isGroupedWithPrevious, showRoomShift, showDaySeparator, dayLabel, relativeTime, roomName, authorName } = prepared
+  const {
+    msg,
+    isSelf,
+    isGroupedWithPrevious,
+    showRoomShift,
+    showDaySeparator,
+    dayLabel,
+    relativeTime,
+    roomName,
+    authorName,
+  } = prepared
 
   const rollResult = (msg.metadata as any)?.rollResult as RollResultMessageMetadata | undefined
 
@@ -44,7 +55,7 @@ export function MessageListRollRow({ prepared }: MessageListRollRowProps) {
         <div className="session-message-list__message-row">
           {!isGroupedWithPrevious ? (
             <span className="session-message-list__message-avatar" aria-hidden="true">
-              <span className="material-symbols-outlined session-roll-card__dice-icon">casino</span>
+              <Icon name="casino" className="session-roll-card__dice-icon" />
             </span>
           ) : (
             <span
@@ -63,10 +74,14 @@ export function MessageListRollRow({ prepared }: MessageListRollRowProps) {
             {rollResult ? (
               <div className="session-roll-card__body">
                 <div className="session-roll-card__expression">
-                  <span className="material-symbols-outlined session-roll-card__expression-icon" aria-hidden="true">casino</span>
-                  <span className="session-roll-card__expression-text">{rollResult.expression}</span>
+                  <Icon name="casino" className="session-roll-card__expression-icon" />
+                  <span className="session-roll-card__expression-text">
+                    {rollResult.expression}
+                  </span>
                   {rollResult.advantage ? (
-                    <span className={`session-roll-card__advantage-badge session-roll-card__advantage-badge--${rollResult.advantage.toLowerCase()}`}>
+                    <span
+                      className={`session-roll-card__advantage-badge session-roll-card__advantage-badge--${rollResult.advantage.toLowerCase()}`}
+                    >
                       {rollResult.advantage}
                     </span>
                   ) : null}
@@ -88,11 +103,14 @@ export function MessageListRollRow({ prepared }: MessageListRollRowProps) {
                     })}
                     {rollResult.modifier !== 0 ? (
                       <span className="session-roll-card__modifier">
-                        {rollResult.modifier > 0 ? '+' : ''}{rollResult.modifier}
+                        {rollResult.modifier > 0 ? '+' : ''}
+                        {rollResult.modifier}
                       </span>
                     ) : null}
                   </div>
-                  <span className="session-roll-card__equals" aria-hidden="true">=</span>
+                  <span className="session-roll-card__equals" aria-hidden="true">
+                    =
+                  </span>
                   <span className="session-roll-card__total">{rollResult.total}</span>
                 </div>
               </div>
@@ -104,9 +122,7 @@ export function MessageListRollRow({ prepared }: MessageListRollRowProps) {
             )}
 
             <div className="session-message-list__message-footer">
-              <div className="session-message-list__message-timestamp">
-                {relativeTime}
-              </div>
+              <div className="session-message-list__message-timestamp">{relativeTime}</div>
             </div>
           </div>
         </div>

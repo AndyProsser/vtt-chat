@@ -47,6 +47,62 @@ type IconName =
   | 'receipt_long'
   | 'swap_horiz'
   | 'move_item'
+  | 'add'
+  | 'add_box'
+  | 'add_circle'
+  | 'add_photo_alternate'
+  | 'arrow_drop_down'
+  | 'article'
+  | 'attach_file'
+  | 'auto_awesome'
+  | 'block'
+  | 'campaign'
+  | 'casino'
+  | 'celebration'
+  | 'check'
+  | 'content_copy'
+  | 'delete'
+  | 'delete_forever'
+  | 'diamond'
+  | 'event'
+  | 'exit_to_app'
+  | 'file_download'
+  | 'forest'
+  | 'format_list_bulleted'
+  | 'format_list_numbered'
+  | 'format_quote'
+  | 'group'
+  | 'group_add'
+  | 'group_work'
+  | 'groups'
+  | 'image'
+  | 'inventory_2'
+  | 'lock'
+  | 'map'
+  | 'mystery'
+  | 'note_add'
+  | 'open_in_new'
+  | 'person'
+  | 'person_add'
+  | 'person_check'
+  | 'pets'
+  | 'publish'
+  | 'record_voice_over'
+  | 'refresh'
+  | 'schedule'
+  | 'sell'
+  | 'speed'
+  | 'subdirectory_arrow_left'
+  | 'subdirectory_arrow_right'
+  | 'summarize'
+  | 'theaters'
+  | 'timeline'
+  | 'tune'
+  | 'undo'
+  | 'upload_file'
+  | 'visibility'
+  | 'visibility_off'
+  | 'warning'
 
 interface IconProps extends HTMLAttributes<HTMLSpanElement> {
   name: IconName
@@ -99,6 +155,62 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   swap_horiz: 'swap_horiz',
   storefront: 'storefront',
   move_item: 'move_item',
+  add: 'add',
+  add_box: 'add_box',
+  add_circle: 'add_circle',
+  add_photo_alternate: 'add_photo_alternate',
+  arrow_drop_down: 'arrow_drop_down',
+  article: 'article',
+  attach_file: 'attach_file',
+  auto_awesome: 'auto_awesome',
+  block: 'block',
+  campaign: 'campaign',
+  casino: 'casino',
+  celebration: 'celebration',
+  check: 'check',
+  content_copy: 'content_copy',
+  delete: 'delete',
+  delete_forever: 'delete_forever',
+  diamond: 'diamond',
+  event: 'event',
+  exit_to_app: 'exit_to_app',
+  file_download: 'file_download',
+  forest: 'forest',
+  format_list_bulleted: 'format_list_bulleted',
+  format_list_numbered: 'format_list_numbered',
+  format_quote: 'format_quote',
+  group: 'group',
+  group_add: 'group_add',
+  group_work: 'group_work',
+  groups: 'groups',
+  image: 'image',
+  inventory_2: 'inventory_2',
+  lock: 'lock',
+  map: 'map',
+  mystery: 'mystery',
+  note_add: 'note_add',
+  open_in_new: 'open_in_new',
+  person: 'person',
+  person_add: 'person_add',
+  person_check: 'person_check',
+  pets: 'pets',
+  publish: 'publish',
+  record_voice_over: 'record_voice_over',
+  refresh: 'refresh',
+  schedule: 'schedule',
+  sell: 'sell',
+  speed: 'speed',
+  subdirectory_arrow_left: 'subdirectory_arrow_left',
+  subdirectory_arrow_right: 'subdirectory_arrow_right',
+  summarize: 'summarize',
+  theaters: 'theaters',
+  timeline: 'timeline',
+  tune: 'tune',
+  undo: 'undo',
+  upload_file: 'upload_file',
+  visibility: 'visibility',
+  visibility_off: 'visibility_off',
+  warning: 'warning',
 }
 
 export function Icon({ name, className = '', ...props }: IconProps) {

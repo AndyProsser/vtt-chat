@@ -13,6 +13,7 @@ import {
 } from '@/constants/sessionUi.constants'
 import type { SupportedPlatform } from '@/types/sessionUi'
 import type { CampaignSettingsPanelPolicyProps } from '@/types/campaignSettingsPanel'
+import { Icon } from '@/components/ui/Icon'
 
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
 function formatSessionDuration(mins: number): string {
@@ -77,7 +78,7 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
 
   const lockBadge = (
     <span className="crbs-lock-badge" title="Locked during active session">
-      <span className="material-symbols-outlined crbs-lock-icon">lock</span>
+      <Icon name="lock" className="crbs-lock-icon" />
     </span>
   )
 

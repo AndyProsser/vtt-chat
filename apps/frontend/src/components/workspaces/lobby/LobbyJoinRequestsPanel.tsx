@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { UUID } from '@shared'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import type { CampaignJoinRequestSummary } from '@/types/session/campaign'
+import { Icon } from '@/components/ui/Icon'
 
 type LobbyJoinRequestsPanelProps = {
   campaignId: UUID
@@ -102,9 +103,7 @@ export function LobbyJoinRequestsPanel(props: LobbyJoinRequestsPanelProps) {
             aria-label={`${props.pendingCount} pending join requests`}
             aria-expanded={isOpen}
           >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              person_add
-            </span>
+            <Icon name="person_add" />
             <span className="session-card-action-button__badge">{props.pendingCount}</span>
           </button>
         </TooltipTrigger>
@@ -134,9 +133,7 @@ export function LobbyJoinRequestsPanel(props: LobbyJoinRequestsPanelProps) {
               }}
               aria-label="Close join request panel"
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                close
-              </span>
+              <Icon name="close" />
             </button>
           </div>
 
@@ -195,9 +192,7 @@ export function LobbyJoinRequestsPanel(props: LobbyJoinRequestsPanelProps) {
                           void handleResolve(request.id, 'REJECTED')
                         }}
                       >
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          close
-                        </span>
+                        <Icon name="close" />
                         <span>{isResolving ? 'Working...' : 'Reject'}</span>
                       </button>
                       <button
@@ -208,9 +203,7 @@ export function LobbyJoinRequestsPanel(props: LobbyJoinRequestsPanelProps) {
                           void handleResolve(request.id, 'APPROVED')
                         }}
                       >
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          check
-                        </span>
+                        <Icon name="check" />
                         <span>{isResolving ? 'Working...' : 'Approve'}</span>
                       </button>
                     </div>

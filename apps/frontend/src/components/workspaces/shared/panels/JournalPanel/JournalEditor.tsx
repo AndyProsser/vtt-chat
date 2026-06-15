@@ -20,6 +20,7 @@ import { useStore } from '@/hooks/useStore'
 import { useToast } from '@/hooks/useToast'
 import { useJournalHashtags } from '@/hooks/useJournalHashtags'
 import { JournalHashtagEditor } from './JournalHashtagEditor'
+import { Icon } from '@/components/ui/Icon'
 
 export interface JournalEditorProps {
   apiUrl: string
@@ -367,9 +368,7 @@ export function JournalEditor({
                         onClick={handleCancel}
                         disabled={isSaving}
                       >
-                        <span className="material-symbols-outlined" aria-hidden="true">
-                          undo
-                        </span>
+                        <Icon name="undo" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top">Cancel editing</TooltipContent>
@@ -384,9 +383,7 @@ export function JournalEditor({
                     aria-label="Pop out journal"
                     onClick={() => openJournalPopout(sessionId, token, apiUrl)}
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      open_in_new
-                    </span>
+                    <Icon name="open_in_new" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Open in separate window</TooltipContent>

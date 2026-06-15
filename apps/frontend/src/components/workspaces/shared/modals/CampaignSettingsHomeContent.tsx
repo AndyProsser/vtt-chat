@@ -10,6 +10,7 @@ import {
   LATE_JOIN_POLICY_OPTIONS,
 } from '@/constants/sessionUi.constants'
 import type { ModalsProps } from '@/types/modals'
+import { Icon } from '@/components/ui/Icon'
 
 type CampaignSettingsHomeContentProps = Pick<
   ModalsProps,
@@ -144,9 +145,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
                     aria-label="Copy player invite URL"
                     onClick={() => props.onCopyInviteUrl('PLAYER')}
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      content_copy
-                    </span>
+                    <Icon name="content_copy" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Copy player invite URL</TooltipContent>
@@ -160,9 +159,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
                     disabled={props.isInviteReissuing}
                     onClick={() => props.onReissueInvite('PLAYER')}
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      refresh
-                    </span>
+                    <Icon name="refresh" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Refresh player invite URL</TooltipContent>
@@ -194,9 +191,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
                     }
                     onClick={() => props.onCopyInviteUrl('SPECTATOR')}
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      content_copy
-                    </span>
+                    <Icon name="content_copy" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Copy spectator invite URL</TooltipContent>
@@ -210,9 +205,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
                     disabled={!props.settingsSpectatorsEnabled || props.isInviteReissuing}
                     onClick={() => props.onReissueInvite('SPECTATOR')}
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      refresh
-                    </span>
+                    <Icon name="refresh" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Refresh spectator invite URL</TooltipContent>

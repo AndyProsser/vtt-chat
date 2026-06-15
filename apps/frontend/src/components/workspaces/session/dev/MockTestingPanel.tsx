@@ -4,6 +4,7 @@ import { Slider, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from
 import { useStore } from '@/state/store'
 import type { MockSimulationConfig } from '@/types/mockSimulation'
 import '@/styles/components/workspaces/session/dev/MockTestingPanel.css'
+import { Icon } from '@/components/ui/Icon'
 
 const DEFAULT_MOCK_CONFIG: MockSimulationConfig = {
   speakingSimulatorEnabled: true,
@@ -218,9 +219,7 @@ export function MockTestingPanel({
                     disabled={isLoading}
                     aria-label="Reroll mock players"
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      refresh
-                    </span>
+                    <Icon name="refresh" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Reroll with current count</TooltipContent>
@@ -302,9 +301,7 @@ export function MockTestingPanel({
           onClick={handleRemoveAll}
           disabled={isLoading}
         >
-          <span className="material-symbols-outlined" aria-hidden="true">
-            delete
-          </span>
+          <Icon name="delete" />
           Remove All
         </button>
 
@@ -316,9 +313,7 @@ export function MockTestingPanel({
             }}
             disabled={isLoading || !onReturnToUser}
           >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              undo
-            </span>
+            <Icon name="undo" />
             Return to My User
           </button>
         ) : null}

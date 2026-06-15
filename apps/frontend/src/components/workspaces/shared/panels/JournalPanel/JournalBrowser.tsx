@@ -232,9 +232,7 @@ export const JournalBrowser = memo(function JournalBrowser({
                       onClick={handleCancelEditSelected}
                       aria-label="Cancel editing journal"
                     >
-                      <span className="material-symbols-outlined" aria-hidden="true">
-                        undo
-                      </span>
+                      <Icon name="undo" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top">Cancel editing</TooltipContent>

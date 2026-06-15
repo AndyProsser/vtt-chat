@@ -10,6 +10,7 @@ import type { SessionLifecycleState, UUID } from '@shared'
 import { SessionState } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import { showToast } from '@/state/toastCenter'
+import { Icon } from '@/components/ui/Icon'
 
 const API_URL =
   (import.meta.env.VITE_API_URL as string | undefined)?.trim() || window.location.origin
@@ -114,9 +115,7 @@ export const NextSessionDate = React.memo(function NextSessionDate({
   return (
     <div className="nsd-container">
       <div className="nsd-row">
-        <span className="nsd-icon material-symbols-outlined" aria-hidden="true">
-          event
-        </span>
+        <Icon name="event" className="nsd-icon" />
         <div className="nsd-content">
           <span className="nsd-header-label">Next Session</span>
           <div className="nsd-date-row">
@@ -140,9 +139,7 @@ export const NextSessionDate = React.memo(function NextSessionDate({
             aria-label="Edit next session date"
             onClick={() => setIsEditing((v) => !v)}
           >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              edit
-            </span>
+            <Icon name="edit" />
           </button>
         )}
       </div>
