@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import { Role, InventoryItemSource, SessionState } from '@shared'
+import { Role, InventoryItemSource, InventoryItemCategory, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { useStore } from '@/state/store'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
@@ -34,6 +34,7 @@ export interface InventoryPanelProps {
   effectiveSessionRole: Role
   apiUrl: string
   authToken: string
+  dndRuleset?: '2014' | '2024'
 }
 
 type InventoryView = 'party' | UUID
@@ -59,6 +60,7 @@ export function InventoryPanel({
   effectiveSessionRole,
   apiUrl,
   authToken,
+  dndRuleset = '2024',
 }: InventoryPanelProps) {
   const isReadOnly = effectiveSessionRole === Role.SPECTATOR
   const isDM = effectiveSessionRole === Role.DM
@@ -301,7 +303,13 @@ export function InventoryPanel({
   )
 
   const handleAddItem = useCallback(
-    async (name: string, quantity: number, notes: string, isSrd: boolean) => {
+    async (
+      name: string,
+      quantity: number,
+      notes: string,
+      srdCategory: InventoryItemCategory,
+      srdKey?: string
+    ) => {
       await fetch(`${apiUrl}/api/inventory/${campaignId}/items`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
@@ -310,7 +318,9 @@ export function InventoryPanel({
           ownerId: currentOwnerId,
           name,
           quantity,
-          source: isSrd ? InventoryItemSource.SRD : InventoryItemSource.CUSTOM,
+          source: srdKey ? InventoryItemSource.SRD : InventoryItemSource.CUSTOM,
+          srdKey: srdKey || undefined,
+          srdCategory,
           notes: notes || undefined,
         }),
       })
@@ -462,6 +472,7 @@ export function InventoryPanel({
               onCancel={() => setShowAddForm(false)}
               apiUrl={apiUrl}
               authToken={authToken}
+              ruleset={dndRuleset}
             />
           )}
 

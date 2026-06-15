@@ -5,7 +5,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { InventoryItemSource, InventoryActionType } from '@shared'
+import { InventoryItemSource, InventoryItemCategory, InventoryActionType } from '@shared'
 import type { UUID, CurrencyWallet } from '@shared'
 import {
   createInventoryItemRecord,
@@ -39,6 +39,7 @@ export interface InventoryItemDto {
   quantity: number
   source: InventoryItemSource
   srdKey: string | null
+  srdCategory: InventoryItemCategory
   notes: string | null
   addedByUserId: UUID
   createdAt: number
@@ -68,6 +69,7 @@ function mapItem(row: InventoryItemRow): InventoryItemDto {
     quantity: row.quantity,
     source: row.source as InventoryItemSource,
     srdKey: row.srdKey,
+    srdCategory: row.srdCategory as InventoryItemCategory,
     notes: row.notes,
     addedByUserId: row.addedByUserId as UUID,
     createdAt: row.createdAt.getTime(),
@@ -189,6 +191,7 @@ export async function addInventoryItem(params: {
   quantity: number
   source?: InventoryItemSource
   srdKey?: string
+  srdCategory?: InventoryItemCategory
   notes?: string
   addedByUserId: UUID
   sessionId?: UUID
@@ -204,6 +207,7 @@ export async function addInventoryItem(params: {
     quantity: params.quantity,
     source: params.source ?? InventoryItemSource.CUSTOM,
     srdKey: params.srdKey ?? null,
+    srdCategory: params.srdCategory ?? InventoryItemCategory.EQUIPMENT,
     notes: params.notes ?? null,
     addedByUserId: params.addedByUserId,
     createdAt: now,

@@ -6,7 +6,7 @@
  */
 
 import type { StateCreator } from 'zustand'
-import { InventoryItemSource } from '@shared'
+import { InventoryItemSource, InventoryItemCategory } from '@shared'
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { InventoryItem, CurrencyWalletState } from '@/types/inventory'
@@ -90,11 +90,13 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
       quantity: number
       source: string
       srdKey?: string
+      srdCategory?: string
       notes?: string
       addedByUserId: UUID
       addedAt: number
     }
 
+    const validCategories: string[] = Object.values(InventoryItemCategory)
     const item: InventoryItem = {
       id: payload.itemId,
       campaignId: payload.campaignId,
@@ -104,6 +106,9 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
       quantity: payload.quantity,
       source: payload.source === 'SRD' ? InventoryItemSource.SRD : InventoryItemSource.CUSTOM,
       srdKey: payload.srdKey ?? null,
+      srdCategory: validCategories.includes(payload.srdCategory ?? '')
+        ? (payload.srdCategory as InventoryItemCategory)
+        : InventoryItemCategory.EQUIPMENT,
       notes: payload.notes ?? null,
       addedByUserId: payload.addedByUserId,
       createdAt: payload.addedAt,

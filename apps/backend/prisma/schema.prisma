@@ -598,17 +598,24 @@ enum InventoryItemSource {
   CUSTOM
 }
 
+enum InventoryItemCategory {
+  EQUIPMENT
+  MAGIC_ITEM
+  HOMEBREW
+}
+
 model InventoryItem {
-  id            String              @id @default(uuid()) @db.Uuid
-  campaignId    String              @db.Uuid
-  campaign      Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  ownerType     String              // 'party' | 'character'
-  ownerId       String?             @db.Uuid
+  id            String                @id @default(uuid()) @db.Uuid
+  campaignId    String                @db.Uuid
+  campaign      Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ownerType     String                // 'party' | 'character'
+  ownerId       String?               @db.Uuid
   name          String
-  quantity      Int                 @default(1)
-  source        InventoryItemSource @default(CUSTOM)
+  quantity      Int                   @default(1)
+  source        InventoryItemSource   @default(CUSTOM)
   srdKey        String?
-  notes         String?             @db.Text
+  srdCategory   InventoryItemCategory @default(EQUIPMENT)
+  notes         String?               @db.Text
   addedByUserId String              @db.Uuid
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt

@@ -108,6 +108,12 @@ export enum InventoryItemSource {
   CUSTOM = 'CUSTOM',
 }
 
+export enum InventoryItemCategory {
+  EQUIPMENT = 'EQUIPMENT',
+  MAGIC_ITEM = 'MAGIC_ITEM',
+  HOMEBREW = 'HOMEBREW',
+}
+
 export enum InventoryOwnerType {
   PARTY = 'party',
   CHARACTER = 'character',

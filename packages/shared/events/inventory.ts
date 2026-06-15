@@ -6,7 +6,7 @@
  * All mutations during an ACTIVE session also produce a CHAT:MESSAGE_SENT system message.
  */
 
-import type { UUID, InventoryItemSource, CurrencyWallet } from '../types'
+import type { UUID, InventoryItemSource, InventoryItemCategory, CurrencyWallet } from '../types'
 import type { EventEnvelope } from './base'
 
 export type InventoryEventType =
@@ -32,6 +32,7 @@ export interface InventoryItemAdded {
   quantity: number
   source: InventoryItemSource
   srdKey?: string
+  srdCategory: InventoryItemCategory
   notes?: string
   addedByUserId: UUID
   addedAt: number

@@ -1,4 +1,5 @@
 import { memo, useState, useRef, useEffect } from 'react'
+import { InventoryItemCategory } from '@shared'
 import type { UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import type { InventoryItem } from '@/types/inventory'
@@ -225,13 +226,28 @@ export const InventoryItemRow = memo(function InventoryItemRow({
     )
   }
 
+  const isMagic = item.srdCategory === InventoryItemCategory.MAGIC_ITEM
+  const isHomebrew = item.srdCategory === InventoryItemCategory.HOMEBREW
+
   return (
-    <li className="inventory-item-row">
+    <li className={[
+      'inventory-item-row',
+      isMagic ? 'inventory-item-row--magic' : '',
+      isHomebrew ? 'inventory-item-row--homebrew' : '',
+    ].filter(Boolean).join(' ')}>
       <span className="inventory-item-row__qty" aria-label={`Quantity: ${item.quantity}`}>
         ×{item.quantity}
       </span>
       <div className="inventory-item-row__info">
-        <span className="inventory-item-row__name">{item.name}</span>
+        <span className="inventory-item-row__name">
+          {item.name}
+          {item.srdCategory === InventoryItemCategory.MAGIC_ITEM && (
+            <span className="inventory-item-row__magic-badge" aria-label="Magic item">✦</span>
+          )}
+          {item.srdCategory === InventoryItemCategory.HOMEBREW && (
+            <span className="inventory-item-row__homebrew-badge" aria-label="Homebrew">⚗</span>
+          )}
+        </span>
         {item.notes && <span className="inventory-item-row__notes">{item.notes}</span>}
       </div>
       {!isReadOnly && (

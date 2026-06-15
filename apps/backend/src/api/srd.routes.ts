@@ -97,9 +97,34 @@ function normaliseRuleset(raw: unknown): SrdRuleset {
 }
 
 // ─── GET /api/srd/items?q=sword&ruleset=2024 ──────────────────────────────────
+// Both 2014 and 2024 use /api/{ruleset}/equipment
 
 router.get('/items', async (req: Request, res: Response) => {
-  const q = String(req.query.q ?? '').trim().toLowerCase()
+  const q = String(req.query.q ?? '')
+    .trim()
+    .toLowerCase()
+  const ruleset = normaliseRuleset(req.query.ruleset)
+
+  if (!q || q.length < 2) {
+    return res.json({ results: [] })
+  }
+
+  const all = await getCachedList(`srd:equipment:${ruleset}`, versionedPath(ruleset, '/equipment'))
+  const results = all
+    .filter((item) => item.name.toLowerCase().includes(q))
+    .slice(0, 10)
+    .map(({ index, name }) => ({ index, name }))
+
+  return res.json({ results })
+})
+
+// ─── GET /api/srd/magic-items?q=sword&ruleset=2024 ───────────────────────────
+// Both 2014 and 2024 use /api/{ruleset}/magic-items
+
+router.get('/magic-items', async (req: Request, res: Response) => {
+  const q = String(req.query.q ?? '')
+    .trim()
+    .toLowerCase()
   const ruleset = normaliseRuleset(req.query.ruleset)
 
   if (!q || q.length < 2) {
@@ -107,8 +132,8 @@ router.get('/items', async (req: Request, res: Response) => {
   }
 
   const all = await getCachedList(
-    `srd:equipment:${ruleset}`,
-    versionedPath(ruleset, '/equipment')
+    `srd:magic-items:${ruleset}`,
+    versionedPath(ruleset, '/magic-items')
   )
   const results = all
     .filter((item) => item.name.toLowerCase().includes(q))
@@ -123,9 +148,8 @@ router.get('/items', async (req: Request, res: Response) => {
 
 router.get('/races', async (req: Request, res: Response) => {
   const ruleset = normaliseRuleset(req.query.ruleset)
-  const upstreamPath = ruleset === '2024'
-    ? versionedPath('2024', '/species')
-    : versionedPath('2014', '/races')
+  const upstreamPath =
+    ruleset === '2024' ? versionedPath('2024', '/species') : versionedPath('2014', '/races')
 
   const items = await getCachedList(`srd:races:${ruleset}`, upstreamPath)
   return res.json({ results: items.map(({ index, name }) => ({ index, name })) })
@@ -135,10 +159,7 @@ router.get('/races', async (req: Request, res: Response) => {
 
 router.get('/classes', async (req: Request, res: Response) => {
   const ruleset = normaliseRuleset(req.query.ruleset)
-  const items = await getCachedList(
-    `srd:classes:${ruleset}`,
-    versionedPath(ruleset, '/classes')
-  )
+  const items = await getCachedList(`srd:classes:${ruleset}`, versionedPath(ruleset, '/classes'))
   return res.json({ results: items.map(({ index, name }) => ({ index, name })) })
 })
 
@@ -147,7 +168,9 @@ router.get('/classes', async (req: Request, res: Response) => {
 // 2024 → GET /api/2024/classes/{index}  then extract .subclasses[] (embedded)
 
 router.get('/subclasses', async (req: Request, res: Response) => {
-  const classIndex = String(req.query.class ?? '').trim().toLowerCase()
+  const classIndex = String(req.query.class ?? '')
+    .trim()
+    .toLowerCase()
   const ruleset = normaliseRuleset(req.query.ruleset)
 
   if (!classIndex) {

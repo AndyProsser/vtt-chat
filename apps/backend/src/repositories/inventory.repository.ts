@@ -12,6 +12,7 @@ export interface InventoryItemRow {
   quantity: number
   source: 'SRD' | 'CUSTOM'
   srdKey: string | null
+  srdCategory: 'EQUIPMENT' | 'MAGIC_ITEM' | 'HOMEBREW'
   notes: string | null
   addedByUserId: string
   createdAt: Date
@@ -71,6 +72,7 @@ export async function createInventoryItemRecord(params: {
   quantity: number
   source: 'SRD' | 'CUSTOM'
   srdKey: string | null
+  srdCategory: 'EQUIPMENT' | 'MAGIC_ITEM' | 'HOMEBREW'
   notes: string | null
   addedByUserId: string
   createdAt: Date

@@ -8,7 +8,7 @@
 import crypto from 'node:crypto'
 import { Router } from 'express'
 import type { Request, Response, NextFunction } from 'express'
-import { InventoryItemSource, MessageType, isValidUUID } from '@shared'
+import { InventoryItemSource, InventoryItemCategory, MessageType, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
 import { verifyToken } from '@/services/auth.service'
 import { getCampaignForUser } from '@/repositories/campaign.repository'
@@ -168,7 +168,11 @@ router.get('/:campaignId/history', requireAuth, async (req: Request, res: Respon
 router.post('/:campaignId/items', requireAuth, async (req: Request, res: Response) => {
   const { campaignId } = req.params
   const user = (req as any).user
-  const { ownerType, ownerId, name, quantity, source, srdKey, notes } = req.body
+  const { ownerType, ownerId, name, quantity, source, srdKey, srdCategory, notes } = req.body
+  const VALID_CATEGORIES = ['EQUIPMENT', 'MAGIC_ITEM', 'HOMEBREW']
+  const effectiveSrdCategory: InventoryItemCategory = VALID_CATEGORIES.includes(srdCategory)
+    ? (srdCategory as InventoryItemCategory)
+    : InventoryItemCategory.EQUIPMENT
 
   if (!isValidUUID(campaignId)) {
     return res.status(400).json({ code: 'INVALID_INPUT', message: 'Invalid campaignId' })
@@ -201,6 +205,7 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
       quantity: Math.max(1, Number(quantity) || 1),
       source: source === 'SRD' ? InventoryItemSource.SRD : InventoryItemSource.CUSTOM,
       srdKey: srdKey ?? undefined,
+      srdCategory: effectiveSrdCategory,
       notes: notes ?? undefined,
       addedByUserId: user.userId as UUID,
       sessionId: session?.id as UUID | undefined,
@@ -226,6 +231,7 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
           quantity: item.quantity,
           source: item.source,
           srdKey: item.srdKey,
+          srdCategory: item.srdCategory,
           notes: item.notes,
           addedByUserId: item.addedByUserId,
           addedAt: item.createdAt,

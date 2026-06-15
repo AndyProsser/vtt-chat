@@ -1,4 +1,4 @@
-import type { UUID, InventoryItemSource } from '@shared'
+import type { UUID, InventoryItemSource, InventoryItemCategory } from '@shared'
 
 export interface InventoryItem {
   id: UUID
@@ -9,6 +9,7 @@ export interface InventoryItem {
   quantity: number
   source: InventoryItemSource
   srdKey: string | null
+  srdCategory: InventoryItemCategory
   notes: string | null
   addedByUserId: UUID
   createdAt: number
