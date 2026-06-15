@@ -110,6 +110,7 @@ export type CampaignSettingsPayload = {
   sessionScheduleTz?: string | null
   nextSessionDate?: string | null
   nextSessionIsManual?: boolean
+  dndRuleset?: '2014' | '2024'
 }
 
 export type CampaignEntryAction =

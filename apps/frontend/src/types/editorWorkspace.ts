@@ -53,6 +53,7 @@ export type EditorWorkspaceProps = {
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
   sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: PlayerSettingsPanel
@@ -75,6 +76,7 @@ export type EditorWorkspaceProps = {
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
   onSettingsSupportedPlatformsChange: (value: SupportedPlatform[]) => void
+  onSettingsDndRulesetChange: (value: '2014' | '2024') => void
   onSessionNameChange: (value: string) => void
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void

@@ -247,6 +247,15 @@ export function InventoryPanel({
     [visibleMembers]
   )
 
+  // Player viewing party → "Take" targets are only their own character slot.
+  // Player viewing own inventory → "Give" targets are Party + other online characters.
+  // DM → always full list ("Move").
+  const moveActionLabel = isPlayer ? (view === 'party' ? 'Take' : 'Give') : 'Move'
+  const playerTakeTargets = useMemo(
+    () => moveTargets.filter((t) => t.ownerType === 'character' && t.ownerId === currentUserId),
+    [moveTargets, currentUserId]
+  )
+
   // ─── Mutation helpers ─────────────────────────────────────────────────────
   const removeItem = useCallback(
     async (itemId: UUID) => {
@@ -371,7 +380,7 @@ export function InventoryPanel({
             data-active={view === currentUserId}
             onClick={() => switchView(currentUserId)}
           >
-            Mine
+            My Inventory
           </button>
 
           <button
@@ -382,7 +391,7 @@ export function InventoryPanel({
             data-active={view === 'party'}
             onClick={() => switchView('party')}
           >
-            Party
+            Party Inventory
           </button>
         </div>
       )}
@@ -460,20 +469,27 @@ export function InventoryPanel({
             <p className="inventory-panel__empty">No items yet.</p>
           ) : (
             <ul className="inventory-panel__item-list" aria-label="Inventory items">
-              {currentItems.map((item) => (
-                <InventoryItemRow
-                  key={item.id}
-                  item={item}
-                  isReadOnly={isReadOnly}
-                  canRemove={canRemove}
-                  onRemove={removeItem}
-                  onEdit={editItem}
-                  onMove={moveItem}
-                  moveTargets={moveTargets.filter(
-                    (t) => !(t.ownerType === item.ownerType && t.ownerId === item.ownerId)
-                  )}
-                />
-              ))}
+              {currentItems.map((item) => {
+                // For players taking from party, only their own character is a valid target.
+                // For all other cases, exclude the item's current owner from targets.
+                const baseMoveTargets =
+                  isPlayer && view === 'party' ? playerTakeTargets : moveTargets
+                return (
+                  <InventoryItemRow
+                    key={item.id}
+                    item={item}
+                    isReadOnly={isReadOnly}
+                    canRemove={canRemove}
+                    moveActionLabel={moveActionLabel}
+                    onRemove={removeItem}
+                    onEdit={editItem}
+                    onMove={moveItem}
+                    moveTargets={baseMoveTargets.filter(
+                      (t) => !(t.ownerType === item.ownerType && t.ownerId === item.ownerId)
+                    )}
+                  />
+                )
+              })}
             </ul>
           )}
         </div>

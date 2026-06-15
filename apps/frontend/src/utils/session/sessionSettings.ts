@@ -55,6 +55,7 @@ export function applyCampaignSettingsPayload(
   campaignSettingsActions.setSettingsSupportedPlatforms(
     (settings.supportedPlatforms ?? ['ANY']) as SupportedPlatform[]
   )
+  campaignSettingsActions.setSettingsDndRuleset(settings.dndRuleset ?? '2024')
 
   // Hydrate campaign schedule slice — needed for NextSessionDate on refresh and after info edits
   const schedLabel =
@@ -97,6 +98,7 @@ export function buildCampaignSettingsSavePayload(params: {
   settingsLateJoinGraceMinutes: number
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
 }) {
   return {
     name: params.settingsName,
@@ -121,6 +123,7 @@ export function buildCampaignSettingsSavePayload(params: {
       params.settingsLateJoinPolicy === 'OPEN' ? 30 : params.settingsLateJoinGraceMinutes,
     defaultSessionDurationMins: params.settingsDefaultSessionDurationMins,
     supportedPlatforms: params.settingsSupportedPlatforms,
+    dndRuleset: params.settingsDndRuleset,
   }
 }
 

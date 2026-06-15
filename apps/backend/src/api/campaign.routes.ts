@@ -1144,7 +1144,37 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       sessionScheduleTz: (membership.campaign as any).sessionScheduleTz ?? null,
       nextSessionDate: (membership.campaign as any).nextSessionDate?.toISOString() ?? null,
       nextSessionIsManual: (membership.campaign as any).nextSessionIsManual ?? false,
+      dndRuleset: ((membership.campaign as any).dndRuleset ?? '2024') as '2014' | '2024',
     },
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GET /:campaignId/ruleset — lightweight endpoint readable by any campaign member
+// Returns the campaign's D&D ruleset so players can use the right SRD lookups.
+// ---------------------------------------------------------------------------
+router.get('/:campaignId/ruleset', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  const membership = await prisma.campaignMembership.findUnique({
+    where: { campaignId_userId: { campaignId: campaignId as UUID, userId: user.userId as UUID } },
+    include: { campaign: { select: { dndRuleset: true } } },
+  })
+
+  if (!membership) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+
+  return res.status(200).json({
+    campaignId,
+    dndRuleset: ((membership.campaign as any).dndRuleset ?? '2024') as '2014' | '2024',
   })
 })
 
@@ -1169,6 +1199,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     defaultSessionDurationMins,
     supportedPlatforms,
     sessionSchedule,
+    dndRuleset,
   } = req.body || {}
 
   if (!isValidUUID(campaignId)) {
@@ -1539,6 +1570,8 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     }
   }
 
+  const effectiveDndRuleset = dndRuleset === '2014' ? '2014' : '2024'
+
   const updated = await prisma.campaign.update({
     where: { id: campaignId as UUID },
     data: {
@@ -1564,6 +1597,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       lateJoinGraceMinutes: Math.round(parsedGraceMinutes),
       defaultSessionDurationMins: Math.round(parsedDefaultSessionDurationMins),
       supportedPlatforms: effectiveSupportedPlatforms,
+      dndRuleset: effectiveDndRuleset,
       ...(scheduleUpdateData ?? {}),
     },
     select: {
@@ -1596,6 +1630,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       sessionScheduleTz: true,
       nextSessionDate: true,
       nextSessionIsManual: true,
+      dndRuleset: true,
     },
   })
 

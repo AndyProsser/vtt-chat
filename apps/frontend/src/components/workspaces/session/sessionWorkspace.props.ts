@@ -67,6 +67,7 @@ type BuildSessionWorkspacePropsParams = {
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean
   userId: UUID
+  dndRuleset?: '2014' | '2024'
   joinUrl?: string
   watchUrl?: string
   spectatorsEnabled?: boolean
@@ -142,6 +143,7 @@ export function buildSessionWorkspaceProps(
     isCharacterSettingsLoading: params.isCharacterSettingsLoading,
     isCharacterSettingsSaving: params.isCharacterSettingsSaving,
     userId: params.userId,
+    dndRuleset: params.dndRuleset,
     joinUrl: params.joinUrl,
     watchUrl: params.watchUrl,
     spectatorsEnabled: params.spectatorsEnabled,

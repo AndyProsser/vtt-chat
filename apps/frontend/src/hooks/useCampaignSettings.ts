@@ -45,6 +45,7 @@ interface UseCampaignSettingsState {
   settingsPosterUrl: string
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
 }
 
 interface UseCampaignSettingsActions {
@@ -76,6 +77,7 @@ interface UseCampaignSettingsActions {
   setSettingsPosterUrl: (value: string) => void
   setSettingsDefaultSessionDurationMins: (value: number) => void
   setSettingsSupportedPlatforms: (value: SupportedPlatform[]) => void
+  setSettingsDndRuleset: (value: '2014' | '2024') => void
 }
 
 export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSettingsActions] {
@@ -114,6 +116,7 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
   const [settingsSupportedPlatforms, setSettingsSupportedPlatforms] = useState<SupportedPlatform[]>(
     ['ANY']
   )
+  const [settingsDndRuleset, setSettingsDndRuleset] = useState<'2014' | '2024'>('2024')
 
   const state: UseCampaignSettingsState = useMemo(
     () => ({
@@ -145,6 +148,7 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsPosterUrl,
       settingsDefaultSessionDurationMins,
       settingsSupportedPlatforms,
+      settingsDndRuleset,
     }),
     [
       isSettingsLoading,
@@ -175,6 +179,7 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsPosterUrl,
       settingsDefaultSessionDurationMins,
       settingsSupportedPlatforms,
+      settingsDndRuleset,
     ]
   )
 
@@ -208,6 +213,7 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       setSettingsPosterUrl,
       setSettingsDefaultSessionDurationMins,
       setSettingsSupportedPlatforms,
+      setSettingsDndRuleset,
     }),
     []
   )

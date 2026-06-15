@@ -140,6 +140,7 @@ model Campaign {
   sessionScheduleTz             String?
   nextSessionDate               DateTime?
   nextSessionIsManual           Boolean                @default(false)
+  dndRuleset                    String                 @default("2024")
   currentDm                     User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
   members                       CampaignMembership[]
   characters                    Character[]

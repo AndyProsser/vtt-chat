@@ -48,6 +48,7 @@ type UseWorkspacesSettingsOrchestrationParams = {
   settingsDefaultSessionDurationMins: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
   settingsData: CampaignSettingsPayload | null
   setCampaigns: Dispatch<SetStateAction<CampaignSummary[]>>
   setSelectedCampaignId: Dispatch<SetStateAction<UUID | ''>>
@@ -87,6 +88,7 @@ export function useWorkspacesSettingsOrchestration(
     settingsLateJoinGraceMinutes,
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
+    settingsDndRuleset,
     settingsData,
     setCampaigns,
     setSelectedCampaignId,
@@ -276,6 +278,7 @@ export function useWorkspacesSettingsOrchestration(
       settingsLateJoinGraceMinutes,
       settingsDefaultSessionDurationMins,
       settingsSupportedPlatforms,
+      settingsDndRuleset,
     })
 
     try {
@@ -322,6 +325,7 @@ export function useWorkspacesSettingsOrchestration(
     settingsLateJoinPolicy,
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
+    settingsDndRuleset,
     settingsName,
     settingsPostSessionChatDurationMinutes,
     settingsPostSessionChatEnabled,

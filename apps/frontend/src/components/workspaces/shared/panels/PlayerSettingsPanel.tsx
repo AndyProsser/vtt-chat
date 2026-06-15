@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { DND_5_5E_SRD_CLASSES, DND_5_5E_SRD_SPECIES } from '@/constants/characterSrd.constants'
 import { CharacterAvatarUploadField } from './CharacterAvatarUploadField'
 import { VerticalSliderInput } from './VerticalSliderInput'
+import { useSrdOptions } from '@/hooks/useSrdOptions'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 export interface PlayerSettingsPanel {
@@ -28,6 +28,10 @@ export interface PlayerSettingsPanelProps {
   isCharacterLoading: boolean
   isCharacterSaving: boolean
   focusRequestKey?: number
+  /** Campaign-level D&D edition for SRD lookups; defaults to 2024. */
+  dndRuleset?: '2014' | '2024'
+  apiUrl?: string
+  token?: string
 }
 
 export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
@@ -41,6 +45,13 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
     nameInputRef.current?.focus()
     nameInputRef.current?.select()
   }, [props.focusRequestKey])
+
+  const { raceOptions, classOptions, subclassOptions } = useSrdOptions({
+    apiUrl: props.apiUrl ?? '',
+    token: props.token ?? '',
+    ruleset: props.dndRuleset ?? '2024',
+    selectedClass: props.characterDraft.className,
+  })
 
   return (
     <div className="crbs-panel" aria-label="Player settings">
@@ -92,8 +103,8 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 disabled={props.isCharacterLoading || props.isCharacterSaving}
               />
               <datalist id="crbs-character-race-suggestions">
-                {DND_5_5E_SRD_SPECIES.map((species) => (
-                  <option key={species} value={species} />
+                {raceOptions.map((race) => (
+                  <option key={race} value={race} />
                 ))}
               </datalist>
             </label>
@@ -109,7 +120,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 disabled={props.isCharacterLoading || props.isCharacterSaving}
               />
               <datalist id="crbs-character-class-suggestions">
-                {DND_5_5E_SRD_CLASSES.map((className) => (
+                {classOptions.map((className) => (
                   <option key={className} value={className} />
                 ))}
               </datalist>
@@ -120,10 +131,18 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 id="crbs-character-subclass"
                 type="text"
                 className="crbs-input"
+                list="crbs-character-subclass-suggestions"
                 value={props.characterDraft.subclass}
                 onChange={(event) => props.onCharacterFieldChange('subclass', event.target.value)}
                 disabled={props.isCharacterLoading || props.isCharacterSaving}
               />
+              {subclassOptions.length > 0 && (
+                <datalist id="crbs-character-subclass-suggestions">
+                  {subclassOptions.map((subclass) => (
+                    <option key={subclass} value={subclass} />
+                  ))}
+                </datalist>
+              )}
             </label>
           </div>
 

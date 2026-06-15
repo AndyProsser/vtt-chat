@@ -16,6 +16,8 @@ interface InventoryItemRowProps {
   isReadOnly: boolean
   /** When false, Remove is hidden (DM viewing offline player's inventory). */
   canRemove?: boolean
+  /** Verb shown on the transfer action: "Move" (DM), "Take" (player←party), "Give" (player→others). */
+  moveActionLabel?: string
   onRemove: (itemId: UUID) => Promise<void>
   onEdit: (
     itemId: UUID,
@@ -35,6 +37,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   item,
   isReadOnly,
   canRemove = true,
+  moveActionLabel = 'Move',
   onRemove,
   onEdit,
   onMove,
@@ -176,7 +179,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   if (mode === 'move') {
     return (
       <li className="inventory-item-row inventory-item-row--move">
-        <span className="inventory-item-row__move-title">Move {item.name} to:</span>
+        <span className="inventory-item-row__move-title">{moveActionLabel} {item.name} to:</span>
         <div className="inventory-item-row__move-grid" role="listbox" aria-label="Move destination">
           {moveTargets.map((t) => {
             const avatarContent =
@@ -246,8 +249,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
             <button
               type="button"
               className="inventory-item-row__action-icon"
-              aria-label="Move item"
-              title="Move to…"
+              aria-label={`${moveActionLabel} item`}
+              title={moveActionLabel}
               onClick={() => setMode('move')}
             >
               <Icon name="move_item" />

@@ -47,6 +47,8 @@ export type CampaignSettingsPanelProps = {
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
   settingsSupportedPlatforms: SupportedPlatform[]
   onSettingsSupportedPlatformsChange: (value: SupportedPlatform[]) => void
+  settingsDndRuleset: '2014' | '2024'
+  onSettingsDndRulesetChange: (value: '2014' | '2024') => void
   sessionNameBase: string
   onSessionNameBaseChange: (value: string) => void
   sessionNameContext: 'CURRENT' | 'NEXT'
@@ -92,6 +94,8 @@ export type CampaignSettingsPanelPolicyProps = Pick<
   | 'onSettingsDefaultSessionDurationMinsChange'
   | 'settingsSupportedPlatforms'
   | 'onSettingsSupportedPlatformsChange'
+  | 'settingsDndRuleset'
+  | 'onSettingsDndRulesetChange'
   | 'sessionNameBase'
   | 'onSessionNameBaseChange'
   | 'sessionNameContext'

@@ -283,6 +283,7 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           isCharacterSettingsSaving={props.isCharacterSettingsSaving}
           onRequestOpenPlayerSettings={handleOpenPlayerSettingsFromParty}
           playerSettingsFocusRequestKey={playerSettingsFocusRequestKey}
+          dndRuleset={props.dndRuleset}
         />
       )
     },

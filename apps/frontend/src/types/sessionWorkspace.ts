@@ -92,4 +92,5 @@ export type SessionWorkspaceProps = {
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean
   userId: UUID
+  dndRuleset?: '2014' | '2024'
 }

@@ -218,6 +218,29 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
               disabled={sessionLocked || props.settingsLateJoinPolicy === 'OPEN'}
             />
           </div>
+
+          {/* D&D Ruleset card */}
+          <div className="csp-card">
+            <h5 className="crbs-heading csp-card-heading">D&amp;D Ruleset</h5>
+
+            <label className="session-label" id="label-dnd-ruleset">
+              SRD edition for this campaign
+            </label>
+            <div className="session-toggle-group" role="group" aria-labelledby="label-dnd-ruleset">
+              {(['2024', '2014'] as const).map((ruleset) => (
+                <button
+                  key={ruleset}
+                  type="button"
+                  className={`session-toggle-button ${props.settingsDndRuleset === ruleset ? 'is-active' : ''}`}
+                  aria-pressed={props.settingsDndRuleset === ruleset}
+                  onClick={() => props.onSettingsDndRulesetChange(ruleset)}
+                  disabled={props.isSaving}
+                >
+                  {ruleset}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* ── Right column: Extension + Spectators ─────────────────────── */}

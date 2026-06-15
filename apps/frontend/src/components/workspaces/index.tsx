@@ -141,6 +141,7 @@ export function WorkspaceInitialization({
     settingsPosterUrl,
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
+    settingsDndRuleset,
   } = campaignSettings
 
   // Character settings hook
@@ -374,6 +375,7 @@ export function WorkspaceInitialization({
     settingsLateJoinGraceMinutes,
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
+    settingsDndRuleset,
     settingsData,
     setCampaigns,
     setSelectedCampaignId,
@@ -849,6 +851,8 @@ export function WorkspaceInitialization({
     onSettingsDmAutoTargetOnFirstPlayerJoinChange: campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin,
     onSettingsDefaultSessionDurationMinsChange: campaignSettingsActions.setSettingsDefaultSessionDurationMins,
     onSettingsSupportedPlatformsChange: campaignSettingsActions.setSettingsSupportedPlatforms,
+    settingsDndRuleset,
+    onSettingsDndRulesetChange: campaignSettingsActions.setSettingsDndRuleset,
     onSessionNameChange: setSessionSettingsName,
     onCopyInviteUrl: handleCopyInviteUrlModal,
     onReissueInvite: handleReissueInviteModal,
@@ -1002,6 +1006,7 @@ export function WorkspaceInitialization({
         isCharacterSettingsLoading,
         isCharacterSettingsSaving,
         userId: user.id,
+        dndRuleset: settingsDndRuleset,
       }),
     [
       activeTransitionSessionId,
@@ -1044,6 +1049,7 @@ export function WorkspaceInitialization({
       settingsCampaignTotalDurationMs,
       settingsDefaultSessionDurationMins,
       settingsDmAutoTargetOnFirstPlayerJoin,
+      settingsDndRuleset,
       setSessionSettingsName,
       token,
       user,

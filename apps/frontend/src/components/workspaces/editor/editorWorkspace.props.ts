@@ -48,6 +48,7 @@ type BuildEditorWorkspacePropsParams = {
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
   sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: ComponentProps<typeof EditorWorkspace>['characterSettingsPanel']
@@ -94,6 +95,7 @@ type BuildEditorWorkspacePropsParams = {
   onSettingsSupportedPlatformsChange: ComponentProps<
     typeof EditorWorkspace
   >['onSettingsSupportedPlatformsChange']
+  onSettingsDndRulesetChange: ComponentProps<typeof EditorWorkspace>['onSettingsDndRulesetChange']
   onSessionNameChange: ComponentProps<typeof EditorWorkspace>['onSessionNameChange']
   onCopyInviteUrl: ComponentProps<typeof EditorWorkspace>['onCopyInviteUrl']
   onReissueInvite: ComponentProps<typeof EditorWorkspace>['onReissueInvite']
@@ -154,6 +156,7 @@ export function buildEditorWorkspaceProps(
     settingsDmAutoTargetOnFirstPlayerJoin: params.settingsDmAutoTargetOnFirstPlayerJoin,
     settingsDefaultSessionDurationMins: params.settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms: params.settingsSupportedPlatforms,
+    settingsDndRuleset: params.settingsDndRuleset,
     sessionSettingsName: params.sessionSettingsName,
     selectedCampaignId: params.selectedCampaignId,
     characterSettingsPanel: params.characterSettingsPanel,
@@ -178,6 +181,7 @@ export function buildEditorWorkspaceProps(
       params.onSettingsDmAutoTargetOnFirstPlayerJoinChange,
     onSettingsDefaultSessionDurationMinsChange: params.onSettingsDefaultSessionDurationMinsChange,
     onSettingsSupportedPlatformsChange: params.onSettingsSupportedPlatformsChange,
+    onSettingsDndRulesetChange: params.onSettingsDndRulesetChange,
     onSessionNameChange: params.onSessionNameChange,
     onCopyInviteUrl: params.onCopyInviteUrl,
     onReissueInvite: params.onReissueInvite,
