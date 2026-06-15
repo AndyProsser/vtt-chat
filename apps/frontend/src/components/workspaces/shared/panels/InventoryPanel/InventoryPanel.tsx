@@ -34,6 +34,11 @@ interface CharacterTab {
 
 type InventoryView = 'party' | UUID
 
+// Stable fallbacks — must live outside the component to avoid Zustand snapshot loops
+const EMPTY_ITEMS: InventoryItem[] = []
+const EMPTY_WALLETS: CurrencyWalletState[] = []
+const EMPTY_PRESENCE: Record<string, never> = {}
+
 export function InventoryPanel({
   campaignId,
   sessionId,
@@ -52,18 +57,22 @@ export function InventoryPanel({
   const setInventoryLoading = useStore((state) => state.setInventoryLoading)
   const isLoading = useStore((state) => state.inventoryLoading)
 
-  const allItems = useStore((state) => {
-    const bucket = state.inventoryItems[campaignId]
-    return bucket ? (Object.values(bucket) as InventoryItem[]) : []
-  })
-  const allWallets = useStore((state) => {
-    const bucket = state.currencyWallets[campaignId]
-    return bucket ? (Object.values(bucket) as CurrencyWalletState[]) : []
-  })
+  const itemsBucket = useStore((state) => state.inventoryItems[campaignId])
+  const walletsBucket = useStore((state) => state.currencyWallets[campaignId])
+
+  // Object.values in useMemo — never inside the selector — to avoid snapshot loops
+  const allItems = useMemo(
+    () => (itemsBucket ? (Object.values(itemsBucket) as InventoryItem[]) : EMPTY_ITEMS),
+    [itemsBucket]
+  )
+  const allWallets = useMemo(
+    () => (walletsBucket ? (Object.values(walletsBucket) as CurrencyWalletState[]) : EMPTY_WALLETS),
+    [walletsBucket]
+  )
 
   // Get connected session members for DM character tabs
   const sessionPresenceByUser = useStore(
-    (state) => state.sessionPresence[sessionId] ?? {}
+    (state) => state.sessionPresence[sessionId] ?? EMPTY_PRESENCE
   )
 
   const isReadOnly = effectiveSessionRole === Role.SPECTATOR
