@@ -103,6 +103,33 @@ export enum SessionScheduleType {
   MONTHLY_NTH = 'MONTHLY_NTH',
 }
 
+export enum InventoryItemSource {
+  SRD = 'SRD',
+  CUSTOM = 'CUSTOM',
+}
+
+export enum InventoryOwnerType {
+  PARTY = 'party',
+  CHARACTER = 'character',
+}
+
+export enum InventoryActionType {
+  ITEM_ADDED = 'ITEM_ADDED',
+  ITEM_REMOVED = 'ITEM_REMOVED',
+  ITEM_TRANSFERRED = 'ITEM_TRANSFERRED',
+  ITEM_EDITED = 'ITEM_EDITED',
+  CURRENCY_CHANGED = 'CURRENCY_CHANGED',
+}
+
+/** GP/SP/CP/EP/PP wallet amounts. All values are non-negative integers. */
+export interface CurrencyWallet {
+  cp: number
+  sp: number
+  ep: number
+  gp: number
+  pp: number
+}
+
 /**
  * Core Domain Objects (contracts, not full models)
  */

@@ -17,6 +17,7 @@ import telemetryRoutes from './telemetry.routes'
 import platformRoutes from './platform.routes'
 import integrationsRoutes from './integrations.routes'
 import metadataRoutes from './metadata.routes'
+import inventoryRoutes from './inventory.routes'
 import devRoutes from './dev.routes'
 import internalRoutes from './internal.routes'
 import { config } from '@/infra/config'
@@ -58,6 +59,7 @@ router.use('/campaigns', campaignRoutes)
 router.use('/users', usersRoutes)
 router.use('/telemetry', telemetryRoutes)
 router.use('/metadata', metadataRoutes)
+router.use('/inventory', inventoryRoutes)
 
 // Internal job triggers — called by the queues service only, not by clients
 router.use('/internal', internalRoutes)

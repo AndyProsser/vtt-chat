@@ -11,6 +11,7 @@ export * from './presence'
 export * from './notes'
 export * from './audio'
 export * from './campaign'
+export * from './inventory'
 
 export type AnyEvent =
   | import('./chat').ChatEvent
@@ -20,3 +21,4 @@ export type AnyEvent =
   | import('./notes').NotesEvent
   | import('./audio').AudioEvent
   | import('./campaign').CampaignEvent
+  | import('./inventory').InventoryEvent

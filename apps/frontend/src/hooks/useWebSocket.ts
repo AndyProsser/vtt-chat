@@ -278,6 +278,23 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       useStore.getState().handleNoteHandoutSurfaced(event)
     })
 
+    // Inventory events
+    dispatcher.register('INVENTORY:ITEM_ADDED', (event) => {
+      useStore.getState().handleInventoryItemAdded(event)
+    })
+    dispatcher.register('INVENTORY:ITEM_REMOVED', (event) => {
+      useStore.getState().handleInventoryItemRemoved(event)
+    })
+    dispatcher.register('INVENTORY:ITEM_TRANSFERRED', (event) => {
+      useStore.getState().handleInventoryItemTransferred(event)
+    })
+    dispatcher.register('INVENTORY:ITEM_EDITED', (event) => {
+      useStore.getState().handleInventoryItemEdited(event)
+    })
+    dispatcher.register('INVENTORY:CURRENCY_CHANGED', (event) => {
+      useStore.getState().handleInventoryCurrencyChanged(event)
+    })
+
     // Room events
     dispatcher.register('SESSION:MEMBER_JOINED', (event) => {
       useStore.getState().handleSessionMemberJoined(event)

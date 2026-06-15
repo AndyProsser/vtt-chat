@@ -151,6 +151,9 @@ model Campaign {
   recordings                    RecordingMetadata[]
   portabilityArtifacts          ImportExportArtifact[]
   joinRequests                  CampaignJoinRequest[]
+  inventoryItems                InventoryItem[]
+  currencyWallets               CurrencyWallet[]
+  inventoryHistory              InventoryHistoryEntry[]
   createdAt                     DateTime               @default(now())
   updatedAt                     DateTime               @updatedAt
 
@@ -587,4 +590,73 @@ enum PortabilityArtifactType {
 enum DmVoiceMode {
   TARGET_GROUP
   BROADCAST
+}
+
+enum InventoryItemSource {
+  SRD
+  CUSTOM
+}
+
+model InventoryItem {
+  id            String              @id @default(uuid()) @db.Uuid
+  campaignId    String              @db.Uuid
+  campaign      Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ownerType     String              // 'party' | 'character'
+  ownerId       String?             @db.Uuid
+  name          String
+  quantity      Int                 @default(1)
+  source        InventoryItemSource @default(CUSTOM)
+  srdKey        String?
+  notes         String?             @db.Text
+  addedByUserId String              @db.Uuid
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  historyEntries InventoryHistoryEntry[]
+
+  @@index([campaignId])
+  @@index([campaignId, ownerType])
+  @@index([campaignId, ownerId])
+}
+
+model CurrencyWallet {
+  id         String   @id @default(uuid()) @db.Uuid
+  campaignId String   @db.Uuid
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ownerType  String   // 'party' | 'character'
+  ownerId    String?  @db.Uuid
+  cp         Int      @default(0)
+  sp         Int      @default(0)
+  ep         Int      @default(0)
+  gp         Int      @default(0)
+  pp         Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([campaignId, ownerType, ownerId])
+  @@index([campaignId])
+}
+
+model InventoryHistoryEntry {
+  id           String         @id @default(uuid()) @db.Uuid
+  campaignId   String         @db.Uuid
+  campaign     Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  itemId       String?        @db.Uuid
+  item         InventoryItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  sessionId    String?        @db.Uuid
+  actorUserId  String         @db.Uuid
+  actionType   String         // InventoryActionType values
+  fromOwnerType String?
+  fromOwnerId  String?        @db.Uuid
+  toOwnerType  String?
+  toOwnerId    String?        @db.Uuid
+  quantity     Int?
+  currencyDelta Json?
+  itemName     String?
+  notes        String?        @db.Text
+  createdAt    DateTime       @default(now())
+
+  @@index([campaignId])
+  @@index([campaignId, sessionId])
+  @@index([campaignId, actorUserId])
+  @@index([itemId])
+  @@index([createdAt])
 }
