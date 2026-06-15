@@ -188,6 +188,7 @@ See [QUEUE-JOB-MANAGER.md](docs/architecture/QUEUE-JOB-MANAGER.md).
 
 ## 14. Related Documents
 
+- [LOCAL-AI-PROVIDER.md](docs/ai/LOCAL-AI-PROVIDER.md) — model selection, Docker config, GPU setup, admin UI controls
 - [SESSION-LIFECYCLE.md](docs/architecture/SESSION-LIFECYCLE.md)
 - [STATE-RECOVERY.md](docs/architecture/STATE-RECOVERY.md)
 - [QUEUE-JOB-MANAGER.md](docs/architecture/QUEUE-JOB-MANAGER.md)

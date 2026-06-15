@@ -87,14 +87,15 @@ The Admin UI uses the **same token system** as the main app.
 
 ## 4. Navigation Structure
 
-The Admin UI has **six core sections**:
+The Admin UI has **seven core sections**:
 
 1. **Dashboard**
 2. **Users**
 3. **Groups & Campaigns**
 4. **System Health**
 5. **Logs & Activity**
-6. **Settings**
+6. **AI**
+7. **Settings**
 
 ### **4.1 Navigation Example**
 
@@ -104,6 +105,7 @@ Users
 Groups & Campaigns
 System Health
 Logs & Activity
+AI
 Settings
 ```
 
@@ -248,7 +250,66 @@ Centralized logging.
 
 ---
 
-### **5.6 Settings**
+### **5.6 AI**
+
+AI provider configuration and model management. Only visible when `VTTCHAT_SUMMARY_PROCESSING_ENABLED=true` or an AI provider is configured. See [LOCAL-AI-PROVIDER.md](docs/ai/LOCAL-AI-PROVIDER.md) for full setup details.
+
+#### **Provider Status Card** (read-only, top of section)
+
+- Ollama reachability: green/red indicator + URL
+- GPU detected: Yes / No
+- GPU name and VRAM (when detected)
+- Summary model status: Available / Downloading / Not found
+- Assistant model status: Available / Downloading / Not found
+- Whisper model status: Available / Not found
+
+#### **Summary Model Card**
+
+| Control | Description |
+| ------- | ----------- |
+| Model tag input | Ollama model tag, e.g. `mistral:7b-instruct-q4_K_M` |
+| Pull model button | Downloads model to the Ollama volume |
+| Pull progress bar | Live progress during download |
+| Delete button | Removes model; requires confirmation |
+| Status badge | Available / Downloading / Not found / Error |
+| Model size label | Populated after pull |
+
+#### **Assistant Model Card**
+
+Same controls as Summary Model Card, targeting the real-time writing assistant model (e.g. `phi3.5:mini-instruct-q4_K_M`).
+
+A note beneath the card explains the two-model split: "The assistant model prioritises fast first-token response (<3 s). Use a smaller, faster model here than the summary model."
+
+#### **Transcription (Whisper) Card**
+
+| Control | Description |
+| ------- | ----------- |
+| Model size select | tiny / base / small / medium / large-v3 |
+| Compute type select | int8 (CPU) / float16 (GPU) / float32 |
+| Language input | Language code or `auto` for auto-detection |
+| Status badge | Available / Not found |
+
+#### **Cloud AI Card** (collapsed by default)
+
+| Control | Description |
+| ------- | ----------- |
+| Enable cloud AI toggle | Off by default; enables cloud as an enhancement layer |
+| Provider select | Anthropic / OpenAI / Custom |
+| API key input | Write-only; displayed as `••••••••` after save |
+| Summary model input | Cloud model name for post-session summarization |
+| Assistant model input | Cloud model name for writing assistant |
+| Test connection button | Sends a minimal test completion to verify credentials |
+| Info text | "Individual campaigns can opt out of cloud AI in their campaign settings." |
+
+When cloud AI is disabled: card shows a single greyed toggle with explanatory text. No API key input is visible.
+
+#### **Layout**
+
+Cards stack vertically in the main content area. Provider Status Card is always first. Cloud AI Card is always last and collapsed unless the operator expands it.
+
+---
+
+### **5.7 Settings**
 
 Admin‑level configuration.
 
@@ -270,7 +331,7 @@ Admin‑level configuration.
 
 ---
 
-## 6. Interaction & Motion
+## 7. Interaction & Motion
 
 The Admin UI is **minimal**, so motion is subtle.
 
@@ -289,7 +350,7 @@ The Admin UI is **minimal**, so motion is subtle.
 
 ---
 
-## 7. Component Library (Admin‑Specific)
+## 8. Component Library (Admin‑Specific)
 
 ### **Admin Card**
 
@@ -319,7 +380,7 @@ The Admin UI is **minimal**, so motion is subtle.
 
 ---
 
-## 8. Typography
+## 9. Typography
 
 ### **Font**
 
@@ -339,7 +400,7 @@ The Admin UI is **minimal**, so motion is subtle.
 
 ---
 
-## 9. Summary
+## 10. Summary
 
 The Admin UI is:
 

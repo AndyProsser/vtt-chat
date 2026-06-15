@@ -200,6 +200,7 @@ The backend relay applies the same privacy filter as the context injection logic
 
 ## 11. Related Documents
 
+- [LOCAL-AI-PROVIDER.md](docs/ai/LOCAL-AI-PROVIDER.md) — model selection, Docker config, GPU setup, admin UI controls
 - [NOTES-SYSTEM.md](docs/subsystems/NOTES-SYSTEM.md)
 - [DMDX-MARKDOWN-EXTENSION.md](docs/subsystems/DMDX-MARKDOWN-EXTENSION.md)
 - [TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
