@@ -175,19 +175,23 @@ export const InventoryItemRow = memo(function InventoryItemRow({
         <span className="inventory-item-row__move-title">Move {item.name} to:</span>
         <div className="inventory-item-row__move-grid" role="listbox" aria-label="Move destination">
           {moveTargets.map((t) => {
-            const initial = (t.label.trim()[0] ?? '?').toUpperCase()
+            const avatarContent = t.ownerType === 'party'
+              ? <Icon name="party" />
+              : t.avatarUrl
+                ? <img src={t.avatarUrl} alt="" />
+                : (t.label.trim()[0] ?? '?').toUpperCase()
             return (
               <button
                 key={`${t.ownerType}-${t.ownerId}`}
                 type="button"
                 role="option"
                 aria-selected={false}
-                className="inventory-item-row__move-card"
+                className={`inventory-item-row__move-card${t.ownerType === 'party' ? ' inventory-item-row__move-card--party' : ''}`}
                 onClick={() => handleMove(t)}
                 disabled={isBusy}
               >
                 <span className="inventory-item-row__move-card-avatar" aria-hidden="true">
-                  {t.avatarUrl ? <img src={t.avatarUrl} alt="" /> : initial}
+                  {avatarContent}
                 </span>
                 <span className="inventory-item-row__move-card-name">{t.label}</span>
               </button>
@@ -233,7 +237,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
               title="Move to…"
               onClick={() => setMode('move')}
             >
-              <Icon name="send" />
+              <Icon name="move_item" />
             </button>
           )}
           <button

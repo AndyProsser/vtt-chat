@@ -46,6 +46,7 @@ type IconName =
   | 'currency_exchange'
   | 'receipt_long'
   | 'swap_horiz'
+  | 'move_item'
 
 interface IconProps extends HTMLAttributes<HTMLSpanElement> {
   name: IconName
@@ -97,6 +98,7 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   receipt_long: 'receipt_long',
   swap_horiz: 'swap_horiz',
   storefront: 'storefront',
+  move_item: 'move_item',
 }
 
 export function Icon({ name, className = '', ...props }: IconProps) {

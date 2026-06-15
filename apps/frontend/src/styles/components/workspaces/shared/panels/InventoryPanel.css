@@ -366,32 +366,84 @@
 
 /* ─── Item row — move mode ─────────────────────────────────────────────────── */
 
-.inventory-item-row__move-targets {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
+.inventory-item-row__move-title {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  padding: var(--space-1) 0 var(--space-1);
+  display: block;
 }
 
-.inventory-item-row__move-target {
-  padding: 2px var(--space-2);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-sm);
+.inventory-item-row__move-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.inventory-item-row__move-card {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  padding: 0.28rem 0.34rem;
+  text-align: left;
+  color: var(--color-text-primary);
   cursor: pointer;
   transition:
-    color 0.15s,
-    background 0.15s;
+    background 120ms ease,
+    color 120ms ease;
+  min-width: 0;
 }
 
-.inventory-item-row__move-target:hover {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+.inventory-item-row__move-card:hover:not(:disabled),
+.inventory-item-row__move-card:focus-visible {
+  background: var(--color-surface-subtle);
+  outline: none;
+}
+
+.inventory-item-row__move-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inventory-item-row__move-card-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-accent) 20%, var(--color-surface-subtle) 80%);
+  color: var(--color-text-primary);
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.inventory-item-row__move-card--party .inventory-item-row__move-card-avatar {
+  background: color-mix(in srgb, var(--color-success, #4caf50) 22%, var(--color-surface-subtle) 78%);
+  color: var(--color-success, #4caf50);
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+}
+
+.inventory-item-row__move-card-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.inventory-item-row__move-card-name {
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ─── Currency row ─────────────────────────────────────────────────────────── */
