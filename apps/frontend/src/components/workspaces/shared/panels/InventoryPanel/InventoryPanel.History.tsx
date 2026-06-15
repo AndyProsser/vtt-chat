@@ -38,19 +38,26 @@ function describeCurrencyDelta(delta: InventoryHistoryEntry['currencyDelta']): s
 }
 
 function describeAction(entry: InventoryHistoryEntry): string {
+  const actor = entry.actorName
+  const item = entry.itemName ?? 'item'
+  const qty = entry.quantity != null ? ` ×${entry.quantity}` : ''
   switch (entry.actionType) {
     case 'ITEM_ADDED':
-      return `${entry.itemName ?? 'item'} ×${entry.quantity ?? 1} → ${entry.toOwnerType ?? 'inventory'}`
+      return `${actor} added ${item}${qty} to ${entry.toOwnerName ?? 'inventory'}`
     case 'ITEM_REMOVED':
-      return `${entry.itemName ?? 'item'} ×${entry.quantity ?? 1} removed`
+      return `${actor} removed ${item}${qty}`
     case 'ITEM_TRANSFERRED':
-      return `${entry.itemName ?? 'item'} ×${entry.quantity ?? 1}: ${entry.fromOwnerType ?? '?'} → ${entry.toOwnerType ?? '?'}`
+      return `${actor} moved ${item}${qty} to ${entry.toOwnerName ?? '?'}`
     case 'ITEM_EDITED':
-      return `${entry.itemName ?? 'item'} updated${entry.quantity != null ? ` ×${entry.quantity}` : ''}`
-    case 'CURRENCY_CHANGED':
-      return describeCurrencyDelta(entry.currencyDelta) || 'currency updated'
+      return `${actor} updated ${item}${qty}`
+    case 'CURRENCY_CHANGED': {
+      const delta = describeCurrencyDelta(entry.currencyDelta)
+      return delta
+        ? `${actor}: ${delta} in ${entry.toOwnerName ?? 'inventory'}`
+        : `${actor} updated currency`
+    }
     default:
-      return entry.itemName ?? entry.actionType
+      return `${actor}: ${item}`
   }
 }
 

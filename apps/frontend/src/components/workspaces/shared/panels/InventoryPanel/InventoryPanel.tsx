@@ -30,6 +30,7 @@ export interface InventoryPanelProps {
 interface CharacterTab {
   userId: UUID
   label: string
+  avatarUrl?: string | null
 }
 
 type InventoryView = 'party' | UUID
@@ -86,6 +87,7 @@ export function InventoryPanel({
         .map((p) => ({
           userId: p.userId as UUID,
           label: p.characterName || p.username,
+          avatarUrl: p.avatarUrl ?? null,
         }))
         .sort((a, b) => a.label.localeCompare(b.label))
     }
@@ -115,7 +117,9 @@ export function InventoryPanel({
         }
       })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [campaignId, apiUrl, authToken, hydrateInventory, setInventoryLoading])
 
   // ─── Derived data ─────────────────────────────────────────────────────────
@@ -214,10 +218,17 @@ export function InventoryPanel({
   }
 
   // Transfer destinations for the Move To menu
-  const moveTargets = useMemo<Array<{ label: string; ownerType: 'party' | 'character'; ownerId: UUID | null }>>(
+  const moveTargets = useMemo<
+    Array<{ label: string; ownerType: 'party' | 'character'; ownerId: UUID | null; avatarUrl?: string | null }>
+  >(
     () => [
-      { label: 'Party', ownerType: 'party', ownerId: null },
-      ...characterTabs.map((t) => ({ label: t.label, ownerType: 'character' as const, ownerId: t.userId })),
+      { label: 'Party', ownerType: 'party', ownerId: null, avatarUrl: null },
+      ...characterTabs.map((t) => ({
+        label: t.label,
+        ownerType: 'character' as const,
+        ownerId: t.userId,
+        avatarUrl: t.avatarUrl,
+      })),
     ],
     [characterTabs]
   )
@@ -237,7 +248,7 @@ export function InventoryPanel({
           title="History"
           onClick={() => setShowHistory((v) => !v)}
         >
-          <Icon name="notes" />
+          <Icon name="receipt_long" />
         </button>
       </header>
 
@@ -302,7 +313,7 @@ export function InventoryPanel({
                 aria-label="Add item"
                 onClick={() => setShowAddForm((v) => !v)}
               >
-                <Icon name="send" />
+                <Icon name="storefront" />
                 Add
               </button>
             )}

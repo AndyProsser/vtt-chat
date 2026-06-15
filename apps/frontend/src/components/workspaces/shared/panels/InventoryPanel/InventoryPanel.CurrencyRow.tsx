@@ -25,7 +25,11 @@ export const InventoryCurrencyRow = memo(function InventoryCurrencyRow({
 }: InventoryCurrencyRowProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<Record<CoinKey, string>>({
-    pp: '0', gp: '0', ep: '0', sp: '0', cp: '0',
+    pp: '0',
+    gp: '0',
+    ep: '0',
+    sp: '0',
+    cp: '0',
   })
   const [isSaving, setIsSaving] = useState(false)
 
@@ -47,7 +51,10 @@ export const InventoryCurrencyRow = memo(function InventoryCurrencyRow({
         hasChange = true
       }
     }
-    if (!hasChange) { setEditing(false); return }
+    if (!hasChange) {
+      setEditing(false)
+      return
+    }
     setIsSaving(true)
     try {
       await onAdjust(delta)
@@ -59,7 +66,10 @@ export const InventoryCurrencyRow = memo(function InventoryCurrencyRow({
 
   if (editing) {
     return (
-      <div className="inventory-currency-row inventory-currency-row--edit" aria-label="Adjust currency">
+      <div
+        className="inventory-currency-row inventory-currency-row--edit"
+        aria-label="Adjust currency"
+      >
         <p className="inventory-currency-row__edit-hint">Enter change (+ to add, − to spend):</p>
         <div className="inventory-currency-row__edit-coins">
           {COINS.map(({ key, label, title }) => (
@@ -111,9 +121,7 @@ export const InventoryCurrencyRow = memo(function InventoryCurrencyRow({
             <span className="inventory-currency-row__label">{label}</span>
           </div>
         ))}
-        {!hasAny && (
-          <span className="inventory-currency-row__empty">No currency</span>
-        )}
+        {!hasAny && <span className="inventory-currency-row__empty">No currency</span>}
       </div>
       {!isReadOnly && (
         <button
@@ -123,7 +131,7 @@ export const InventoryCurrencyRow = memo(function InventoryCurrencyRow({
           title="Adjust currency"
           onClick={openEdit}
         >
-          <Icon name="notes" />
+          <Icon name="currency_exchange" />
         </button>
       )}
     </div>

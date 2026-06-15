@@ -6,9 +6,11 @@ type IconName =
   | 'history'
   | 'settings'
   | 'close'
+  | 'storefront'
   | 'voice'
   | 'rooms'
   | 'users'
+  | 'edit'
   | 'mic'
   | 'panel'
   | 'chat'
@@ -40,6 +42,10 @@ type IconName =
   | 'party'
   | 'inventory'
   | 'restart_alt'
+  | 'money_bag'
+  | 'currency_exchange'
+  | 'receipt_long'
+  | 'swap_horiz'
 
 interface IconProps extends HTMLAttributes<HTMLSpanElement> {
   name: IconName
@@ -54,6 +60,7 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   voice: 'graphic_eq',
   rooms: 'view_list',
   users: 'group',
+  edit: 'edit',
   mic: 'mic',
   panel: 'dashboard',
   chat: 'chat',
@@ -85,6 +92,11 @@ const MATERIAL_SYMBOLS: Record<IconName, string> = {
   party: 'groups',
   inventory: 'inventory_2',
   restart_alt: 'restart_alt',
+  money_bag: 'money_bag',
+  currency_exchange: 'currency_exchange',
+  receipt_long: 'receipt_long',
+  swap_horiz: 'swap_horiz',
+  storefront: 'storefront',
 }
 
 export function Icon({ name, className = '', ...props }: IconProps) {

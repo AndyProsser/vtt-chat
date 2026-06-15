@@ -7,14 +7,22 @@ interface MoveTarget {
   label: string
   ownerType: 'party' | 'character'
   ownerId: UUID | null
+  avatarUrl?: string | null
 }
 
 interface InventoryItemRowProps {
   item: InventoryItem
   isReadOnly: boolean
   onRemove: (itemId: UUID) => Promise<void>
-  onEdit: (itemId: UUID, updates: { name?: string; quantity?: number; notes?: string | null }) => Promise<void>
-  onMove: (itemId: UUID, toOwnerType: 'party' | 'character', toOwnerId: UUID | null) => Promise<void>
+  onEdit: (
+    itemId: UUID,
+    updates: { name?: string; quantity?: number; notes?: string | null }
+  ) => Promise<void>
+  onMove: (
+    itemId: UUID,
+    toOwnerType: 'party' | 'character',
+    toOwnerId: UUID | null
+  ) => Promise<void>
   moveTargets: MoveTarget[]
 }
 
@@ -164,21 +172,28 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   if (mode === 'move') {
     return (
       <li className="inventory-item-row inventory-item-row--move">
-        <span className="inventory-item-row__name">Move {item.name} to:</span>
-        <ul className="inventory-item-row__move-targets">
-          {moveTargets.map((t) => (
-            <li key={`${t.ownerType}-${t.ownerId}`}>
+        <span className="inventory-item-row__move-title">Move {item.name} to:</span>
+        <div className="inventory-item-row__move-grid" role="listbox" aria-label="Move destination">
+          {moveTargets.map((t) => {
+            const initial = (t.label.trim()[0] ?? '?').toUpperCase()
+            return (
               <button
+                key={`${t.ownerType}-${t.ownerId}`}
                 type="button"
-                className="inventory-item-row__move-target"
+                role="option"
+                aria-selected={false}
+                className="inventory-item-row__move-card"
                 onClick={() => handleMove(t)}
                 disabled={isBusy}
               >
-                {t.label}
+                <span className="inventory-item-row__move-card-avatar" aria-hidden="true">
+                  {t.avatarUrl ? <img src={t.avatarUrl} alt="" /> : initial}
+                </span>
+                <span className="inventory-item-row__move-card-name">{t.label}</span>
               </button>
-            </li>
-          ))}
-        </ul>
+            )
+          })}
+        </div>
         <button
           type="button"
           className="inventory-item-row__action-btn"
@@ -197,9 +212,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
       </span>
       <div className="inventory-item-row__info">
         <span className="inventory-item-row__name">{item.name}</span>
-        {item.notes && (
-          <span className="inventory-item-row__notes">{item.notes}</span>
-        )}
+        {item.notes && <span className="inventory-item-row__notes">{item.notes}</span>}
       </div>
       {!isReadOnly && (
         <div className="inventory-item-row__actions">
@@ -210,7 +223,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
             title="Edit"
             onClick={() => setMode('edit')}
           >
-            <Icon name="notes" />
+            <Icon name="edit" />
           </button>
           {moveTargets.length > 0 && (
             <button

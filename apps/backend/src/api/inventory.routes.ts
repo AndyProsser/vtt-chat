@@ -12,6 +12,9 @@ import { InventoryItemSource, MessageType, isValidUUID } from '@shared'
 import type { UUID } from '@shared'
 import { verifyToken } from '@/services/auth.service'
 import { getCampaignForUser } from '@/repositories/campaign.repository'
+
+/** Sentinel used as sessionId in event envelopes when no active session exists. */
+const NO_SESSION_ID = '00000000-0000-4000-8000-000000000000' as UUID
 import { listSessionsByCampaign } from '@/repositories/session.repository'
 import { sendMessage } from '@/services/chat.service'
 import {
@@ -26,7 +29,6 @@ import {
 import type { WebSocketManager } from '@/ws'
 import type { EventEnvelope } from '@shared'
 import { logger } from '@/utils'
-import { listCampaignMemberIds } from '@/repositories/campaign.repository'
 
 const router = Router()
 
@@ -205,14 +207,14 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
     })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-    if (wsManager && session) {
+    if (wsManager) {
       const event: EventEnvelope = {
         id: crypto.randomUUID() as UUID,
         type: 'INVENTORY:ITEM_ADDED',
         version: 1,
         userId: user.userId as UUID,
         userRole: role as any,
-        sessionId: session.id as UUID,
+        sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
         roomId: null,
         timestamp: item.createdAt,
         payload: {
@@ -229,8 +231,7 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
           addedAt: item.createdAt,
         },
       }
-      const memberIds = await listCampaignMemberIds(campaignId as UUID)
-      wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
+      await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
     }
 
     if (session) {
@@ -279,14 +280,14 @@ router.patch('/:campaignId/items/:itemId', requireAuth, async (req: Request, res
     })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-    if (wsManager && session) {
+    if (wsManager) {
       const event: EventEnvelope = {
         id: crypto.randomUUID() as UUID,
         type: 'INVENTORY:ITEM_EDITED',
         version: 1,
         userId: user.userId as UUID,
         userRole: role as any,
-        sessionId: session.id as UUID,
+        sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
         roomId: null,
         timestamp: item.updatedAt,
         payload: {
@@ -301,8 +302,7 @@ router.patch('/:campaignId/items/:itemId', requireAuth, async (req: Request, res
           editedAt: item.updatedAt,
         },
       }
-      const memberIds = await listCampaignMemberIds(campaignId as UUID)
-      wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
+      await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
     }
 
     if (session) {
@@ -346,16 +346,17 @@ router.delete('/:campaignId/items/:itemId', requireAuth, async (req: Request, re
     })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-    if (wsManager && session) {
+    if (wsManager) {
+      const removedAt = Date.now()
       const event: EventEnvelope = {
         id: crypto.randomUUID() as UUID,
         type: 'INVENTORY:ITEM_REMOVED',
         version: 1,
         userId: user.userId as UUID,
         userRole: role as any,
-        sessionId: session.id as UUID,
+        sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
         roomId: null,
-        timestamp: Date.now(),
+        timestamp: removedAt,
         payload: {
           campaignId: campaignId as UUID,
           itemId: item.id,
@@ -364,11 +365,10 @@ router.delete('/:campaignId/items/:itemId', requireAuth, async (req: Request, re
           name: item.name,
           quantity: item.quantity,
           removedByUserId: user.userId,
-          removedAt: Date.now(),
+          removedAt,
         },
       }
-      const memberIds = await listCampaignMemberIds(campaignId as UUID)
-      wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
+      await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
     }
 
     if (session) {
@@ -421,14 +421,14 @@ router.post(
       })
 
       const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-      if (wsManager && session) {
+      if (wsManager) {
         const event: EventEnvelope = {
           id: crypto.randomUUID() as UUID,
           type: 'INVENTORY:ITEM_TRANSFERRED',
           version: 1,
           userId: user.userId as UUID,
           userRole: role as any,
-          sessionId: session.id as UUID,
+          sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
           roomId: null,
           timestamp: item.updatedAt,
           payload: {
@@ -444,8 +444,7 @@ router.post(
             transferredAt: item.updatedAt,
           },
         }
-        const memberIds = await listCampaignMemberIds(campaignId as UUID)
-        wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
+        await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
       }
 
       if (session) {
@@ -506,14 +505,14 @@ router.post('/:campaignId/currency', requireAuth, async (req: Request, res: Resp
     })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-    if (wsManager && session) {
+    if (wsManager) {
       const event: EventEnvelope = {
         id: crypto.randomUUID() as UUID,
         type: 'INVENTORY:CURRENCY_CHANGED',
         version: 1,
         userId: user.userId as UUID,
         userRole: role as any,
-        sessionId: session.id as UUID,
+        sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
         roomId: null,
         timestamp: wallet.updatedAt,
         payload: {
@@ -527,8 +526,7 @@ router.post('/:campaignId/currency', requireAuth, async (req: Request, res: Resp
           changedAt: wallet.updatedAt,
         },
       }
-      const memberIds = await listCampaignMemberIds(campaignId as UUID)
-      wsManager.broadcastEventToSession(session.id as UUID, event, memberIds as UUID[])
+      await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
     }
 
     if (session) {

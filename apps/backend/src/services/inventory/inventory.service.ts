@@ -23,6 +23,10 @@ import {
   type CurrencyWalletRow,
   type InventoryHistoryRow,
 } from '@/repositories/inventory.repository'
+import { getCampaignDmId } from '@/repositories/campaign.repository'
+import { getPrismaClient } from '@/infra/db'
+
+const prisma = getPrismaClient()
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,11 +109,14 @@ export interface InventoryHistoryDto {
   itemId: string | null
   sessionId: string | null
   actorUserId: string
+  actorName: string
   actionType: string
   fromOwnerType: string | null
   fromOwnerId: string | null
+  fromOwnerName: string | null
   toOwnerType: string | null
   toOwnerId: string | null
+  toOwnerName: string | null
   quantity: number | null
   currencyDelta: unknown
   itemName: string | null
@@ -117,17 +124,59 @@ export interface InventoryHistoryDto {
   createdAt: number
 }
 
-function mapHistory(row: InventoryHistoryRow): InventoryHistoryDto {
-  return { ...row, createdAt: row.createdAt.getTime() }
-}
-
 export async function getInventoryHistory(
   campaignId: UUID,
   limit = 50,
   offset = 0
 ): Promise<InventoryHistoryDto[]> {
-  const rows = await listInventoryHistory({ campaignId, limit, offset })
-  return rows.map(mapHistory)
+  const [rows, dmId] = await Promise.all([
+    listInventoryHistory({ campaignId, limit, offset }),
+    getCampaignDmId(campaignId),
+  ])
+
+  // Collect unique user IDs that need name resolution
+  const userIds = new Set<string>()
+  for (const row of rows) {
+    userIds.add(row.actorUserId)
+    if (row.fromOwnerId && row.fromOwnerType === 'character') userIds.add(row.fromOwnerId)
+    if (row.toOwnerId && row.toOwnerType === 'character') userIds.add(row.toOwnerId)
+  }
+  const userIdList = [...userIds]
+
+  const [users, characters] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: userIdList } },
+      select: { id: true, displayName: true },
+    }),
+    prisma.character.findMany({
+      where: { campaignId, userId: { in: userIdList }, isActive: true },
+      select: { userId: true, name: true },
+    }),
+  ])
+
+  const displayNameMap = new Map(users.map((u) => [u.id, u.displayName]))
+  // Character name takes precedence over display name
+  const characterNameMap = new Map(characters.map((c) => [c.userId, c.name]))
+
+  function resolveName(userId: string): string {
+    if (userId === dmId) return 'DM'
+    return characterNameMap.get(userId) ?? displayNameMap.get(userId) ?? 'Unknown'
+  }
+
+  function resolveOwnerName(ownerType: string | null, ownerId: string | null): string | null {
+    if (!ownerType) return null
+    if (ownerType === 'party') return 'Party'
+    if (ownerId) return characterNameMap.get(ownerId) ?? displayNameMap.get(ownerId) ?? 'Unknown'
+    return null
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    actorName: resolveName(row.actorUserId),
+    fromOwnerName: resolveOwnerName(row.fromOwnerType, row.fromOwnerId),
+    toOwnerName: resolveOwnerName(row.toOwnerType, row.toOwnerId),
+    createdAt: row.createdAt.getTime(),
+  }))
 }
 
 // ─── Item mutations ───────────────────────────────────────────────────────────
