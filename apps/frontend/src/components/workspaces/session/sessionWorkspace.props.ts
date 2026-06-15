@@ -68,6 +68,8 @@ type BuildSessionWorkspacePropsParams = {
   isCharacterSettingsSaving: boolean
   userId: UUID
   dndRuleset?: '2014' | '2024'
+  onSrdFieldFocus?: () => void
+  onSrdFieldBlur?: () => void
   joinUrl?: string
   watchUrl?: string
   spectatorsEnabled?: boolean
@@ -144,6 +146,8 @@ export function buildSessionWorkspaceProps(
     isCharacterSettingsSaving: params.isCharacterSettingsSaving,
     userId: params.userId,
     dndRuleset: params.dndRuleset,
+    onSrdFieldFocus: params.onSrdFieldFocus,
+    onSrdFieldBlur: params.onSrdFieldBlur,
     joinUrl: params.joinUrl,
     watchUrl: params.watchUrl,
     spectatorsEnabled: params.spectatorsEnabled,

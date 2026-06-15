@@ -93,4 +93,6 @@ export type SessionWorkspaceProps = {
   isCharacterSettingsSaving: boolean
   userId: UUID
   dndRuleset?: '2014' | '2024'
+  onSrdFieldFocus?: () => void
+  onSrdFieldBlur?: () => void
 }

@@ -68,6 +68,8 @@ type SessionWorkspaceRightRailTabProps = {
   onRequestOpenPlayerSettings: () => void
   playerSettingsFocusRequestKey: number
   dndRuleset?: '2014' | '2024'
+  onSrdFieldFocus?: () => void
+  onSrdFieldBlur?: () => void
   joinUrl?: string
   watchUrl?: string
   spectatorsEnabled?: boolean
@@ -123,6 +125,8 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
   onCopyInviteUrl,
   onReissueInvite,
   dndRuleset,
+  onSrdFieldFocus,
+  onSrdFieldBlur,
 }: SessionWorkspaceRightRailTabProps) {
   const informationPanel = useMemo(
     () => (
@@ -362,6 +366,8 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
           dndRuleset: dndRuleset ?? '2024',
           apiUrl,
           token,
+          onSrdFieldFocus,
+          onSrdFieldBlur,
         }}
       />
     ),
@@ -386,6 +392,8 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
       isCharacterSettingsLoading,
       isCharacterSettingsSaving,
       playerSettingsFocusRequestKey,
+      onSrdFieldFocus,
+      onSrdFieldBlur,
     ]
   )
 

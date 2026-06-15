@@ -32,6 +32,10 @@ export interface PlayerSettingsPanelProps {
   dndRuleset?: '2014' | '2024'
   apiUrl?: string
   token?: string
+  /** Called when race/class/subclass gains focus — suppresses auto-save while popup is open. */
+  onSrdFieldFocus?: () => void
+  /** Called when race/class/subclass loses focus — triggers deferred save. */
+  onSrdFieldBlur?: () => void
 }
 
 export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
@@ -100,6 +104,8 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 list="crbs-character-race-suggestions"
                 value={props.characterDraft.race}
                 onChange={(event) => props.onCharacterFieldChange('race', event.target.value)}
+                onFocus={props.onSrdFieldFocus}
+                onBlur={props.onSrdFieldBlur}
                 disabled={props.isCharacterLoading || props.isCharacterSaving}
               />
               <datalist id="crbs-character-race-suggestions">
@@ -117,6 +123,8 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 list="crbs-character-class-suggestions"
                 value={props.characterDraft.className}
                 onChange={(event) => props.onCharacterFieldChange('className', event.target.value)}
+                onFocus={props.onSrdFieldFocus}
+                onBlur={props.onSrdFieldBlur}
                 disabled={props.isCharacterLoading || props.isCharacterSaving}
               />
               <datalist id="crbs-character-class-suggestions">
@@ -134,6 +142,8 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 list="crbs-character-subclass-suggestions"
                 value={props.characterDraft.subclass}
                 onChange={(event) => props.onCharacterFieldChange('subclass', event.target.value)}
+                onFocus={props.onSrdFieldFocus}
+                onBlur={props.onSrdFieldBlur}
                 disabled={props.isCharacterLoading || props.isCharacterSaving}
               />
               {subclassOptions.length > 0 && (

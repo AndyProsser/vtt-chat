@@ -384,8 +384,13 @@ export function WorkspaceInitialization({
     setLobbyNotice,
   })
 
-  const { handleCharacterFieldChange, saveCharacterSettings, loadUserCharacters } =
-    useWorkspacesCharacterSettingsOrchestration({
+  const {
+    handleCharacterFieldChange,
+    saveCharacterSettings,
+    loadUserCharacters,
+    handleSrdFieldFocus,
+    handleSrdFieldBlur,
+  } = useWorkspacesCharacterSettingsOrchestration({
       characterSettingsController,
       characterSettingsActions,
       selectedCampaignId,
@@ -1007,6 +1012,8 @@ export function WorkspaceInitialization({
         isCharacterSettingsSaving,
         userId: user.id,
         dndRuleset: settingsDndRuleset,
+        onSrdFieldFocus: handleSrdFieldFocus,
+        onSrdFieldBlur: handleSrdFieldBlur,
       }),
     [
       activeTransitionSessionId,
@@ -1020,6 +1027,8 @@ export function WorkspaceInitialization({
       fetchWithAuthGuard,
       handleCancelCooldown,
       handleCharacterFieldChange,
+      handleSrdFieldFocus,
+      handleSrdFieldBlur,
       handleOpenUserSettingsModal,
       handlePauseSession,
       handlePlannedDurationMinutesChange,
