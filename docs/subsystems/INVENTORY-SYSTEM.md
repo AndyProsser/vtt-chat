@@ -60,7 +60,26 @@ interface CurrencyWallet {
 }
 ```
 
-### 2.3 InventoryHistoryEntry
+### 2.3 PendingExtensionSync
+
+Created only when the campaign's `extensionSyncConflictResolution` setting is `PROMPT` and an incoming extension sync value conflicts with an existing record (see §12.3). Holds the conflicting change until the DM approves or rejects it.
+
+```ts
+interface PendingExtensionSync {
+  id: string
+  campaignId: string
+  characterId: string
+  externalSource: string // e.g. 'DDB'
+  externalId: string // item externalId, or 'currency' for a wallet conflict
+  kind: 'ITEM' | 'CURRENCY'
+  incomingPayload: Partial<InventoryItem> | Partial<CurrencyWallet>
+  existingSnapshot: Partial<InventoryItem> | Partial<CurrencyWallet> // value at time of conflict, for diff display
+  createdAt: Date
+  expiresAt: Date // createdAt + 24h
+}
+```
+
+### 2.4 InventoryHistoryEntry
 
 ```ts
 interface InventoryHistoryEntry {
@@ -256,19 +275,20 @@ All commands accept a currency argument as the item name using coin notation:
 
 All events are defined in `shared/events/inventory.ts`.
 
-| Event                           | Trigger                     | Payload                                                     |
-| ------------------------------- | --------------------------- | ----------------------------------------------------------- |
-| `INVENTORY:ITEM_ADDED`          | Item added to any inventory | `{ campaignId, ownerId, ownerType, item: InventoryItem }`   |
-| `INVENTORY:ITEM_REMOVED`        | Item removed or dropped     | `{ campaignId, ownerId, ownerType, itemId, quantity }`      |
-| `INVENTORY:ITEM_TRANSFERRED`    | Item moved between owners   | `{ campaignId, fromOwner, toOwner, item: InventoryItem }`   |
-| `INVENTORY:LOOT_SPLIT_PROPOSED` | DM initiates loot split     | `{ campaignId, sessionId, splitId, items, proposedShares }` |
-| `INVENTORY:LOOT_SPLIT_ACCEPTED` | Player accepts their share  | `{ campaignId, splitId, playerId, acceptedItems }`          |
-| `INVENTORY:LOOT_SPLIT_EXPIRED`  | Split card timer expires    | `{ campaignId, splitId, revertedItems }`                    |
-| `INVENTORY:CURRENCY_CHANGED`    | Wallet or purse updated     | `{ campaignId, ownerId, ownerType, delta: CurrencyWallet }` |
+| Event                              | Trigger                                                  | Payload                                                                              |
+| ---------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `INVENTORY:ITEM_ADDED`             | Item added to any inventory                              | `{ campaignId, ownerId, ownerType, item: InventoryItem }`                            |
+| `INVENTORY:ITEM_REMOVED`           | Item removed or dropped                                  | `{ campaignId, ownerId, ownerType, itemId, quantity }`                               |
+| `INVENTORY:ITEM_TRANSFERRED`       | Item moved between owners                                | `{ campaignId, fromOwner, toOwner, item: InventoryItem }`                            |
+| `INVENTORY:LOOT_SPLIT_PROPOSED`    | DM initiates loot split                                  | `{ campaignId, sessionId, splitId, items, proposedShares }`                          |
+| `INVENTORY:LOOT_SPLIT_ACCEPTED`    | Player accepts their share                               | `{ campaignId, splitId, playerId, acceptedItems }`                                   |
+| `INVENTORY:LOOT_SPLIT_EXPIRED`     | Split card timer expires                                 | `{ campaignId, splitId, revertedItems }`                                             |
+| `INVENTORY:CURRENCY_CHANGED`       | Wallet or purse updated                                  | `{ campaignId, ownerId, ownerType, delta: CurrencyWallet }`                          |
+| `INVENTORY:EXTENSION_SYNC_PENDING` | Extension sync produces a conflict under `PROMPT` policy | `{ campaignId, characterId, pendingSyncId, kind: 'ITEM' \| 'CURRENCY', externalId }` |
 
 WS dispatch rules:
 
-- All `INVENTORY:*` events broadcast to all connected clients in the campaign session.
+- All `INVENTORY:*` events broadcast to all connected clients in the campaign session, **except** `INVENTORY:EXTENSION_SYNC_PENDING`, which is sent only to connected DM clients (see §12.3, §12.4).
 - Backend emits only **after** PostgreSQL write succeeds.
 - Spectators receive `ITEM_ADDED`, `ITEM_REMOVED`, `ITEM_TRANSFERRED`, `CURRENCY_CHANGED` in read-only mode.
 
@@ -319,6 +339,16 @@ WS dispatch rules:
 | Method | Path                                   | Description                        |
 | ------ | -------------------------------------- | ---------------------------------- |
 | `GET`  | `/api/campaigns/:id/inventory/history` | Paginated history log with filters |
+
+### Pending Extension Sync (`PROMPT` conflict resolution only)
+
+See §12.3 and [EXTENSION-INTEGRATION.md §5e](../extension/EXTENSION-INTEGRATION.md) for the policy that creates these records.
+
+| Method | Path                                                           | Description                                                                 |
+| ------ | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `GET`  | `/api/campaigns/:id/inventory/sync/pending`                    | List pending extension sync conflicts awaiting DM review (DM only)          |
+| `POST` | `/api/campaigns/:id/inventory/sync/pending/:pendingId/approve` | Apply the pending change via the standard 4-layer contract (DM only)        |
+| `POST` | `/api/campaigns/:id/inventory/sync/pending/:pendingId/reject`  | Discard the pending change, leaving the existing record untouched (DM only) |
 
 ---
 
@@ -428,11 +458,11 @@ Extension inventory sync is governed by two layers of campaign-scoped policy, bo
 
 The existing top-level policy controls whether extension sync is permitted at all, and for which roles:
 
-| Value | Who can sync (character, inventory, currency) |
-| --- | --- |
-| `NONE` | Nobody — all extension sync payloads are rejected |
-| `DM_ONLY` | DM only |
-| `DM_AND_PLAYERS` | DM and players |
+| Value            | Who can sync (character, inventory, currency)     |
+| ---------------- | ------------------------------------------------- |
+| `NONE`           | Nobody — all extension sync payloads are rejected |
+| `DM_ONLY`        | DM only                                           |
+| `DM_AND_PLAYERS` | DM and players                                    |
 
 When `extensionSyncPolicy` is `NONE`, no inventory or currency sync request is processed regardless of the Layer 2 settings below.
 
@@ -440,18 +470,20 @@ When `extensionSyncPolicy` is `NONE`, no inventory or currency sync request is p
 
 When `extensionSyncPolicy` permits the caller, four additional settings provide granular control over inventory and currency sync specifically:
 
-| Setting | Type | Default | Controls |
-| --- | --- | --- | --- |
-| `extensionInventorySyncEnabled` | boolean | `true` | When `false`, all `inventoryUpdate` payloads are rejected even if the caller is permitted by Layer 1. |
-| `extensionCurrencySyncEnabled` | boolean | `true` | When `false`, all `currencyUpdate` payloads are rejected. |
-| `extensionPartyInventorySyncAccess` | `DISABLED \| DM_ONLY \| ALL_PLAYERS` | `DM_ONLY` | Who may write to party inventory/purse via extension sync. Character inventory is always writable by the character's own player (subject to `extensionInventorySyncEnabled`). |
-| `extensionSyncConflictResolution` | `OVERWRITE \| IGNORE \| PROMPT` | `OVERWRITE` | How conflicts (incoming value differs from persisted state) are handled. `OVERWRITE` applies immediately; `IGNORE` discards the incoming value; `PROMPT` queues it for DM review. |
+| Setting                             | Type                                 | Default     | Controls                                                                                                                                                                          |
+| ----------------------------------- | ------------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `extensionInventorySyncEnabled`     | boolean                              | `true`      | When `false`, all `inventoryUpdate` payloads are rejected even if the caller is permitted by Layer 1.                                                                             |
+| `extensionCurrencySyncEnabled`      | boolean                              | `true`      | When `false`, all `currencyUpdate` payloads are rejected.                                                                                                                         |
+| `extensionPartyInventorySyncAccess` | `DISABLED \| DM_ONLY \| ALL_PLAYERS` | `DM_ONLY`   | Who may write to party inventory/purse via extension sync. Character inventory is always writable by the character's own player (subject to `extensionInventorySyncEnabled`).     |
+| `extensionSyncConflictResolution`   | `OVERWRITE \| IGNORE \| PROMPT`      | `OVERWRITE` | How conflicts (incoming value differs from persisted state) are handled. `OVERWRITE` applies immediately; `IGNORE` discards the incoming value; `PROMPT` queues it for DM review. |
 
 See [EXTENSION-INTEGRATION.md §5e](../extension/EXTENSION-INTEGRATION.md) for the full enforcement contract, partial application rules, and the `PROMPT` pending-sync queue flow.
 
 ### 12.4 WS Broadcast
 
-The sync endpoint does **not** currently broadcast individual `INVENTORY:ITEM_ADDED` / `INVENTORY:CURRENCY_CHANGED` events per synced item. The frontend panel rehydrates from the REST API on next mount or panel focus. A future enhancement may batch-broadcast a `INVENTORY:EXTERNAL_SYNC_APPLIED` event.
+For `OVERWRITE` and `IGNORE` conflict resolution, the sync endpoint does **not** currently broadcast individual `INVENTORY:ITEM_ADDED` / `INVENTORY:CURRENCY_CHANGED` events per synced item. The frontend panel rehydrates from the REST API on next mount or panel focus. A future enhancement may batch-broadcast a `INVENTORY:EXTERNAL_SYNC_APPLIED` event.
+
+For `PROMPT` conflict resolution, each conflicting value broadcasts `INVENTORY:EXTENSION_SYNC_PENDING` to DM clients only (see §7, §2.3). Once a pending sync is approved via `POST .../sync/pending/:pendingId/approve` (§8), the change applies through the standard 4-layer contract and broadcasts the normal `INVENTORY:ITEM_ADDED` / `INVENTORY:CURRENCY_CHANGED` event like any other inventory mutation.
 
 ---
 

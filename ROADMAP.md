@@ -1827,20 +1827,47 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 **Priority**: 🟡 Medium (post-MVP, MVP distribution channel)
 **Depends on**: Core Reliability + W0-UI complete
 
-**Scope**: VS Code or browser extension allows launching app, guest login, campaign access, and data sync. One-click launch from invite link or code.
+**Scope**: Server-side contracts and endpoints that allow the browser extension (maintained in a separate repository) to authenticate users, sync character and inventory data, and apply DM-configured sync policies. The extension connects to these endpoints and sends data in the formats defined here; it does not live in this repo.
 
 **Acceptance Criteria**:
+
+Auth & access (complete):
 
 - [x] Extension can launch app via POST to `/api/auth/extension/guest-login`
 - [x] Guest DM/Player/Spectator accounts are created on first launch
 - [x] Campaign membership is auto-granted via invite link or code
 - [x] Guest account can be upgraded to full account later without losing campaign history
-- [ ] Extension reconnects persistently via device credential — contract locked (see `docs/CONTRACTS.md`); backend endpoints not yet implemented
-- [ ] Extension stays synced with app state during session — join-time sync only; active-session sync deferred to Stage E2
+
+Device credential persistence:
+
+- [ ] `POST /api/auth/extension/credential/exchange` — exchange short-lived JWT for long-lived device credential
+- [ ] `GET /api/auth/extension/credentials` — list active credentials for the authenticated user
+- [ ] `DELETE /api/auth/extension/credentials/:credentialId` — revoke a credential
+- [ ] `POST /api/auth/extension/guest-login` response includes `deviceCredential` field (contract locked in `docs/CONTRACTS.md`)
+
+Character and inventory sync:
+
+- [ ] `POST /api/integrations/external/sync` accepts and validates `inventoryUpdate` payload — items upserted by `(externalSource, externalId)` within the target character's inventory
+- [ ] `POST /api/integrations/external/sync` accepts and validates `currencyUpdate` payload — wallet set to absolute values; signed delta recorded in inventory history log
+- [ ] Combined sync request (character + inventory + currency in one call) processes each section independently per policy; response `applied` object reports per-section outcome
+
+Campaign inventory sync policy:
+
+- [ ] `CampaignSettings` schema extended with four new fields: `extensionInventorySyncEnabled`, `extensionCurrencySyncEnabled`, `extensionPartyInventorySyncAccess`, `extensionSyncConflictResolution` (see `docs/ui/DM-CAMPAIGN-SETTINGS.md §3.5`)
+- [ ] `GET /api/campaigns/:id/settings` returns all four new fields
+- [ ] `PATCH /api/campaigns/:id/settings` accepts and validates all four new fields (DM-only)
+- [ ] Sync endpoint enforces two-layer policy: Layer 1 `extensionSyncPolicy` access gate, then Layer 2 inventory-specific controls; partial application when only some payload sections are blocked
+- [ ] `OVERWRITE` conflict resolution — existing upsert behaviour (default)
+- [ ] `IGNORE` conflict resolution — existing records preserved; only net-new items and zero-balance wallets applied
+- [ ] `PROMPT` conflict resolution — conflicting changes written to `PendingExtensionSync` table; `INVENTORY:EXTENSION_SYNC_PENDING` WS event broadcast to DM; non-conflicting changes applied immediately
+- [ ] DM review endpoints for `PROMPT` mode: `GET /api/campaigns/:id/inventory/sync/pending`, `POST /api/campaigns/:id/inventory/sync/pending/:id/approve`, `POST /api/campaigns/:id/inventory/sync/pending/:id/reject`
+- [ ] Pending sync records expire after 24 hours (cleanup job or TTL field)
+- [ ] Policy enforcement unit tests covering all Layer 1 × Layer 2 combinations
+- [ ] Integration test: combined sync request with partial policy block returns correct `applied` + `skippedReasons` shape
 
 **Evidence snapshot (2026-06-08 — backend audit)**:
 
-Backend is production-ready for extension integration. All guest auth contracts, account lifecycle, and invite flows are implemented and tested.
+Backend is production-ready for extension auth integration. All guest auth contracts, account lifecycle, and invite flows are implemented and tested. Inventory/currency sync and campaign policy work is the remaining server-side surface.
 
 - `POST /api/auth/extension/guest-login` — fully implemented in `backend/src/api/auth.routes.ts`; service logic in `backend/src/services/guest-auth/extension.service.ts`. Accepts inviteCode, externalSystem, externalUserId, character data, campaignPacket; creates or updates guest User with `authType=GUEST`, ExternalIdentity link, Character, and CampaignMembership; assigns DM or PLAYER role from `campaignPacket.dmExternalUserId`; returns JWT with guest claims.
 - `POST /api/auth/extension/preflight` — pre-flight validation endpoint; returns accountStatus (`none`/`guest`/`full`) and suggestedFlow before the guest login call; covered by `backend/tests/api/guest-auth-routes.test.ts`.
@@ -1850,17 +1877,14 @@ Backend is production-ready for extension integration. All guest auth contracts,
 - `GuestUpgradePrompt.tsx` — frontend upgrade banner component implemented in `frontend/src/components/guest/GuestUpgradePrompt.tsx`.
 - Frontend non-extension invite join flow: `InviteJoinPage.tsx`, `useInviteValidation.ts`, `useEmailPrecheck.ts`, `inviteJoin.ts`.
 - Integration test coverage: `backend/tests/integration/guest-auth-flows.integration.test.ts`.
-- Extension frontend (background script, content script, popup) resides in a separate repository per `docs/extension/EXTENSION-ROADMAP.md` Stage E1. Active-session character/state sync is Stage E2 and not yet scoped.
-
-**Remaining work**:
-
-- Extension Device Credential backend endpoints — `POST /api/auth/extension/credential/exchange`, `GET /api/auth/extension/credentials`, `DELETE /api/auth/extension/credentials/:credentialId`; `POST /api/auth/extension/guest-login` response must include `deviceCredential` field. Contract locked in `docs/CONTRACTS.md`.
-- Extension frontend implementation (separate repo, Stage E1) — page detection, background script, popup UI, credential storage replacing invite URL storage; see updated `docs/extension/EXTENSION-ROADMAP.md`.
-- Active-session state sync (Stage E2) — character update propagation during an active session
+- Extension client (background script, content script, popup) resides in a separate repository. It connects to the endpoints defined here. Active-session character/state sync is Stage E2 and not yet scoped.
 
 **Related Docs**:
 
+- [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md) — sync protocol, two-layer policy enforcement (§5d, §5e)
 - [docs/extension/EXTENSION-ROADMAP.md](docs/extension/EXTENSION-ROADMAP.md)
+- [docs/ui/DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md) — campaign inventory sync policy settings (§3.5)
+- [docs/subsystems/INVENTORY-SYSTEM.md](docs/subsystems/INVENTORY-SYSTEM.md) — inventory sync contract (§12)
 
 ---
 
