@@ -180,9 +180,10 @@ export async function syncExternalIntegration(params: {
           name: String(it.name).trim(),
           quantity: Math.max(1, Number(it.quantity) || 1),
           srdKey: typeof it.srdKey === 'string' ? it.srdKey.trim() : undefined,
-          srdCategory: VALID_CATEGORIES.includes(it.srdCategory)
-            ? (it.srdCategory as InventoryItemCategory)
-            : InventoryItemCategory.EQUIPMENT,
+          srdCategory:
+            typeof it.srdCategory === 'string' && VALID_CATEGORIES.includes(it.srdCategory)
+              ? (it.srdCategory as InventoryItemCategory)
+              : InventoryItemCategory.EQUIPMENT,
           notes: typeof it.notes === 'string' ? it.notes.trim() : undefined,
         }))
 
