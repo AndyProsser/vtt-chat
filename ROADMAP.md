@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-15
+**Last Updated**: 2026-06-16
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -15,10 +15,11 @@
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 4: Future Enhancements           |      9 |       6 |              2 |              1 | 🟡 In Progress |
-| Phase 5: Optional / Far Future         |      4 |       0 |              0 |              4 | ⚪ Not Started |
+| Phase 4: Platform Integration          |      8 |       6 |              2 |              0 | 🟡 In Progress |
+| Phase 5: AI & Recording Enhancements   |      2 |       0 |              0 |              2 | ⚪ Not Started |
+| Phase 6: Optional / Far Future         |      4 |       0 |              0 |              4 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **63** |  **56** |          **2** |          **5** |                |
+| **Total**                              | **64** |  **56** |          **2** |          **6** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 25/25 done; PERF-24 (lobby modal cascade) and PERF-25 (EditorWorkspace callback churn + memo wrap) both resolved. Follow-up trace needed to confirm ≤50 and ≤2 component-count criteria. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -1749,7 +1750,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ---
 
-## Phase 4: Future Enhancements ⚪
+## Phase 4: Platform Integration 🟡 In Progress
 
 ### W-Queues: Durable Queue Manager (BullMQ)
 
@@ -2064,6 +2065,8 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 ---
 
+## Phase 5: AI & Recording Enhancements ⚪
+
 ### W-Recording-Transcription-Summary: Async Post-Session Processing
 
 **Status**: ⚪ Not Started
@@ -2182,7 +2185,7 @@ Capability gate: `VTTCHAT_SUMMARY_PROCESSING_ENABLED` — `false` by default; mu
 
 ---
 
-## Phase 5: Optional and Far Future ⚪
+## Phase 6: Optional and Far Future ⚪
 
 ### W-Desktop-App: Tauri-based Desktop Client
 
