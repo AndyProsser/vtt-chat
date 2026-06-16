@@ -275,7 +275,7 @@ router.delete(
   authMiddleware,
   async (req: Request, res: Response) => {
     const user = (req as any).user
-    const { credentialId } = req.params
+    const credentialId = String(req.params.credentialId)
 
     try {
       const context = await getUserAuthContext(user.userId)
