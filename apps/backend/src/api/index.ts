@@ -1,5 +1,6 @@
 import { Request, Response, Router } from 'express'
 import authJoinRoutes from './auth-join.routes'
+import authExtensionRoutes from './auth-extension.routes'
 import sessionRoutes from './session.routes'
 import chatRoutes from './chat.routes'
 import chatCommandRoutes from './chat-command.routes'
@@ -42,6 +43,9 @@ router.get('/health', (_req: Request, res: Response) => {
  */
 
 router.use('/auth', authJoinRoutes)
+// Browser extension auth surface (separate repo) — preflight, guest-login, device credentials.
+// Mounted alongside authJoinRoutes on disjoint /extension/* sub-paths; see auth-extension.routes.ts.
+router.use('/auth', authExtensionRoutes)
 router.use('/session', sessionRoutes)
 router.use('/presence', presenceRoutes)
 router.use('/rooms', roomsRoutes)

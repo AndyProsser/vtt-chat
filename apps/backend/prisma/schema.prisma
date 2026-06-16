@@ -96,6 +96,7 @@ model User {
   externalIdentities       ExternalIdentity[]
   linkedExternalCampaigns  CampaignExternalLink[] @relation("CampaignExternalLinkLinkedBy")
   passwordResetTokens      PasswordResetToken[]
+  deviceCredentials        DeviceCredential[]
   spectatorWaitlistEntries SpectatorWaitlist[]
   portabilityArtifacts     ImportExportArtifact[]
   joinRequests             CampaignJoinRequest[]
@@ -394,6 +395,22 @@ model PasswordResetToken {
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model DeviceCredential {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId       String
+  credentialHash String    @unique
+  createdAt      DateTime  @default(now())
+  lastUsedAt     DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+
+  @@unique([userId, deviceId])
   @@index([userId])
   @@index([expiresAt])
 }

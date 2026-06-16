@@ -29,13 +29,13 @@ vi.mock('@/infra/telemetry-store', () => ({
   persistDiagnosticEvents: (...args: unknown[]) => mockPersistDiagnosticEvents(...args),
 }))
 
-import authRoutes from '@/api/auth.routes'
+import authExtensionRoutes from '@/api/auth-extension.routes'
 import telemetryRoutes from '@/api/telemetry.routes'
 
 function buildApp() {
   const app = express()
   app.use(express.json())
-  app.use('/api/auth', authRoutes)
+  app.use('/api/auth', authExtensionRoutes)
   app.use('/api/telemetry', telemetryRoutes)
   return app
 }

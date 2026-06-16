@@ -1840,10 +1840,10 @@ Auth & access (complete):
 
 Device credential persistence:
 
-- [ ] `POST /api/auth/extension/credential/exchange` — exchange short-lived JWT for long-lived device credential
-- [ ] `GET /api/auth/extension/credentials` — list active credentials for the authenticated user
-- [ ] `DELETE /api/auth/extension/credentials/:credentialId` — revoke a credential
-- [ ] `POST /api/auth/extension/guest-login` response includes `deviceCredential` field (contract locked in `docs/CONTRACTS.md`)
+- [x] `POST /api/auth/extension/credential/exchange` — exchange short-lived JWT for long-lived device credential
+- [x] `GET /api/auth/extension/credentials` — list active credentials for the authenticated user
+- [x] `DELETE /api/auth/extension/credentials/:credentialId` — revoke a credential
+- [x] `POST /api/auth/extension/guest-login` response includes `deviceCredential` field (contract locked in `docs/CONTRACTS.md`)
 
 Character and inventory sync:
 
@@ -1865,15 +1865,17 @@ Campaign inventory sync policy:
 - [ ] Policy enforcement unit tests covering all Layer 1 × Layer 2 combinations
 - [ ] Integration test: combined sync request with partial policy block returns correct `applied` + `skippedReasons` shape
 
-**Evidence snapshot (2026-06-08 — backend audit)**:
+**Evidence snapshot (2026-06-16 — device credential persistence shipped)**:
 
-Backend is production-ready for extension auth integration. All guest auth contracts, account lifecycle, and invite flows are implemented and tested. Inventory/currency sync and campaign policy work is the remaining server-side surface.
+Backend is production-ready for extension auth integration. All guest auth contracts, account lifecycle, invite flows, and device credential persistence are implemented and tested. Inventory/currency sync and campaign policy work is the remaining server-side surface.
 
-- `POST /api/auth/extension/guest-login` — fully implemented in `backend/src/api/auth.routes.ts`; service logic in `backend/src/services/guest-auth/extension.service.ts`. Accepts inviteCode, externalSystem, externalUserId, character data, campaignPacket; creates or updates guest User with `authType=GUEST`, ExternalIdentity link, Character, and CampaignMembership; assigns DM or PLAYER role from `campaignPacket.dmExternalUserId`; returns JWT with guest claims.
+- **Bugfix discovered during this work**: `backend/src/api/auth.routes.ts` (the file documented below in earlier snapshots) was never mounted by `backend/src/api/index.ts` — `/api/auth/extension/*` 404'd on the real deployed server despite passing tests, because both test files mounted that file directly rather than going through the real router registry. The orphaned `/extension/preflight` and `/extension/guest-login` routes have been moved into the now-mounted `backend/src/api/auth-extension.routes.ts`; the file's other routes (`/player/guest-join`, `/spectator/guest-join`, `/player/full-join`, `/player/precheck`) were dead duplicates already superseded by `backend/src/api/auth-join.routes.ts` (`/join/guest/player`, `/join/guest/spectator`, `/join/full/player`, `/validate/player`) and were dropped, not ported.
+- `POST /api/auth/extension/guest-login` — implemented in `backend/src/api/auth-extension.routes.ts`; service logic in `backend/src/services/guest-auth/extension.service.ts`. Accepts inviteCode, externalSystem, externalUserId, character data, campaignPacket, optional deviceId; creates or updates guest User with `authType=GUEST`, ExternalIdentity link, Character, and CampaignMembership; assigns DM or PLAYER role from `campaignPacket.dmExternalUserId`; returns JWT with guest claims, plus `deviceCredential` when `deviceId` is supplied.
 - `POST /api/auth/extension/preflight` — pre-flight validation endpoint; returns accountStatus (`none`/`guest`/`full`) and suggestedFlow before the guest login call; covered by `backend/tests/api/guest-auth-routes.test.ts`.
-- Guest Spectator join via `POST /api/auth/spectator/guest-join`; spectator capacity, waitlist, reconnect grace, and slot promotion all implemented in `backend/src/services/guest-auth/spectator.service.ts`.
+- Device credential persistence — `backend/src/services/auth/device-credential.service.ts` + `backend/src/api/auth-extension.routes.ts`: issuance on guest-login, rotating exchange (`POST /extension/credential/exchange`), listing (`GET /extension/credentials`), and revocation (`DELETE /extension/credentials/:credentialId`, self or admin). 90-day rolling expiry from `lastUsedAt`; `DeviceCredential` Prisma model stores only a salted hash. Covered by `backend/tests/api/device-credential-routes.test.ts`.
+- Guest Spectator join via `POST /api/auth/join/guest/spectator`; spectator capacity, waitlist, reconnect grace, and slot promotion all implemented in `backend/src/services/guest-auth/spectator.service.ts`.
 - Campaign membership auto-granted on first connect; role assignment is server-side; existing membership upserted on reconnect.
-- `POST /api/auth/upgrade` upgrades guest → full account without changing UUID or losing campaign data; covered by `backend/src/services/guest-auth/account-upgrade.service.ts`.
+- `POST /api/auth/upgrade` upgrades guest → full account without changing UUID or losing campaign data; covered by `backend/src/services/guest-auth/account-upgrade.service.ts`. Device credentials are preserved automatically across upgrade since they're keyed by the unchanged userId.
 - `GuestUpgradePrompt.tsx` — frontend upgrade banner component implemented in `frontend/src/components/guest/GuestUpgradePrompt.tsx`.
 - Frontend non-extension invite join flow: `InviteJoinPage.tsx`, `useInviteValidation.ts`, `useEmailPrecheck.ts`, `inviteJoin.ts`.
 - Integration test coverage: `backend/tests/integration/guest-auth-flows.integration.test.ts`.

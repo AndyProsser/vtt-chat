@@ -74,7 +74,7 @@ vi.mock('@/api/audio.routes', () => ({ default: makeAudioRouter() }))
 vi.mock('@/api/livekit.routes', () => ({ default: makeLivekitRouter() }))
 vi.mock('@/api/integrations.routes', () => ({ default: makeIntegrationsRouter() }))
 
-vi.mock('@/api/auth.routes', () => ({ default: makeEmptyRouter() }))
+vi.mock('@/api/auth-extension.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/chat.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/admin.routes', () => ({ default: makeEmptyRouter() }))
 vi.mock('@/api/notes.routes', () => ({ default: makeEmptyRouter() }))
