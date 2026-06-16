@@ -252,6 +252,43 @@ Not editable in rightbar `SETTINGS` (sync/complexity managed elsewhere):
 
 ---
 
+### 3.5 Extension Inventory Sync
+
+Controls how the browser extension may push inventory and currency data from external VTTs (e.g. D&D Beyond) into the campaign. These settings are a second layer of policy that applies **after** the top-level `extensionSyncPolicy` access gate (`NONE | DM_ONLY | DM_AND_PLAYERS`) has already permitted the caller. When `extensionSyncPolicy` is `NONE`, none of the settings below have any effect.
+
+See [EXTENSION-INTEGRATION.md §5e](../extension/EXTENSION-INTEGRATION.md) for the full two-layer enforcement contract and WS event flow.
+
+#### Master Toggle — Inventory
+
+- **Setting**: `extensionInventorySyncEnabled` (boolean, default: `true`)
+- **Effect**: When `false`, all `inventoryUpdate` payloads from the extension are rejected. No items are created or updated regardless of other settings.
+- **UI**: Campaign Settings → Inventory → Extension Sync
+
+#### Master Toggle — Currency
+
+- **Setting**: `extensionCurrencySyncEnabled` (boolean, default: `true`)
+- **Effect**: When `false`, all `currencyUpdate` payloads from the extension are rejected.
+- **UI**: Campaign Settings → Inventory → Extension Sync
+
+#### Party Inventory Access
+
+- **Setting**: `extensionPartyInventorySyncAccess` (enum, default: `DM_ONLY`)
+- **Values**:
+  - `DISABLED` — Extension sync cannot write to party inventory or party purse at all.
+  - `DM_ONLY` — Only the DM's sync requests can modify party inventory/currency.
+  - `ALL_PLAYERS` — Any campaign member's sync requests can modify party inventory/currency.
+- **Effect**: Character inventory is always writable by the character's own player (subject to the master toggle). This setting applies only to items and currency owned by `ownerType: 'PARTY'`.
+- **UI**: Campaign Settings → Inventory → Extension Sync
+
+#### Conflict Resolution
+
+- **Setting**: `extensionSyncConflictResolution` (enum, default: `OVERWRITE`)
+- **Values**:
+  - `OVERWRITE` — Incoming extension data always replaces the existing value. Treats the external VTT as the source of truth for synced items and currency.
+  - `IGNORE` — Existing records are preserved; the extension can only create new items or populate empty wallets. Useful when the DM is the authority on in-platform inventory.
+  - `PROMPT` — Conflicting changes are held in a pending queue for DM review in the INVENTORY panel before being applied. New items and empty wallets are still applied immediately.
+- **UI**: Campaign Settings → Inventory → Extension Sync
+
 ### 3.4 Optional Summary Processing Module (Install-Time Gate)
 
 This feature bundle includes:
@@ -465,6 +502,12 @@ model CampaignSettings {
   // Future W0 tail feature
   allowSecondaryGroupMainListen Boolean @default(false)
 
+  // Extension Inventory Sync
+  extensionInventorySyncEnabled      Boolean  @default(true)
+  extensionCurrencySyncEnabled       Boolean  @default(true)
+  extensionPartyInventorySyncAccess  String   @default("DM_ONLY")   // DISABLED | DM_ONLY | ALL_PLAYERS
+  extensionSyncConflictResolution    String   @default("OVERWRITE")  // OVERWRITE | IGNORE | PROMPT
+
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
 
@@ -505,6 +548,10 @@ model CampaignSettings {
   "allowedConditionNames": [],
   "allowPlayerRoomCreation": false,
   "roomVisibility": "public",
+  "extensionInventorySyncEnabled": true,
+  "extensionCurrencySyncEnabled": true,
+  "extensionPartyInventorySyncAccess": "DM_ONLY",
+  "extensionSyncConflictResolution": "OVERWRITE",
   "createdAt": "2026-05-01T...",
   "updatedAt": "2026-05-07T..."
 }

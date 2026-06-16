@@ -422,13 +422,32 @@ Partial wallets are supported — omitting a denomination leaves it unchanged.
 
 ### 12.3 Sync Policy
 
-Both item and currency syncs respect the campaign's `extensionSyncPolicy`:
+Extension inventory sync is governed by two layers of campaign-scoped policy, both enforced by the backend on every `POST /api/integrations/external/sync` call.
 
-| Policy           | Who can sync inventory/currency |
-| ---------------- | ------------------------------- |
-| `NONE`           | Nobody                          |
-| `DM_ONLY`        | DM only                         |
-| `DM_AND_PLAYERS` | DM and players                  |
+#### Layer 1 — Access Gate (`extensionSyncPolicy`)
+
+The existing top-level policy controls whether extension sync is permitted at all, and for which roles:
+
+| Value | Who can sync (character, inventory, currency) |
+| --- | --- |
+| `NONE` | Nobody — all extension sync payloads are rejected |
+| `DM_ONLY` | DM only |
+| `DM_AND_PLAYERS` | DM and players |
+
+When `extensionSyncPolicy` is `NONE`, no inventory or currency sync request is processed regardless of the Layer 2 settings below.
+
+#### Layer 2 — Inventory-Specific Controls
+
+When `extensionSyncPolicy` permits the caller, four additional settings provide granular control over inventory and currency sync specifically:
+
+| Setting | Type | Default | Controls |
+| --- | --- | --- | --- |
+| `extensionInventorySyncEnabled` | boolean | `true` | When `false`, all `inventoryUpdate` payloads are rejected even if the caller is permitted by Layer 1. |
+| `extensionCurrencySyncEnabled` | boolean | `true` | When `false`, all `currencyUpdate` payloads are rejected. |
+| `extensionPartyInventorySyncAccess` | `DISABLED \| DM_ONLY \| ALL_PLAYERS` | `DM_ONLY` | Who may write to party inventory/purse via extension sync. Character inventory is always writable by the character's own player (subject to `extensionInventorySyncEnabled`). |
+| `extensionSyncConflictResolution` | `OVERWRITE \| IGNORE \| PROMPT` | `OVERWRITE` | How conflicts (incoming value differs from persisted state) are handled. `OVERWRITE` applies immediately; `IGNORE` discards the incoming value; `PROMPT` queues it for DM review. |
+
+See [EXTENSION-INTEGRATION.md §5e](../extension/EXTENSION-INTEGRATION.md) for the full enforcement contract, partial application rules, and the `PROMPT` pending-sync queue flow.
 
 ### 12.4 WS Broadcast
 

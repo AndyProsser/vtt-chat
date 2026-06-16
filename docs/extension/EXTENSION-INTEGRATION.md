@@ -444,6 +444,92 @@ The extension should sync inventory and currency:
 
 ---
 
+### 5e. Campaign Inventory Sync Policy
+
+Inventory and currency sync is governed by two layers of campaign policy. The backend enforces both layers on every sync request.
+
+#### Layer 1 — Access Gate
+
+The existing `extensionSyncPolicy` field (documented in [GUEST-AUTH.md](GUEST-AUTH.md)) acts as the top-level gate for **all** extension sync — character, inventory, and currency. When `extensionSyncPolicy` is `NONE`, no part of the sync payload is processed regardless of the Layer 2 settings below.
+
+| `extensionSyncPolicy` | Effect |
+| --- | --- |
+| `NONE` | All sync payloads rejected (`SYNC_POLICY_VIOLATION`) |
+| `DM_ONLY` | Only DM sync requests are processed |
+| `DM_AND_PLAYERS` | DM and player sync requests are processed |
+
+#### Layer 2 — Inventory-Specific Controls
+
+When the caller is permitted by Layer 1, four additional campaign settings control inventory and currency sync specifically:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `extensionInventorySyncEnabled` | `boolean` | `true` | When `false`, all `inventoryUpdate` payloads are rejected even if the caller passes Layer 1. |
+| `extensionCurrencySyncEnabled` | `boolean` | `true` | When `false`, all `currencyUpdate` payloads are rejected. |
+| `extensionPartyInventorySyncAccess` | `'DISABLED' \| 'DM_ONLY' \| 'ALL_PLAYERS'` | `'DM_ONLY'` | Who may write to the shared party inventory and party purse via extension sync. Character inventory is unaffected by this setting. |
+| `extensionSyncConflictResolution` | `'OVERWRITE' \| 'IGNORE' \| 'PROMPT'` | `'OVERWRITE'` | How conflicting incoming values are resolved against the current persisted state. |
+
+#### `extensionPartyInventorySyncAccess` Values
+
+| Value | Behaviour |
+| --- | --- |
+| `DISABLED` | Extension sync cannot write to party inventory or party purse at all. Party-targeted items/currency in the payload are silently skipped. |
+| `DM_ONLY` | Only sync requests sourced from the DM (`source: 'dm'`) may write to party inventory/currency. Player requests skip party items silently. |
+| `ALL_PLAYERS` | Any campaign member's sync request may write to party inventory/currency. |
+
+Character inventory is always writable by the character's owner (subject to `extensionInventorySyncEnabled`). `extensionPartyInventorySyncAccess` applies only to items and currency with `ownerType: 'PARTY'`.
+
+#### `extensionSyncConflictResolution` Values
+
+A **conflict** is: an incoming sync value for a record that already exists in the campaign inventory and differs from the persisted value.
+
+| Value | Behaviour |
+| --- | --- |
+| `OVERWRITE` | Incoming value always wins. Matches the historical upsert semantics of the endpoint and treats DDB as the source of truth. |
+| `IGNORE` | If the item (matched by `externalSource` + `externalId`) already exists, the incoming payload for that item is discarded and the existing record is left untouched. Net-new items (no existing record) are created normally. For currency: if the character wallet already has a non-zero balance for any denomination being sent, the entire `currencyUpdate` is discarded. |
+| `PROMPT` | Conflicting changes are held in a pending sync queue for DM review rather than being applied immediately. Non-conflicting items (brand-new items, zero-balance denominations) are applied immediately as normal. |
+
+##### PROMPT mode — Pending Sync Queue
+
+When `extensionSyncConflictResolution` is `PROMPT`:
+
+- The backend writes conflicting changes to a `PendingExtensionSync` record keyed by `(campaignId, characterId, externalSource, externalId)`.
+- The DM receives an `INVENTORY:EXTENSION_SYNC_PENDING` WS event immediately after persistence.
+- The INVENTORY panel shows a badge and a **Review Pending Syncs** button for the DM only.
+- The DM can approve (apply the change via the standard 4-layer contract) or reject (discard) each pending item individually.
+- Non-conflicting items from the same sync request are applied immediately without appearing in the queue.
+- Pending sync records expire after 24 hours and are silently discarded.
+
+#### Partial Application
+
+When a policy blocks only part of a combined sync request (e.g. inventory enabled, currency disabled), the allowed parts are applied and the response reflects exactly what was and was not processed:
+
+```json
+{
+  "message": "Sync completed with partial policy restrictions",
+  "applied": {
+    "characterUpdate": true,
+    "inventoryItemsUpserted": 3,
+    "currencyUpdated": false,
+    "pendingConflicts": 0,
+    "skippedReasons": {
+      "currency": "SYNC_POLICY_DISABLED"
+    }
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Code | Cause |
+| --- | --- | --- |
+| 403 | `SYNC_POLICY_DISABLED` | `extensionInventorySyncEnabled` is `false` and the request contains only `inventoryUpdate`; or `extensionCurrencySyncEnabled` is `false` and the request contains only `currencyUpdate`. |
+| 403 | `SYNC_POLICY_PARTY_ACCESS_DENIED` | Caller is a player and `extensionPartyInventorySyncAccess` is `DM_ONLY` or `DISABLED`, and the request targets only party inventory. |
+
+Requests containing both character and party targets are never rejected wholesale on a party policy violation — character items are applied and the party portions are skipped (see Partial Application above).
+
+---
+
 ## 6. External Log Ingestion
 
 The extension captures logs from:
