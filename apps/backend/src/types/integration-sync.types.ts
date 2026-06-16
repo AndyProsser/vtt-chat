@@ -1,6 +1,8 @@
 type SyncOutcome = {
   characterUpdate: boolean
   campaignUpdate: boolean
+  inventoryItemsUpserted: number
+  currencyUpdated: boolean
 }
 
 export type ExternalSyncResult =

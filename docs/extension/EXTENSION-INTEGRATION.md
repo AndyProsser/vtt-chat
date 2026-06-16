@@ -27,7 +27,7 @@ The extension enables:
 - Automatic detection of character/campaign pages
 - Injected "Launch Chat" button
 - Pre-flight validation (platform status, invite validity, existing account check)
-- Character metadata extraction and sync
+- Character metadata extraction and sync (name, class, avatar, stats, conditions)
 - Campaign metadata extraction (DM-controlled sync policy)
 - External log ingestion (attacks, rolls, spells, movement)
 - Auto‑effects (conditions, distance, whispers)
@@ -41,6 +41,7 @@ This document defines:
 - Injection rules
 - Page detection
 - Metadata extraction
+- Character sync protocol (field mapping, avatar upload, stats)
 - External log mapping
 - Auto‑effects
 - Communication with backend
@@ -130,19 +131,42 @@ Clicking the button:
 
 ## 4. Metadata Extraction
 
-The content script extracts:
+The content script extracts all available character and campaign data from the host VTT.
 
 ### Character Metadata
 
-- Character ID
-- Name
-- Race
-- Class / Subclass
-- Level
-- Avatar URL
-- DDB character URL
-- Conditions (silenced, poisoned, etc.)
-- HP / AC / Speed (optional)
+The following fields are extracted and mapped to the `characterUpdate` payload (see [Section 5b](#5b-character-sync-protocol)):
+
+| Field                     | DB Column / Location                         | Notes                                          |
+| ------------------------- | -------------------------------------------- | ---------------------------------------------- |
+| `externalCharacterId`     | `Character.externalId`                       | Required for all syncs; DDB character ID       |
+| `name`                    | `Character.name`                             | Character name, not player name                |
+| `race`                    | `Character.race`                             | Full race string, e.g. `"High Elf"`            |
+| `class`                   | `Character.class`                            | Primary class, e.g. `"Wizard"`                 |
+| `subclass`                | `Character.subclass`                         | Subclass, e.g. `"School of Evocation"`         |
+| `level`                   | `Character.metadata.level`                   | Total character level (integer)                |
+| `avatarUrl`               | `Character.avatarUrl`                        | URL returned from avatar-upload endpoint (§5c) |
+| `characterUrl`            | `Character.metadata.characterUrl`            | Link back to the DDB character sheet           |
+| `stats.hp`                | `Character.metadata.stats.hp`                | `{ current, max, temp }` object                |
+| `stats.ac`                | `Character.metadata.stats.ac`                | Armour class (integer)                         |
+| `stats.speed`             | `Character.metadata.stats.speed`             | Walk speed in feet (integer)                   |
+| `stats.initiative`        | `Character.metadata.stats.initiative`        | Initiative bonus (integer)                     |
+| `stats.proficiencyBonus`  | `Character.metadata.stats.proficiencyBonus`  | Proficiency bonus (integer)                    |
+| `stats.passivePerception` | `Character.metadata.stats.passivePerception` | Passive Perception score                       |
+| `stats.abilityScores`     | `Character.metadata.stats.abilityScores`     | `{ str, dex, con, int, wis, cha }` scores      |
+| `stats.spellSlots`        | `Character.metadata.stats.spellSlots`        | `{ total: {1-9}, used: {1-9} }` map            |
+| `conditions`              | `Character.metadata.conditions`              | Array of active condition strings              |
+| `features`                | `Character.metadata.features`                | Notable features/traits array (optional)       |
+
+All `stats.*`, `conditions`, and `features` are stored in the `Character.metadata` JSON column.
+Only `name`, `race`, `class`, `subclass`, and `avatarUrl` are top-level DB columns.
+
+### Extraction Method
+
+- DOM scraping of the rendered character sheet
+- Embedded JSON in `<script>` tags (DDB bootstraps character state into the page)
+- XHR / GraphQL interception (DDB uses GraphQL for live updates)
+- MutationObserver for SPA navigation and live stat changes
 
 ### Campaign Metadata
 
@@ -152,34 +176,28 @@ The content script extracts:
 - DM user ID
 - Campaign invite code (if visible)
 
-### Extraction Method
-
-- DOM scraping
-- Embedded JSON in `<script>` tags
-- XHR interception (DDB uses GraphQL)
-- MutationObserver for SPA navigation
-
 ---
 
 ## 5. Communication With Backend
 
 The extension communicates with the backend via the **background script**.
 
-### API Calls
+### 5a. API Endpoints
 
-| Endpoint                                   | Auth required | Purpose                                         |
-| ------------------------------------------ | ------------- | ----------------------------------------------- |
-| `GET /api/platform/status`                 | None          | Pre-flight: platform online + activity stats    |
-| `GET /api/campaigns/invite/:code/validate` | None          | Pre-flight: invite validity + campaign name     |
-| `POST /api/auth/extension/preflight`       | None          | Pre-flight: existing account check for email    |
-| `POST /api/auth/extension/guest-login`     | None          | Guest auth: create or resume guest session      |
-| `POST /api/auth/login`                     | None          | Full account auth (if user has password)        |
-| `POST /api/auth/upgrade`                   | Guest token   | Upgrade guest → full account                    |
-| `POST /api/integrations/external/sync`  | Token         | Push character/campaign updates per sync policy |
-| `POST /api/integrations/logs/ingest`       | Token         | External log ingestion (rolls, attacks, etc.)   |
-| `POST /api/livekit/token`               | Token         | LiveKit room token                              |
+| Endpoint                                        | Auth required | Purpose                                         |
+| ----------------------------------------------- | ------------- | ----------------------------------------------- |
+| `GET /api/platform/status`                      | None          | Pre-flight: platform online + activity stats    |
+| `GET /api/campaigns/invite/:code/validate`      | None          | Pre-flight: invite validity + campaign name     |
+| `POST /api/auth/extension/preflight`            | None          | Pre-flight: existing account check for email    |
+| `POST /api/auth/extension/guest-login`          | None          | Guest auth: create or resume guest session      |
+| `POST /api/auth/login`                          | None          | Full account auth (if user has password)        |
+| `POST /api/auth/upgrade`                        | Guest token   | Upgrade guest → full account                    |
+| `POST /api/integrations/external/avatar-upload` | Token         | Upload avatar image; returns hosted `avatarUrl` |
+| `POST /api/integrations/external/sync`          | Token         | Push character/campaign updates per sync policy |
+| `POST /api/integrations/logs/ingest`            | Token         | External log ingestion (rolls, attacks, etc.)   |
+| `POST /api/livekit/token`                       | Token         | LiveKit room token                              |
 
-### Flow
+### Message Flow
 
 ```text
 content.js → background.js → backend API → background.js → content.js
@@ -194,6 +212,235 @@ content.js → background.js → backend API → background.js → content.js
 - Guest tokens have a reduced lifetime (24 hours) and are silently renewed by the background script
 
 See [GUEST-AUTH.md](GUEST-AUTH.md) for the full authentication flow specification.
+
+---
+
+### 5b. Character Sync Protocol
+
+Character data is pushed via `POST /api/integrations/external/sync`. The sync policy on the campaign controls whether updates are accepted.
+
+#### Request
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "DDB",
+  "source": "player",
+  "characterUpdate": {
+    "externalCharacterId": "string (required — DDB character ID)",
+    "name": "string",
+    "race": "string",
+    "class": "string",
+    "subclass": "string",
+    "level": 5,
+    "avatarUrl": "string (URL returned from avatar-upload, or existing URL)",
+    "characterUrl": "string (link back to DDB character sheet)",
+    "stats": {
+      "hp": { "current": 38, "max": 45, "temp": 0 },
+      "ac": 16,
+      "speed": 30,
+      "initiative": 3,
+      "proficiencyBonus": 3,
+      "passivePerception": 14,
+      "abilityScores": {
+        "str": 10,
+        "dex": 16,
+        "con": 14,
+        "int": 18,
+        "wis": 12,
+        "cha": 8
+      },
+      "spellSlots": {
+        "total": { "1": 4, "2": 3, "3": 2 },
+        "used": { "1": 1, "2": 0, "3": 0 }
+      }
+    },
+    "conditions": ["Poisoned"],
+    "features": ["Arcane Recovery", "Spell Mastery"]
+  }
+}
+```
+
+#### Field Rules
+
+- `externalCharacterId` is **required**; the backend looks up the character by `(campaignId, externalSystem, externalId)`.
+- All other fields are **optional** — omit a field to leave it unchanged.
+- `name`, `race`, `class`, `subclass`, `avatarUrl` write to top-level `Character` columns.
+- `level`, `characterUrl`, `stats`, `conditions`, and `features` are merged into `Character.metadata`.
+- The backend merges metadata shallowly: sending `{ stats: { hp: ... } }` replaces the entire `stats` object, not individual sub-keys. Always send the full stats object.
+
+#### Response (200)
+
+```json
+{
+  "message": "Sync completed successfully",
+  "applied": {
+    "characterUpdate": true,
+    "campaignUpdate": false
+  }
+}
+```
+
+#### Error Responses
+
+| Status | Code                    | Cause                                               |
+| ------ | ----------------------- | --------------------------------------------------- |
+| 400    | `INVALID_INPUT`         | Missing `externalCharacterId` or bad field type     |
+| 401    | `UNAUTHORIZED`          | Missing or invalid token                            |
+| 403    | `FORBIDDEN`             | User not a member of the campaign                   |
+| 403    | `SYNC_POLICY_VIOLATION` | Campaign sync policy prohibits this caller's update |
+
+---
+
+### 5c. Avatar Upload Flow
+
+The extension must upload avatar images to VTT-Chat rather than storing raw third-party CDN URLs. Third-party URLs may expire, require authentication, or change.
+
+#### Endpoint
+
+```http
+POST /api/integrations/external/avatar-upload
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+Body: { image: <File> }
+```
+
+**Constraints:**
+
+- Accepted MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/gif`
+- Maximum file size: **2 MB**
+- The uploaded file is stored by the platform and a stable, hosted URL is returned
+
+#### Response (200)
+
+```json
+{
+  "avatarUrl": "https://assets.example.com/avatars/user-<id>-<hash>.webp"
+}
+```
+
+#### Extension Workflow
+
+The extension performs avatar upload **before** the character sync, then includes the returned URL in the sync payload:
+
+```text
+1. Content script detects avatar image URL from DDB character sheet DOM
+2. Background script fetches the image bytes from the DDB CDN URL
+3. Background script POSTs the image as multipart/form-data to:
+      POST /api/integrations/external/avatar-upload
+4. Backend stores image, returns hosted { avatarUrl }
+5. Background script includes that avatarUrl in the subsequent:
+      POST /api/integrations/external/sync → characterUpdate.avatarUrl
+```
+
+#### Avatar Re-upload Policy
+
+- On the first sync for a character, always upload the avatar.
+- On subsequent syncs, compare the DDB source URL hash against a locally cached fingerprint.
+- Only re-upload if the source image has changed (fingerprint mismatch).
+- Cache the fingerprint in extension `chrome.storage.session` keyed by `externalCharacterId`.
+
+---
+
+### 5d. Inventory & Currency Sync Protocol
+
+Inventory items and currency wallets can be pushed alongside character updates in the same `POST /api/integrations/external/sync` call, or in a dedicated call.
+
+#### Inventory Request
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "DDB",
+  "source": "player",
+  "inventoryUpdate": {
+    "externalCharacterId": "ddb-char-123",
+    "items": [
+      {
+        "externalId": "ddb-item-456",
+        "name": "Longsword",
+        "quantity": 1,
+        "srdKey": "longsword",
+        "srdCategory": "EQUIPMENT",
+        "notes": "Heirloom blade"
+      },
+      {
+        "externalId": "ddb-item-789",
+        "name": "Potion of Healing",
+        "quantity": 3,
+        "srdCategory": "EQUIPMENT"
+      }
+    ]
+  }
+}
+```
+
+**Item field rules:**
+
+| Field         | Required | Notes                                              |
+| ------------- | -------- | -------------------------------------------------- |
+| `externalId`  | Yes      | DDB item instance ID — used as the upsert key      |
+| `name`        | Yes      | Display name as shown in DDB                       |
+| `quantity`    | Yes      | Total quantity; clamped to `≥ 1`                   |
+| `srdKey`      | No       | SRD item index if known (e.g. `"longsword"`)       |
+| `srdCategory` | No       | `EQUIPMENT` (default), `MAGIC_ITEM`, or `HOMEBREW` |
+| `notes`       | No       | Free-text annotation                               |
+
+**Upsert semantics:** Items are matched by `(externalSource, externalId)` within the character's inventory. Existing items have their `name` and `quantity` updated. Items not in the payload are left untouched — the extension does not delete items.
+
+#### Currency Request
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "DDB",
+  "source": "player",
+  "currencyUpdate": {
+    "externalCharacterId": "ddb-char-123",
+    "wallet": { "gp": 42, "sp": 15, "cp": 200, "ep": 0, "pp": 0 }
+  }
+}
+```
+
+Currency sync uses **absolute values** — the wallet is SET to the provided amounts. Omit any denomination to leave it unchanged. The backend records the signed delta in the inventory history log for auditability.
+
+#### Combined Sync (Recommended)
+
+The extension should batch character, inventory, and currency updates into a single request to minimise round-trips:
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "DDB",
+  "source": "player",
+  "sessionId": "active-session-uuid (optional)",
+  "characterUpdate": { "externalCharacterId": "ddb-char-123", "name": "Tavita", "class": "Wizard", "level": 5 },
+  "inventoryUpdate": { "externalCharacterId": "ddb-char-123", "items": [ ... ] },
+  "currencyUpdate":  { "externalCharacterId": "ddb-char-123", "wallet": { "gp": 42 } }
+}
+```
+
+#### Response (200)
+
+```json
+{
+  "message": "Sync completed successfully",
+  "applied": {
+    "characterUpdate": true,
+    "campaignUpdate": false,
+    "inventoryItemsUpserted": 4,
+    "currencyUpdated": true
+  }
+}
+```
+
+#### Sync Trigger Policy
+
+The extension should sync inventory and currency:
+
+- On character sheet page load (full sync)
+- When DDB fires an XHR response that indicates item/currency state changed (incremental)
+- Before the user clicks **Launch Chat** (ensures state is current on join)
 
 ---
 
@@ -302,12 +549,13 @@ content.js → background.js → backend → SPA tab
 ### Steps
 
 1. Extract character/campaign metadata
-2. Request LiveKit token
-3. Open SPA with query params:
+2. Upload avatar (if changed) and capture hosted URL
+3. Request LiveKit token
+4. Open SPA with query params:
    <https://app/chat?campaign=123&character=456>
-4. SPA connects to WebSocket
-5. SPA joins campaign
-6. SPA joins correct room
+5. SPA connects to WebSocket
+6. SPA joins campaign
+7. SPA joins correct room
 
 ---
 
@@ -326,6 +574,7 @@ The popup allows:
 - Last server
 - Last campaign
 - Last character
+- Avatar fingerprint (per `externalCharacterId`) — used to skip redundant re-uploads
 - Expiry: 72 hours
 
 ---
@@ -401,3 +650,7 @@ Handles React/SPA navigation via MutationObserver.
 ### 7. Fail‑safe
 
 If extension fails, platform still works. Guest auth is only one of two supported auth paths.
+
+### 8. Mirror, don't link
+
+Avatar images and other media are mirrored through the VTT-Chat asset pipeline rather than stored as raw third-party URLs. This prevents broken images when external CDN URLs expire or change.

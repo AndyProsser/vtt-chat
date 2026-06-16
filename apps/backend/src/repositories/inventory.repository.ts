@@ -10,10 +10,12 @@ export interface InventoryItemRow {
   ownerId: string | null
   name: string
   quantity: number
-  source: 'SRD' | 'CUSTOM'
+  source: 'SRD' | 'CUSTOM' | 'EXTERNAL'
   srdKey: string | null
   srdCategory: 'EQUIPMENT' | 'MAGIC_ITEM' | 'HOMEBREW'
   notes: string | null
+  externalId: string | null
+  externalSource: string | null
   addedByUserId: string
   createdAt: Date
   updatedAt: Date
@@ -70,15 +72,83 @@ export async function createInventoryItemRecord(params: {
   ownerId: string | null
   name: string
   quantity: number
-  source: 'SRD' | 'CUSTOM'
+  source: 'SRD' | 'CUSTOM' | 'EXTERNAL'
   srdKey: string | null
   srdCategory: 'EQUIPMENT' | 'MAGIC_ITEM' | 'HOMEBREW'
   notes: string | null
+  externalId: string | null
+  externalSource: string | null
   addedByUserId: string
   createdAt: Date
   updatedAt: Date
 }): Promise<InventoryItemRow> {
   return prisma.inventoryItem.create({ data: params })
+}
+
+export async function findInventoryItemByExternalId(params: {
+  campaignId: string
+  ownerId: string
+  externalSource: string
+  externalId: string
+}): Promise<InventoryItemRow | null> {
+  return prisma.inventoryItem.findFirst({
+    where: {
+      campaignId: params.campaignId,
+      ownerId: params.ownerId,
+      externalSource: params.externalSource,
+      externalId: params.externalId,
+    },
+  })
+}
+
+export async function upsertExternalInventoryItem(params: {
+  campaignId: string
+  ownerId: string
+  ownerType: string
+  externalSource: string
+  externalId: string
+  name: string
+  quantity: number
+  srdKey: string | null
+  srdCategory: 'EQUIPMENT' | 'MAGIC_ITEM' | 'HOMEBREW'
+  notes: string | null
+  addedByUserId: string
+  now: Date
+}): Promise<{ row: InventoryItemRow; created: boolean }> {
+  const existing = await findInventoryItemByExternalId({
+    campaignId: params.campaignId,
+    ownerId: params.ownerId,
+    externalSource: params.externalSource,
+    externalId: params.externalId,
+  })
+
+  if (existing) {
+    const row = await prisma.inventoryItem.update({
+      where: { id: existing.id },
+      data: { name: params.name, quantity: params.quantity, notes: params.notes, updatedAt: params.now },
+    })
+    return { row, created: false }
+  }
+
+  const { randomUUID } = await import('node:crypto')
+  const row = await createInventoryItemRecord({
+    id: randomUUID(),
+    campaignId: params.campaignId,
+    ownerType: params.ownerType,
+    ownerId: params.ownerId,
+    name: params.name,
+    quantity: params.quantity,
+    source: 'EXTERNAL',
+    srdKey: params.srdKey,
+    srdCategory: params.srdCategory,
+    notes: params.notes,
+    externalId: params.externalId,
+    externalSource: params.externalSource,
+    addedByUserId: params.addedByUserId,
+    createdAt: params.now,
+    updatedAt: params.now,
+  })
+  return { row, created: true }
 }
 
 export async function updateInventoryItemRecord(params: {

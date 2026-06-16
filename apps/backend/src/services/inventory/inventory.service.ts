@@ -19,6 +19,7 @@ import {
   listCampaignCurrencyWallets,
   createInventoryHistoryRecord,
   listInventoryHistory,
+  upsertExternalInventoryItem,
   type InventoryItemRow,
   type CurrencyWalletRow,
   type InventoryHistoryRow,
@@ -41,6 +42,8 @@ export interface InventoryItemDto {
   srdKey: string | null
   srdCategory: InventoryItemCategory
   notes: string | null
+  externalId: string | null
+  externalSource: string | null
   addedByUserId: UUID
   createdAt: number
   updatedAt: number
@@ -71,6 +74,8 @@ function mapItem(row: InventoryItemRow): InventoryItemDto {
     srdKey: row.srdKey,
     srdCategory: row.srdCategory as InventoryItemCategory,
     notes: row.notes,
+    externalId: row.externalId,
+    externalSource: row.externalSource,
     addedByUserId: row.addedByUserId as UUID,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
@@ -193,6 +198,8 @@ export async function addInventoryItem(params: {
   srdKey?: string
   srdCategory?: InventoryItemCategory
   notes?: string
+  externalId?: string
+  externalSource?: string
   addedByUserId: UUID
   sessionId?: UUID
 }): Promise<InventoryItemDto> {
@@ -209,6 +216,8 @@ export async function addInventoryItem(params: {
     srdKey: params.srdKey ?? null,
     srdCategory: params.srdCategory ?? InventoryItemCategory.EQUIPMENT,
     notes: params.notes ?? null,
+    externalId: params.externalId ?? null,
+    externalSource: params.externalSource ?? null,
     addedByUserId: params.addedByUserId,
     createdAt: now,
     updatedAt: now,
@@ -392,6 +401,142 @@ export async function adjustCurrency(params: {
     toOwnerId: null,
     quantity: null,
     currencyDelta: params.delta,
+    itemName: null,
+    notes: null,
+    createdAt: now,
+  })
+
+  return mapWallet(updated)
+}
+
+// ─── External sync ────────────────────────────────────────────────────────────
+
+export interface ExternalInventoryItemInput {
+  externalId: string
+  name: string
+  quantity: number
+  srdKey?: string
+  srdCategory?: InventoryItemCategory
+  notes?: string
+}
+
+export interface ExternalInventorySyncResult {
+  upserted: InventoryItemDto[]
+  created: number
+  updated: number
+}
+
+/**
+ * Upserts a batch of external items into a character's inventory.
+ * Items are matched by (campaignId, ownerId, externalSource, externalId).
+ * Existing items are updated in-place; new items are created with source=EXTERNAL.
+ * Items not in the list are left untouched (merge semantics, not replace).
+ */
+export async function syncExternalInventoryItems(params: {
+  campaignId: UUID
+  ownerId: UUID
+  externalSource: string
+  items: ExternalInventoryItemInput[]
+  actorUserId: UUID
+  sessionId?: UUID
+}): Promise<ExternalInventorySyncResult> {
+  const now = new Date()
+  const results: InventoryItemDto[] = []
+  let created = 0
+  let updated = 0
+
+  for (const item of params.items) {
+    const { row, created: wasCreated } = await upsertExternalInventoryItem({
+      campaignId: params.campaignId,
+      ownerId: params.ownerId,
+      ownerType: 'character',
+      externalSource: params.externalSource,
+      externalId: item.externalId,
+      name: item.name,
+      quantity: item.quantity,
+      srdKey: item.srdKey ?? null,
+      srdCategory: item.srdCategory ?? InventoryItemCategory.EQUIPMENT,
+      notes: item.notes ?? null,
+      addedByUserId: params.actorUserId,
+      now,
+    })
+
+    await createInventoryHistoryRecord({
+      id: randomUUID() as UUID,
+      campaignId: params.campaignId,
+      itemId: row.id,
+      sessionId: params.sessionId ?? null,
+      actorUserId: params.actorUserId,
+      actionType: wasCreated ? InventoryActionType.ITEM_ADDED : InventoryActionType.ITEM_EDITED,
+      fromOwnerType: wasCreated ? null : 'character',
+      fromOwnerId: wasCreated ? null : params.ownerId,
+      toOwnerType: 'character',
+      toOwnerId: params.ownerId,
+      quantity: item.quantity,
+      currencyDelta: null,
+      itemName: item.name,
+      notes: item.notes ?? null,
+      createdAt: now,
+    })
+
+    results.push(mapItem(row))
+    if (wasCreated) created++
+    else updated++
+  }
+
+  return { upserted: results, created, updated }
+}
+
+/**
+ * Sets a character's currency wallet to the provided absolute values.
+ * Used for external sync where the source of truth (e.g. DDB) provides the full wallet state.
+ * Records a history entry with the signed delta relative to the previous balance.
+ */
+export async function setExternalCurrencyWallet(params: {
+  campaignId: UUID
+  ownerId: UUID
+  wallet: Partial<CurrencyWallet>
+  actorUserId: UUID
+  sessionId?: UUID
+}): Promise<CurrencyWalletDto> {
+  const existing = await findOrCreateCurrencyWallet({
+    campaignId: params.campaignId,
+    ownerType: 'character',
+    ownerId: params.ownerId,
+  })
+
+  const newBalance: CurrencyWallet = {
+    cp: params.wallet.cp ?? existing.cp,
+    sp: params.wallet.sp ?? existing.sp,
+    ep: params.wallet.ep ?? existing.ep,
+    gp: params.wallet.gp ?? existing.gp,
+    pp: params.wallet.pp ?? existing.pp,
+  }
+
+  const delta: Partial<CurrencyWallet> = {
+    cp: newBalance.cp - existing.cp,
+    sp: newBalance.sp - existing.sp,
+    ep: newBalance.ep - existing.ep,
+    gp: newBalance.gp - existing.gp,
+    pp: newBalance.pp - existing.pp,
+  }
+
+  const now = new Date()
+  const updated = await updateCurrencyWalletRecord({ id: existing.id, ...newBalance, updatedAt: now })
+
+  await createInventoryHistoryRecord({
+    id: randomUUID() as UUID,
+    campaignId: params.campaignId,
+    itemId: null,
+    sessionId: params.sessionId ?? null,
+    actorUserId: params.actorUserId,
+    actionType: InventoryActionType.CURRENCY_CHANGED,
+    fromOwnerType: null,
+    fromOwnerId: null,
+    toOwnerType: null,
+    toOwnerId: null,
+    quantity: null,
+    currencyDelta: delta,
     itemName: null,
     notes: null,
     createdAt: now,

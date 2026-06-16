@@ -31,10 +31,12 @@ interface InventoryItem {
   ownerType: 'CHARACTER' | 'PARTY'
   name: string
   quantity: number // always ≥ 1
-  source: 'SRD' | 'CUSTOM'
+  source: 'SRD' | 'CUSTOM' | 'EXTERNAL'
   srdIndex?: string // SRD item index (e.g. 'longsword'), populated when source = 'SRD'
   srdRuleset?: '2014' | '2024'
   notes?: string // free-text DM/player annotation
+  externalId?: string // External system item ID (e.g. DDB item ID); set when source = 'EXTERNAL'
+  externalSource?: string // External system name (e.g. 'DDB', 'Roll20'); set when source = 'EXTERNAL'
   addedBy: string // userId
   addedAt: Date
   updatedAt: Date
@@ -135,7 +137,7 @@ A new **INVENTORY** tab is added to the session right-rail dock, between PARTY a
 
 ### 5.2 Panel Layout
 
-```
+```text
 ┌─────────────────────────────┐
 │  INVENTORY           [+Add] │
 │  ─────────────────────────  │
@@ -146,7 +148,7 @@ A new **INVENTORY** tab is added to the session right-rail dock, between PARTY a
 │  ─ item name      qty   [⋯] │
 │                             │
 │  Currency                   │
-│  GP: 42  SP: 15  CP: 200   │
+│  GP: 42  SP: 15  CP: 200    │
 │                             │
 │  [History ↗]                │  ← opens inventory history log overlay
 └─────────────────────────────┘
@@ -363,8 +365,80 @@ Selectors must not return new array/object references when underlying data is un
 
 ---
 
-## 12. Related Docs
+## 12. External Sync (Extension Integration)
+
+The browser extension can push character inventory and currency state from external VTTs (D&D Beyond, Roll20, etc.) into VTT-Chat via `POST /api/integrations/external/sync`. All synced items carry `source: 'EXTERNAL'` and are tracked by `externalId` + `externalSource`.
+
+### 12.1 Item Sync
+
+Items are **upserted** by `(campaignId, characterId, externalSource, externalId)`:
+
+- If an item with the matching `externalSource`+`externalId` already exists on the character, its `name` and `quantity` are updated in place.
+- If no match is found, a new item is created with `source: 'EXTERNAL'`.
+- Items not present in the sync payload are **left untouched** (merge semantics — the extension does not delete items).
+
+The `inventoryUpdate` payload:
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "DDB",
+  "source": "player",
+  "inventoryUpdate": {
+    "externalCharacterId": "ddb-char-123",
+    "items": [
+      {
+        "externalId": "ddb-item-456",
+        "name": "Longsword",
+        "quantity": 1,
+        "srdKey": "longsword",
+        "srdCategory": "EQUIPMENT",
+        "notes": "Heirloom blade"
+      }
+    ]
+  }
+}
+```
+
+### 12.2 Currency Sync
+
+Currency is synced as **absolute values** — the wallet is SET to the provided amounts, not adjusted by a delta. The previous balance is compared and a signed delta is recorded in the history log for auditability.
+
+The `currencyUpdate` payload:
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "DDB",
+  "source": "player",
+  "currencyUpdate": {
+    "externalCharacterId": "ddb-char-123",
+    "wallet": { "gp": 42, "sp": 15, "cp": 200, "ep": 0, "pp": 0 }
+  }
+}
+```
+
+Partial wallets are supported — omitting a denomination leaves it unchanged.
+
+### 12.3 Sync Policy
+
+Both item and currency syncs respect the campaign's `extensionSyncPolicy`:
+
+| Policy           | Who can sync inventory/currency |
+| ---------------- | ------------------------------- |
+| `NONE`           | Nobody                          |
+| `DM_ONLY`        | DM only                         |
+| `DM_AND_PLAYERS` | DM and players                  |
+
+### 12.4 WS Broadcast
+
+The sync endpoint does **not** currently broadcast individual `INVENTORY:ITEM_ADDED` / `INVENTORY:CURRENCY_CHANGED` events per synced item. The frontend panel rehydrates from the REST API on next mount or panel focus. A future enhancement may batch-broadcast a `INVENTORY:EXTERNAL_SYNC_APPLIED` event.
+
+---
+
+## 13. Related Docs
 
 - [docs/subsystems/CHAT-SYSTEM.md](CHAT-SYSTEM.md) — Chat commands §9
 - [docs/CONTRACTS.md](../CONTRACTS.md) — Inventory API and WS event contracts (to be added)
 - [docs/architecture/DATA-MODEL.md](../architecture/DATA-MODEL.md) — Prisma schema additions for `InventoryItem`, `CurrencyWallet`, `InventoryHistoryEntry`
+- [docs/extension/EXTENSION-INTEGRATION.md](../extension/EXTENSION-INTEGRATION.md) — External sync protocol §5b, §5d

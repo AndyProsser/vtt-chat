@@ -34,6 +34,8 @@ export interface InventoryItemAdded {
   srdKey?: string
   srdCategory: InventoryItemCategory
   notes?: string
+  externalId?: string
+  externalSource?: string
   addedByUserId: UUID
   addedAt: number
 }

@@ -39,7 +39,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
  */
 router.post('/external/sync', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
-  const { campaignId, externalSystem, source, characterUpdate, campaignUpdate } = req.body || {}
+  const { campaignId, externalSystem, source, characterUpdate, campaignUpdate, inventoryUpdate, currencyUpdate, sessionId } = req.body || {}
 
   // Validate required fields
   if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {
@@ -79,6 +79,9 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
       },
       characterUpdate,
       campaignUpdate,
+      inventoryUpdate,
+      currencyUpdate,
+      sessionId: typeof sessionId === 'string' ? sessionId : undefined,
     })
 
     if (!result.ok) {
@@ -100,7 +103,12 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
       | Pick<import('@/ws').WebSocketManager, 'broadcastEventToSession'>
       | undefined
 
-    if (wsManager && characterUpdate && typeof characterUpdate === 'object') {
+    const hasSyncPayload =
+      (characterUpdate && typeof characterUpdate === 'object') ||
+      (inventoryUpdate && typeof inventoryUpdate === 'object') ||
+      (currencyUpdate && typeof currencyUpdate === 'object')
+
+    if (wsManager && hasSyncPayload) {
       const updatedAt = Date.now()
       const sessions = await listSessionsByCampaign(campaignId)
 
@@ -124,18 +132,22 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
             source,
             hasCharacterUpdate: Boolean(characterUpdate),
             hasCampaignUpdate: Boolean(campaignUpdate),
+            inventoryItemsUpserted: result.applied.inventoryItemsUpserted,
+            currencyUpdated: result.applied.currencyUpdated,
           },
         })
       }
 
-      await broadcastPresenceProfileUpdate({
-        wsManager,
-        sessionIds: sessions.map((session) => session.id as UUID),
-        userId: user.userId,
-        username: user.username,
-        userRole: user.role,
-        updatedAt,
-      })
+      if (characterUpdate && typeof characterUpdate === 'object') {
+        await broadcastPresenceProfileUpdate({
+          wsManager,
+          sessionIds: sessions.map((session) => session.id as UUID),
+          userId: user.userId,
+          username: user.username,
+          userRole: user.role,
+          updatedAt,
+        })
+      }
     }
 
     return res.status(200).json({

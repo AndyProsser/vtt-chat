@@ -106,6 +106,7 @@ export enum SessionScheduleType {
 export enum InventoryItemSource {
   SRD = 'SRD',
   CUSTOM = 'CUSTOM',
+  EXTERNAL = 'EXTERNAL',
 }
 
 export enum InventoryItemCategory {

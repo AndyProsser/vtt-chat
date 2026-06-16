@@ -168,7 +168,7 @@ router.get('/:campaignId/history', requireAuth, async (req: Request, res: Respon
 router.post('/:campaignId/items', requireAuth, async (req: Request, res: Response) => {
   const { campaignId } = req.params
   const user = (req as any).user
-  const { ownerType, ownerId, name, quantity, source, srdKey, srdCategory, notes } = req.body
+  const { ownerType, ownerId, name, quantity, source, srdKey, srdCategory, notes, externalId, externalSource } = req.body
   const VALID_CATEGORIES = ['EQUIPMENT', 'MAGIC_ITEM', 'HOMEBREW']
   const effectiveSrdCategory: InventoryItemCategory = VALID_CATEGORIES.includes(srdCategory)
     ? (srdCategory as InventoryItemCategory)
@@ -203,10 +203,17 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
       ownerId: ownerId ?? null,
       name: name.trim(),
       quantity: Math.max(1, Number(quantity) || 1),
-      source: source === 'SRD' ? InventoryItemSource.SRD : InventoryItemSource.CUSTOM,
+      source:
+        source === 'SRD'
+          ? InventoryItemSource.SRD
+          : source === 'EXTERNAL'
+            ? InventoryItemSource.EXTERNAL
+            : InventoryItemSource.CUSTOM,
       srdKey: srdKey ?? undefined,
       srdCategory: effectiveSrdCategory,
       notes: notes ?? undefined,
+      externalId: typeof externalId === 'string' ? externalId.trim() : undefined,
+      externalSource: typeof externalSource === 'string' ? externalSource.trim() : undefined,
       addedByUserId: user.userId as UUID,
       sessionId: session?.id as UUID | undefined,
     })
@@ -233,6 +240,8 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
           srdKey: item.srdKey,
           srdCategory: item.srdCategory,
           notes: item.notes,
+          externalId: item.externalId ?? undefined,
+          externalSource: item.externalSource ?? undefined,
           addedByUserId: item.addedByUserId,
           addedAt: item.createdAt,
         },

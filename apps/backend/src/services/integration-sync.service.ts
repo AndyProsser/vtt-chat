@@ -1,9 +1,37 @@
 import { getPrismaClient } from '@/infra/db'
+import { InventoryItemCategory } from '@shared'
+import type { UUID } from '@shared'
+import { syncExternalInventoryItems, setExternalCurrencyWallet } from '@/services/inventory/inventory.service'
 import type { ExternalSyncResult } from '@/types/integration-sync.types'
 
 const prisma = getPrismaClient()
 
 export type { ExternalSyncResult } from '@/types/integration-sync.types'
+
+export interface ExternalInventoryItemInput {
+  externalId: string
+  name: string
+  quantity: number
+  srdKey?: string
+  srdCategory?: string
+  notes?: string
+}
+
+export interface ExternalInventoryUpdate {
+  externalCharacterId: string
+  items: ExternalInventoryItemInput[]
+}
+
+export interface ExternalCurrencyUpdate {
+  externalCharacterId: string
+  wallet: {
+    cp?: number
+    sp?: number
+    ep?: number
+    gp?: number
+    pp?: number
+  }
+}
 
 export async function syncExternalIntegration(params: {
   campaignId: string
@@ -17,6 +45,9 @@ export async function syncExternalIntegration(params: {
   }
   characterUpdate?: Record<string, unknown>
   campaignUpdate?: Record<string, unknown>
+  inventoryUpdate?: ExternalInventoryUpdate
+  currencyUpdate?: ExternalCurrencyUpdate
+  sessionId?: string
 }): Promise<ExternalSyncResult> {
   const membership = await prisma.campaignMembership.findUnique({
     where: {
@@ -110,6 +141,107 @@ export async function syncExternalIntegration(params: {
     }
   }
 
+  // ─── Inventory sync ────────────────────────────────────────────────────────
+
+  let inventoryItemsUpserted = 0
+
+  if (params.inventoryUpdate && typeof params.inventoryUpdate === 'object') {
+    const { externalCharacterId, items } = params.inventoryUpdate
+
+    if (!externalCharacterId || typeof externalCharacterId !== 'string') {
+      return {
+        ok: false,
+        code: 'INVALID_CHARACTER_UPDATE',
+        message: 'inventoryUpdate.externalCharacterId is required',
+        field: 'inventoryUpdate.externalCharacterId',
+      }
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return {
+        ok: false,
+        code: 'INVALID_CHARACTER_UPDATE',
+        message: 'inventoryUpdate.items must be a non-empty array',
+        field: 'inventoryUpdate.items',
+      }
+    }
+
+    const character = await prisma.character.findFirst({
+      where: { campaignId: params.campaignId, externalId: externalCharacterId, externalSystem: params.externalSystem },
+      select: { id: true },
+    })
+
+    if (character) {
+      const VALID_CATEGORIES = ['EQUIPMENT', 'MAGIC_ITEM', 'HOMEBREW']
+      const validatedItems = items
+        .filter((it) => it && typeof it.externalId === 'string' && typeof it.name === 'string')
+        .map((it) => ({
+          externalId: String(it.externalId).trim(),
+          name: String(it.name).trim(),
+          quantity: Math.max(1, Number(it.quantity) || 1),
+          srdKey: typeof it.srdKey === 'string' ? it.srdKey.trim() : undefined,
+          srdCategory: VALID_CATEGORIES.includes(it.srdCategory)
+            ? (it.srdCategory as InventoryItemCategory)
+            : InventoryItemCategory.EQUIPMENT,
+          notes: typeof it.notes === 'string' ? it.notes.trim() : undefined,
+        }))
+
+      if (validatedItems.length > 0) {
+        const result = await syncExternalInventoryItems({
+          campaignId: params.campaignId as UUID,
+          ownerId: character.id as UUID,
+          externalSource: params.externalSystem,
+          items: validatedItems,
+          actorUserId: params.user.userId as UUID,
+          sessionId: params.sessionId as UUID | undefined,
+        })
+        inventoryItemsUpserted = result.upserted.length
+      }
+    }
+  }
+
+  // ─── Currency sync ─────────────────────────────────────────────────────────
+
+  let currencyUpdated = false
+
+  if (params.currencyUpdate && typeof params.currencyUpdate === 'object') {
+    const { externalCharacterId, wallet } = params.currencyUpdate
+
+    if (!externalCharacterId || typeof externalCharacterId !== 'string') {
+      return {
+        ok: false,
+        code: 'INVALID_CHARACTER_UPDATE',
+        message: 'currencyUpdate.externalCharacterId is required',
+        field: 'currencyUpdate.externalCharacterId',
+      }
+    }
+
+    const character = await prisma.character.findFirst({
+      where: { campaignId: params.campaignId, externalId: externalCharacterId, externalSystem: params.externalSystem },
+      select: { id: true },
+    })
+
+    if (character && wallet && typeof wallet === 'object') {
+      const safeWallet = {
+        cp: typeof wallet.cp === 'number' ? Math.max(0, wallet.cp) : undefined,
+        sp: typeof wallet.sp === 'number' ? Math.max(0, wallet.sp) : undefined,
+        ep: typeof wallet.ep === 'number' ? Math.max(0, wallet.ep) : undefined,
+        gp: typeof wallet.gp === 'number' ? Math.max(0, wallet.gp) : undefined,
+        pp: typeof wallet.pp === 'number' ? Math.max(0, wallet.pp) : undefined,
+      }
+      await setExternalCurrencyWallet({
+        campaignId: params.campaignId as UUID,
+        ownerId: character.id as UUID,
+        wallet: safeWallet,
+        actorUserId: params.user.userId as UUID,
+        sessionId: params.sessionId as UUID | undefined,
+      })
+      currencyUpdated = true
+    }
+  }
+
+  // ─── Audit log ─────────────────────────────────────────────────────────────
+
   await prisma.adminAuditLog.create({
     data: {
       actorUserId: params.user.userId,
@@ -124,6 +256,8 @@ export async function syncExternalIntegration(params: {
         source: params.source,
         characterUpdateApplied: Boolean(params.characterUpdate),
         campaignUpdateApplied: Boolean(params.campaignUpdate),
+        inventoryItemsUpserted,
+        currencyUpdated,
       },
     },
   })
@@ -133,6 +267,8 @@ export async function syncExternalIntegration(params: {
     applied: {
       characterUpdate: Boolean(params.characterUpdate),
       campaignUpdate: Boolean(params.campaignUpdate),
+      inventoryItemsUpserted,
+      currencyUpdated,
     },
   }
 }

@@ -11,6 +11,8 @@ export interface InventoryItem {
   srdKey: string | null
   srdCategory: InventoryItemCategory
   notes: string | null
+  externalId: string | null
+  externalSource: string | null
   addedByUserId: UUID
   createdAt: number
   updatedAt: number
