@@ -39,7 +39,18 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
  */
 router.post('/external/sync', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
-  const { campaignId, externalSystem, source, characterUpdate, campaignUpdate, inventoryUpdate, currencyUpdate, sessionId } = req.body || {}
+  const {
+    campaignId,
+    externalSystem,
+    source,
+    characterUpdate,
+    campaignUpdate,
+    inventoryUpdate,
+    currencyUpdate,
+    partyInventoryUpdate,
+    partyCurrencyUpdate,
+    sessionId,
+  } = req.body || {}
 
   // Validate required fields
   if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {
@@ -81,6 +92,8 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
       campaignUpdate,
       inventoryUpdate,
       currencyUpdate,
+      partyInventoryUpdate,
+      partyCurrencyUpdate,
       sessionId: typeof sessionId === 'string' ? sessionId : undefined,
     })
 
@@ -93,6 +106,7 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
         })
       }
 
+      // FORBIDDEN, SYNC_POLICY_VIOLATION, SYNC_POLICY_DISABLED, SYNC_POLICY_PARTY_ACCESS_DENIED
       return res.status(403).json({
         code: result.code,
         message: result.message,
@@ -106,7 +120,9 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
     const hasSyncPayload =
       (characterUpdate && typeof characterUpdate === 'object') ||
       (inventoryUpdate && typeof inventoryUpdate === 'object') ||
-      (currencyUpdate && typeof currencyUpdate === 'object')
+      (currencyUpdate && typeof currencyUpdate === 'object') ||
+      (partyInventoryUpdate && typeof partyInventoryUpdate === 'object') ||
+      (partyCurrencyUpdate && typeof partyCurrencyUpdate === 'object')
 
     if (wsManager && hasSyncPayload) {
       const updatedAt = Date.now()

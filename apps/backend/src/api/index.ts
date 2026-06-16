@@ -19,6 +19,7 @@ import platformRoutes from './platform.routes'
 import integrationsRoutes from './integrations.routes'
 import metadataRoutes from './metadata.routes'
 import inventoryRoutes from './inventory.routes'
+import inventorySyncRoutes from './inventory-sync.routes'
 import srdRoutes from './srd.routes'
 import devRoutes from './dev.routes'
 import internalRoutes from './internal.routes'
@@ -65,6 +66,7 @@ router.use('/users', usersRoutes)
 router.use('/telemetry', telemetryRoutes)
 router.use('/metadata', metadataRoutes)
 router.use('/inventory', inventoryRoutes)
+router.use('/inventory', inventorySyncRoutes)
 router.use('/srd', srdRoutes)
 
 // Internal job triggers — called by the queues service only, not by clients

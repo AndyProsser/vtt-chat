@@ -87,7 +87,7 @@ export async function createInventoryItemRecord(params: {
 
 export async function findInventoryItemByExternalId(params: {
   campaignId: string
-  ownerId: string
+  ownerId: string | null
   externalSource: string
   externalId: string
 }): Promise<InventoryItemRow | null> {
@@ -103,7 +103,7 @@ export async function findInventoryItemByExternalId(params: {
 
 export async function upsertExternalInventoryItem(params: {
   campaignId: string
-  ownerId: string
+  ownerId: string | null
   ownerType: string
   externalSource: string
   externalId: string

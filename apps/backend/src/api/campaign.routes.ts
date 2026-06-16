@@ -1128,6 +1128,10 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       postSessionChatEnabled: membership.campaign.postSessionChatEnabled,
       postSessionChatDurationMs: membership.campaign.postSessionChatDurationMs,
       extensionSyncPolicy: membership.campaign.extensionSyncPolicy,
+      extensionInventorySyncEnabled: membership.campaign.extensionInventorySyncEnabled,
+      extensionCurrencySyncEnabled: membership.campaign.extensionCurrencySyncEnabled,
+      extensionPartyInventorySyncAccess: membership.campaign.extensionPartyInventorySyncAccess,
+      extensionSyncConflictResolution: membership.campaign.extensionSyncConflictResolution,
       lateJoinPolicy: membership.campaign.lateJoinPolicy,
       lateJoinGraceMinutes: membership.campaign.lateJoinGraceMinutes,
       defaultSessionDurationMins: (membership.campaign as any).defaultSessionDurationMins ?? 240,
@@ -1194,6 +1198,10 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     postSessionChatEnabled,
     postSessionChatDurationMs,
     extensionSyncPolicy,
+    extensionInventorySyncEnabled,
+    extensionCurrencySyncEnabled,
+    extensionPartyInventorySyncAccess,
+    extensionSyncConflictResolution,
     lateJoinPolicy,
     lateJoinGraceMinutes,
     defaultSessionDurationMins,
@@ -1283,6 +1291,38 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       code: ErrorCode.INVALID_INPUT,
       message: 'extensionSyncPolicy must be NONE, DM_ONLY, or ALLOW',
       field: 'extensionSyncPolicy',
+    })
+  }
+
+  // Layer 2 inventory-specific extension sync settings — omitted fields fall back to the
+  // campaign's existing value (unlike extensionSyncPolicy above, these must not silently reset).
+  const effectiveExtensionInventorySyncEnabled =
+    typeof extensionInventorySyncEnabled === 'boolean'
+      ? extensionInventorySyncEnabled
+      : (campaign.extensionInventorySyncEnabled ?? true)
+
+  const effectiveExtensionCurrencySyncEnabled =
+    typeof extensionCurrencySyncEnabled === 'boolean'
+      ? extensionCurrencySyncEnabled
+      : (campaign.extensionCurrencySyncEnabled ?? true)
+
+  const effectiveExtensionPartyInventorySyncAccess =
+    extensionPartyInventorySyncAccess ?? campaign.extensionPartyInventorySyncAccess ?? 'DM_ONLY'
+  if (!['DISABLED', 'DM_ONLY', 'ALL_PLAYERS'].includes(String(effectiveExtensionPartyInventorySyncAccess))) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'extensionPartyInventorySyncAccess must be DISABLED, DM_ONLY, or ALL_PLAYERS',
+      field: 'extensionPartyInventorySyncAccess',
+    })
+  }
+
+  const effectiveExtensionSyncConflictResolution =
+    extensionSyncConflictResolution ?? campaign.extensionSyncConflictResolution ?? 'OVERWRITE'
+  if (!['OVERWRITE', 'IGNORE', 'PROMPT'].includes(String(effectiveExtensionSyncConflictResolution))) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'extensionSyncConflictResolution must be OVERWRITE, IGNORE, or PROMPT',
+      field: 'extensionSyncConflictResolution',
     })
   }
 
@@ -1438,6 +1478,14 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       changedLockedFields.push('postSessionChatDurationMs')
     if (normalizedExtensionSyncPolicy !== campaign.extensionSyncPolicy)
       changedLockedFields.push('extensionSyncPolicy')
+    if (effectiveExtensionInventorySyncEnabled !== campaign.extensionInventorySyncEnabled)
+      changedLockedFields.push('extensionInventorySyncEnabled')
+    if (effectiveExtensionCurrencySyncEnabled !== campaign.extensionCurrencySyncEnabled)
+      changedLockedFields.push('extensionCurrencySyncEnabled')
+    if (effectiveExtensionPartyInventorySyncAccess !== campaign.extensionPartyInventorySyncAccess)
+      changedLockedFields.push('extensionPartyInventorySyncAccess')
+    if (effectiveExtensionSyncConflictResolution !== campaign.extensionSyncConflictResolution)
+      changedLockedFields.push('extensionSyncConflictResolution')
     if (
       JSON.stringify(effectiveSupportedPlatforms.slice().sort()) !==
       JSON.stringify(((campaign as any).supportedPlatforms ?? ['ANY']).slice().sort())
@@ -1593,6 +1641,10 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       postSessionChatEnabled: normalizedPostSessionChatEnabled,
       postSessionChatDurationMs: Math.round(parsedPostSessionChatDurationMs),
       extensionSyncPolicy: normalizedExtensionSyncPolicy,
+      extensionInventorySyncEnabled: effectiveExtensionInventorySyncEnabled,
+      extensionCurrencySyncEnabled: effectiveExtensionCurrencySyncEnabled,
+      extensionPartyInventorySyncAccess: effectiveExtensionPartyInventorySyncAccess,
+      extensionSyncConflictResolution: effectiveExtensionSyncConflictResolution,
       lateJoinPolicy: effectiveLateJoinPolicy,
       lateJoinGraceMinutes: Math.round(parsedGraceMinutes),
       defaultSessionDurationMins: Math.round(parsedDefaultSessionDurationMins),
@@ -1614,6 +1666,10 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       postSessionChatEnabled: true,
       postSessionChatDurationMs: true,
       extensionSyncPolicy: true,
+      extensionInventorySyncEnabled: true,
+      extensionCurrencySyncEnabled: true,
+      extensionPartyInventorySyncAccess: true,
+      extensionSyncConflictResolution: true,
       lateJoinPolicy: true,
       lateJoinGraceMinutes: true,
       defaultSessionDurationMins: true,

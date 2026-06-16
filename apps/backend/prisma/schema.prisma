@@ -128,6 +128,10 @@ model Campaign {
   postSessionChatDurationMs     Int                    @default(300000)
   discoverable                  Boolean                @default(false)
   extensionSyncPolicy           ExtensionSyncPolicy    @default(DM_AND_PLAYERS)
+  extensionInventorySyncEnabled Boolean                @default(true)
+  extensionCurrencySyncEnabled  Boolean                @default(true)
+  extensionPartyInventorySyncAccess ExtensionPartyInventorySyncAccess @default(DM_ONLY)
+  extensionSyncConflictResolution   ExtensionSyncConflictResolution   @default(OVERWRITE)
   defaultSessionDurationMins    Int                    @default(240)
   supportedPlatforms            SupportedPlatform[]    @default([ANY])
   currentDmId                   String                 @db.Uuid
@@ -156,6 +160,7 @@ model Campaign {
   inventoryItems                InventoryItem[]
   currencyWallets               CurrencyWallet[]
   inventoryHistory              InventoryHistoryEntry[]
+  pendingExtensionSyncs         PendingExtensionSync[]
   createdAt                     DateTime               @default(now())
   updatedAt                     DateTime               @updatedAt
 
@@ -528,6 +533,23 @@ enum ExtensionSyncPolicy {
   DM_AND_PLAYERS
 }
 
+enum ExtensionPartyInventorySyncAccess {
+  DISABLED
+  DM_ONLY
+  ALL_PLAYERS
+}
+
+enum ExtensionSyncConflictResolution {
+  OVERWRITE
+  IGNORE
+  PROMPT
+}
+
+enum PendingExtensionSyncKind {
+  ITEM
+  CURRENCY
+}
+
 enum SupportedPlatform {
   ANY
   DDB
@@ -662,6 +684,27 @@ model CurrencyWallet {
 
   @@unique([campaignId, ownerType, ownerId])
   @@index([campaignId])
+}
+
+/// Holds a single conflicting inventory item or currency wallet change from extension sync,
+/// pending DM approve/reject, when the campaign's extensionSyncConflictResolution is PROMPT.
+/// Reference: docs/subsystems/INVENTORY-SYSTEM.md §2.3, §12.3
+model PendingExtensionSync {
+  id               String                   @id @default(uuid()) @db.Uuid
+  campaignId       String                   @db.Uuid
+  campaign         Campaign                 @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  characterId      String                   @db.Uuid
+  externalSource   String
+  externalId       String                   // item externalId, or 'currency' for a wallet conflict
+  kind             PendingExtensionSyncKind
+  incomingPayload  Json
+  existingSnapshot Json
+  createdAt        DateTime                 @default(now())
+  expiresAt        DateTime
+
+  @@index([campaignId])
+  @@index([campaignId, expiresAt])
+  @@index([characterId])
 }
 
 model InventoryHistoryEntry {

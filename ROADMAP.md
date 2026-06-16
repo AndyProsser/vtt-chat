@@ -1824,7 +1824,7 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Extension-MVP: Guest Login and Campaign Access via Extension
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium (post-MVP, MVP distribution channel)
 **Depends on**: Core Reliability + W0-UI complete
 
@@ -1848,27 +1848,33 @@ Device credential persistence:
 
 Character and inventory sync:
 
-- [ ] `POST /api/integrations/external/sync` accepts and validates `inventoryUpdate` payload — items upserted by `(externalSource, externalId)` within the target character's inventory
-- [ ] `POST /api/integrations/external/sync` accepts and validates `currencyUpdate` payload — wallet set to absolute values; signed delta recorded in inventory history log
-- [ ] Combined sync request (character + inventory + currency in one call) processes each section independently per policy; response `applied` object reports per-section outcome
+- [x] `POST /api/integrations/external/sync` accepts and validates `inventoryUpdate` payload — items upserted by `(externalSource, externalId)` within the target character's inventory
+- [x] `POST /api/integrations/external/sync` accepts and validates `currencyUpdate` payload — wallet set to absolute values; signed delta recorded in inventory history log
+- [x] Combined sync request (character + inventory + currency in one call) processes each section independently per policy; response `applied` object reports per-section outcome
 
 Campaign inventory sync policy:
 
-- [ ] `CampaignSettings` schema extended with four new fields: `extensionInventorySyncEnabled`, `extensionCurrencySyncEnabled`, `extensionPartyInventorySyncAccess`, `extensionSyncConflictResolution` (see `docs/ui/DM-CAMPAIGN-SETTINGS.md §3.5`)
-- [ ] `GET /api/campaigns/:id/settings` returns all four new fields
-- [ ] `PATCH /api/campaigns/:id/settings` accepts and validates all four new fields (DM-only)
-- [ ] Sync endpoint enforces two-layer policy: Layer 1 `extensionSyncPolicy` access gate, then Layer 2 inventory-specific controls; partial application when only some payload sections are blocked
-- [ ] `OVERWRITE` conflict resolution — existing upsert behaviour (default)
-- [ ] `IGNORE` conflict resolution — existing records preserved; only net-new items and zero-balance wallets applied
-- [ ] `PROMPT` conflict resolution — conflicting changes written to `PendingExtensionSync` table; `INVENTORY:EXTENSION_SYNC_PENDING` WS event broadcast to DM; non-conflicting changes applied immediately
-- [ ] DM review endpoints for `PROMPT` mode: `GET /api/campaigns/:id/inventory/sync/pending`, `POST /api/campaigns/:id/inventory/sync/pending/:id/approve`, `POST /api/campaigns/:id/inventory/sync/pending/:id/reject`
-- [ ] Pending sync records expire after 24 hours (cleanup job or TTL field)
-- [ ] Policy enforcement unit tests covering all Layer 1 × Layer 2 combinations
-- [ ] Integration test: combined sync request with partial policy block returns correct `applied` + `skippedReasons` shape
+- [x] `Campaign` schema extended with four new fields: `extensionInventorySyncEnabled`, `extensionCurrencySyncEnabled`, `extensionPartyInventorySyncAccess`, `extensionSyncConflictResolution` (see `docs/ui/DM-CAMPAIGN-SETTINGS.md §3.5`)
+- [x] `GET /api/campaigns/:id/settings` returns all four new fields
+- [x] `PATCH /api/campaigns/:id/settings` accepts and validates all four new fields (DM-only)
+- [x] Sync endpoint enforces two-layer policy: Layer 1 `extensionSyncPolicy` access gate, then Layer 2 inventory-specific controls; partial application when only some payload sections are blocked
+- [x] `OVERWRITE` conflict resolution — existing upsert behaviour (default)
+- [x] `IGNORE` conflict resolution — existing records preserved; only net-new items and zero-balance wallets applied
+- [x] `PROMPT` conflict resolution — conflicting changes written to `PendingExtensionSync` table; `INVENTORY:EXTENSION_SYNC_PENDING` WS event broadcast to DM; non-conflicting changes applied immediately
+- [x] DM review endpoints for `PROMPT` mode: `GET /api/inventory/:campaignId/sync/pending`, `POST /api/inventory/:campaignId/sync/pending/:id/approve`, `POST /api/inventory/:campaignId/sync/pending/:id/reject` (real mounted prefix — see path-prefix note in `docs/subsystems/INVENTORY-SYSTEM.md` §8)
+- [x] Pending sync records expire after 24 hours (TTL field, checked on read — no separate cleanup job, same convention as `DeviceCredential`)
+- [x] Policy enforcement unit tests covering all Layer 1 × Layer 2 combinations
+- [x] Integration test: combined sync request with partial policy block returns correct `applied` + `skippedReasons` shape
 
-**Evidence snapshot (2026-06-16 — device credential persistence shipped)**:
+**Evidence snapshot (2026-06-16 — character/inventory sync + campaign sync policy shipped)**:
 
-Backend is production-ready for extension auth integration. All guest auth contracts, account lifecycle, invite flows, and device credential persistence are implemented and tested. Inventory/currency sync and campaign policy work is the remaining server-side surface.
+Backend is fully production-ready for extension integration. All guest auth contracts, account lifecycle, invite flows, device credential persistence, character/inventory/currency sync, and the two-layer campaign sync policy are implemented and tested.
+
+- Character/inventory/currency sync — `apps/backend/src/services/integration-sync.service.ts` (orchestration: Layer 1/2 gating, partial-application response) + `apps/backend/src/services/integration-sync-policy.service.ts` (item/currency conflict resolution, party-owned upserts). The wire contract — including `partyInventoryUpdate`/`partyCurrencyUpdate`, a gap not previously specified in the design docs — is now locked in `docs/CONTRACTS.md` "Extension Inventory Sync Policy Contract".
+- Two-layer campaign policy — Layer 1 `extensionSyncPolicy` (pre-existing) + Layer 2 `extensionInventorySyncEnabled`/`extensionCurrencySyncEnabled`/`extensionPartyInventorySyncAccess`/`extensionSyncConflictResolution` on `Campaign`, managed via the existing `/settings` GET/PATCH and locked during `ACTIVE`/`PAUSED` sessions alongside `extensionSyncPolicy`.
+- `PendingExtensionSync` Prisma model + `apps/backend/src/services/inventory/pending-extension-sync.service.ts` + DM-only review endpoints in the new `apps/backend/src/api/inventory-sync.routes.ts`. Party-owned conflicts under `PROMPT` fall back to `OVERWRITE` since the pending-sync schema is locked to a single `characterId` (documented exception, no DM-review queue shape exists for party records).
+- **Bugfix discovered during this work**: `syncExternalIntegration`'s `applied` response always included `inventoryItemsUpserted`/`currencyUpdated` even when neither section was requested, already failing the locked character-only-sync unit test. Fixed so optional section keys appear only when their request section was present.
+- Test coverage: `apps/backend/tests/services/integration-sync.service.test.ts` (Layer 1×2 matrix), `apps/backend/tests/services/pending-extension-sync.service.test.ts`, `apps/backend/tests/api/external-integration.test.ts` (partial-application + party-gating route tests), `apps/backend/tests/api/inventory-sync-pending.test.ts`, `apps/backend/tests/api/campaign-settings-extension-sync.test.ts`.
 
 - **Bugfix discovered during this work**: `backend/src/api/auth.routes.ts` (the file documented below in earlier snapshots) was never mounted by `backend/src/api/index.ts` — `/api/auth/extension/*` 404'd on the real deployed server despite passing tests, because both test files mounted that file directly rather than going through the real router registry. The orphaned `/extension/preflight` and `/extension/guest-login` routes have been moved into the now-mounted `backend/src/api/auth-extension.routes.ts`; the file's other routes (`/player/guest-join`, `/spectator/guest-join`, `/player/full-join`, `/player/precheck`) were dead duplicates already superseded by `backend/src/api/auth-join.routes.ts` (`/join/guest/player`, `/join/guest/spectator`, `/join/full/player`, `/validate/player`) and were dropped, not ported.
 - `POST /api/auth/extension/guest-login` — implemented in `backend/src/api/auth-extension.routes.ts`; service logic in `backend/src/services/guest-auth/extension.service.ts`. Accepts inviteCode, externalSystem, externalUserId, character data, campaignPacket, optional deviceId; creates or updates guest User with `authType=GUEST`, ExternalIdentity link, Character, and CampaignMembership; assigns DM or PLAYER role from `campaignPacket.dmExternalUserId`; returns JWT with guest claims, plus `deviceCredential` when `deviceId` is supplied.
@@ -1884,6 +1890,7 @@ Backend is production-ready for extension auth integration. All guest auth contr
 
 **Related Docs**:
 
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — "Extension Inventory Sync Policy Contract" (locked wire contract, incl. `partyInventoryUpdate`/`partyCurrencyUpdate`)
 - [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md) — sync protocol, two-layer policy enforcement (§5d, §5e)
 - [docs/extension/EXTENSION-ROADMAP.md](docs/extension/EXTENSION-ROADMAP.md)
 - [docs/ui/DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md) — campaign inventory sync policy settings (§3.5)

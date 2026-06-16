@@ -18,6 +18,7 @@ export type InventoryEventType =
   | 'INVENTORY:LOOT_SPLIT_ACCEPTED'
   | 'INVENTORY:LOOT_SPLIT_EXPIRED'
   | 'INVENTORY:CURRENCY_CHANGED'
+  | 'INVENTORY:EXTENSION_SYNC_PENDING'
 
 /**
  * INVENTORY:ITEM_ADDED
@@ -161,6 +162,21 @@ export interface InventoryCurrencyChanged {
 export type InventoryCurrencyChangedEvent = EventEnvelope<InventoryCurrencyChanged>
 
 /**
+ * INVENTORY:EXTENSION_SYNC_PENDING
+ * Extension sync produced a conflict under the campaign's `PROMPT` conflict resolution policy.
+ * Sent only to the campaign DM (not broadcast to all clients) — see INVENTORY-SYSTEM.md §12.3/§12.4.
+ */
+export interface InventoryExtensionSyncPending {
+  campaignId: UUID
+  characterId: UUID
+  pendingSyncId: UUID
+  kind: 'ITEM' | 'CURRENCY'
+  externalId: string
+}
+
+export type InventoryExtensionSyncPendingEvent = EventEnvelope<InventoryExtensionSyncPending>
+
+/**
  * Union of all inventory events.
  */
 export type InventoryEvent =
@@ -172,3 +188,4 @@ export type InventoryEvent =
   | InventoryLootSplitAcceptedEvent
   | InventoryLootSplitExpiredEvent
   | InventoryCurrencyChangedEvent
+  | InventoryExtensionSyncPendingEvent

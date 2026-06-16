@@ -1188,6 +1188,106 @@ When a guest upgrades to a full account (`POST /api/auth/upgrade`), all active e
 
 ---
 
+## Extension Inventory Sync Policy Contract (W-Extension-MVP)
+
+`POST /api/integrations/external/sync` enforces two independent layers of campaign policy on every
+call. See [EXTENSION-INTEGRATION.md §5e](extension/EXTENSION-INTEGRATION.md) and
+[INVENTORY-SYSTEM.md §12.3](subsystems/INVENTORY-SYSTEM.md) for the full design spec — this section
+is the locked wire contract, including the party-target payload shape (not previously specified).
+
+### Layer 1 — `extensionSyncPolicy` (existing)
+
+Gates **all** sync payloads — character, inventory, currency. `NONE` rejects everything;
+`DM_ONLY` permits only `source: 'dm'` requests; `DM_AND_PLAYERS` permits both.
+
+### Layer 2 — inventory-specific campaign settings
+
+Four `Campaign` fields, evaluated independently once Layer 1 permits the caller:
+
+| Field | Type | Default |
+| --- | --- | --- |
+| `extensionInventorySyncEnabled` | `boolean` | `true` |
+| `extensionCurrencySyncEnabled` | `boolean` | `true` |
+| `extensionPartyInventorySyncAccess` | `DISABLED \| DM_ONLY \| ALL_PLAYERS` | `DM_ONLY` |
+| `extensionSyncConflictResolution` | `OVERWRITE \| IGNORE \| PROMPT` | `OVERWRITE` |
+
+Managed via `GET`/`PATCH /api/campaigns/:campaignId/settings` (DM-only); locked while a session is
+`ACTIVE`/`PAUSED`, same as `extensionSyncPolicy`.
+
+### Party-target wire shape
+
+Party-targeted sync uses **separate top-level payload keys** — `partyInventoryUpdate` and
+`partyCurrencyUpdate` — mirroring `inventoryUpdate`/`currencyUpdate` but with no
+`externalCharacterId` (the target is always the campaign's party inventory/purse):
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "DDB",
+  "source": "dm",
+  "partyInventoryUpdate": { "items": [{ "externalId": "ddb-item-999", "name": "Bag of Holding", "quantity": 1 }] },
+  "partyCurrencyUpdate": { "wallet": { "gp": 200 } }
+}
+```
+
+`extensionPartyInventorySyncAccess` gates these two keys: `DISABLED` always skips them;
+`DM_ONLY` skips unless `source === 'dm'`; `ALL_PLAYERS` never skips. They are additionally gated by
+the master toggles above (`extensionInventorySyncEnabled` for `partyInventoryUpdate`,
+`extensionCurrencySyncEnabled` for `partyCurrencyUpdate`).
+
+### Conflict resolution (`extensionSyncConflictResolution`)
+
+A conflict is an incoming item/wallet value that differs from an existing persisted record
+(matched by `externalSource`+`externalId` for items; any non-zero requested denomination for
+currency). Net-new items and zero-balance wallets are never conflicts and always apply immediately.
+
+| Value | Behaviour |
+| --- | --- |
+| `OVERWRITE` | Incoming value always wins (historical default behaviour). |
+| `IGNORE` | Conflicting item discarded, existing record untouched; conflicting currency update discarded in full. |
+| `PROMPT` | Conflicting change written to `PendingExtensionSync` (campaign+characterId-scoped, see INVENTORY-SYSTEM.md §2.3); `INVENTORY:EXTENSION_SYNC_PENDING` sent to the DM only (`eventBroadcaster.sendToUser`). |
+
+**Party-owned conflicts under `PROMPT` fall back to `OVERWRITE`.** `PendingExtensionSync` is
+schema-locked to a single `characterId` — there is no DM-review queue shape for party-owned
+records — so a party item/wallet conflict applies immediately rather than queuing, regardless of
+the campaign's `PROMPT` setting. Only character-owned conflicts queue for DM review.
+
+### Response shape (`applied`)
+
+`characterUpdate` and `campaignUpdate` are always present booleans. Every other key
+(`inventoryItemsUpserted`, `currencyUpdated`, `partyInventoryItemsUpserted`, `partyCurrencyUpdated`,
+`pendingConflicts`, `skippedReasons`) is present **only** when its corresponding request section
+(`inventoryUpdate`, `currencyUpdate`, `partyInventoryUpdate`, `partyCurrencyUpdate`) was present in
+the request. `skippedReasons` maps a blocked section name to `SYNC_POLICY_DISABLED` or
+`SYNC_POLICY_PARTY_ACCESS_DENIED`.
+
+### Error responses
+
+| Status | Code | Cause |
+| --- | --- | --- |
+| 403 | `SYNC_POLICY_DISABLED` | Request contains only sections blocked by a Layer 2 master toggle (no other section present). |
+| 403 | `SYNC_POLICY_PARTY_ACCESS_DENIED` | Request contains only party sections blocked by `extensionPartyInventorySyncAccess`. |
+
+A request that mixes blocked and allowed sections is never rejected wholesale — allowed sections
+apply and blocked ones are reported via `applied.skippedReasons` (HTTP 200).
+
+### DM Review Endpoints (`PROMPT` mode)
+
+Mounted alongside the existing inventory routes at `/api/inventory/:campaignId/...` (the real
+runtime prefix — see the corrective note in INVENTORY-SYSTEM.md §8):
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/inventory/:campaignId/sync/pending` | List non-expired pending syncs (DM only) |
+| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/approve` | Apply the change via the standard 4-layer contract; broadcasts the normal `INVENTORY:ITEM_ADDED`/`ITEM_EDITED`/`CURRENCY_CHANGED` event (DM only) |
+| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/reject` | Discard the pending change (DM only) |
+
+Pending syncs expire 24h after creation (TTL field, checked on read — same convention as
+`DeviceCredential`; no separate sweep job). Expired or missing rows return `404 NOT_FOUND` from
+approve/reject.
+
+---
+
 ## Session Schedule Contract (W-Session-Schedule)
 
 DMs can configure a repeating session schedule on a campaign. The schedule drives the next session date displayed in the Campaign Info panel for all members.

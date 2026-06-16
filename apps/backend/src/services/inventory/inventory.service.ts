@@ -434,12 +434,15 @@ export interface ExternalInventorySyncResult {
  */
 export async function syncExternalInventoryItems(params: {
   campaignId: UUID
-  ownerId: UUID
+  ownerId: UUID | null
+  /** Defaults to 'character' — pass 'party' for party-targeted extension sync (ownerId null). */
+  ownerType?: 'character' | 'party'
   externalSource: string
   items: ExternalInventoryItemInput[]
   actorUserId: UUID
   sessionId?: UUID
 }): Promise<ExternalInventorySyncResult> {
+  const ownerType = params.ownerType ?? 'character'
   const now = new Date()
   const results: InventoryItemDto[] = []
   let created = 0
@@ -449,7 +452,7 @@ export async function syncExternalInventoryItems(params: {
     const { row, created: wasCreated } = await upsertExternalInventoryItem({
       campaignId: params.campaignId,
       ownerId: params.ownerId,
-      ownerType: 'character',
+      ownerType,
       externalSource: params.externalSource,
       externalId: item.externalId,
       name: item.name,
@@ -468,9 +471,9 @@ export async function syncExternalInventoryItems(params: {
       sessionId: params.sessionId ?? null,
       actorUserId: params.actorUserId,
       actionType: wasCreated ? InventoryActionType.ITEM_ADDED : InventoryActionType.ITEM_EDITED,
-      fromOwnerType: wasCreated ? null : 'character',
+      fromOwnerType: wasCreated ? null : ownerType,
       fromOwnerId: wasCreated ? null : params.ownerId,
-      toOwnerType: 'character',
+      toOwnerType: ownerType,
       toOwnerId: params.ownerId,
       quantity: item.quantity,
       currencyDelta: null,
@@ -494,14 +497,16 @@ export async function syncExternalInventoryItems(params: {
  */
 export async function setExternalCurrencyWallet(params: {
   campaignId: UUID
-  ownerId: UUID
+  ownerId: UUID | null
+  /** Defaults to 'character' — pass 'party' for party-targeted extension sync (ownerId null). */
+  ownerType?: 'character' | 'party'
   wallet: Partial<CurrencyWallet>
   actorUserId: UUID
   sessionId?: UUID
 }): Promise<CurrencyWalletDto> {
   const existing = await findOrCreateCurrencyWallet({
     campaignId: params.campaignId,
-    ownerType: 'character',
+    ownerType: params.ownerType ?? 'character',
     ownerId: params.ownerId,
   })
 

@@ -3,12 +3,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const CAMPAIGN_ID = '11111111-1111-4111-8111-111111111111'
 const USER_ID = '22222222-2222-4222-8222-222222222222'
 const DM_ID = '33333333-3333-4333-8333-333333333333'
+const CHARACTER_ID = '44444444-4444-4444-8444-444444444444'
 
 const mocks = vi.hoisted(() => ({
   mockCampaignMembershipFindUnique: vi.fn(),
   mockCharacterFindFirst: vi.fn(),
   mockCharacterUpdate: vi.fn(),
   mockAdminAuditLogCreate: vi.fn(),
+  mockInventoryItemFindFirst: vi.fn(),
+  mockInventoryItemCreate: vi.fn(),
+  mockInventoryItemUpdate: vi.fn(),
+  mockCurrencyWalletFindFirst: vi.fn(),
+  mockCurrencyWalletCreate: vi.fn(),
+  mockCurrencyWalletUpdate: vi.fn(),
+  mockInventoryHistoryEntryCreate: vi.fn(),
+  mockPendingExtensionSyncCreate: vi.fn(),
+  mockEventBroadcasterSendToUser: vi.fn(),
 }))
 
 vi.mock('@/infra/db', () => ({
@@ -23,14 +33,101 @@ vi.mock('@/infra/db', () => ({
     adminAuditLog: {
       create: mocks.mockAdminAuditLogCreate,
     },
+    inventoryItem: {
+      findFirst: mocks.mockInventoryItemFindFirst,
+      create: mocks.mockInventoryItemCreate,
+      update: mocks.mockInventoryItemUpdate,
+    },
+    currencyWallet: {
+      findFirst: mocks.mockCurrencyWalletFindFirst,
+      create: mocks.mockCurrencyWalletCreate,
+      update: mocks.mockCurrencyWalletUpdate,
+    },
+    inventoryHistoryEntry: {
+      create: mocks.mockInventoryHistoryEntryCreate,
+    },
+    pendingExtensionSync: {
+      create: mocks.mockPendingExtensionSyncCreate,
+    },
   }),
+}))
+
+vi.mock('@/ws/event-broadcaster', () => ({
+  default: {
+    sendToUser: mocks.mockEventBroadcasterSendToUser,
+  },
 }))
 
 import { syncExternalIntegration } from '@/services/integration-sync.service'
 
+const NOW = new Date('2026-06-16T00:00:00.000Z')
+
+function buildItemRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'item-1',
+    campaignId: CAMPAIGN_ID,
+    ownerType: 'character',
+    ownerId: CHARACTER_ID,
+    name: 'Longsword',
+    quantity: 1,
+    source: 'EXTERNAL',
+    srdKey: null,
+    srdCategory: 'EQUIPMENT',
+    notes: null,
+    externalId: 'ddb-item-1',
+    externalSource: 'dndbeyond',
+    addedByUserId: USER_ID,
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...overrides,
+  }
+}
+
+function buildWalletRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'wallet-1',
+    campaignId: CAMPAIGN_ID,
+    ownerType: 'character',
+    ownerId: CHARACTER_ID,
+    cp: 0,
+    sp: 0,
+    ep: 0,
+    gp: 0,
+    pp: 0,
+    updatedAt: NOW,
+    ...overrides,
+  }
+}
+
+/** Full Layer 2 defaults — explicit per the production Prisma schema defaults. */
+function fullPolicyCampaign(overrides: Record<string, unknown> = {}) {
+  return {
+    extensionSyncPolicy: 'DM_AND_PLAYERS',
+    currentDmId: DM_ID,
+    extensionInventorySyncEnabled: true,
+    extensionCurrencySyncEnabled: true,
+    extensionPartyInventorySyncAccess: 'DM_ONLY',
+    extensionSyncConflictResolution: 'OVERWRITE',
+    ...overrides,
+  }
+}
+
 describe('integration-sync.service', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    mocks.mockInventoryItemFindFirst.mockResolvedValue(null)
+    mocks.mockInventoryItemCreate.mockImplementation(async ({ data }: any) => buildItemRow(data))
+    mocks.mockInventoryItemUpdate.mockImplementation(async ({ where, data }: any) =>
+      buildItemRow({ id: where.id, ...data })
+    )
+    mocks.mockCurrencyWalletFindFirst.mockResolvedValue(null)
+    mocks.mockCurrencyWalletCreate.mockImplementation(async ({ data }: any) => buildWalletRow(data))
+    mocks.mockCurrencyWalletUpdate.mockImplementation(async ({ where, data }: any) =>
+      buildWalletRow({ id: where.id, ...data })
+    )
+    mocks.mockInventoryHistoryEntryCreate.mockResolvedValue({})
+    mocks.mockPendingExtensionSyncCreate.mockImplementation(async ({ data }: any) => ({ id: 'pending-1', ...data }))
+    mocks.mockAdminAuditLogCreate.mockResolvedValue({ id: 'audit-1' })
   })
 
   it('rejects sync for non-members', async () => {
@@ -56,10 +153,7 @@ describe('integration-sync.service', () => {
 
   it('rejects sync policy violations', async () => {
     mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
-      campaign: {
-        extensionSyncPolicy: 'DM_ONLY',
-        currentDmId: DM_ID,
-      },
+      campaign: fullPolicyCampaign({ extensionSyncPolicy: 'DM_ONLY' }),
     })
 
     const result = await syncExternalIntegration({
@@ -81,10 +175,7 @@ describe('integration-sync.service', () => {
 
   it('validates character update payload requirements', async () => {
     mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
-      campaign: {
-        extensionSyncPolicy: 'DM_AND_PLAYERS',
-        currentDmId: DM_ID,
-      },
+      campaign: fullPolicyCampaign(),
     })
 
     const result = await syncExternalIntegration({
@@ -111,17 +202,13 @@ describe('integration-sync.service', () => {
 
   it('applies sync updates and writes audit log on success', async () => {
     mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
-      campaign: {
-        extensionSyncPolicy: 'DM_AND_PLAYERS',
-        currentDmId: DM_ID,
-      },
+      campaign: fullPolicyCampaign(),
     })
     mocks.mockCharacterFindFirst.mockResolvedValueOnce({
       id: 'char-1',
       metadata: { previous: true },
     })
     mocks.mockCharacterUpdate.mockResolvedValueOnce({ id: 'char-1' })
-    mocks.mockAdminAuditLogCreate.mockResolvedValueOnce({ id: 'audit-1' })
 
     const result = await syncExternalIntegration({
       campaignId: CAMPAIGN_ID,
@@ -156,5 +243,290 @@ describe('integration-sync.service', () => {
       },
     })
     expect(mocks.mockAdminAuditLogCreate).toHaveBeenCalledTimes(1)
+  })
+
+  describe('Layer 2: inventory-specific policy', () => {
+    const baseUser = { userId: USER_ID, username: 'player-one', role: 'PLAYER' }
+
+    it('rejects an inventory-only request when extensionInventorySyncEnabled is false', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionInventorySyncEnabled: false }),
+      })
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        user: baseUser,
+        inventoryUpdate: {
+          externalCharacterId: 'ddb-char-1',
+          items: [{ externalId: 'i1', name: 'Sword', quantity: 1 }],
+        },
+      })
+
+      expect(result).toEqual({
+        ok: false,
+        code: 'SYNC_POLICY_DISABLED',
+        message: 'Inventory or currency sync is disabled for this campaign',
+      })
+      expect(mocks.mockCharacterFindFirst).not.toHaveBeenCalled()
+    })
+
+    it('rejects a currency-only request when extensionCurrencySyncEnabled is false', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionCurrencySyncEnabled: false }),
+      })
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        user: baseUser,
+        currencyUpdate: { externalCharacterId: 'ddb-char-1', wallet: { gp: 10 } },
+      })
+
+      expect(result).toEqual({
+        ok: false,
+        code: 'SYNC_POLICY_DISABLED',
+        message: 'Inventory or currency sync is disabled for this campaign',
+      })
+    })
+
+    it('partially applies characterUpdate when inventory is disabled, reporting skippedReasons', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionInventorySyncEnabled: false }),
+      })
+      mocks.mockCharacterFindFirst.mockResolvedValueOnce({ id: CHARACTER_ID, metadata: {} })
+      mocks.mockCharacterUpdate.mockResolvedValueOnce({ id: CHARACTER_ID })
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        user: baseUser,
+        characterUpdate: { externalCharacterId: 'ddb-char-1', level: 5 },
+        inventoryUpdate: {
+          externalCharacterId: 'ddb-char-1',
+          items: [{ externalId: 'i1', name: 'Sword', quantity: 1 }],
+        },
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.applied.characterUpdate).toBe(true)
+        expect(result.applied.inventoryItemsUpserted).toBe(0)
+        expect(result.applied.skippedReasons).toEqual({ inventory: 'SYNC_POLICY_DISABLED' })
+      }
+    })
+
+    it('rejects a party-only request from a player when extensionPartyInventorySyncAccess is DM_ONLY', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionPartyInventorySyncAccess: 'DM_ONLY' }),
+      })
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        user: baseUser,
+        partyInventoryUpdate: { items: [{ externalId: 'p1', name: 'Bag of Holding', quantity: 1 }] },
+      })
+
+      expect(result).toEqual({
+        ok: false,
+        code: 'SYNC_POLICY_PARTY_ACCESS_DENIED',
+        message: 'Party inventory/currency sync is not permitted for this caller',
+      })
+    })
+
+    it('allows a DM-sourced party request when extensionPartyInventorySyncAccess is DM_ONLY', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionPartyInventorySyncAccess: 'DM_ONLY' }),
+      })
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'dm',
+        user: { userId: DM_ID, username: 'dm-one', role: 'DM' },
+        partyInventoryUpdate: { items: [{ externalId: 'p1', name: 'Bag of Holding', quantity: 1 }] },
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.applied.partyInventoryItemsUpserted).toBe(1)
+      }
+      expect(mocks.mockInventoryItemCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ ownerType: 'party', ownerId: null }) })
+      )
+    })
+
+    it('allows a player-sourced party request when extensionPartyInventorySyncAccess is ALL_PLAYERS', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionPartyInventorySyncAccess: 'ALL_PLAYERS' }),
+      })
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        user: baseUser,
+        partyCurrencyUpdate: { wallet: { gp: 10 } },
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.applied.partyCurrencyUpdated).toBe(true)
+      }
+    })
+
+    it('discards a conflicting item under IGNORE while still applying a net-new item', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionSyncConflictResolution: 'IGNORE' }),
+      })
+      mocks.mockCharacterFindFirst.mockResolvedValueOnce({ id: CHARACTER_ID })
+      mocks.mockInventoryItemFindFirst.mockImplementation(async ({ where }: any) =>
+        where.externalId === 'existing-1'
+          ? buildItemRow({ externalId: 'existing-1', name: 'Old Name', quantity: 1 })
+          : null
+      )
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        user: baseUser,
+        inventoryUpdate: {
+          externalCharacterId: 'ddb-char-1',
+          items: [
+            { externalId: 'existing-1', name: 'New Name', quantity: 5 },
+            { externalId: 'new-1', name: 'New Item', quantity: 1 },
+          ],
+        },
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.applied.inventoryItemsUpserted).toBe(1)
+        expect(result.applied.pendingConflicts).toBeUndefined()
+      }
+      expect(mocks.mockInventoryItemUpdate).not.toHaveBeenCalled()
+    })
+
+    it('queues a conflicting item under PROMPT and notifies the DM, while applying a net-new item', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionSyncConflictResolution: 'PROMPT' }),
+      })
+      mocks.mockCharacterFindFirst.mockResolvedValueOnce({ id: CHARACTER_ID })
+      mocks.mockInventoryItemFindFirst.mockImplementation(async ({ where }: any) =>
+        where.externalId === 'existing-1'
+          ? buildItemRow({ externalId: 'existing-1', name: 'Old Name', quantity: 1 })
+          : null
+      )
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        user: baseUser,
+        inventoryUpdate: {
+          externalCharacterId: 'ddb-char-1',
+          items: [
+            { externalId: 'existing-1', name: 'New Name', quantity: 5 },
+            { externalId: 'new-1', name: 'New Item', quantity: 1 },
+          ],
+        },
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.applied.inventoryItemsUpserted).toBe(1)
+        expect(result.applied.pendingConflicts).toBe(1)
+      }
+      expect(mocks.mockPendingExtensionSyncCreate).toHaveBeenCalledTimes(1)
+      expect(mocks.mockEventBroadcasterSendToUser).toHaveBeenCalledWith(
+        DM_ID,
+        expect.objectContaining({
+          type: 'INVENTORY:EXTENSION_SYNC_PENDING',
+          payload: expect.objectContaining({ kind: 'ITEM', characterId: CHARACTER_ID }),
+        })
+      )
+    })
+
+    it('discards an entire conflicting currency update under IGNORE', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionSyncConflictResolution: 'IGNORE' }),
+      })
+      mocks.mockCharacterFindFirst.mockResolvedValueOnce({ id: CHARACTER_ID })
+      mocks.mockCurrencyWalletFindFirst.mockResolvedValue(buildWalletRow({ gp: 50 }))
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        user: baseUser,
+        currencyUpdate: { externalCharacterId: 'ddb-char-1', wallet: { gp: 10 } },
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.applied.currencyUpdated).toBe(false)
+      }
+      expect(mocks.mockCurrencyWalletUpdate).not.toHaveBeenCalled()
+    })
+
+    it('queues a conflicting currency update under PROMPT and notifies the DM', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({ extensionSyncConflictResolution: 'PROMPT' }),
+      })
+      mocks.mockCharacterFindFirst.mockResolvedValueOnce({ id: CHARACTER_ID })
+      mocks.mockCurrencyWalletFindFirst.mockResolvedValue(buildWalletRow({ gp: 50 }))
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'player',
+        user: baseUser,
+        currencyUpdate: { externalCharacterId: 'ddb-char-1', wallet: { gp: 10 } },
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.applied.currencyUpdated).toBe(false)
+        expect(result.applied.pendingConflicts).toBe(1)
+      }
+      expect(mocks.mockEventBroadcasterSendToUser).toHaveBeenCalledWith(
+        DM_ID,
+        expect.objectContaining({ payload: expect.objectContaining({ kind: 'CURRENCY' }) })
+      )
+    })
+
+    it('falls back to OVERWRITE for a party-owned conflict under PROMPT (no DM-review queue for party records)', async () => {
+      mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+        campaign: fullPolicyCampaign({
+          extensionSyncConflictResolution: 'PROMPT',
+          extensionPartyInventorySyncAccess: 'DM_ONLY',
+        }),
+      })
+      mocks.mockInventoryItemFindFirst.mockResolvedValue(
+        buildItemRow({ ownerType: 'party', ownerId: null, externalId: 'p1', name: 'Old Name', quantity: 1 })
+      )
+
+      const result = await syncExternalIntegration({
+        campaignId: CAMPAIGN_ID,
+        externalSystem: 'dndbeyond',
+        source: 'dm',
+        user: { userId: DM_ID, username: 'dm-one', role: 'DM' },
+        partyInventoryUpdate: { items: [{ externalId: 'p1', name: 'New Name', quantity: 2 }] },
+      })
+
+      expect(result.ok).toBe(true)
+      if (result.ok) {
+        expect(result.applied.partyInventoryItemsUpserted).toBe(1)
+        expect(result.applied.pendingConflicts).toBeUndefined()
+      }
+      expect(mocks.mockPendingExtensionSyncCreate).not.toHaveBeenCalled()
+      expect(mocks.mockEventBroadcasterSendToUser).not.toHaveBeenCalled()
+    })
   })
 })

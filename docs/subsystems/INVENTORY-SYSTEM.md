@@ -296,6 +296,11 @@ WS dispatch rules:
 
 ## 8. API Endpoints
 
+> **Note on path prefixes:** the tables below use `/api/campaigns/:id/inventory/...` as originally
+> designed, but the implemented router (`apps/backend/src/api/inventory.routes.ts`) is actually
+> mounted at `/api/inventory/:campaignId/...`. The "Pending Extension Sync" endpoints below follow
+> the real, implemented mount — see `docs/CONTRACTS.md` "Extension Inventory Sync Policy Contract".
+
 ### Party Inventory
 
 | Method   | Path                                          | Description                                                    |
@@ -344,11 +349,11 @@ WS dispatch rules:
 
 See §12.3 and [EXTENSION-INTEGRATION.md §5e](../extension/EXTENSION-INTEGRATION.md) for the policy that creates these records.
 
-| Method | Path                                                           | Description                                                                 |
-| ------ | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `GET`  | `/api/campaigns/:id/inventory/sync/pending`                    | List pending extension sync conflicts awaiting DM review (DM only)          |
-| `POST` | `/api/campaigns/:id/inventory/sync/pending/:pendingId/approve` | Apply the pending change via the standard 4-layer contract (DM only)        |
-| `POST` | `/api/campaigns/:id/inventory/sync/pending/:pendingId/reject`  | Discard the pending change, leaving the existing record untouched (DM only) |
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/inventory/:campaignId/sync/pending` | List pending extension sync conflicts awaiting DM review (DM only) |
+| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/approve` | Apply the pending change via the standard 4-layer contract (DM only) |
+| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/reject` | Discard the pending change, leaving the existing record untouched (DM only) |
 
 ---
 

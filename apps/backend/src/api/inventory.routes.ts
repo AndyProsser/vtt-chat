@@ -14,7 +14,7 @@ import { verifyToken } from '@/services/auth.service'
 import { getCampaignForUser } from '@/repositories/campaign.repository'
 
 /** Sentinel used as sessionId in event envelopes when no active session exists. */
-const NO_SESSION_ID = '00000000-0000-4000-8000-000000000000' as UUID
+export const NO_SESSION_ID = '00000000-0000-4000-8000-000000000000' as UUID
 import { listSessionsByCampaign } from '@/repositories/session.repository'
 import { sendMessage } from '@/services/chat.service'
 import {
@@ -34,7 +34,7 @@ const router = Router()
 
 // ─── Auth middleware ──────────────────────────────────────────────────────────
 
-function requireAuth(req: Request, res: Response, next: NextFunction) {
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = req.headers.authorization?.replace('Bearer ', '')
   if (!token) {
     return res.status(401).json({ code: 'UNAUTHORIZED', message: 'Missing Authorization header' })
@@ -47,7 +47,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next()
 }
 
-async function resolveCampaignRole(
+export async function resolveCampaignRole(
   campaignId: UUID,
   userId: UUID
 ): Promise<'DM' | 'PLAYER' | 'SPECTATOR' | null> {
@@ -58,7 +58,7 @@ async function resolveCampaignRole(
 }
 
 /** Resolves the ACTIVE or PAUSED session for a campaign. Returns null if none. */
-async function getActiveSession(campaignId: UUID) {
+export async function getActiveSession(campaignId: UUID) {
   try {
     const sessions = await listSessionsByCampaign(campaignId)
     return sessions.find((s) => s.state === 'ACTIVE' || s.state === 'PAUSED') ?? null
@@ -71,7 +71,7 @@ async function getActiveSession(campaignId: UUID) {
  * Emit a CHAT:MESSAGE_SENT system message and WS event after an inventory mutation.
  * Only fires if the session is ACTIVE (paused sessions don't chat).
  */
-async function broadcastInventorySystemMessage(params: {
+export async function broadcastInventorySystemMessage(params: {
   session: { id: string; dmId: string; state: string }
   content: string
   actorUserId: UUID

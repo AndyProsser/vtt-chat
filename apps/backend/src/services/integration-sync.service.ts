@@ -1,8 +1,12 @@
 import { getPrismaClient } from '@/infra/db'
-import { InventoryItemCategory } from '@shared'
 import type { UUID } from '@shared'
-import { syncExternalInventoryItems, setExternalCurrencyWallet } from '@/services/inventory/inventory.service'
 import type { ExternalSyncResult } from '@/types/integration-sync.types'
+import {
+  sanitizeExternalItems,
+  sanitizeExternalWallet,
+  applyItemsSection,
+  applyCurrencySection,
+} from '@/services/integration-sync-policy.service'
 
 const prisma = getPrismaClient()
 
@@ -33,6 +37,23 @@ export interface ExternalCurrencyUpdate {
   }
 }
 
+export interface ExternalPartyInventoryUpdate {
+  items: ExternalInventoryItemInput[]
+}
+
+export interface ExternalPartyCurrencyUpdate {
+  wallet: {
+    cp?: number
+    sp?: number
+    ep?: number
+    gp?: number
+    pp?: number
+  }
+}
+
+/** Maps each gated section name to the ad-hoc skip-reason code recorded for it, if blocked. */
+type GatedSection = 'inventory' | 'currency' | 'partyInventory' | 'partyCurrency'
+
 export async function syncExternalIntegration(params: {
   campaignId: string
   externalSystem: string
@@ -47,6 +68,8 @@ export async function syncExternalIntegration(params: {
   campaignUpdate?: Record<string, unknown>
   inventoryUpdate?: ExternalInventoryUpdate
   currencyUpdate?: ExternalCurrencyUpdate
+  partyInventoryUpdate?: ExternalPartyInventoryUpdate
+  partyCurrencyUpdate?: ExternalPartyCurrencyUpdate
   sessionId?: string
 }): Promise<ExternalSyncResult> {
   const membership = await prisma.campaignMembership.findUnique({
@@ -61,6 +84,10 @@ export async function syncExternalIntegration(params: {
         select: {
           extensionSyncPolicy: true,
           currentDmId: true,
+          extensionInventorySyncEnabled: true,
+          extensionCurrencySyncEnabled: true,
+          extensionPartyInventorySyncAccess: true,
+          extensionSyncConflictResolution: true,
         },
       },
     },
@@ -78,6 +105,8 @@ export async function syncExternalIntegration(params: {
   const isDm = campaign.currentDmId === params.user.userId
   const syncPolicy = campaign.extensionSyncPolicy
 
+  // ─── Layer 1: top-level access gate ─────────────────────────────────────────
+
   let allowUpdate = false
   if (syncPolicy === 'NONE') {
     allowUpdate = false
@@ -94,6 +123,60 @@ export async function syncExternalIntegration(params: {
       message: `Sync policy "${syncPolicy}" does not permit updates from ${params.source}${isDm ? '' : 's'}`,
     }
   }
+
+  // ─── Layer 2: inventory-specific gates ──────────────────────────────────────
+  // Four campaign settings, evaluated independently per section. A request that contains
+  // ONLY gated sections, all of which are blocked, is rejected wholesale; otherwise allowed
+  // sections (including characterUpdate/campaignUpdate) still apply and skipped sections are
+  // reported via `applied.skippedReasons` (partial application).
+
+  const hasCharacterUpdate = Boolean(params.characterUpdate && typeof params.characterUpdate === 'object')
+  const hasCampaignUpdate = Boolean(params.campaignUpdate && typeof params.campaignUpdate === 'object')
+  const hasInventory = Boolean(params.inventoryUpdate && typeof params.inventoryUpdate === 'object')
+  const hasCurrency = Boolean(params.currencyUpdate && typeof params.currencyUpdate === 'object')
+  const hasPartyInventory = Boolean(params.partyInventoryUpdate && typeof params.partyInventoryUpdate === 'object')
+  const hasPartyCurrency = Boolean(params.partyCurrencyUpdate && typeof params.partyCurrencyUpdate === 'object')
+
+  const inventoryDisabled = !campaign.extensionInventorySyncEnabled
+  const currencyDisabled = !campaign.extensionCurrencySyncEnabled
+  const partyAccess = campaign.extensionPartyInventorySyncAccess
+  const partyBlocked = partyAccess === 'DISABLED' || (partyAccess === 'DM_ONLY' && params.source !== 'dm')
+
+  const skippedReasons: Partial<Record<GatedSection, 'SYNC_POLICY_DISABLED' | 'SYNC_POLICY_PARTY_ACCESS_DENIED'>> = {}
+  if (hasInventory && inventoryDisabled) skippedReasons.inventory = 'SYNC_POLICY_DISABLED'
+  if (hasCurrency && currencyDisabled) skippedReasons.currency = 'SYNC_POLICY_DISABLED'
+  if (hasPartyInventory) {
+    if (inventoryDisabled) skippedReasons.partyInventory = 'SYNC_POLICY_DISABLED'
+    else if (partyBlocked) skippedReasons.partyInventory = 'SYNC_POLICY_PARTY_ACCESS_DENIED'
+  }
+  if (hasPartyCurrency) {
+    if (currencyDisabled) skippedReasons.partyCurrency = 'SYNC_POLICY_DISABLED'
+    else if (partyBlocked) skippedReasons.partyCurrency = 'SYNC_POLICY_PARTY_ACCESS_DENIED'
+  }
+
+  const gatedSections: GatedSection[] = []
+  if (hasInventory) gatedSections.push('inventory')
+  if (hasCurrency) gatedSections.push('currency')
+  if (hasPartyInventory) gatedSections.push('partyInventory')
+  if (hasPartyCurrency) gatedSections.push('partyCurrency')
+
+  if (
+    !hasCharacterUpdate &&
+    !hasCampaignUpdate &&
+    gatedSections.length > 0 &&
+    gatedSections.every((section) => skippedReasons[section])
+  ) {
+    const isDisabled = gatedSections.some((section) => skippedReasons[section] === 'SYNC_POLICY_DISABLED')
+    return {
+      ok: false,
+      code: isDisabled ? 'SYNC_POLICY_DISABLED' : 'SYNC_POLICY_PARTY_ACCESS_DENIED',
+      message: isDisabled
+        ? 'Inventory or currency sync is disabled for this campaign'
+        : 'Party inventory/currency sync is not permitted for this caller',
+    }
+  }
+
+  // ─── Character sync ──────────────────────────────────────────────────────────
 
   if (params.characterUpdate && typeof params.characterUpdate === 'object') {
     const externalCharacterId = params.characterUpdate.externalCharacterId
@@ -141,12 +224,13 @@ export async function syncExternalIntegration(params: {
     }
   }
 
-  // ─── Inventory sync ────────────────────────────────────────────────────────
+  // ─── Inventory sync (character-owned) ───────────────────────────────────────
 
   let inventoryItemsUpserted = 0
+  let pendingConflicts = 0
 
-  if (params.inventoryUpdate && typeof params.inventoryUpdate === 'object') {
-    const { externalCharacterId, items } = params.inventoryUpdate
+  if (hasInventory && !skippedReasons.inventory) {
+    const { externalCharacterId, items } = params.inventoryUpdate!
 
     if (!externalCharacterId || typeof externalCharacterId !== 'string') {
       return {
@@ -172,41 +256,32 @@ export async function syncExternalIntegration(params: {
     })
 
     if (character) {
-      const VALID_CATEGORIES = ['EQUIPMENT', 'MAGIC_ITEM', 'HOMEBREW']
-      const validatedItems = items
-        .filter((it) => it && typeof it.externalId === 'string' && typeof it.name === 'string')
-        .map((it) => ({
-          externalId: String(it.externalId).trim(),
-          name: String(it.name).trim(),
-          quantity: Math.max(1, Number(it.quantity) || 1),
-          srdKey: typeof it.srdKey === 'string' ? it.srdKey.trim() : undefined,
-          srdCategory:
-            typeof it.srdCategory === 'string' && VALID_CATEGORIES.includes(it.srdCategory)
-              ? (it.srdCategory as InventoryItemCategory)
-              : InventoryItemCategory.EQUIPMENT,
-          notes: typeof it.notes === 'string' ? it.notes.trim() : undefined,
-        }))
-
+      const validatedItems = sanitizeExternalItems(items)
       if (validatedItems.length > 0) {
-        const result = await syncExternalInventoryItems({
+        const { upserted, pendingConflicts: queued } = await applyItemsSection({
           campaignId: params.campaignId as UUID,
           ownerId: character.id as UUID,
+          ownerType: 'character',
           externalSource: params.externalSystem,
           items: validatedItems,
+          conflictResolution: campaign.extensionSyncConflictResolution,
           actorUserId: params.user.userId as UUID,
           sessionId: params.sessionId as UUID | undefined,
+          characterIdForPending: character.id as UUID,
+          dmUserId: campaign.currentDmId as UUID,
         })
-        inventoryItemsUpserted = result.upserted.length
+        inventoryItemsUpserted = upserted
+        pendingConflicts += queued
       }
     }
   }
 
-  // ─── Currency sync ─────────────────────────────────────────────────────────
+  // ─── Currency sync (character-owned) ────────────────────────────────────────
 
   let currencyUpdated = false
 
-  if (params.currencyUpdate && typeof params.currencyUpdate === 'object') {
-    const { externalCharacterId, wallet } = params.currencyUpdate
+  if (hasCurrency && !skippedReasons.currency) {
+    const { externalCharacterId, wallet } = params.currencyUpdate!
 
     if (!externalCharacterId || typeof externalCharacterId !== 'string') {
       return {
@@ -223,21 +298,80 @@ export async function syncExternalIntegration(params: {
     })
 
     if (character && wallet && typeof wallet === 'object') {
-      const safeWallet = {
-        cp: typeof wallet.cp === 'number' ? Math.max(0, wallet.cp) : undefined,
-        sp: typeof wallet.sp === 'number' ? Math.max(0, wallet.sp) : undefined,
-        ep: typeof wallet.ep === 'number' ? Math.max(0, wallet.ep) : undefined,
-        gp: typeof wallet.gp === 'number' ? Math.max(0, wallet.gp) : undefined,
-        pp: typeof wallet.pp === 'number' ? Math.max(0, wallet.pp) : undefined,
-      }
-      await setExternalCurrencyWallet({
+      const { updated, pendingConflicts: queued } = await applyCurrencySection({
         campaignId: params.campaignId as UUID,
         ownerId: character.id as UUID,
-        wallet: safeWallet,
+        ownerType: 'character',
+        externalSource: params.externalSystem,
+        wallet: sanitizeExternalWallet(wallet),
+        conflictResolution: campaign.extensionSyncConflictResolution,
         actorUserId: params.user.userId as UUID,
         sessionId: params.sessionId as UUID | undefined,
+        characterIdForPending: character.id as UUID,
+        dmUserId: campaign.currentDmId as UUID,
       })
-      currencyUpdated = true
+      currencyUpdated = updated
+      pendingConflicts += queued
+    }
+  }
+
+  // ─── Party inventory sync ────────────────────────────────────────────────────
+
+  let partyInventoryItemsUpserted = 0
+
+  if (hasPartyInventory && !skippedReasons.partyInventory) {
+    const { items } = params.partyInventoryUpdate!
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return {
+        ok: false,
+        code: 'INVALID_CHARACTER_UPDATE',
+        message: 'partyInventoryUpdate.items must be a non-empty array',
+        field: 'partyInventoryUpdate.items',
+      }
+    }
+
+    const validatedItems = sanitizeExternalItems(items)
+    if (validatedItems.length > 0) {
+      const { upserted, pendingConflicts: queued } = await applyItemsSection({
+        campaignId: params.campaignId as UUID,
+        ownerId: null,
+        ownerType: 'party',
+        externalSource: params.externalSystem,
+        items: validatedItems,
+        conflictResolution: campaign.extensionSyncConflictResolution,
+        actorUserId: params.user.userId as UUID,
+        sessionId: params.sessionId as UUID | undefined,
+        characterIdForPending: null,
+        dmUserId: campaign.currentDmId as UUID,
+      })
+      partyInventoryItemsUpserted = upserted
+      pendingConflicts += queued
+    }
+  }
+
+  // ─── Party currency sync ─────────────────────────────────────────────────────
+
+  let partyCurrencyUpdated = false
+
+  if (hasPartyCurrency && !skippedReasons.partyCurrency) {
+    const { wallet } = params.partyCurrencyUpdate!
+
+    if (wallet && typeof wallet === 'object') {
+      const { updated, pendingConflicts: queued } = await applyCurrencySection({
+        campaignId: params.campaignId as UUID,
+        ownerId: null,
+        ownerType: 'party',
+        externalSource: params.externalSystem,
+        wallet: sanitizeExternalWallet(wallet),
+        conflictResolution: campaign.extensionSyncConflictResolution,
+        actorUserId: params.user.userId as UUID,
+        sessionId: params.sessionId as UUID | undefined,
+        characterIdForPending: null,
+        dmUserId: campaign.currentDmId as UUID,
+      })
+      partyCurrencyUpdated = updated
+      pendingConflicts += queued
     }
   }
 
@@ -259,17 +393,28 @@ export async function syncExternalIntegration(params: {
         campaignUpdateApplied: Boolean(params.campaignUpdate),
         inventoryItemsUpserted,
         currencyUpdated,
+        partyInventoryItemsUpserted,
+        partyCurrencyUpdated,
+        pendingConflicts,
       },
     },
   })
 
-  return {
-    ok: true,
-    applied: {
-      characterUpdate: Boolean(params.characterUpdate),
-      campaignUpdate: Boolean(params.campaignUpdate),
-      inventoryItemsUpserted,
-      currencyUpdated,
-    },
+  // ─── Response shape ──────────────────────────────────────────────────────────
+  // characterUpdate/campaignUpdate are always present (existing contract). Every other key is
+  // only present when its corresponding request section was present, matching the partial
+  // application example in docs/extension/EXTENSION-INTEGRATION.md §5d.
+
+  const applied = {
+    characterUpdate: Boolean(params.characterUpdate),
+    campaignUpdate: Boolean(params.campaignUpdate),
+    ...(hasInventory ? { inventoryItemsUpserted } : {}),
+    ...(hasCurrency ? { currencyUpdated } : {}),
+    ...(hasPartyInventory ? { partyInventoryItemsUpserted } : {}),
+    ...(hasPartyCurrency ? { partyCurrencyUpdated } : {}),
+    ...(pendingConflicts > 0 ? { pendingConflicts } : {}),
+    ...(Object.keys(skippedReasons).length > 0 ? { skippedReasons } : {}),
   }
+
+  return { ok: true, applied }
 }
