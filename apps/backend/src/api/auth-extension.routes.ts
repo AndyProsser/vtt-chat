@@ -112,6 +112,12 @@ router.post('/extension/preflight', async (req: Request, res: Response) => {
         message: 'Invite code is invalid',
       })
     }
+    if (error instanceof Error && error.message === 'PLATFORM_NOT_AUTHORIZED') {
+      return res.status(403).json({
+        code: 'PLATFORM_NOT_AUTHORIZED',
+        message: `This campaign does not support ${system?.displayName || externalSystem} integration.`,
+      })
+    }
 
     return res.status(500).json({
       code: 'PREFLIGHT_FAILED',
@@ -187,6 +193,12 @@ router.post('/extension/guest-login', async (req: Request, res: Response) => {
     if (error instanceof Error) {
       if (error.message === 'INVITE_EXPIRED') {
         return res.status(403).json({ code: 'INVITE_EXPIRED', message: 'Invite code is invalid' })
+      }
+      if (error.message === 'PLATFORM_NOT_AUTHORIZED') {
+        return res.status(403).json({
+          code: 'PLATFORM_NOT_AUTHORIZED',
+          message: `This campaign does not support ${system?.displayName || externalSystem} integration.`,
+        })
       }
       if (error.message === 'CAMPAIGN_PACKET_REQUIRED') {
         return res.status(400).json({

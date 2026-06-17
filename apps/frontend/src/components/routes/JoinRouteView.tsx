@@ -6,6 +6,7 @@ type JoinRouteViewProps = {
   apiUrl: string
   inviteCode: string
   authToken: string | null
+  initialEmail?: string
   onAuthenticated?: (token: string, user: { id: UUID; username: string; role: Role }) => void
 }
 
@@ -15,6 +16,7 @@ export function JoinRouteView(props: JoinRouteViewProps) {
       apiUrl={props.apiUrl}
       inviteCode={props.inviteCode}
       authToken={props.authToken}
+      initialEmail={props.initialEmail}
       onAuthenticated={props.onAuthenticated}
     />
   )

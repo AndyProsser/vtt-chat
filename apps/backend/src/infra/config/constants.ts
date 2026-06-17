@@ -1,5 +1,7 @@
+import pkg from '../../../package.json'
+
 export const APP_NAME = 'VTT-Chat'
-export const APP_VERSION = '0.7.0'
+export const APP_VERSION: string = pkg.version
 
 // Server defaults
 export const DEFAULT_PORT = 3000

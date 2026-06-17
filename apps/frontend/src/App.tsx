@@ -32,7 +32,7 @@ export default function App() {
   }
 
   const [routeView, setRouteView] = useState<RouteView>(() =>
-    resolveRoute(window.location.pathname)
+    resolveRoute(window.location.pathname, window.location.search)
   )
 
   const browserOrigin = window.location.origin
@@ -221,6 +221,7 @@ export default function App() {
             apiUrl={apiUrl}
             inviteCode={routeView.inviteCode}
             authToken={auth.token}
+            initialEmail={routeView.initialEmail}
             onAuthenticated={handleGuestExtensionAuthenticated}
           />
         )

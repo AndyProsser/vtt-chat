@@ -1,17 +1,20 @@
 export type RouteView =
   | { kind: 'app' }
-  | { kind: 'join'; inviteCode: string }
+  | { kind: 'join'; inviteCode: string; initialEmail?: string }
   | { kind: 'watch'; inviteCode: string }
   | { kind: 'browse' }
   | { kind: 'popout-note'; noteId: string }
   | { kind: 'popout-journal'; sessionId: string }
 
-export function resolveRoute(pathname: string): RouteView {
+export function resolveRoute(pathname: string, search?: string): RouteView {
   const joinMatch = pathname.match(/^\/join\/([^/]+)$/)
   if (joinMatch) {
+    const params = new URLSearchParams(search ?? '')
+    const rawEmail = params.get('email')?.trim()
     return {
       kind: 'join',
       inviteCode: decodeURIComponent(joinMatch[1] || '').trim(),
+      ...(rawEmail ? { initialEmail: rawEmail } : {}),
     }
   }
 

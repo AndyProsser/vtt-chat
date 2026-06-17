@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Role, UUID } from '@shared'
 import type { AuthUser, AuthState, AuthProfile } from '@/types/auth'
+import { showToast } from '@/state/toastCenter'
 
 export type { AuthUser, AuthState, AuthProfile } from '@/types/auth'
 
@@ -69,7 +70,10 @@ export function useAuthSession({ apiUrl, adminUrl }: UseAuthSessionParams) {
       authType: 'GUEST',
     })
     setUpgradePromptDismissed(false)
-    setAuthMessage('Extension guest login complete. You are signed in as a guest account.')
+    showToast({
+      message: 'Extension guest login complete. You are signed in as a guest account.',
+      variant: 'success',
+    })
   }
 
   const handleLogout = () => {
