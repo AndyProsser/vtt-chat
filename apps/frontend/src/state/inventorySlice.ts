@@ -92,10 +92,13 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
       srdKey?: string
       srdCategory?: string
       notes?: string
+      externalId?: string | null
+      externalSource?: string | null
       addedByUserId: UUID
       addedAt: number
     }
 
+    const validSources: string[] = Object.values(InventoryItemSource)
     const validCategories: string[] = Object.values(InventoryItemCategory)
     const item: InventoryItem = {
       id: payload.itemId,
@@ -104,12 +107,16 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
       ownerId: payload.ownerId,
       name: payload.name,
       quantity: payload.quantity,
-      source: payload.source === 'SRD' ? InventoryItemSource.SRD : InventoryItemSource.CUSTOM,
+      source: validSources.includes(payload.source)
+        ? (payload.source as InventoryItemSource)
+        : InventoryItemSource.CUSTOM,
       srdKey: payload.srdKey ?? null,
       srdCategory: validCategories.includes(payload.srdCategory ?? '')
         ? (payload.srdCategory as InventoryItemCategory)
         : InventoryItemCategory.EQUIPMENT,
       notes: payload.notes ?? null,
+      externalId: payload.externalId ?? null,
+      externalSource: payload.externalSource ?? null,
       addedByUserId: payload.addedByUserId,
       createdAt: payload.addedAt,
       updatedAt: payload.addedAt,
