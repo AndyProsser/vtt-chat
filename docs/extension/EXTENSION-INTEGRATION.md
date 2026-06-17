@@ -184,18 +184,21 @@ The extension communicates with the backend via the **background script**.
 
 ### 5a. API Endpoints
 
-| Endpoint                                        | Auth required | Purpose                                         |
-| ----------------------------------------------- | ------------- | ----------------------------------------------- |
-| `GET /api/platform/status`                      | None          | Pre-flight: platform online + activity stats    |
-| `GET /api/campaigns/invite/:code/validate`      | None          | Pre-flight: invite validity + campaign name     |
-| `POST /api/auth/extension/preflight`            | None          | Pre-flight: existing account check for email    |
-| `POST /api/auth/extension/guest-login`          | None          | Guest auth: create or resume guest session      |
-| `POST /api/auth/login`                          | None          | Full account auth (if user has password)        |
-| `POST /api/auth/upgrade`                        | Guest token   | Upgrade guest → full account                    |
-| `POST /api/integrations/external/avatar-upload` | Token         | Upload avatar image; returns hosted `avatarUrl` |
-| `POST /api/integrations/external/sync`          | Token         | Push character/campaign updates per sync policy |
-| `POST /api/integrations/logs/ingest`            | Token         | External log ingestion (rolls, attacks, etc.)   |
-| `POST /api/livekit/token`                       | Token         | LiveKit room token                              |
+| Endpoint                                            | Auth required     | Purpose                                                               |
+| --------------------------------------------------- | ----------------- | --------------------------------------------------------------------- |
+| `GET /api/platform/status`                          | None              | Pre-flight: platform online + activity stats                          |
+| `GET /api/campaigns/invite/:code/validate`          | None              | Pre-flight: invite validity + campaign name (first-time join only)    |
+| `GET /api/campaigns/:campaignId/session-status`     | None              | Session state for popup display; campaignId acts as the access gate   |
+| `POST /api/auth/extension/preflight`                | None              | Pre-flight: existing account check for email                          |
+| `POST /api/auth/extension/guest-login`              | None              | Guest auth: create or resume guest session (issues device credential) |
+| `POST /api/auth/extension/credential/exchange`      | None              | Returning user: exchange device credential for a fresh JWT            |
+| `POST /api/auth/login`                              | None              | Full account auth (if user has password)                              |
+| `POST /api/auth/upgrade`                            | Guest token       | Upgrade guest → full account                                          |
+| `POST /api/campaigns/:campaignId/session/ensure`    | Extension token   | Create IDLE session if none exists; returns existing session if any   |
+| `POST /api/integrations/external/avatar-upload`     | Token             | Upload avatar image; returns hosted `avatarUrl`                       |
+| `POST /api/integrations/external/sync`              | Token             | Push character/campaign updates per sync policy                       |
+| `POST /api/integrations/logs/ingest`                | Token             | External log ingestion (rolls, attacks, etc.)                         |
+| `POST /api/livekit/token`                           | Token             | LiveKit room token                                                    |
 
 ### Message Flow
 
@@ -626,22 +629,76 @@ The extension:
 
 ## 10. Session Launch Flow
 
-When user clicks **Launch Chat**:
+When the user clicks **Launch Chat** or **Reopen Last Session** in the popup, the background script opens a new tab. The launch path taken depends on whether a device credential is stored.
+
+### 10a. First-time Launch (No Device Credential)
+
+This path runs once per browser/campaign pair, after the initial preflight and guest-login.
 
 ```text
-content.js → background.js → backend → SPA tab
+1. Extract character/campaign metadata from host VTT page
+2. Upload avatar (if changed) and capture hosted URL
+3. POST /api/auth/extension/guest-login → receives JWT + deviceCredential
+4. Store deviceCredential in localStorage; do NOT store the invite code
+5. Resolve session via POST /api/campaigns/:campaignId/session/ensure
+6. Open /ext-launch?campaignId=<uuid>&token=<jwt>&sessionId=<id>
+   (tab auto-completes login and lands on the campaign workspace)
 ```
 
-### Steps
+### 10b. Returning Launch (Device Credential Present)
 
-1. Extract character/campaign metadata
-2. Upload avatar (if changed) and capture hosted URL
-3. Request LiveKit token
-4. Open SPA with query params:
-   <https://app/chat?campaign=123&character=456>
-5. SPA connects to WebSocket
-6. SPA joins campaign
-7. SPA joins correct room
+This path is the normal path for all subsequent launches. No invite code is needed.
+
+```text
+1. POST /api/auth/extension/credential/exchange { credential, deviceId }
+   → receives fresh JWT + rotated credential (store the new credential immediately)
+
+2. POST /api/campaigns/:campaignId/session/ensure
+   → if no session exists: creates an IDLE session (greenroom) — any member may do this
+   → if a session already exists (any state): returns the existing session
+   → returns { sessionId, sessionState, campaignDisplayState }
+
+3. Branch by account type:
+
+   GUEST account:
+     → Open /ext-launch?campaignId=<uuid>&token=<jwt>&sessionId=<id>
+     → Page auto-logs in (no password prompt) and redirects to campaign workspace
+
+   FULL account (not yet verified this device session):
+     → Open /ext-launch?campaignId=<uuid>&sessionId=<id>&hint=<email>
+     → Page shows a single password field (email pre-filled, read-only)
+     → On submit: POST /api/auth/login → JWT issued
+     → Redirect to campaign workspace
+
+   FULL account (JWT already valid in extension memory):
+     → Open /ext-launch?campaignId=<uuid>&token=<jwt>&sessionId=<id>
+     → Page skips password prompt and redirects directly to campaign workspace
+```
+
+### 10c. Extension Launch Page (`/ext-launch`)
+
+`/ext-launch` is a dedicated, minimal SPA route — not the player join page (`/join/:code`). Its only purpose is to complete authentication for extension-triggered launches and then navigate to the campaign workspace. It must never ask for an invite code.
+
+| Scenario | What the page does |
+| --- | --- |
+| `token` param present and valid | Auto-authenticate, redirect to campaign workspace |
+| `hint` param present, no `token` | Show password field (email pre-filled), authenticate on submit |
+| Auth fails | Show error with "Try again" — do not fall back to the join flow |
+
+The campaign workspace is opened as `/campaigns/:campaignId` (or the session view if the session is ACTIVE/PAUSED/COOLDOWN).
+
+### 10d. Sync Before Launch
+
+Before opening the launch tab, the background script performs a final sync:
+
+```text
+1. Upload avatar if fingerprint changed
+2. POST /api/integrations/external/sync (character + inventory + currency if applicable)
+3. POST /api/campaigns/:campaignId/session/ensure → confirm session
+4. Open /ext-launch tab
+```
+
+Sync failures must not block the launch. If sync fails, open the tab anyway and surface a non-blocking warning in the popup.
 
 ---
 
@@ -667,7 +724,23 @@ The popup allows:
 
 ## 12. Pre-flight Validation
 
-Before showing any join UI or requesting a token, the background script runs the pre-flight sequence:
+The pre-flight sequence has two paths depending on whether the extension already holds a device credential for this campaign.
+
+### 12a. Returning User (Device Credential Stored)
+
+```text
+1. GET /api/platform/status
+     → Is the platform reachable?
+
+2. POST /api/auth/extension/credential/exchange { credential, deviceId }
+     → Success: refresh JWT and continue to launch (skip invite code steps)
+     → CREDENTIAL_INVALID / CREDENTIAL_EXPIRED_GUEST: fall back to first-time flow
+     → CREDENTIAL_EXPIRED_FULL: prompt for email + password, no invite code needed
+```
+
+If credential exchange succeeds, the extension shows the popup with the campaign/character summary and a **Launch Chat** button. No invite code is required.
+
+### 12b. First-time User (No Device Credential)
 
 ```text
 1. GET /api/platform/status
@@ -681,6 +754,8 @@ Before showing any join UI or requesting a token, the background script runs the
 ```
 
 Results determine which UI branch to show in the extension popup. See [GUEST-AUTH.md § 3. Pre-flight Validation](GUEST-AUTH.md) for full response shapes and UI outcome mapping.
+
+After a successful first-time login (`POST /api/auth/extension/guest-login`), the device credential is stored and all subsequent launches use path 12a.
 
 ---
 

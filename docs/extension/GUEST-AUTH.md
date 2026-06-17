@@ -250,13 +250,25 @@ Before presenting a join UI or requesting a token, the extension performs a pre-
 
 ### 3.1 Pre-flight Steps
 
+**Returning user (device credential stored):**
+
+```text
+1. GET /api/platform/status
+2. POST /api/auth/extension/credential/exchange { credential, deviceId }
+     → Success: fresh JWT obtained — skip to launch (no invite code needed)
+     → CREDENTIAL_EXPIRED_FULL: prompt for password only (no invite code)
+     → CREDENTIAL_INVALID / CREDENTIAL_EXPIRED_GUEST: fall back to first-time flow below
+```
+
+**First-time user (no device credential):**
+
 ```text
 1. GET /api/platform/status          — Is the platform online?
 2. GET /api/campaigns/invite/:code/validate  — Is the invite valid?
 3. POST /api/auth/extension/preflight        — Does a vtt-chat account exist for this email?
 ```
 
-Steps 1 and 2 are unauthenticated. Step 3 submits the scraped email address (and external system identifier) to check account status without issuing a token.
+Steps 1 and 2 are unauthenticated. Step 3 submits the scraped email address (and external system identifier) to check account status without issuing a token. After a successful first-time login, the `deviceCredential` returned in the response must be stored in `localStorage` so future launches use the returning-user path above.
 
 ### 3.2 Platform Status Endpoint
 
@@ -620,6 +632,32 @@ Response:
 ```
 
 `role` is `"DM"` or `"Player"` as determined by the server. `campaignBootstrapped` is `true` only when this connection created the campaign data structures for the first time.
+
+### 4.10 Returning User via Device Credential
+
+The normal path for any user who has previously joined a campaign via the extension. No invite code is needed; the stored `deviceCredential` is the sole reconnection mechanism.
+
+```text
+Extension holds deviceCredential in localStorage
+  → POST /api/auth/extension/credential/exchange { credential, deviceId }
+  → Backend validates credential, returns { token, credential } (credential is rotated)
+  → Extension stores the new credential immediately (old one is now invalid)
+  → POST /api/campaigns/:campaignId/session/ensure
+       → if no IDLE session exists: creates one (any campaign member may do this, including guests)
+       → if any session exists (IDLE, ACTIVE, PAUSED, COOLDOWN): returns it unchanged
+       → returns { sessionId, sessionState, campaignDisplayState }
+  → Branch by account type:
+       GUEST → open /ext-launch?campaignId=<uuid>&token=<jwt>&sessionId=<id>
+               (auto-login, no password prompt)
+       FULL (JWT valid in memory) → open /ext-launch?campaignId=<uuid>&token=<jwt>&sessionId=<id>
+               (auto-login, no password prompt)
+       FULL (JWT absent or expired) → open /ext-launch?campaignId=<uuid>&sessionId=<id>&hint=<email>
+               (single password field shown; email pre-filled and read-only)
+```
+
+**GREENROOM session creation by non-DM users:**
+
+`POST /api/campaigns/:campaignId/session/ensure` accepts any valid extension-credential JWT, regardless of the caller's campaign role. If no session exists for the campaign, the backend creates one in the `IDLE` state. This is the only case where a player or guest may create a session — DM session controls (`ACTIVE`, `PAUSED`, etc.) still require the DM role. The DM may start the session normally once connected; players enter the GREENROOM until then.
 
 ---
 

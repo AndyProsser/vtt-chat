@@ -1186,6 +1186,55 @@ When a guest upgrades to a full account (`POST /api/auth/upgrade`), all active e
 - All extension credential endpoints require HTTPS.
 - Rotation on every exchange prevents replay of intercepted tokens.
 
+### Campaign Session Status (Extension Popup Display)
+
+`GET /api/campaigns/:campaignId/session-status`
+
+No authentication required. The `campaignId` path parameter acts as an implicit access gate — it is only known to users who have previously joined the campaign via the extension.
+
+Response (200):
+
+```json
+{
+  "campaignId": "uuid",
+  "sessionState": "IDLE | ACTIVE | PAUSED | COOLDOWN | ENDED | null",
+  "campaignDisplayState": "IDLE | GREENROOM | ACTIVE | PAUSED | COOLDOWN",
+  "connectedCount": 3,
+  "sessionId": "uuid | null"
+}
+```
+
+- `sessionState` is the raw `SessionState` enum value of the most recent session, or `null` if no session has ever been created.
+- `campaignDisplayState` is derived via `deriveCampaignDisplayState()` and is what the extension popup should display.
+- `connectedCount` is the number of currently connected campaign members (DM + players; excludes spectators). The extension uses this to show whether anyone else is online.
+- `sessionId` is included so the extension can pass it to `POST /api/campaigns/:campaignId/session/ensure` without a separate lookup.
+
+This endpoint must not expose user identities, character names, or any personally identifiable information. It is a public signal surface — treat it accordingly.
+
+### Session Ensure (Extension GREENROOM Launch)
+
+`POST /api/campaigns/:campaignId/session/ensure`
+
+Requires a valid extension-credential JWT (any campaign member, any role). This is the only session-creation path available to non-DM users.
+
+Request body: none required.
+
+Response (200):
+
+```json
+{
+  "sessionId": "uuid",
+  "sessionState": "IDLE | ACTIVE | PAUSED | COOLDOWN | ENDED",
+  "campaignDisplayState": "IDLE | GREENROOM | ACTIVE | PAUSED | COOLDOWN",
+  "created": true
+}
+```
+
+- `created: true` means the backend created a new IDLE session. `created: false` means an existing session was returned unchanged.
+- If a session in any state already exists for the campaign, it is returned as-is. This endpoint never advances or regresses session state.
+- DM-only session controls (`ACTIVE`, `PAUSED`, etc.) continue to require the DM role and are unaffected by this endpoint.
+- Non-extension JWTs (standard web auth) receive `403 EXTENSION_CREDENTIAL_REQUIRED`. This endpoint is intentionally not accessible from the main web app.
+
 ---
 
 ## Extension Inventory Sync Policy Contract (W-Extension-MVP)
