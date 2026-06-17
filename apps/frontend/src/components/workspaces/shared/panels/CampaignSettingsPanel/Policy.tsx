@@ -14,6 +14,7 @@ import {
 import type { SupportedPlatform } from '@/types/sessionUi'
 import type { CampaignSettingsPanelPolicyProps } from '@/types/campaignSettingsPanel'
 import { Icon } from '@/components/ui/Icon'
+import { ExtensionInventorySync } from './Policy.ExtensionInventorySync'
 
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
 function formatSessionDuration(mins: number): string {
@@ -303,6 +304,36 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
                 </button>
               ))}
             </div>
+
+            {props.settingsExtensionSyncPolicy !== 'NONE' && (
+              <ExtensionInventorySync
+                settingsExtensionInventorySyncEnabled={
+                  props.settingsExtensionInventorySyncEnabled
+                }
+                onSettingsExtensionInventorySyncEnabledChange={
+                  props.onSettingsExtensionInventorySyncEnabledChange
+                }
+                settingsExtensionCurrencySyncEnabled={
+                  props.settingsExtensionCurrencySyncEnabled
+                }
+                onSettingsExtensionCurrencySyncEnabledChange={
+                  props.onSettingsExtensionCurrencySyncEnabledChange
+                }
+                settingsExtensionPartyInventorySyncAccess={
+                  props.settingsExtensionPartyInventorySyncAccess
+                }
+                onSettingsExtensionPartyInventorySyncAccessChange={
+                  props.onSettingsExtensionPartyInventorySyncAccessChange
+                }
+                settingsExtensionSyncConflictResolution={
+                  props.settingsExtensionSyncConflictResolution
+                }
+                onSettingsExtensionSyncConflictResolutionChange={
+                  props.onSettingsExtensionSyncConflictResolutionChange
+                }
+                disabled={sessionLocked}
+              />
+            )}
           </div>
 
           {/* Spectators card */}

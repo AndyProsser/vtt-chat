@@ -1,6 +1,8 @@
 import type { ChangeEvent, ReactNode } from 'react'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -37,6 +39,16 @@ export type CampaignSettingsPanelProps = {
   onSettingsPostSessionChatDurationMinutesChange: (value: number) => void
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
   onSettingsExtensionSyncPolicyChange: (value: ExtensionSyncPolicy) => void
+  settingsExtensionInventorySyncEnabled: boolean
+  onSettingsExtensionInventorySyncEnabledChange: (value: boolean) => void
+  settingsExtensionCurrencySyncEnabled: boolean
+  onSettingsExtensionCurrencySyncEnabledChange: (value: boolean) => void
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  onSettingsExtensionPartyInventorySyncAccessChange: (
+    value: ExtensionPartyInventorySyncAccess
+  ) => void
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
+  onSettingsExtensionSyncConflictResolutionChange: (value: ExtensionSyncConflictResolution) => void
   settingsLateJoinPolicy: LateJoinPolicy
   onSettingsLateJoinPolicyChange: (value: LateJoinPolicy) => void
   settingsLateJoinGraceMinutes: number
@@ -84,6 +96,14 @@ export type CampaignSettingsPanelPolicyProps = Pick<
   | 'onSettingsPostSessionChatDurationMinutesChange'
   | 'settingsExtensionSyncPolicy'
   | 'onSettingsExtensionSyncPolicyChange'
+  | 'settingsExtensionInventorySyncEnabled'
+  | 'onSettingsExtensionInventorySyncEnabledChange'
+  | 'settingsExtensionCurrencySyncEnabled'
+  | 'onSettingsExtensionCurrencySyncEnabledChange'
+  | 'settingsExtensionPartyInventorySyncAccess'
+  | 'onSettingsExtensionPartyInventorySyncAccessChange'
+  | 'settingsExtensionSyncConflictResolution'
+  | 'onSettingsExtensionSyncConflictResolutionChange'
   | 'settingsLateJoinPolicy'
   | 'onSettingsLateJoinPolicyChange'
   | 'settingsLateJoinGraceMinutes'

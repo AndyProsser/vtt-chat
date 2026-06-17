@@ -142,6 +142,19 @@ export const EditorWorkspace = memo(function EditorWorkspace(props: EditorWorksp
             props.onSettingsPostSessionChatDurationMinutesChange,
           settingsExtensionSyncPolicy: props.settingsExtensionSyncPolicy,
           onSettingsExtensionSyncPolicyChange: props.onSettingsExtensionSyncPolicyChange,
+          settingsExtensionInventorySyncEnabled: props.settingsExtensionInventorySyncEnabled,
+          onSettingsExtensionInventorySyncEnabledChange:
+            props.onSettingsExtensionInventorySyncEnabledChange,
+          settingsExtensionCurrencySyncEnabled: props.settingsExtensionCurrencySyncEnabled,
+          onSettingsExtensionCurrencySyncEnabledChange:
+            props.onSettingsExtensionCurrencySyncEnabledChange,
+          settingsExtensionPartyInventorySyncAccess:
+            props.settingsExtensionPartyInventorySyncAccess,
+          onSettingsExtensionPartyInventorySyncAccessChange:
+            props.onSettingsExtensionPartyInventorySyncAccessChange,
+          settingsExtensionSyncConflictResolution: props.settingsExtensionSyncConflictResolution,
+          onSettingsExtensionSyncConflictResolutionChange:
+            props.onSettingsExtensionSyncConflictResolutionChange,
           settingsLateJoinPolicy: props.settingsLateJoinPolicy,
           onSettingsLateJoinPolicyChange: props.onSettingsLateJoinPolicyChange,
           settingsLateJoinGraceMinutes: props.settingsLateJoinGraceMinutes,
@@ -203,6 +216,10 @@ export const EditorWorkspace = memo(function EditorWorkspace(props: EditorWorksp
       props.onSettingsDescriptionChange,
       props.onSettingsDmAutoTargetOnFirstPlayerJoinChange,
       props.onSettingsExtensionSyncPolicyChange,
+      props.onSettingsExtensionInventorySyncEnabledChange,
+      props.onSettingsExtensionCurrencySyncEnabledChange,
+      props.onSettingsExtensionPartyInventorySyncAccessChange,
+      props.onSettingsExtensionSyncConflictResolutionChange,
       props.onSettingsLateJoinGraceMinutesChange,
       props.onSettingsLateJoinPolicyChange,
       props.onSettingsNameChange,
@@ -225,6 +242,10 @@ export const EditorWorkspace = memo(function EditorWorkspace(props: EditorWorksp
       props.settingsDmAutoTargetOnFirstPlayerJoin,
       props.settingsDescription,
       props.settingsExtensionSyncPolicy,
+      props.settingsExtensionInventorySyncEnabled,
+      props.settingsExtensionCurrencySyncEnabled,
+      props.settingsExtensionPartyInventorySyncAccess,
+      props.settingsExtensionSyncConflictResolution,
       props.settingsLateJoinGraceMinutes,
       props.settingsLateJoinPolicy,
       props.settingsName,

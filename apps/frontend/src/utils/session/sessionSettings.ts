@@ -7,6 +7,8 @@ import {
 } from '@/utils/sessionUi'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -45,6 +47,18 @@ export function applyCampaignSettingsPayload(
   )
   campaignSettingsActions.setSettingsExtensionSyncPolicy(
     normalizeExtensionSyncPolicy(settings.extensionSyncPolicy)
+  )
+  campaignSettingsActions.setSettingsExtensionInventorySyncEnabled(
+    settings.extensionInventorySyncEnabled ?? true
+  )
+  campaignSettingsActions.setSettingsExtensionCurrencySyncEnabled(
+    settings.extensionCurrencySyncEnabled ?? true
+  )
+  campaignSettingsActions.setSettingsExtensionPartyInventorySyncAccess(
+    settings.extensionPartyInventorySyncAccess ?? 'DM_ONLY'
+  )
+  campaignSettingsActions.setSettingsExtensionSyncConflictResolution(
+    settings.extensionSyncConflictResolution ?? 'OVERWRITE'
   )
   campaignSettingsActions.setSettingsLateJoinPolicy(settings.lateJoinPolicy)
   campaignSettingsActions.setSettingsLateJoinGraceMinutes(settings.lateJoinGraceMinutes)
@@ -91,6 +105,10 @@ export function buildCampaignSettingsSavePayload(params: {
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsExtensionInventorySyncEnabled: boolean
+  settingsExtensionCurrencySyncEnabled: boolean
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
@@ -114,6 +132,10 @@ export function buildCampaignSettingsSavePayload(params: {
       ? params.settingsSpectatorReconnectGraceSecs
       : 60,
     extensionSyncPolicy: serializeExtensionSyncPolicy(params.settingsExtensionSyncPolicy),
+    extensionInventorySyncEnabled: params.settingsExtensionInventorySyncEnabled,
+    extensionCurrencySyncEnabled: params.settingsExtensionCurrencySyncEnabled,
+    extensionPartyInventorySyncAccess: params.settingsExtensionPartyInventorySyncAccess,
+    extensionSyncConflictResolution: params.settingsExtensionSyncConflictResolution,
     postSessionChatEnabled: Boolean(params.settingsPostSessionChatEnabled),
     postSessionChatDurationMs:
       toValidPostSessionDurationMinutes(params.settingsPostSessionChatDurationMinutes) * 60_000,

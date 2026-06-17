@@ -3,6 +3,8 @@ import type { UUID } from '@shared'
 import { EditorWorkspace } from '@/components/workspaces/EditorWorkspace'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -43,6 +45,10 @@ type BuildEditorWorkspacePropsParams = {
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsExtensionInventorySyncEnabled: boolean
+  settingsExtensionCurrencySyncEnabled: boolean
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
   settingsLateJoinPolicy: LateJoinPolicy
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
@@ -80,6 +86,18 @@ type BuildEditorWorkspacePropsParams = {
   onSettingsExtensionSyncPolicyChange: ComponentProps<
     typeof EditorWorkspace
   >['onSettingsExtensionSyncPolicyChange']
+  onSettingsExtensionInventorySyncEnabledChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsExtensionInventorySyncEnabledChange']
+  onSettingsExtensionCurrencySyncEnabledChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsExtensionCurrencySyncEnabledChange']
+  onSettingsExtensionPartyInventorySyncAccessChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsExtensionPartyInventorySyncAccessChange']
+  onSettingsExtensionSyncConflictResolutionChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsExtensionSyncConflictResolutionChange']
   onSettingsLateJoinPolicyChange: ComponentProps<
     typeof EditorWorkspace
   >['onSettingsLateJoinPolicyChange']
@@ -151,6 +169,10 @@ export function buildEditorWorkspaceProps(
     settingsPostSessionChatEnabled: params.settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes: params.settingsPostSessionChatDurationMinutes,
     settingsExtensionSyncPolicy: params.settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled: params.settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled: params.settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess: params.settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution: params.settingsExtensionSyncConflictResolution,
     settingsLateJoinPolicy: params.settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes: params.settingsLateJoinGraceMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin: params.settingsDmAutoTargetOnFirstPlayerJoin,
@@ -175,6 +197,14 @@ export function buildEditorWorkspaceProps(
     onSettingsPostSessionChatDurationMinutesChange:
       params.onSettingsPostSessionChatDurationMinutesChange,
     onSettingsExtensionSyncPolicyChange: params.onSettingsExtensionSyncPolicyChange,
+    onSettingsExtensionInventorySyncEnabledChange:
+      params.onSettingsExtensionInventorySyncEnabledChange,
+    onSettingsExtensionCurrencySyncEnabledChange:
+      params.onSettingsExtensionCurrencySyncEnabledChange,
+    onSettingsExtensionPartyInventorySyncAccessChange:
+      params.onSettingsExtensionPartyInventorySyncAccessChange,
+    onSettingsExtensionSyncConflictResolutionChange:
+      params.onSettingsExtensionSyncConflictResolutionChange,
     onSettingsLateJoinPolicyChange: params.onSettingsLateJoinPolicyChange,
     onSettingsLateJoinGraceMinutesChange: params.onSettingsLateJoinGraceMinutesChange,
     onSettingsDmAutoTargetOnFirstPlayerJoinChange:

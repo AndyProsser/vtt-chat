@@ -133,6 +133,10 @@ export function WorkspaceInitialization({
     settingsSpectatorWaitlistEnabled,
     settingsSpectatorReconnectGraceSecs,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin,
@@ -369,6 +373,10 @@ export function WorkspaceInitialization({
     settingsSpectatorWaitlistEnabled,
     settingsSpectatorReconnectGraceSecs,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
     settingsLateJoinPolicy,
@@ -829,6 +837,10 @@ export function WorkspaceInitialization({
     settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin,
@@ -851,6 +863,14 @@ export function WorkspaceInitialization({
     onSettingsPostSessionChatEnabledChange: campaignSettingsActions.setSettingsPostSessionChatEnabled,
     onSettingsPostSessionChatDurationMinutesChange: campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
     onSettingsExtensionSyncPolicyChange: campaignSettingsActions.setSettingsExtensionSyncPolicy,
+    onSettingsExtensionInventorySyncEnabledChange:
+      campaignSettingsActions.setSettingsExtensionInventorySyncEnabled,
+    onSettingsExtensionCurrencySyncEnabledChange:
+      campaignSettingsActions.setSettingsExtensionCurrencySyncEnabled,
+    onSettingsExtensionPartyInventorySyncAccessChange:
+      campaignSettingsActions.setSettingsExtensionPartyInventorySyncAccess,
+    onSettingsExtensionSyncConflictResolutionChange:
+      campaignSettingsActions.setSettingsExtensionSyncConflictResolution,
     onSettingsLateJoinPolicyChange: campaignSettingsActions.setSettingsLateJoinPolicy,
     onSettingsLateJoinGraceMinutesChange: campaignSettingsActions.setSettingsLateJoinGraceMinutes,
     onSettingsDmAutoTargetOnFirstPlayerJoinChange: campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin,
@@ -1151,6 +1171,18 @@ export function WorkspaceInitialization({
     onSettingsPostSessionChatDurationMinutesChange: campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
     settingsExtensionSyncPolicy,
     onSettingsExtensionSyncPolicyChange: campaignSettingsActions.setSettingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    onSettingsExtensionInventorySyncEnabledChange:
+      campaignSettingsActions.setSettingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    onSettingsExtensionCurrencySyncEnabledChange:
+      campaignSettingsActions.setSettingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    onSettingsExtensionPartyInventorySyncAccessChange:
+      campaignSettingsActions.setSettingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
+    onSettingsExtensionSyncConflictResolutionChange:
+      campaignSettingsActions.setSettingsExtensionSyncConflictResolution,
     settingsLateJoinPolicy,
     onSettingsLateJoinPolicyChange: campaignSettingsActions.setSettingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,

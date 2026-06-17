@@ -1,6 +1,8 @@
 import { Role, SessionState, deriveCampaignDisplayState } from '@shared'
 import type { UUID } from '@shared'
 import type {
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   LateJoinPolicy,
   PersistedExtensionSyncPolicy,
   SupportedPlatform,
@@ -102,6 +104,10 @@ export type CampaignSettingsPayload = {
   dmAutoTargetOnFirstPlayerJoin: boolean
   defaultSessionDurationMins: number
   supportedPlatforms: SupportedPlatform[]
+  extensionInventorySyncEnabled?: boolean
+  extensionCurrencySyncEnabled?: boolean
+  extensionPartyInventorySyncAccess?: ExtensionPartyInventorySyncAccess
+  extensionSyncConflictResolution?: ExtensionSyncConflictResolution
   sessionScheduleType?: string | null
   sessionScheduleDay?: number | null
   sessionScheduleNth?: number | null

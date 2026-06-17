@@ -45,6 +45,14 @@ type CampaignSettingsModalProps = Pick<
   | 'onSettingsPostSessionChatDurationMinutesChange'
   | 'settingsExtensionSyncPolicy'
   | 'onSettingsExtensionSyncPolicyChange'
+  | 'settingsExtensionInventorySyncEnabled'
+  | 'onSettingsExtensionInventorySyncEnabledChange'
+  | 'settingsExtensionCurrencySyncEnabled'
+  | 'onSettingsExtensionCurrencySyncEnabledChange'
+  | 'settingsExtensionPartyInventorySyncAccess'
+  | 'onSettingsExtensionPartyInventorySyncAccessChange'
+  | 'settingsExtensionSyncConflictResolution'
+  | 'onSettingsExtensionSyncConflictResolutionChange'
   | 'settingsLateJoinPolicy'
   | 'onSettingsLateJoinPolicyChange'
   | 'settingsLateJoinGraceMinutes'
@@ -241,6 +249,24 @@ export const CampaignSettingsModal = memo(function CampaignSettingsModal(props: 
             }
             settingsExtensionSyncPolicy={props.settingsExtensionSyncPolicy}
             onSettingsExtensionSyncPolicyChange={props.onSettingsExtensionSyncPolicyChange}
+            settingsExtensionInventorySyncEnabled={props.settingsExtensionInventorySyncEnabled}
+            onSettingsExtensionInventorySyncEnabledChange={
+              props.onSettingsExtensionInventorySyncEnabledChange
+            }
+            settingsExtensionCurrencySyncEnabled={props.settingsExtensionCurrencySyncEnabled}
+            onSettingsExtensionCurrencySyncEnabledChange={
+              props.onSettingsExtensionCurrencySyncEnabledChange
+            }
+            settingsExtensionPartyInventorySyncAccess={
+              props.settingsExtensionPartyInventorySyncAccess
+            }
+            onSettingsExtensionPartyInventorySyncAccessChange={
+              props.onSettingsExtensionPartyInventorySyncAccessChange
+            }
+            settingsExtensionSyncConflictResolution={props.settingsExtensionSyncConflictResolution}
+            onSettingsExtensionSyncConflictResolutionChange={
+              props.onSettingsExtensionSyncConflictResolutionChange
+            }
             settingsLateJoinPolicy={props.settingsLateJoinPolicy}
             onSettingsLateJoinPolicyChange={props.onSettingsLateJoinPolicyChange}
             settingsLateJoinGraceMinutes={props.settingsLateJoinGraceMinutes}

@@ -4,6 +4,8 @@ import type { UUID } from '@shared'
 import { normalizeExtensionSyncPolicy, serializeExtensionSyncPolicy } from '@/utils/sessionUi'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -41,6 +43,10 @@ type UseWorkspacesSettingsOrchestrationParams = {
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsExtensionInventorySyncEnabled: boolean
+  settingsExtensionCurrencySyncEnabled: boolean
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsLateJoinPolicy: LateJoinPolicy
@@ -82,6 +88,10 @@ export function useWorkspacesSettingsOrchestration(
     settingsSpectatorWaitlistEnabled,
     settingsSpectatorReconnectGraceSecs,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
     settingsLateJoinPolicy,
@@ -271,6 +281,10 @@ export function useWorkspacesSettingsOrchestration(
       settingsSpectatorWaitlistEnabled,
       settingsSpectatorReconnectGraceSecs,
       settingsExtensionSyncPolicy,
+      settingsExtensionInventorySyncEnabled,
+      settingsExtensionCurrencySyncEnabled,
+      settingsExtensionPartyInventorySyncAccess,
+      settingsExtensionSyncConflictResolution,
       settingsPostSessionChatEnabled,
       settingsPostSessionChatDurationMinutes,
       settingsDmAutoTargetOnFirstPlayerJoin,
@@ -321,6 +335,10 @@ export function useWorkspacesSettingsOrchestration(
     settingsDescription,
     settingsDmAutoTargetOnFirstPlayerJoin,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsLateJoinGraceMinutes,
     settingsLateJoinPolicy,
     settingsDefaultSessionDurationMins,

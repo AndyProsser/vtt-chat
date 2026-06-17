@@ -2,13 +2,18 @@ import { Slider, Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui
 import { CampaignScaffoldPanel } from '@/components/workspaces/shared/panels/CampaignScaffoldPanel'
 import {
   CAMPAIGN_VISIBILITY_OPTIONS,
+  EXTENSION_CONFLICT_RESOLUTION_OPTIONS,
+  EXTENSION_PARTY_ACCESS_OPTIONS,
   EXTENSION_SYNC_POLICY_OPTIONS,
   getBooleanToggleLabel,
   getCampaignVisibilityLabel,
+  getExtensionConflictResolutionLabel,
+  getExtensionPartyAccessLabel,
   getExtensionSyncPolicyLabel,
   getLateJoinPolicyLabel,
   LATE_JOIN_POLICY_OPTIONS,
 } from '@/constants/sessionUi.constants'
+import type { ExtensionPartyInventorySyncAccess, ExtensionSyncConflictResolution } from '@/types/sessionUi'
 import type { ModalsProps } from '@/types/modals'
 import { Icon } from '@/components/ui/Icon'
 
@@ -41,6 +46,14 @@ type CampaignSettingsHomeContentProps = Pick<
   | 'onSettingsPostSessionChatDurationMinutesChange'
   | 'settingsExtensionSyncPolicy'
   | 'onSettingsExtensionSyncPolicyChange'
+  | 'settingsExtensionInventorySyncEnabled'
+  | 'onSettingsExtensionInventorySyncEnabledChange'
+  | 'settingsExtensionCurrencySyncEnabled'
+  | 'onSettingsExtensionCurrencySyncEnabledChange'
+  | 'settingsExtensionPartyInventorySyncAccess'
+  | 'onSettingsExtensionPartyInventorySyncAccessChange'
+  | 'settingsExtensionSyncConflictResolution'
+  | 'onSettingsExtensionSyncConflictResolutionChange'
   | 'settingsLateJoinPolicy'
   | 'onSettingsLateJoinPolicyChange'
   | 'settingsLateJoinGraceMinutes'
@@ -376,6 +389,90 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
             </button>
           ))}
         </div>
+
+        {props.settingsExtensionSyncPolicy !== 'NONE' && (
+          <>
+            <label className="session-label" htmlFor="campaign-settings-inventory-sync">
+              Inventory sync
+            </label>
+            <div className="session-toggle-group" role="group" aria-label="Inventory sync">
+              {([true, false] as const).map((v) => (
+                <button
+                  key={String(v)}
+                  type="button"
+                  className={`session-toggle-button ${props.settingsExtensionInventorySyncEnabled === v ? 'is-active' : ''}`}
+                  aria-pressed={props.settingsExtensionInventorySyncEnabled === v}
+                  onClick={() => props.onSettingsExtensionInventorySyncEnabledChange(v)}
+                  disabled={props.isSettingsSaving}
+                >
+                  {getBooleanToggleLabel(v)}
+                </button>
+              ))}
+            </div>
+
+            <label className="session-label" htmlFor="campaign-settings-currency-sync">
+              Currency sync
+            </label>
+            <div className="session-toggle-group" role="group" aria-label="Currency sync">
+              {([true, false] as const).map((v) => (
+                <button
+                  key={String(v)}
+                  type="button"
+                  className={`session-toggle-button ${props.settingsExtensionCurrencySyncEnabled === v ? 'is-active' : ''}`}
+                  aria-pressed={props.settingsExtensionCurrencySyncEnabled === v}
+                  onClick={() => props.onSettingsExtensionCurrencySyncEnabledChange(v)}
+                  disabled={props.isSettingsSaving}
+                >
+                  {getBooleanToggleLabel(v)}
+                </button>
+              ))}
+            </div>
+
+            <label className="session-label" htmlFor="campaign-settings-party-inventory-access">
+              Party inventory access
+            </label>
+            <div
+              className="session-toggle-group"
+              role="group"
+              aria-label="Party inventory access"
+            >
+              {EXTENSION_PARTY_ACCESS_OPTIONS.map((access: ExtensionPartyInventorySyncAccess) => (
+                <button
+                  key={access}
+                  type="button"
+                  className={`session-toggle-button ${props.settingsExtensionPartyInventorySyncAccess === access ? 'is-active' : ''}`}
+                  aria-pressed={props.settingsExtensionPartyInventorySyncAccess === access}
+                  onClick={() => props.onSettingsExtensionPartyInventorySyncAccessChange(access)}
+                  disabled={props.isSettingsSaving}
+                >
+                  {getExtensionPartyAccessLabel(access)}
+                </button>
+              ))}
+            </div>
+
+            <label className="session-label" htmlFor="campaign-settings-conflict-resolution">
+              Conflict resolution
+            </label>
+            <div className="session-toggle-group" role="group" aria-label="Conflict resolution">
+              {EXTENSION_CONFLICT_RESOLUTION_OPTIONS.map(
+                (resolution: ExtensionSyncConflictResolution) => (
+                  <button
+                    key={resolution}
+                    type="button"
+                    className={`session-toggle-button ${props.settingsExtensionSyncConflictResolution === resolution ? 'is-active' : ''}`}
+                    aria-pressed={props.settingsExtensionSyncConflictResolution === resolution}
+                    onClick={() =>
+                      props.onSettingsExtensionSyncConflictResolutionChange(resolution)
+                    }
+                    disabled={props.isSettingsSaving}
+                  >
+                    {getExtensionConflictResolutionLabel(resolution)}
+                  </button>
+                )
+              )}
+            </div>
+          </>
+        )}
 
         <label className="session-label" htmlFor="campaign-settings-late-join-policy">
           Late join policy

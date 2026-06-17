@@ -1,6 +1,8 @@
 import { SessionState } from '@shared'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -59,6 +61,31 @@ export const EXTENSION_SYNC_POLICY_OPTIONS: readonly ExtensionSyncPolicy[] = [
   'ALLOW',
   'DM_ONLY',
   'NONE',
+] as const
+
+export const EXTENSION_PARTY_ACCESS_LABELS: Record<ExtensionPartyInventorySyncAccess, string> = {
+  ALL_PLAYERS: 'All players',
+  DM_ONLY: 'DM only',
+  DISABLED: 'Disabled',
+}
+
+export const EXTENSION_CONFLICT_RESOLUTION_LABELS: Record<ExtensionSyncConflictResolution, string> =
+  {
+    OVERWRITE: 'Overwrite',
+    IGNORE: 'Ignore',
+    PROMPT: 'Review',
+  }
+
+export const EXTENSION_PARTY_ACCESS_OPTIONS: readonly ExtensionPartyInventorySyncAccess[] = [
+  'ALL_PLAYERS',
+  'DM_ONLY',
+  'DISABLED',
+] as const
+
+export const EXTENSION_CONFLICT_RESOLUTION_OPTIONS: readonly ExtensionSyncConflictResolution[] = [
+  'OVERWRITE',
+  'IGNORE',
+  'PROMPT',
 ] as const
 
 export const SUPPORTED_PLATFORM_OPTIONS: readonly SupportedPlatform[] = [
@@ -122,6 +149,16 @@ export function getCampaignVisibilityLabel(visibility: CampaignVisibility): stri
 
 export function getExtensionSyncPolicyLabel(policy: ExtensionSyncPolicy): string {
   return EXTENSION_SYNC_POLICY_LABELS[policy]
+}
+
+export function getExtensionPartyAccessLabel(access: ExtensionPartyInventorySyncAccess): string {
+  return EXTENSION_PARTY_ACCESS_LABELS[access]
+}
+
+export function getExtensionConflictResolutionLabel(
+  resolution: ExtensionSyncConflictResolution
+): string {
+  return EXTENSION_CONFLICT_RESOLUTION_LABELS[resolution]
 }
 
 export function getSupportedPlatformLabel(platform: SupportedPlatform): string {
