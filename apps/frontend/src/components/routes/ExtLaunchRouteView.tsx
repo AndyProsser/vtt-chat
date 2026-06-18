@@ -13,6 +13,9 @@ import { useEffect, useRef, useState } from 'react'
 import * as Form from '@radix-ui/react-form'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
+import {
+  ACTIVE_SESSION_CONTEXT_STORAGE_KEY,
+} from '@/constants/workspaces.constants'
 import '@/styles/components/routes/AuthSurface.css'
 
 interface ExtLaunchRouteViewProps {
@@ -31,6 +34,7 @@ interface ExtLaunchRouteViewProps {
 export function ExtLaunchRouteView({
   apiUrl,
   campaignId,
+  sessionId,
   token,
   hint,
   onFullAccountAuthenticated,
@@ -42,9 +46,12 @@ export function ExtLaunchRouteView({
   const tokenExchangedRef = useRef(false)
 
   const redirectToCampaign = () => {
-    if (campaignId) {
-      sessionStorage.setItem('postLoginRedirectPath', `/campaigns/${campaignId}`)
-    }
+    if (!campaignId) return
+    // Write the active session context so WorkspaceInitialization auto-enters the
+    // correct campaign and session without showing the lobby first.
+    const context = JSON.stringify({ campaignId, sessionId })
+    sessionStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, context)
+    sessionStorage.setItem('postLoginRedirectPath', `/campaigns/${campaignId}`)
   }
 
   // Auto-authenticate when a token is provided in the URL.
