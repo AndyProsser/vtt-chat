@@ -5,8 +5,18 @@ export type RouteView =
   | { kind: 'browse' }
   | { kind: 'popout-note'; noteId: string }
   | { kind: 'popout-journal'; sessionId: string }
+  | { kind: 'ext-launch'; campaignId: string; sessionId: string; token?: string; hint?: string }
 
 export function resolveRoute(pathname: string, search?: string): RouteView {
+  if (pathname === '/ext-launch') {
+    const params = new URLSearchParams(search ?? '')
+    const campaignId = params.get('campaignId')?.trim() ?? ''
+    const sessionId = params.get('sessionId')?.trim() ?? ''
+    const token = params.get('token')?.trim() || undefined
+    const hint = params.get('hint')?.trim() || undefined
+    return { kind: 'ext-launch', campaignId, sessionId, token, hint }
+  }
+
   const joinMatch = pathname.match(/^\/join\/([^/]+)$/)
   if (joinMatch) {
     const params = new URLSearchParams(search ?? '')
