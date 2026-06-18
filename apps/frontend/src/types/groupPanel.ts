@@ -32,6 +32,8 @@ export interface GroupParticipantStatus {
   characterStats?: Record<string, unknown> | null
   roleLabel?: 'DM' | 'PLAYER' | 'SPECTATOR'
   condition?: string
+  /** D&D status conditions synced from extension (e.g. "Poisoned", "Stunned"). Separate from DM audio conditions. */
+  characterConditions?: string[]
   distanceLabel?: string
 }
 

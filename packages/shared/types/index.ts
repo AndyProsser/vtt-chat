@@ -130,16 +130,11 @@ export enum InventoryActionType {
 
 /**
  * Character stats as synced from the external VTT system.
- *
- * hp, ac, and speed are stubs — accepted and stored in Character.metadata but not yet
- * surfaced in dedicated columns or display UI.
+ * Stored in Character.metadata.stats and surfaced on participant profiles.
  */
 export interface CharacterStats {
-  /** @stub Hit points: current, max, and temporary. Not yet displayed in the platform UI. */
   hp?: { current: number; max: number; temp: number }
-  /** @stub Armour Class. Not yet displayed in the platform UI. */
   ac?: number
-  /** @stub Walk speed in feet. Not yet displayed in the platform UI. */
   speed?: number
   initiative?: number
   proficiencyBonus?: number

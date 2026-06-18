@@ -316,6 +316,21 @@ export const createCharacterSettingsController = (ctx: SessionControllerContext)
         intelligence: toValidStat(characterDraft.intelligence),
         wisdom: toValidStat(characterDraft.wisdom),
         charisma: toValidStat(characterDraft.charisma),
+        hpCurrent: Math.max(0, Math.min(999, Math.round(Number(characterDraft.hpCurrent) || 0))),
+        hpMax: Math.max(0, Math.min(999, Math.round(Number(characterDraft.hpMax) || 0))),
+        ac: Math.max(0, Math.min(30, Math.round(Number(characterDraft.ac) || 0))),
+        initiative: Math.max(-10, Math.min(20, Math.round(Number(characterDraft.initiative) || 0))),
+        passivePerception: Math.max(
+          1,
+          Math.min(30, Math.round(Number(characterDraft.passivePerception) || 10))
+        ),
+        speed: Math.max(0, Math.min(120, Math.round(Number(characterDraft.speed) || 30))),
+        conditions: typeof characterDraft.conditions === 'string'
+          ? characterDraft.conditions
+              .split(',')
+              .map((c) => c.trim())
+              .filter(Boolean)
+          : [],
       }
 
       const response = await ctx.fetchWithAuthGuard(endpoint, {

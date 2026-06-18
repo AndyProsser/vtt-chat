@@ -18,6 +18,14 @@ export interface PlayerSettingsPanel {
   intelligence: number
   wisdom: number
   charisma: number
+  hpCurrent: number
+  hpMax: number
+  ac: number
+  initiative: number
+  passivePerception: number
+  speed: number
+  /** Comma-separated active conditions (e.g. "Poisoned, Blinded"). */
+  conditions: string
 }
 
 export interface PlayerSettingsPanelProps {
@@ -40,6 +48,7 @@ export interface PlayerSettingsPanelProps {
 
 export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
   const nameInputRef = useRef<HTMLInputElement | null>(null)
+  const disabled = props.isCharacterLoading || props.isCharacterSaving
 
   useEffect(() => {
     if (typeof props.focusRequestKey !== 'number') {
@@ -68,7 +77,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
           type="button"
           className="session-icon-action session-icon-action--icon"
           aria-label={props.isCharacterSaving ? 'Saving character' : 'Save character'}
-          disabled={!props.campaignId || props.isCharacterLoading || props.isCharacterSaving}
+          disabled={!props.campaignId || disabled}
           onClick={props.onSaveCharacterSettings}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
@@ -92,7 +101,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 className="crbs-input"
                 value={props.characterDraft.name}
                 onChange={(event) => props.onCharacterFieldChange('name', event.target.value)}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                disabled={disabled}
               />
             </label>
             <label className="crbs-field" htmlFor="crbs-character-race">
@@ -106,7 +115,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 onChange={(event) => props.onCharacterFieldChange('race', event.target.value)}
                 onFocus={props.onSrdFieldFocus}
                 onBlur={props.onSrdFieldBlur}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                disabled={disabled}
               />
               <datalist id="crbs-character-race-suggestions">
                 {raceOptions.map((race) => (
@@ -125,7 +134,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 onChange={(event) => props.onCharacterFieldChange('className', event.target.value)}
                 onFocus={props.onSrdFieldFocus}
                 onBlur={props.onSrdFieldBlur}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                disabled={disabled}
               />
               <datalist id="crbs-character-class-suggestions">
                 {classOptions.map((className) => (
@@ -144,7 +153,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 onChange={(event) => props.onCharacterFieldChange('subclass', event.target.value)}
                 onFocus={props.onSrdFieldFocus}
                 onBlur={props.onSrdFieldBlur}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                disabled={disabled}
               />
               {subclassOptions.length > 0 && (
                 <datalist id="crbs-character-subclass-suggestions">
@@ -166,12 +175,12 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 max={20}
                 value={props.characterDraft.level}
                 onChange={(v) => props.onCharacterFieldChange('level', v)}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                disabled={disabled}
                 triggerMode="click"
               />
             </label>
 
-            <div className="crbs-stats-strip" role="group" aria-label="Character stats">
+            <div className="crbs-stats-strip" role="group" aria-label="Ability scores">
               {[
                 ['strength', 'STR'],
                 ['dexterity', 'DEX'],
@@ -190,7 +199,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                     onChange={(v) =>
                       props.onCharacterFieldChange(field as keyof PlayerSettingsPanel, v)
                     }
-                    disabled={props.isCharacterLoading || props.isCharacterSaving}
+                    disabled={disabled}
                     triggerMode="click"
                   />
                 </label>
@@ -202,8 +211,89 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
         <CharacterAvatarUploadField
           value={props.characterDraft.avatarUrl}
           onChange={(value) => props.onCharacterFieldChange('avatarUrl', value)}
-          disabled={props.isCharacterLoading || props.isCharacterSaving}
+          disabled={disabled}
         />
+      </section>
+
+      <section className="crbs-section">
+        <h4 className="crbs-section-heading">Combat Stats</h4>
+        <p className="crbs-description">
+          Updated automatically when the browser extension is active. You can also set them
+          manually.
+        </p>
+
+        <div className="crbs-combat-stats-grid">
+          <div className="crbs-combat-stat-group">
+            <span className="crbs-field-label">HP</span>
+            <div className="crbs-hp-pair">
+              <label className="crbs-field" htmlFor="crbs-hp-current">
+                <span className="crbs-field-label crbs-field-label--sub">Current</span>
+                <input
+                  id="crbs-hp-current"
+                  type="number"
+                  className="crbs-input crbs-input--compact"
+                  min={0}
+                  max={999}
+                  value={props.characterDraft.hpCurrent}
+                  onChange={(e) =>
+                    props.onCharacterFieldChange('hpCurrent', Number(e.target.value))
+                  }
+                  disabled={disabled}
+                />
+              </label>
+              <span className="crbs-hp-sep">/</span>
+              <label className="crbs-field" htmlFor="crbs-hp-max">
+                <span className="crbs-field-label crbs-field-label--sub">Max</span>
+                <input
+                  id="crbs-hp-max"
+                  type="number"
+                  className="crbs-input crbs-input--compact"
+                  min={0}
+                  max={999}
+                  value={props.characterDraft.hpMax}
+                  onChange={(e) => props.onCharacterFieldChange('hpMax', Number(e.target.value))}
+                  disabled={disabled}
+                />
+              </label>
+            </div>
+          </div>
+
+          {(
+            [
+              ['ac', 'AC', 0, 30],
+              ['initiative', 'Initiative', -10, 20],
+              ['passivePerception', 'Passive Perc', 1, 30],
+              ['speed', 'Speed (ft)', 0, 120],
+            ] as const
+          ).map(([field, label, min, max]) => (
+            <label key={field} className="crbs-field" htmlFor={`crbs-${field}`}>
+              <span className="crbs-field-label">{label}</span>
+              <input
+                id={`crbs-${field}`}
+                type="number"
+                className="crbs-input crbs-input--compact"
+                min={min}
+                max={max}
+                value={props.characterDraft[field]}
+                onChange={(e) => props.onCharacterFieldChange(field, Number(e.target.value))}
+                disabled={disabled}
+              />
+            </label>
+          ))}
+        </div>
+
+        <label className="crbs-field" htmlFor="crbs-conditions">
+          <span className="crbs-field-label">Conditions</span>
+          <input
+            id="crbs-conditions"
+            type="text"
+            className="crbs-input"
+            placeholder="e.g. Poisoned, Blinded"
+            value={props.characterDraft.conditions}
+            onChange={(e) => props.onCharacterFieldChange('conditions', e.target.value)}
+            disabled={disabled}
+          />
+        </label>
       </section>
     </div>
   )

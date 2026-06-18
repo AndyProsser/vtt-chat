@@ -15,6 +15,8 @@ export interface GroupMemberProfileCardParticipant {
   roleLabel?: string
   distanceLabel?: string
   condition?: string
+  /** D&D status conditions synced from extension (e.g. "Poisoned", "Stunned"). Separate from DM audio conditions. */
+  characterConditions?: string[]
 }
 
 interface GroupMemberProfileCardProps {
@@ -156,6 +158,16 @@ export function GroupMemberProfileCard({
               Condition: {member.condition || STATUS_PILL_LABELS.conditionNone}
             </span>
           ) : null}
+          {member.characterConditions && member.characterConditions.length > 0
+            ? member.characterConditions.map((cond) => (
+                <span key={cond} className="room-selector-status-pill character-condition">
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    emergency
+                  </span>
+                  {cond}
+                </span>
+              ))
+            : null}
           <ProfileMutedStatusPill sessionId={sessionId} userId={member.userId} isSelf={isSelf} />
         </div>
       </div>

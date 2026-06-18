@@ -981,6 +981,12 @@
   background: color-mix(in srgb, #7c3aed 10%, transparent);
 }
 
+.room-selector-status-pill.character-condition {
+  border-color: color-mix(in srgb, #dc2626 38%, var(--color-border-soft));
+  color: color-mix(in srgb, #dc2626 70%, var(--color-text-primary));
+  background: color-mix(in srgb, #dc2626 10%, transparent);
+}
+
 .room-selector-status-pill.environment {
   border-color: color-mix(in srgb, #0891b2 38%, var(--color-border-soft));
   color: color-mix(in srgb, #0891b2 70%, var(--color-text-primary));

@@ -294,6 +294,14 @@ export function LeftRailPanel({
                 (currentConditionName && member.userId === currentUserId
                   ? currentConditionName
                   : undefined),
+            characterConditions: (() => {
+              const cs = member.characterStats as Record<string, unknown> | null
+              // Extension stores conditions in stats.conditions; manual/mock stores flat.
+              const nested = (cs?.stats as Record<string, unknown> | undefined)?.conditions
+              const flat = cs?.conditions
+              const raw = Array.isArray(nested) ? nested : Array.isArray(flat) ? flat : null
+              return raw && raw.length > 0 ? (raw as string[]) : undefined
+            })(),
           }
         })
         .filter((participant): participant is NonNullable<typeof participant> =>

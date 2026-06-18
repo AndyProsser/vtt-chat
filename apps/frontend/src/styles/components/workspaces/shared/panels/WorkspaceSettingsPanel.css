@@ -582,3 +582,46 @@
   color: var(--color-warning, #f59e0b);
   border-color: color-mix(in srgb, var(--color-warning, #f59e0b) 45%, transparent);
 }
+
+/* ── Combat stats section ─────────────────────────────────────────── */
+
+.crbs-combat-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.5rem;
+}
+
+.crbs-combat-stat-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.crbs-hp-pair {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.crbs-hp-pair .crbs-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.crbs-hp-sep {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding-bottom: 0.35rem;
+  flex-shrink: 0;
+}
+
+.crbs-field-label--sub {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+.crbs-input--compact {
+  width: 100%;
+  text-align: center;
+}

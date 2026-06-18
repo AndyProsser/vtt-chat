@@ -683,10 +683,15 @@ export async function updateCharacterForCampaignMember(params: {
         ...(params.avatarUrl !== undefined ? { avatarUrl: params.avatarUrl } : {}),
         ...(params.metadata !== undefined
           ? {
+              // Shallow-merge with existing metadata so extension-synced keys (e.g. metadata.stats)
+              // are preserved when the player saves manual edits from the settings panel.
               metadata:
                 params.metadata === null
                   ? Prisma.JsonNull
-                  : (params.metadata as Prisma.InputJsonValue),
+                  : ({
+                      ...((existing.metadata as Record<string, unknown>) ?? {}),
+                      ...params.metadata,
+                    } as Prisma.InputJsonValue),
             }
           : {}),
         ...(params.isActive !== undefined ? { isActive: params.isActive } : {}),

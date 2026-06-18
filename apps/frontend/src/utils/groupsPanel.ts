@@ -26,16 +26,55 @@ export function getGroupStatEntries(member: GroupParticipantStatus): Array<[stri
   }
 
   const typedStats = stats as Record<string, unknown>
-  const ordered: Array<[string, unknown]> = [
-    ['STR', typedStats.strength],
-    ['DEX', typedStats.dexterity],
-    ['CON', typedStats.constitution],
-    ['INT', typedStats.intelligence],
-    ['WIS', typedStats.wisdom],
-    ['CHA', typedStats.charisma],
-  ]
+  const syncedStats = typedStats.stats as Record<string, unknown> | undefined
+  const abilityScores = syncedStats?.abilityScores as Record<string, unknown> | undefined
 
-  return ordered.filter(([, value]) => value !== null && value !== undefined)
+  const entries: Array<[string, unknown]> = []
+
+  // Resolve a numeric stat: prefer extension-nested value, fall back to flat metadata field.
+  function resolveStatNum(syncedVal: unknown, flatVal: unknown): number | undefined {
+    const v = syncedVal !== undefined && syncedVal !== null ? syncedVal : flatVal
+    const n = Number(v)
+    return Number.isFinite(n) ? n : undefined
+  }
+
+  // HP — extension stores as stats.hp.{current,max}; manual/mock stores hpCurrent/hpMax flat.
+  const syncedHp = syncedStats?.hp as { current?: number; max?: number } | undefined
+  const hpCurrent = resolveStatNum(syncedHp?.current, typedStats.hpCurrent)
+  const hpMax = resolveStatNum(syncedHp?.max, typedStats.hpMax)
+  if (hpCurrent !== undefined && hpMax !== undefined) {
+    entries.push(['HP', `${hpCurrent}/${hpMax}`])
+  }
+
+  const ac = resolveStatNum(syncedStats?.ac, typedStats.ac)
+  if (ac !== undefined) entries.push(['AC', ac])
+
+  const initiative = resolveStatNum(syncedStats?.initiative, typedStats.initiative)
+  if (initiative !== undefined) {
+    entries.push(['INIT', `${initiative >= 0 ? '+' : ''}${initiative}`])
+  }
+
+  const pp = resolveStatNum(syncedStats?.passivePerception, typedStats.passivePerception)
+  if (pp !== undefined) entries.push(['PP', pp])
+
+  const speed = resolveStatNum(syncedStats?.speed, typedStats.speed)
+  if (speed !== undefined) entries.push(['SPD', `${speed}ft`])
+
+  // Ability scores — prefer extension values, fall back to manually-entered flat fields
+  const ABILITY_MAP: Array<[string, string, string]> = [
+    ['STR', 'str', 'strength'],
+    ['DEX', 'dex', 'dexterity'],
+    ['CON', 'con', 'constitution'],
+    ['INT', 'int', 'intelligence'],
+    ['WIS', 'wis', 'wisdom'],
+    ['CHA', 'cha', 'charisma'],
+  ]
+  for (const [label, extKey, flatKey] of ABILITY_MAP) {
+    const value = abilityScores?.[extKey] ?? typedStats[flatKey]
+    if (value !== null && value !== undefined) entries.push([label, value])
+  }
+
+  return entries
 }
 
 export function getGroupParticipantMetaLine(
