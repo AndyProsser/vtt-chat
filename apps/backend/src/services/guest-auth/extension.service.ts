@@ -59,9 +59,19 @@ async function upsertCharacter(params: {
       })
     : null
 
-  const metadata = {
+  const metadata: Record<string, unknown> = {
     level: params.character.level ?? null,
     characterUrl: params.character.characterUrl || null,
+  }
+
+  if (params.character.stats !== undefined) {
+    metadata.stats = params.character.stats
+  }
+  if (params.character.conditions !== undefined) {
+    metadata.conditions = params.character.conditions
+  }
+  if (params.character.features !== undefined) {
+    metadata.features = params.character.features
   }
 
   if (existing) {

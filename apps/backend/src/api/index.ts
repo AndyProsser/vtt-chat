@@ -9,6 +9,7 @@ import notesRoutes from './notes.routes'
 import journalsRoutes from './journals.routes'
 import campaignRoutes from './campaign.routes'
 import campaignDiscoveryRoutes from './campaign-discovery.routes'
+import campaignSessionRoutes from './campaign-session.routes'
 import usersRoutes from './users.routes'
 import roomsRoutes from './rooms.routes'
 import presenceRoutes from './presence.routes'
@@ -60,6 +61,7 @@ router.use('/chat/command', chatCommandRoutes)
 router.use('/admin', adminRoutes)
 router.use('/notes', notesRoutes)
 router.use('/journals', journalsRoutes)
+router.use('/campaigns', campaignSessionRoutes)
 router.use('/campaigns', campaignDiscoveryRoutes)
 router.use('/campaigns', campaignRoutes)
 router.use('/users', usersRoutes)

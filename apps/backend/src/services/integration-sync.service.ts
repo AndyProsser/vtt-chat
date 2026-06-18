@@ -197,22 +197,52 @@ export async function syncExternalIntegration(params: {
         externalId: externalCharacterId,
         externalSystem: params.externalSystem,
       },
+      select: { id: true, metadata: true },
     })
 
     if (character) {
       const updateData: Record<string, unknown> = {}
 
-      if (typeof level === 'number') {
-        const metadata = (character.metadata as Record<string, unknown> | null) || {}
-        updateData.metadata = { ...metadata, level }
+      // Top-level columns
+      if (typeof params.characterUpdate.name === 'string') {
+        updateData.name = params.characterUpdate.name.trim()
       }
-
+      if (typeof params.characterUpdate.race === 'string') {
+        updateData.race = params.characterUpdate.race.trim()
+      }
       if (typeof params.characterUpdate.class === 'string') {
-        updateData.class = params.characterUpdate.class
+        updateData.class = params.characterUpdate.class.trim()
+      }
+      if (typeof params.characterUpdate.subclass === 'string') {
+        updateData.subclass = params.characterUpdate.subclass.trim()
+      }
+      if (typeof params.characterUpdate.avatarUrl === 'string') {
+        updateData.avatarUrl = params.characterUpdate.avatarUrl.trim()
       }
 
-      if (typeof params.characterUpdate.subclass === 'string') {
-        updateData.subclass = params.characterUpdate.subclass
+      // Metadata fields — shallow-merge into existing metadata blob.
+      // stats, conditions, features replace their entire key (per docs §5b field rules).
+      const existingMeta = (character.metadata as Record<string, unknown> | null) || {}
+      const metaPatch: Record<string, unknown> = {}
+
+      if (typeof level === 'number') {
+        metaPatch.level = level
+      }
+      if (typeof params.characterUpdate.characterUrl === 'string') {
+        metaPatch.characterUrl = params.characterUpdate.characterUrl.trim()
+      }
+      if (params.characterUpdate.stats && typeof params.characterUpdate.stats === 'object') {
+        metaPatch.stats = params.characterUpdate.stats
+      }
+      if (Array.isArray(params.characterUpdate.conditions)) {
+        metaPatch.conditions = params.characterUpdate.conditions
+      }
+      if (Array.isArray(params.characterUpdate.features)) {
+        metaPatch.features = params.characterUpdate.features
+      }
+
+      if (Object.keys(metaPatch).length > 0) {
+        updateData.metadata = { ...existingMeta, ...metaPatch }
       }
 
       if (Object.keys(updateData).length > 0) {

@@ -49,5 +49,12 @@
     "eslint-plugin-prettier": "^5.5.5",
     "prettier": "^3.8.2",
     "typescript": "^6.0.3"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true,
+    "prisma@7.8.0": true,
+    "@prisma/engines@7.8.0": true,
+    "esbuild@0.28.1": true,
+    "msgpackr-extract@3.0.4": true
   }
 }

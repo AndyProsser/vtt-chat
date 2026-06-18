@@ -29,5 +29,8 @@
     "tsx": "^4.20.6",
     "typescript": "^6.0.2",
     "vitest": "^4.1.6"
+  },
+  "allowScripts": {
+    "msgpackr-extract@3.0.4": true
   }
 }
