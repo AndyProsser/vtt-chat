@@ -1,7 +1,12 @@
 import { PresenceState, RoomType } from '@shared'
 import type { UUID } from '@shared'
 import { DEFAULT_PLAYER_META_LINE } from '@/constants/voiceGroup.constants'
-import type { GroupPanelGroupWithParticipants, GroupParticipantStatus } from '@/types/groupPanel'
+import type {
+  AbilityScoreStat,
+  GroupPanelGroupWithParticipants,
+  GroupParticipantStatus,
+  StatGroups,
+} from '@/types/groupPanel'
 
 export function getDisplayGroupName(group: GroupPanelGroupWithParticipants): string {
   if (group.type === RoomType.MAIN) {
@@ -15,52 +20,54 @@ export function getResolvedGroupEnvironmentName(group: GroupPanelGroupWithPartic
   return group.environmentName || 'Default'
 }
 
-export function getGroupStatEntries(member: GroupParticipantStatus): Array<[string, unknown]> {
-  if (member.roleLabel === 'DM') {
-    return []
-  }
+function abilityMod(score: number): string {
+  const mod = Math.floor((score - 10) / 2)
+  return mod >= 0 ? `+${mod}` : String(mod)
+}
+
+export function getGroupStatEntries(member: GroupParticipantStatus): StatGroups {
+  const empty: StatGroups = { combatStats: [], abilityScores: [] }
+
+  if (member.roleLabel === 'DM') return empty
 
   const stats = member.characterStats
-  if (!stats) {
-    return []
-  }
+  if (!stats) return empty
 
   const typedStats = stats as Record<string, unknown>
   const syncedStats = typedStats.stats as Record<string, unknown> | undefined
-  const abilityScores = syncedStats?.abilityScores as Record<string, unknown> | undefined
+  const syncedAbility = syncedStats?.abilityScores as Record<string, unknown> | undefined
 
-  const entries: Array<[string, unknown]> = []
-
-  // Resolve a numeric stat: prefer extension-nested value, fall back to flat metadata field.
   function resolveStatNum(syncedVal: unknown, flatVal: unknown): number | undefined {
     const v = syncedVal !== undefined && syncedVal !== null ? syncedVal : flatVal
     const n = Number(v)
     return Number.isFinite(n) ? n : undefined
   }
 
-  // HP — extension stores as stats.hp.{current,max}; manual/mock stores hpCurrent/hpMax flat.
+  const combatStats: Array<[string, string]> = []
+
+  // HP — use min/max to guard against swapped field values in stored data.
+  // Display convention: current/max (lower/higher).
   const syncedHp = syncedStats?.hp as { current?: number; max?: number } | undefined
-  const hpCurrent = resolveStatNum(syncedHp?.current, typedStats.hpCurrent)
-  const hpMax = resolveStatNum(syncedHp?.max, typedStats.hpMax)
-  if (hpCurrent !== undefined && hpMax !== undefined) {
-    entries.push(['HP', `${hpCurrent}/${hpMax}`])
+  const hpA = resolveStatNum(syncedHp?.current, typedStats.hpCurrent)
+  const hpB = resolveStatNum(syncedHp?.max, typedStats.hpMax)
+  if (hpA !== undefined && hpB !== undefined) {
+    combatStats.push(['HP', `${Math.min(hpA, hpB)}/${Math.max(hpA, hpB)}`])
   }
 
   const ac = resolveStatNum(syncedStats?.ac, typedStats.ac)
-  if (ac !== undefined) entries.push(['AC', ac])
+  if (ac !== undefined) combatStats.push(['AC', String(ac)])
 
   const initiative = resolveStatNum(syncedStats?.initiative, typedStats.initiative)
   if (initiative !== undefined) {
-    entries.push(['INIT', `${initiative >= 0 ? '+' : ''}${initiative}`])
+    combatStats.push(['INIT', `${initiative >= 0 ? '+' : ''}${initiative}`])
   }
 
   const pp = resolveStatNum(syncedStats?.passivePerception, typedStats.passivePerception)
-  if (pp !== undefined) entries.push(['PP', pp])
+  if (pp !== undefined) combatStats.push(['PP', String(pp)])
 
   const speed = resolveStatNum(syncedStats?.speed, typedStats.speed)
-  if (speed !== undefined) entries.push(['SPD', `${speed}ft`])
+  if (speed !== undefined) combatStats.push(['SPD', `${speed}ft`])
 
-  // Ability scores — prefer extension values, fall back to manually-entered flat fields
   const ABILITY_MAP: Array<[string, string, string]> = [
     ['STR', 'str', 'strength'],
     ['DEX', 'dex', 'dexterity'],
@@ -69,12 +76,17 @@ export function getGroupStatEntries(member: GroupParticipantStatus): Array<[stri
     ['WIS', 'wis', 'wisdom'],
     ['CHA', 'cha', 'charisma'],
   ]
+
+  const abilityScores: AbilityScoreStat[] = []
   for (const [label, extKey, flatKey] of ABILITY_MAP) {
-    const value = abilityScores?.[extKey] ?? typedStats[flatKey]
-    if (value !== null && value !== undefined) entries.push([label, value])
+    const raw = syncedAbility?.[extKey] ?? typedStats[flatKey]
+    const value = Number(raw)
+    if (raw !== null && raw !== undefined && Number.isFinite(value)) {
+      abilityScores.push({ label, value, modifier: abilityMod(value) })
+    }
   }
 
-  return entries
+  return { combatStats, abilityScores }
 }
 
 export function getGroupParticipantMetaLine(

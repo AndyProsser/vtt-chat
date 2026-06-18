@@ -82,7 +82,6 @@ export const DEFAULT_CHARACTER_SETTINGS: PlayerSettingsPanel = {
   initiative: 0,
   passivePerception: 10,
   speed: 30,
-  conditions: '',
 }
 
 export const SESSION_TIMER_SYNC_POLL_MS = 30_000
@@ -120,15 +119,6 @@ export function buildCharacterDraft(character: UserCharacterRecord | null): Play
     return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : fallback
   }
 
-  const conditions =
-    Array.isArray(synced?.conditions) && synced!.conditions.length > 0
-      ? (synced!.conditions as string[]).join(', ')
-      : Array.isArray(metadata.conditions) && (metadata.conditions as string[]).length > 0
-        ? (metadata.conditions as string[]).join(', ')
-        : typeof metadata.conditions === 'string'
-          ? metadata.conditions
-          : ''
-
   return {
     name: character.name || '',
     race: character.race || 'Human',
@@ -148,7 +138,6 @@ export function buildCharacterDraft(character: UserCharacterRecord | null): Play
     initiative: resolveNum(synced?.initiative, metadata.initiative, 0, -10, 20),
     passivePerception: resolveNum(synced?.passivePerception, metadata.passivePerception, 10, 1, 30),
     speed: resolveNum(synced?.speed, metadata.speed, 30, 0, 120),
-    conditions,
   }
 }
 

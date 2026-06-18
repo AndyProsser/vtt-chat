@@ -868,9 +868,16 @@
 
 .room-selector-profile__stats {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.14rem;
-  margin-block: 0.16rem;
+  margin-block: 0.08rem;
+}
+
+.room-selector-profile__stats--combat {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.room-selector-profile__stats--ability {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .room-selector-profile__stat {
@@ -892,6 +899,13 @@
   font-weight: 700;
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
+}
+
+.room-selector-profile__stat-mod {
+  font-size: 0.52rem;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--color-text-muted);
 }
 
 .room-selector-profile__stat-label {

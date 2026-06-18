@@ -656,7 +656,7 @@ export function RoomSelector({
                       isSelf={dmDetachedParticipant.userId === currentUser?.id}
                       member={dmDetachedParticipant}
                       metaLine={dmFlavorLine}
-                      statEntries={getGroupStatEntries(dmDetachedParticipant)}
+                      statGroups={getGroupStatEntries(dmDetachedParticipant)}
                       environmentName={dmDetachedEnvironmentName}
                     />
                   </TooltipContent>

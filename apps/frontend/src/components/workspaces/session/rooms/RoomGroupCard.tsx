@@ -11,6 +11,7 @@ import { GROUP_ENVIRONMENT_OPTIONS, isWhisperGroup } from '@/types/groupPanel'
 import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
+  StatGroups,
 } from '@/types/groupPanel'
 import { areGroupCardPropsEqual } from './RoomGroupCard.helpers'
 
@@ -69,7 +70,7 @@ export interface GroupCardProps {
   getDisplayRoomName: (room: GroupPanelGroupWithParticipants) => string
   getResolvedEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
-  getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
+  getStatEntries: (member: GroupParticipantWithGroupId) => StatGroups
 }
 
 export type RoomGroupCardProps = GroupCardProps

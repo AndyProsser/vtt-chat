@@ -18,14 +18,13 @@ export interface PlayerSettingsPanel {
   intelligence: number
   wisdom: number
   charisma: number
+  /** Stored when synced from extension; not shown as an editable field. */
   hpCurrent: number
   hpMax: number
   ac: number
   initiative: number
   passivePerception: number
   speed: number
-  /** Comma-separated active conditions (e.g. "Poisoned, Blinded"). */
-  conditions: string
 }
 
 export interface PlayerSettingsPanelProps {
@@ -208,92 +207,41 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
           </div>
         </div>
 
-        <CharacterAvatarUploadField
-          value={props.characterDraft.avatarUrl}
-          onChange={(value) => props.onCharacterFieldChange('avatarUrl', value)}
-          disabled={disabled}
-        />
-      </section>
-
-      <section className="crbs-section">
-        <h4 className="crbs-section-heading">Combat Stats</h4>
-        <p className="crbs-description">
-          Updated automatically when the browser extension is active. You can also set them
-          manually.
-        </p>
-
-        <div className="crbs-combat-stats-grid">
-          <div className="crbs-combat-stat-group">
-            <span className="crbs-field-label">HP</span>
-            <div className="crbs-hp-pair">
-              <label className="crbs-field" htmlFor="crbs-hp-current">
-                <span className="crbs-field-label crbs-field-label--sub">Current</span>
-                <input
-                  id="crbs-hp-current"
-                  type="number"
-                  className="crbs-input crbs-input--compact"
-                  min={0}
-                  max={999}
-                  value={props.characterDraft.hpCurrent}
-                  onChange={(e) =>
-                    props.onCharacterFieldChange('hpCurrent', Number(e.target.value))
-                  }
-                  disabled={disabled}
-                />
-              </label>
-              <span className="crbs-hp-sep">/</span>
-              <label className="crbs-field" htmlFor="crbs-hp-max">
-                <span className="crbs-field-label crbs-field-label--sub">Max</span>
-                <input
-                  id="crbs-hp-max"
-                  type="number"
-                  className="crbs-input crbs-input--compact"
-                  min={0}
-                  max={999}
-                  value={props.characterDraft.hpMax}
-                  onChange={(e) => props.onCharacterFieldChange('hpMax', Number(e.target.value))}
-                  disabled={disabled}
-                />
-              </label>
-            </div>
-          </div>
-
+        <span className="crbs-field-label">Combat Stats</span>
+        <div
+          className="crbs-stats-strip crbs-stats-strip--5col"
+          role="group"
+          aria-label="Combat stats"
+        >
           {(
             [
+              ['hpMax', 'HP', 0, 999],
               ['ac', 'AC', 0, 30],
-              ['initiative', 'Initiative', -10, 20],
-              ['passivePerception', 'Passive Perc', 1, 30],
-              ['speed', 'Speed (ft)', 0, 120],
+              ['initiative', 'INIT', -10, 20],
+              ['passivePerception', 'PP', 1, 30],
+              ['speed', 'SPD', 0, 120],
             ] as const
           ).map(([field, label, min, max]) => (
-            <label key={field} className="crbs-field" htmlFor={`crbs-${field}`}>
+            <label key={field} className="crbs-field crbs-field--stat">
               <span className="crbs-field-label">{label}</span>
-              <input
-                id={`crbs-${field}`}
-                type="number"
-                className="crbs-input crbs-input--compact"
+              <VerticalSliderInput
+                label={`${label} (${min}–${max})`}
                 min={min}
                 max={max}
-                value={props.characterDraft[field]}
-                onChange={(e) => props.onCharacterFieldChange(field, Number(e.target.value))}
+                value={props.characterDraft[field] as number}
+                onChange={(v) => props.onCharacterFieldChange(field, v)}
                 disabled={disabled}
+                triggerMode="click"
               />
             </label>
           ))}
         </div>
 
-        <label className="crbs-field" htmlFor="crbs-conditions">
-          <span className="crbs-field-label">Conditions</span>
-          <input
-            id="crbs-conditions"
-            type="text"
-            className="crbs-input"
-            placeholder="e.g. Poisoned, Blinded"
-            value={props.characterDraft.conditions}
-            onChange={(e) => props.onCharacterFieldChange('conditions', e.target.value)}
-            disabled={disabled}
-          />
-        </label>
+        <CharacterAvatarUploadField
+          value={props.characterDraft.avatarUrl}
+          onChange={(value) => props.onCharacterFieldChange('avatarUrl', value)}
+          disabled={disabled}
+        />
       </section>
     </div>
   )

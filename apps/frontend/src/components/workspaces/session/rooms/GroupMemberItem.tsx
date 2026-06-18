@@ -6,6 +6,7 @@ import { PlayerContextMenu } from './context-menu/PlayerContextMenu'
 import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
+  StatGroups,
 } from '@/types/groupPanel'
 
 export type HoverAnchorRect = {
@@ -33,7 +34,7 @@ export interface GroupMemberItemProps {
   touchFeedbackUserId: UUID | null
   isProfileHovered: boolean
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
-  getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
+  getStatEntries: (member: GroupParticipantWithGroupId) => StatGroups
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   distanceTargets: string[]
   conditionTargets: string[]

@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import type { UUID } from '@shared'
+import type { StatGroups } from '@/types/groupPanel'
 import { STATUS_PILL_ICONS, STATUS_PILL_LABELS } from '@/constants/voiceGroupStatus.constants'
 import { PresenceIndicator } from './PresenceIndicator'
 import { MicMutedIndicator } from './MicMutedIndicator'
@@ -29,7 +30,7 @@ interface GroupMemberProfileCardProps {
   isSelf?: boolean
   member: GroupMemberProfileCardParticipant
   metaLine: string
-  statEntries: Array<[string, unknown]>
+  statGroups: StatGroups
   environmentName: string
   presenceIconName?: string
   activeTakeover?: boolean
@@ -71,7 +72,7 @@ export function GroupMemberProfileCard({
   isSelf = false,
   member,
   metaLine,
-  statEntries,
+  statGroups,
   environmentName,
   activeTakeover = false,
 }: GroupMemberProfileCardProps) {
@@ -121,16 +122,31 @@ export function GroupMemberProfileCard({
           <span className="room-selector-profile__player-name">{member.playerName}</span>
         ) : null}
         {metaLine ? <p>{metaLine}</p> : null}
-        {statEntries.length > 0 ? (
-          <div className="room-selector-profile__stats">
-            {statEntries.map(([key, value]) => (
+        {statGroups.combatStats.length > 0 ? (
+          <div className="room-selector-profile__stats room-selector-profile__stats--combat">
+            {statGroups.combatStats.map(([key, value]) => (
               <span
                 key={key}
                 className="room-selector-profile__stat"
-                aria-label={`${key} ${String(value)}`}
+                aria-label={`${key} ${value}`}
               >
-                <strong className="room-selector-profile__stat-value">{String(value)}</strong>
                 <span className="room-selector-profile__stat-label">{key}</span>
+                <strong className="room-selector-profile__stat-value">{value}</strong>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {statGroups.abilityScores.length > 0 ? (
+          <div className="room-selector-profile__stats room-selector-profile__stats--ability">
+            {statGroups.abilityScores.map(({ label, value, modifier }) => (
+              <span
+                key={label}
+                className="room-selector-profile__stat"
+                aria-label={`${label} ${value} ${modifier}`}
+              >
+                <span className="room-selector-profile__stat-label">{label}</span>
+                <strong className="room-selector-profile__stat-value">{value}</strong>
+                <span className="room-selector-profile__stat-mod">{modifier}</span>
               </span>
             ))}
           </div>

@@ -6,6 +6,7 @@
 
 import React, { useMemo, useState } from 'react'
 import { PresenceState, RoomType, type UUID } from '@shared'
+import type { StatGroups, AbilityScoreStat } from '@/types/groupPanel'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { useTooltipLabelsPreference } from '@/hooks/useTooltipLabelsPreference'
 import type { Room, RoomUser } from '@/types/room'
@@ -56,20 +57,20 @@ function getMetaLine(member: RoomUser): string {
   return values.join(' • ')
 }
 
-function getStatEntries(member: RoomUser): Array<[string, string]> {
-  if (member.role === 'DM') {
-    return []
-  }
+function abilityMod(score: number): string {
+  const mod = Math.floor((score - 10) / 2)
+  return mod >= 0 ? `+${mod}` : String(mod)
+}
 
-  if (!member.characterStats || typeof member.characterStats !== 'object') {
-    return []
-  }
+function getStatGroups(member: RoomUser): StatGroups {
+  const empty: StatGroups = { combatStats: [], abilityScores: [] }
+
+  if (member.role === 'DM') return empty
+  if (!member.characterStats || typeof member.characterStats !== 'object') return empty
 
   const typedStats = member.characterStats as Record<string, unknown>
   const syncedStats = typedStats.stats as Record<string, unknown> | undefined
-  const abilityScores = syncedStats?.abilityScores as Record<string, unknown> | undefined
-
-  const entries: Array<[string, unknown]> = []
+  const syncedAbility = syncedStats?.abilityScores as Record<string, unknown> | undefined
 
   function resolveStatNum(syncedVal: unknown, flatVal: unknown): number | undefined {
     const v = syncedVal !== undefined && syncedVal !== null ? syncedVal : flatVal
@@ -77,26 +78,28 @@ function getStatEntries(member: RoomUser): Array<[string, string]> {
     return Number.isFinite(n) ? n : undefined
   }
 
+  const combatStats: Array<[string, string]> = []
+
   const syncedHp = syncedStats?.hp as { current?: number; max?: number } | undefined
-  const hpCurrent = resolveStatNum(syncedHp?.current, typedStats.hpCurrent)
-  const hpMax = resolveStatNum(syncedHp?.max, typedStats.hpMax)
-  if (hpCurrent !== undefined && hpMax !== undefined) {
-    entries.push(['HP', `${hpCurrent}/${hpMax}`])
+  const hpA = resolveStatNum(syncedHp?.current, typedStats.hpCurrent)
+  const hpB = resolveStatNum(syncedHp?.max, typedStats.hpMax)
+  if (hpA !== undefined && hpB !== undefined) {
+    combatStats.push(['HP', `${Math.min(hpA, hpB)}/${Math.max(hpA, hpB)}`])
   }
 
   const ac = resolveStatNum(syncedStats?.ac, typedStats.ac)
-  if (ac !== undefined) entries.push(['AC', ac])
+  if (ac !== undefined) combatStats.push(['AC', String(ac)])
 
   const initiative = resolveStatNum(syncedStats?.initiative, typedStats.initiative)
   if (initiative !== undefined) {
-    entries.push(['INIT', `${initiative >= 0 ? '+' : ''}${initiative}`])
+    combatStats.push(['INIT', `${initiative >= 0 ? '+' : ''}${initiative}`])
   }
 
   const pp = resolveStatNum(syncedStats?.passivePerception, typedStats.passivePerception)
-  if (pp !== undefined) entries.push(['PP', pp])
+  if (pp !== undefined) combatStats.push(['PP', String(pp)])
 
   const speed = resolveStatNum(syncedStats?.speed, typedStats.speed)
-  if (speed !== undefined) entries.push(['SPD', `${speed}ft`])
+  if (speed !== undefined) combatStats.push(['SPD', `${speed}ft`])
 
   const ABILITY_MAP: Array<[string, string, string]> = [
     ['STR', 'str', 'strength'],
@@ -106,12 +109,17 @@ function getStatEntries(member: RoomUser): Array<[string, string]> {
     ['WIS', 'wis', 'wisdom'],
     ['CHA', 'cha', 'charisma'],
   ]
+
+  const abilityScores: AbilityScoreStat[] = []
   for (const [label, extKey, flatKey] of ABILITY_MAP) {
-    const value = abilityScores?.[extKey] ?? typedStats[flatKey]
-    if (value !== null && value !== undefined) entries.push([label, value])
+    const raw = syncedAbility?.[extKey] ?? typedStats[flatKey]
+    const value = Number(raw)
+    if (raw !== null && raw !== undefined && Number.isFinite(value)) {
+      abilityScores.push({ label, value, modifier: abilityMod(value) })
+    }
   }
 
-  return entries.map(([key, value]) => [key, String(value)])
+  return { combatStats, abilityScores }
 }
 
 interface SessionGroupCardProps {
@@ -170,7 +178,7 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
         member,
         roleLabel: getRoleLabel(member),
         metaLine: getMetaLine(member),
-        statEntries: getStatEntries(member),
+        statGroups: getStatGroups(member),
         presenceDotState: getPresenceDotState(member.presenceState),
       })),
     [members]
@@ -365,7 +373,7 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
 
       {!isCollapsed && memberCards.length > 0 ? (
         <div className="session-groups-room-card__members">
-          {memberCards.map(({ member, roleLabel, metaLine, statEntries, presenceDotState }) => (
+          {memberCards.map(({ member, roleLabel, metaLine, statGroups, presenceDotState }) => (
             <div
               key={member.userId}
               className={`session-groups-member-card session-groups-member-card--${presenceDotState}`}
@@ -411,14 +419,29 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                   >
                     {roleLabel}
                   </span>
-                  {statEntries.length > 0 ? (
-                    <div className="session-groups-member-card__stats" aria-label="Ability scores">
-                      {statEntries.map(([key, value]) => (
-                        <span key={key} className="session-groups-member-card__stat">
-                          <strong>{value}</strong>
-                          <span>{key}</span>
-                        </span>
-                      ))}
+                  {statGroups.combatStats.length > 0 || statGroups.abilityScores.length > 0 ? (
+                    <div className="session-groups-member-card__stat-rows">
+                      {statGroups.combatStats.length > 0 ? (
+                        <div className="session-groups-member-card__stats session-groups-member-card__stats--5col">
+                          {statGroups.combatStats.map(([key, value]) => (
+                            <span key={key} className="session-groups-member-card__stat">
+                              <span>{key}</span>
+                              <strong>{value}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {statGroups.abilityScores.length > 0 ? (
+                        <div className="session-groups-member-card__stats session-groups-member-card__stats--6col">
+                          {statGroups.abilityScores.map(({ label, value, modifier }) => (
+                            <span key={label} className="session-groups-member-card__stat">
+                              <span>{label}</span>
+                              <strong>{value}</strong>
+                              <span className="session-groups-member-card__stat-mod">{modifier}</span>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ) : (
                     <div className="session-groups-member-card__stats session-groups-member-card__stats--empty" />

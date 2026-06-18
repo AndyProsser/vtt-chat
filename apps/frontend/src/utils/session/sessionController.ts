@@ -325,12 +325,6 @@ export const createCharacterSettingsController = (ctx: SessionControllerContext)
           Math.min(30, Math.round(Number(characterDraft.passivePerception) || 10))
         ),
         speed: Math.max(0, Math.min(120, Math.round(Number(characterDraft.speed) || 30))),
-        conditions: typeof characterDraft.conditions === 'string'
-          ? characterDraft.conditions
-              .split(',')
-              .map((c) => c.trim())
-              .filter(Boolean)
-          : [],
       }
 
       const response = await ctx.fetchWithAuthGuard(endpoint, {

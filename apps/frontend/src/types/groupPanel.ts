@@ -45,6 +45,18 @@ export interface GroupPanelGroupWithParticipants extends GroupPanelGroup {
   participants: GroupParticipantStatus[]
 }
 
+export interface AbilityScoreStat {
+  label: string
+  value: number
+  modifier: string
+}
+
+/** Structured stat groups returned by getGroupStatEntries. */
+export interface StatGroups {
+  combatStats: Array<[string, string]>
+  abilityScores: AbilityScoreStat[]
+}
+
 export interface GroupsPanelProps {
   apiUrl: string
   token: string
