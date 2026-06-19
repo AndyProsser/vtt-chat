@@ -1030,7 +1030,21 @@ export function WorkspaceInitialization({
         canRefreshInvites: Boolean(selectedCampaign && selectedCampaign.currentDmId === user.id),
         isInviteReissuing,
         onCopyInviteUrl: (inviteType) => {
-          void copyInviteUrl(inviteType)
+          const code =
+            inviteType === 'PLAYER'
+              ? selectedCampaign?.inviteCode
+              : selectedCampaign?.spectatorInviteCode
+          if (!code) return
+          const basePath = inviteType === 'PLAYER' ? '/join/' : '/watch/'
+          const url = `${window.location.origin}${basePath}${encodeURIComponent(code)}`
+          void navigator.clipboard
+            .writeText(url)
+            .then(() =>
+              setLobbyNotice(
+                `${inviteType === 'PLAYER' ? 'Player' : 'Spectator'} invite URL copied.`
+              )
+            )
+            .catch(() => setError('Failed to copy invite URL to clipboard.'))
         },
         onReissueInvite: (inviteType) => {
           requestInviteReissue(inviteType)
@@ -1106,9 +1120,10 @@ export function WorkspaceInitialization({
       user,
       wsRetrySecondsRemaining,
       wsState,
-      copyInviteUrl,
       isInviteReissuing,
       requestInviteReissue,
+      setError,
+      setLobbyNotice,
     ]
   )
 
