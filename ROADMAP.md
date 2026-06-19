@@ -2053,8 +2053,8 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [x] Take from Party (player): atomically credits character wallet and debits party purse; only available when player has `/take` campaign permission
 - [x] Give to Party (player/DM): atomically debits sender wallet and credits party purse
 - [x] Give to Online Player (player/DM): atomically debits sender wallet and credits recipient wallet; only online players shown as eligible targets (offline players pull from party on rejoin)
-- [ ] Add currency (inflow — loot award, sale proceeds): credits wallet or purse without requiring a debit source; form shows current balance; DM can add to any owner; players can add to own wallet
-- [ ] Remove currency (outflow — purchase, expenditure): debits wallet or purse without a destination; form shows current balance; capped at available balance; requires confirmation
+- [x] `/earn [currency]` — credits caller's own wallet (character if player, party purse if DM); no cap; broadcasts `INVENTORY:CURRENCY_CHANGED` + system chat message; supports any combination of `cp sp ep gp pp` denominations
+- [x] `/spend [currency]` — debits caller's own wallet; validates balance before touching any layer; on insufficient funds broadcasts a randomly-chosen dry-humor system message (50 options) visible to all then returns 400; on success broadcasts `INVENTORY:CURRENCY_CHANGED` + system chat message
 - [x] `POST /api/inventory/:campaignId/transfer/currency` — atomic two-sided debit/credit in a single PostgreSQL transaction; emits `INVENTORY:CURRENCY_CHANGED` for both owners on commit
 - [x] All inventory mutations during ACTIVE session → system message in chat + history log entry
 - [x] Mutations outside ACTIVE session → history log entry only (no chat message)

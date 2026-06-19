@@ -33,7 +33,9 @@ import {
   findItemByOwnerAndName,
   partialTransferInventoryItem,
   partialRemoveInventoryItem,
+  type CurrencyDenomination,
 } from '@/services/inventory/inventory.service'
+import { findOrCreateCurrencyWallet } from '@/repositories/inventory.repository'
 import { parseLootRandomArgs, generateLoot, buildLootSummaryMessage, formatCoins } from '@/services/inventory/loot-random.service'
 import crypto from 'node:crypto'
 
@@ -164,6 +166,32 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
 
     if (normalizedCommand === 'roll') {
       return handleRollCommand({
+        req,
+        res,
+        args: typeof args === 'string' ? args.trim() : '',
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        session,
+        effective,
+        requesterRole,
+      })
+    }
+
+    if (normalizedCommand === 'spend') {
+      return handleSpendCommand({
+        req,
+        res,
+        args: typeof args === 'string' ? args.trim() : '',
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        session,
+        effective,
+        requesterRole,
+      })
+    }
+
+    if (normalizedCommand === 'earn') {
+      return handleEarnCommand({
         req,
         res,
         args: typeof args === 'string' ? args.trim() : '',
@@ -339,6 +367,307 @@ async function handleRollCommand({
 }
 
 const prisma = getPrismaClient()
+
+// ─── Currency shorthand parser ────────────────────────────────────────────────
+
+const DENOM_PATTERN = /(\d+)(pp|gp|ep|sp|cp)/gi
+const VALID_DENOMS = new Set(['pp', 'gp', 'ep', 'sp', 'cp'])
+
+/**
+ * Parses a currency shorthand string like "1gp 3sp 33cp" or "10gp 35sp".
+ * Returns a partial record of denominations with positive amounts,
+ * or an error message if the string is empty/invalid.
+ */
+function parseCurrencyArgs(
+  args: string
+): Partial<Record<CurrencyDenomination, number>> | { error: string } {
+  if (!args.trim()) {
+    return { error: 'Specify an amount, e.g. 10gp or 1gp 3sp 33cp.' }
+  }
+
+  const result: Partial<Record<CurrencyDenomination, number>> = {}
+  let matched = false
+  const regex = new RegExp(DENOM_PATTERN.source, 'gi')
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(args)) !== null) {
+    const denom = m[2].toLowerCase() as CurrencyDenomination
+    if (!VALID_DENOMS.has(denom)) continue
+    const amount = parseInt(m[1], 10)
+    if (amount > 0) {
+      result[denom] = (result[denom] ?? 0) + amount
+      matched = true
+    }
+  }
+
+  if (!matched) {
+    return {
+      error:
+        'No valid currency found. Use denominations: cp, sp, ep, gp, pp — e.g. /spend 5gp 2sp.',
+    }
+  }
+
+  return result
+}
+
+/** Format a currency amount map as a human-readable string: "10gp 3sp 5cp". */
+function formatCurrencyAmounts(amounts: Partial<Record<CurrencyDenomination, number>>): string {
+  const DENOM_ORDER: CurrencyDenomination[] = ['pp', 'gp', 'ep', 'sp', 'cp']
+  return DENOM_ORDER.filter((d) => (amounts[d] ?? 0) > 0)
+    .map((d) => `${amounts[d]}${d}`)
+    .join(' ')
+}
+
+// ─── Insufficient-funds quips (50) ────────────────────────────────────────────
+// One is picked at random and broadcast as a SYSTEM message visible to all.
+
+const INSUFFICIENT_FUNDS_QUIPS = [
+  'Your coin purse rattles sadly with the sound of optimism.',
+  'The merchant sighs. You sigh. The merchant sighs louder.',
+  'You count your coins twice. They remain insufficient.',
+  'The shopkeeper turns you away with the quiet efficiency of someone who has done this before.',
+  'Your pockets produce moths.',
+  'Error: insufficient gold. Have you tried adventuring harder?',
+  'The treasury laughs at your ambition.',
+  'You would need to be slightly richer to pull that off.',
+  'The universe declines your financial offer.',
+  'You rifle through your pockets and find: disappointment.',
+  "That's a bold spend for someone with your net worth.",
+  'The coins you need are theoretically reachable. Just not by you. Not right now.',
+  "Your wealth and your goals are not currently on speaking terms.",
+  "The shopkeeper's expression says it all.",
+  'Try again after your next dragon.',
+  'Rejected, politely, with a smile that does not reach the eyes.',
+  "You are what economists call 'short'.",
+  'Your ambitions are large. Your wallet is not.',
+  'Not enough. Not even close. Impressive gap, really.',
+  'The money gods are unmoved.',
+  'You peer into your coin purse. It peers back, emptily.',
+  'That item will have to wait until you are marginally less broke.',
+  "The tavern keeper has seen this before. It doesn't end well.",
+  "Your gold situation is 'aspirational'.",
+  'Fortune favors the prepared. You are the other kind.',
+  "The merchants' guild requires coins, not optimism.",
+  'Transaction declined. The coins are not in your possession, though they remain in your heart.',
+  'Even the local pickpocket would come up short.',
+  'You have the confidence. Unfortunately, confidence is not legal tender.',
+  'A valiant financial attempt. Unsuccessful, but valiant.',
+  "The dice have spoken. They said 'no'.",
+  'Your balance sheet weeps quietly.',
+  "Insufficient funds — which is, incidentally, what the bank robbers said after your last heist.",
+  "The innkeeper doesn't take IOUs. He looked at your face and decided against it.",
+  'Not today, adventurer. Not with that wallet.',
+  'Your coin purse has the energy of a dragon hoarding air.',
+  "Reminder: wishing doesn't make it gold.",
+  'You would owe the universe slightly more than you currently own.',
+  'A noble attempt. The shopkeeper will think about it for seconds.',
+  'The economic forces of this realm require more from you.',
+  'Your rations are fine. Your finances are a different adventure entirely.',
+  'You check. You recheck. The number does not improve.',
+  'Perhaps rob a caravan first and come back.',
+  'Poverty is also a kind of adventure.',
+  "The guild treasurer has added you to the 'watch list'.",
+  'This transaction has been declined with the kind of quiet dignity you do not deserve.',
+  'You gesture dramatically at your empty purse. The shopkeeper is unimpressed.',
+  'Somewhere, a dragon is laughing.',
+  'Your finances are theoretical at this point.',
+] as const
+
+function pickQuip(): string {
+  return INSUFFICIENT_FUNDS_QUIPS[Math.floor(Math.random() * INSUFFICIENT_FUNDS_QUIPS.length)]
+}
+
+// ─── /spend handler ───────────────────────────────────────────────────────────
+
+/**
+ * /spend [currency]
+ * Debits the caller's own wallet (character if PLAYER, party purse if DM).
+ * Cannot spend more than available — attempting to do so broadcasts a dry-humor
+ * system message visible to everyone in the room and returns 400.
+ */
+async function handleSpendCommand({
+  req,
+  res,
+  args,
+  sessionId,
+  roomId,
+  session,
+  effective,
+  requesterRole,
+}: CommandHandlerParams) {
+  if (requesterRole === Role.SPECTATOR) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/spend is not available to spectators.' })
+  }
+
+  const parsed = parseCurrencyArgs(args)
+  if ('error' in parsed) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Usage: /spend [currency] — ${parsed.error}` })
+  }
+
+  const rawSession = await findSessionById(sessionId)
+  if (!rawSession?.campaignId) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/spend requires a campaign-linked session.' })
+  }
+  const campaignId = rawSession.campaignId as UUID
+
+  const ownerType: 'party' | 'character' = requesterRole === Role.DM ? 'party' : 'character'
+  const ownerId: UUID | null = requesterRole === Role.DM ? null : effective.userId
+
+  // Balance check before touching any layer
+  const wallet = await findOrCreateCurrencyWallet({ campaignId, ownerType, ownerId })
+  const DENOMS: CurrencyDenomination[] = ['cp', 'sp', 'ep', 'gp', 'pp']
+  const shortfall: Partial<Record<CurrencyDenomination, number>> = {}
+  for (const d of DENOMS) {
+    const want = parsed[d] ?? 0
+    if (want > 0 && wallet[d] < want) {
+      shortfall[d] = want - wallet[d]
+    }
+  }
+
+  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+
+  if (Object.keys(shortfall).length > 0) {
+    const quip = pickQuip()
+    const content = `[Wallet] ${effective.username} tries to spend ${formatCurrencyAmounts(parsed)}. ${quip}`
+    const chatMessage = await sendMessage({
+      sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
+      actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+    })
+    if (wsManager) {
+      wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+    }
+    return res.status(400).json({
+      code: 'INSUFFICIENT_FUNDS',
+      message: content,
+      shortfall,
+      chatMessage,
+    })
+  }
+
+  // Debit: negate each amount
+  const delta: Partial<Record<CurrencyDenomination, number>> = {}
+  for (const d of DENOMS) {
+    if ((parsed[d] ?? 0) > 0) delta[d] = -(parsed[d]!)
+  }
+  const updatedWallet = await adjustCurrency({
+    campaignId, ownerType, ownerId, delta, actorUserId: effective.userId, sessionId,
+  })
+
+  if (wsManager) {
+    const event: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'INVENTORY:CURRENCY_CHANGED',
+      version: 1,
+      userId: effective.userId,
+      userRole: requesterRole as any,
+      sessionId,
+      roomId: null,
+      timestamp: updatedWallet.updatedAt,
+      payload: {
+        campaignId,
+        walletId: updatedWallet.id,
+        ownerType: updatedWallet.ownerType,
+        ownerId: updatedWallet.ownerId,
+        delta,
+        newBalance: { cp: updatedWallet.cp, sp: updatedWallet.sp, ep: updatedWallet.ep, gp: updatedWallet.gp, pp: updatedWallet.pp },
+        changedByUserId: effective.userId,
+        changedAt: updatedWallet.updatedAt,
+      },
+    }
+    await wsManager.broadcastToCampaignMembers(campaignId, event)
+  }
+
+  const ownerLabel = ownerType === 'party' ? 'from the party purse' : 'from their wallet'
+  const content = `[Wallet] ${effective.username} spent ${formatCurrencyAmounts(parsed)} ${ownerLabel}.`
+  const chatMessage = await sendMessage({
+    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
+    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+  })
+  if (wsManager) {
+    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+  }
+
+  return res.status(200).json({ wallet: updatedWallet, message: chatMessage })
+}
+
+// ─── /earn handler ────────────────────────────────────────────────────────────
+
+/**
+ * /earn [currency]
+ * Credits the caller's own wallet (character if PLAYER, party purse if DM).
+ * No cap. Use for shop sales, individual rewards, or any inflow that isn't
+ * a shared loot drop.
+ */
+async function handleEarnCommand({
+  req,
+  res,
+  args,
+  sessionId,
+  roomId,
+  session,
+  effective,
+  requesterRole,
+}: CommandHandlerParams) {
+  if (requesterRole === Role.SPECTATOR) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/earn is not available to spectators.' })
+  }
+
+  const parsed = parseCurrencyArgs(args)
+  if ('error' in parsed) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Usage: /earn [currency] — ${parsed.error}` })
+  }
+
+  const rawSession = await findSessionById(sessionId)
+  if (!rawSession?.campaignId) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/earn requires a campaign-linked session.' })
+  }
+  const campaignId = rawSession.campaignId as UUID
+
+  const ownerType: 'party' | 'character' = requesterRole === Role.DM ? 'party' : 'character'
+  const ownerId: UUID | null = requesterRole === Role.DM ? null : effective.userId
+
+  const updatedWallet = await adjustCurrency({
+    campaignId, ownerType, ownerId, delta: parsed, actorUserId: effective.userId, sessionId,
+  })
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  if (wsManager) {
+    const event: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'INVENTORY:CURRENCY_CHANGED',
+      version: 1,
+      userId: effective.userId,
+      userRole: requesterRole as any,
+      sessionId,
+      roomId: null,
+      timestamp: updatedWallet.updatedAt,
+      payload: {
+        campaignId,
+        walletId: updatedWallet.id,
+        ownerType: updatedWallet.ownerType,
+        ownerId: updatedWallet.ownerId,
+        delta: parsed,
+        newBalance: { cp: updatedWallet.cp, sp: updatedWallet.sp, ep: updatedWallet.ep, gp: updatedWallet.gp, pp: updatedWallet.pp },
+        changedByUserId: effective.userId,
+        changedAt: updatedWallet.updatedAt,
+      },
+    }
+    await wsManager.broadcastToCampaignMembers(campaignId, event)
+  }
+
+  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+  const ownerLabel = ownerType === 'party' ? 'to the party purse' : 'to their wallet'
+  const content = `[Wallet] ${effective.username} earned ${formatCurrencyAmounts(parsed)} ${ownerLabel}.`
+  const chatMessage = await sendMessage({
+    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
+    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+  })
+  if (wsManager) {
+    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+  }
+
+  return res.status(200).json({ wallet: updatedWallet, message: chatMessage })
+}
 
 /** Fetch allowPlayerGive/Take/Loot flags for a campaign. Returns nulls if campaign not found. */
 async function getCampaignInventoryPolicy(campaignId: UUID) {

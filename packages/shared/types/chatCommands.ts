@@ -18,6 +18,8 @@ export type ChatCommandName =
   | 'take'
   | 'give'
   | 'drop'
+  | 'spend'
+  | 'earn'
 
 export interface ChatCommandDefinition {
   name: ChatCommandName
@@ -112,6 +114,26 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     syntax: '/drop [item name] [qty?]',
     description: 'Remove an item from your inventory. Quantity defaults to all. Requires confirmation.',
     example: '/drop Broken Arrow 3',
+    roles: [Role.DM, Role.PLAYER],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'spend',
+    slash: '/spend',
+    syntax: '/spend [currency]',
+    description:
+      'Spend coins from your own wallet (character if player, party purse if DM). Cannot spend more than you have — attempting to do so produces a public dry-humor message.',
+    example: '/spend 1gp 3sp 33cp',
+    roles: [Role.DM, Role.PLAYER],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'earn',
+    slash: '/earn',
+    syntax: '/earn [currency]',
+    description:
+      'Credit coins to your own wallet (character if player, party purse if DM). Use for shop sales, individual rewards, or any inflow that isn\'t a shared loot drop.',
+    example: '/earn 10gp 35sp',
     roles: [Role.DM, Role.PLAYER],
     availableInStates: [SessionState.ACTIVE],
   },

@@ -6,6 +6,14 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ---
 
+## [0.9.5] — 2026-06-19
+
+### Added
+
+- W-Inventory-System: `/earn [currency]` — chat command crediting the caller's own wallet (character if player, party purse if DM). Supports any combination of denominations (`1gp 3sp 33cp`, `10gp 35sp`, etc.) in any order. No cap. Broadcasts `INVENTORY:CURRENCY_CHANGED` per-campaign and a `[Wallet]` system chat message visible to all. Available to DM and PLAYER in ACTIVE sessions.
+- W-Inventory-System: `/spend [currency]` — chat command debiting the caller's own wallet. Balance is checked before any write; on shortfall a randomly-chosen dry-humor system message (50 options) is broadcast to all in the room and the command returns `400 INSUFFICIENT_FUNDS`. On success broadcasts `INVENTORY:CURRENCY_CHANGED` + `[Wallet]` system chat message. Available to DM and PLAYER.
+- Currency shorthand parser (`parseCurrencyArgs`) and formatter (`formatCurrencyAmounts`) added to `chat-command.routes.ts` — reusable for future currency-shorthand work in `/give`, `/take`, etc.
+
 ## [0.9.4] — 2026-06-19
 
 ### Added
