@@ -6,6 +6,18 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ---
 
+## [0.9.4] — 2026-06-19
+
+### Added
+
+- W-Inventory-System: `/loot [item name] [qty?]` — DM-only slash command to add a named item directly to party inventory. Last token treated as quantity if it's a positive integer. Produces `INVENTORY:ITEM_ADDED` WS event and a `[Loot]` system chat message. Registered in `packages/shared/types/chatCommands.ts`; handler in `apps/backend/src/api/chat-command.routes.ts`. When `allowPlayerLoot` is enabled on the campaign, players may also use `/loot`.
+- W-Inventory-System: Campaign player inventory permissions — `allowPlayerGive` (default ON), `allowPlayerTake` (default ON), `allowPlayerLoot` (default OFF) fields added to Campaign model (Prisma migration `20260619000000_add_campaign_player_inventory_permissions`). All three fields are surfaced in a new "Inventory Permissions" section in the Campaign Settings panel. Settings flow through `useCampaignSettings` → `sessionSettings.ts` → GET/PATCH `/api/campaigns/:id/settings`.
+- W-Inventory-System: `/take [item] [qty?]` — player chat command to take items from party inventory into their character inventory. Gated by `allowPlayerTake`. Supports partial quantities (source item decremented; new item created for recipient). Broadcasts `INVENTORY:ITEM_TRANSFERRED` per-campaign + system chat message.
+- W-Inventory-System: `/give @{party|player} [item] [qty?]` — DM or player (gated by `allowPlayerGive`) transfers an item to party or a named player. Players give from their character inventory; DM gives from party. Partial quantities supported. Target resolved by username or playerName. Broadcasts `INVENTORY:ITEM_TRANSFERRED` + system chat message.
+- W-Inventory-System: `/drop [item] [qty?]` — DM or player removes an item from their own inventory. Players drop from their character; DM drops from party. Partial quantity decrements the source item; full quantity deletes it. Broadcasts `INVENTORY:ITEM_REMOVED` + system chat message.
+- W-Inventory-System: `POST /api/inventory/:campaignId/transfer/currency` — atomic two-sided currency transfer. Validates source balance per denomination before applying; returns `400 INSUFFICIENT_FUNDS` with per-denomination shortfall on failure. All writes run in a single Prisma `$transaction`. Emits `INVENTORY:CURRENCY_CHANGED` for both source and destination owners. Players may only transfer from their own character wallet.
+- W-Inventory-System: `partialTransferInventoryItem`, `partialRemoveInventoryItem`, `findItemByOwnerAndName`, `transferCurrency` service helpers added to `apps/backend/src/services/inventory/inventory.service.ts`.
+
 ## [0.9.3] — 2026-06-19
 
 ### Added

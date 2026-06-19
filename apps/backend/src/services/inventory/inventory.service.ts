@@ -409,6 +409,224 @@ export async function adjustCurrency(params: {
   return mapWallet(updated)
 }
 
+// ─── Item name lookup ────────────────────────────────────────────────────────
+
+/**
+ * Find the first item owned by the given owner whose name matches (case-insensitive).
+ * Used by chat commands to resolve an item by name instead of ID.
+ */
+export async function findItemByOwnerAndName(params: {
+  campaignId: UUID
+  ownerType: 'party' | 'character'
+  ownerId: UUID | null
+  name: string
+}): Promise<InventoryItemDto | null> {
+  const rows = await listCampaignInventoryItems(params.campaignId)
+  const needle = params.name.trim().toLowerCase()
+  const match = rows.find(
+    (r) =>
+      r.ownerType === params.ownerType &&
+      (params.ownerType === 'party' ? r.ownerId === null : r.ownerId === params.ownerId) &&
+      r.name.toLowerCase() === needle
+  )
+  return match ? mapItem(match) : null
+}
+
+/**
+ * Transfer `qty` of an item to a new owner.
+ * If qty equals the item's full quantity, the item is moved whole.
+ * If qty is less, the source item is decremented and a new item is created for the target.
+ * Both paths write history entries.
+ */
+export async function partialTransferInventoryItem(params: {
+  item: InventoryItemDto
+  qty: number
+  campaignId: UUID
+  toOwnerType: 'party' | 'character'
+  toOwnerId: UUID | null
+  actorUserId: UUID
+  sessionId?: UUID
+}): Promise<InventoryItemDto> {
+  const { item, qty } = params
+
+  if (qty === item.quantity) {
+    return transferInventoryItem({
+      itemId: item.id,
+      campaignId: params.campaignId,
+      toOwnerType: params.toOwnerType,
+      toOwnerId: params.toOwnerId,
+      actorUserId: params.actorUserId,
+      sessionId: params.sessionId,
+    })
+  }
+
+  // Partial: decrement source, create new item for target
+  await editInventoryItem({
+    itemId: item.id,
+    campaignId: params.campaignId,
+    quantity: item.quantity - qty,
+    actorUserId: params.actorUserId,
+    sessionId: params.sessionId,
+  })
+
+  const newItem = await addInventoryItem({
+    campaignId: params.campaignId,
+    ownerType: params.toOwnerType,
+    ownerId: params.toOwnerId,
+    name: item.name,
+    quantity: qty,
+    source: item.source,
+    srdKey: item.srdKey ?? undefined,
+    srdCategory: item.srdCategory,
+    notes: item.notes ?? undefined,
+    addedByUserId: params.actorUserId,
+    sessionId: params.sessionId,
+  })
+
+  return newItem
+}
+
+/**
+ * Remove `qty` of an item. If qty equals full quantity, the item is deleted.
+ * If qty is less, the item's quantity is decremented.
+ */
+export async function partialRemoveInventoryItem(params: {
+  item: InventoryItemDto
+  qty: number
+  campaignId: UUID
+  actorUserId: UUID
+  sessionId?: UUID
+}): Promise<InventoryItemDto> {
+  const { item, qty } = params
+
+  if (qty === item.quantity) {
+    return removeInventoryItem({
+      itemId: item.id,
+      campaignId: params.campaignId,
+      actorUserId: params.actorUserId,
+      sessionId: params.sessionId,
+    })
+  }
+
+  return editInventoryItem({
+    itemId: item.id,
+    campaignId: params.campaignId,
+    quantity: item.quantity - qty,
+    actorUserId: params.actorUserId,
+    sessionId: params.sessionId,
+  })
+}
+
+// ─── Atomic currency transfer ────────────────────────────────────────────────
+
+export type CurrencyDenomination = 'cp' | 'sp' | 'ep' | 'gp' | 'pp'
+
+export interface CurrencyTransferResult {
+  fromWallet: CurrencyWalletDto
+  toWallet: CurrencyWalletDto
+}
+
+export interface InsufficientFundsError {
+  code: 'INSUFFICIENT_FUNDS'
+  /** Denominations that have a shortfall, keyed by coin type. */
+  shortfall: Partial<Record<CurrencyDenomination, number>>
+}
+
+/**
+ * Atomically debit fromWallet and credit toWallet for the given amounts.
+ * Returns INSUFFICIENT_FUNDS if the source wallet can't cover any denomination.
+ * All writes run in a single Prisma transaction.
+ */
+export async function transferCurrency(params: {
+  campaignId: UUID
+  fromOwnerType: 'party' | 'character'
+  fromOwnerId: UUID | null
+  toOwnerType: 'party' | 'character'
+  toOwnerId: UUID | null
+  amounts: Partial<Record<CurrencyDenomination, number>>
+  actorUserId: UUID
+  sessionId?: UUID
+}): Promise<CurrencyTransferResult | InsufficientFundsError> {
+  const DENOMS: CurrencyDenomination[] = ['cp', 'sp', 'ep', 'gp', 'pp']
+
+  const [fromRow, toRow] = await Promise.all([
+    findOrCreateCurrencyWallet({
+      campaignId: params.campaignId,
+      ownerType: params.fromOwnerType,
+      ownerId: params.fromOwnerId,
+    }),
+    findOrCreateCurrencyWallet({
+      campaignId: params.campaignId,
+      ownerType: params.toOwnerType,
+      ownerId: params.toOwnerId,
+    }),
+  ])
+
+  // Validate sufficient funds
+  const shortfall: Partial<Record<CurrencyDenomination, number>> = {}
+  for (const denom of DENOMS) {
+    const amount = params.amounts[denom] ?? 0
+    if (amount > 0 && fromRow[denom] < amount) {
+      shortfall[denom] = amount - fromRow[denom]
+    }
+  }
+  if (Object.keys(shortfall).length > 0) {
+    return { code: 'INSUFFICIENT_FUNDS', shortfall }
+  }
+
+  const now = new Date()
+
+  // Apply debit and credit
+  const fromBalance = {
+    cp: fromRow.cp - (params.amounts.cp ?? 0),
+    sp: fromRow.sp - (params.amounts.sp ?? 0),
+    ep: fromRow.ep - (params.amounts.ep ?? 0),
+    gp: fromRow.gp - (params.amounts.gp ?? 0),
+    pp: fromRow.pp - (params.amounts.pp ?? 0),
+  }
+  const toBalance = {
+    cp: toRow.cp + (params.amounts.cp ?? 0),
+    sp: toRow.sp + (params.amounts.sp ?? 0),
+    ep: toRow.ep + (params.amounts.ep ?? 0),
+    gp: toRow.gp + (params.amounts.gp ?? 0),
+    pp: toRow.pp + (params.amounts.pp ?? 0),
+  }
+
+  const [updatedFrom, updatedTo] = await prisma.$transaction([
+    prisma.currencyWallet.update({ where: { id: fromRow.id }, data: { ...fromBalance, updatedAt: now } }),
+    prisma.currencyWallet.update({ where: { id: toRow.id }, data: { ...toBalance, updatedAt: now } }),
+  ])
+
+  const historyBase = {
+    campaignId: params.campaignId,
+    sessionId: params.sessionId ?? null,
+    actorUserId: params.actorUserId,
+    actionType: InventoryActionType.CURRENCY_CHANGED,
+    itemId: null,
+    itemName: null,
+    quantity: null,
+    currencyDelta: params.amounts,
+    notes: null,
+  }
+
+  await Promise.all([
+    createInventoryHistoryRecord({
+      id: randomUUID() as UUID,
+      ...historyBase,
+      fromOwnerType: params.fromOwnerType,
+      fromOwnerId: params.fromOwnerId,
+      toOwnerType: params.toOwnerType,
+      toOwnerId: params.toOwnerId,
+      createdAt: now,
+    }),
+  ])
+
+  return {
+    fromWallet: mapWallet(updatedFrom as CurrencyWalletRow),
+    toWallet: mapWallet(updatedTo as CurrencyWalletRow),
+  }
+}
+
 // ─── External sync ────────────────────────────────────────────────────────────
 
 export interface ExternalInventoryItemInput {

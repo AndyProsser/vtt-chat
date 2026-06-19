@@ -220,6 +220,41 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
             />
           </div>
 
+          {/* Inventory player permissions card */}
+          <div className="csp-card">
+            <h5 className="crbs-heading csp-card-heading">Inventory Permissions</h5>
+
+            <label className="session-label" id="label-allow-player-give">
+              Players can use <code>/give</code>
+            </label>
+            <TogglePair
+              id="allow-player-give"
+              value={props.settingsAllowPlayerGive}
+              onChange={props.onSettingsAllowPlayerGiveChange}
+              disabled={props.isSaving}
+            />
+
+            <label className="session-label" id="label-allow-player-take">
+              Players can use <code>/take</code>
+            </label>
+            <TogglePair
+              id="allow-player-take"
+              value={props.settingsAllowPlayerTake}
+              onChange={props.onSettingsAllowPlayerTakeChange}
+              disabled={props.isSaving}
+            />
+
+            <label className="session-label" id="label-allow-player-loot">
+              Players can use <code>/loot</code>
+            </label>
+            <TogglePair
+              id="allow-player-loot"
+              value={props.settingsAllowPlayerLoot}
+              onChange={props.onSettingsAllowPlayerLootChange}
+              disabled={props.isSaving}
+            />
+          </div>
+
           {/* D&D Ruleset card */}
           <div className="csp-card">
             <h5 className="crbs-heading csp-card-heading">D&amp;D Ruleset</h5>

@@ -70,6 +70,9 @@ export function applyCampaignSettingsPayload(
     (settings.supportedPlatforms ?? ['ANY']) as SupportedPlatform[]
   )
   campaignSettingsActions.setSettingsDndRuleset(settings.dndRuleset ?? '2024')
+  campaignSettingsActions.setSettingsAllowPlayerGive(settings.allowPlayerGive ?? true)
+  campaignSettingsActions.setSettingsAllowPlayerTake(settings.allowPlayerTake ?? true)
+  campaignSettingsActions.setSettingsAllowPlayerLoot(settings.allowPlayerLoot ?? false)
 
   // Hydrate campaign schedule slice — needed for NextSessionDate on refresh and after info edits
   const schedLabel =
@@ -117,6 +120,9 @@ export function buildCampaignSettingsSavePayload(params: {
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
   settingsDndRuleset: '2014' | '2024'
+  settingsAllowPlayerGive: boolean
+  settingsAllowPlayerTake: boolean
+  settingsAllowPlayerLoot: boolean
 }) {
   return {
     name: params.settingsName,
@@ -146,6 +152,9 @@ export function buildCampaignSettingsSavePayload(params: {
     defaultSessionDurationMins: params.settingsDefaultSessionDurationMins,
     supportedPlatforms: params.settingsSupportedPlatforms,
     dndRuleset: params.settingsDndRuleset,
+    allowPlayerGive: params.settingsAllowPlayerGive,
+    allowPlayerTake: params.settingsAllowPlayerTake,
+    allowPlayerLoot: params.settingsAllowPlayerLoot,
   }
 }
 

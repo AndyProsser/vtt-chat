@@ -169,6 +169,12 @@ export const EditorWorkspace = memo(function EditorWorkspace(props: EditorWorksp
           onSettingsSupportedPlatformsChange: props.onSettingsSupportedPlatformsChange,
           settingsDndRuleset: props.settingsDndRuleset,
           onSettingsDndRulesetChange: props.onSettingsDndRulesetChange,
+          settingsAllowPlayerGive: props.settingsAllowPlayerGive,
+          onSettingsAllowPlayerGiveChange: props.onSettingsAllowPlayerGiveChange,
+          settingsAllowPlayerTake: props.settingsAllowPlayerTake,
+          onSettingsAllowPlayerTakeChange: props.onSettingsAllowPlayerTakeChange,
+          settingsAllowPlayerLoot: props.settingsAllowPlayerLoot,
+          onSettingsAllowPlayerLootChange: props.onSettingsAllowPlayerLootChange,
           sessionNameBase: props.sessionSettingsName,
           onSessionNameBaseChange: props.onSessionNameChange,
           sessionNameContext: 'NEXT',
@@ -258,6 +264,12 @@ export const EditorWorkspace = memo(function EditorWorkspace(props: EditorWorksp
       props.settingsSpectatorWaitlistEnabled,
       props.settingsSupportedPlatforms,
       props.settingsVisibility,
+      props.settingsAllowPlayerGive,
+      props.onSettingsAllowPlayerGiveChange,
+      props.settingsAllowPlayerTake,
+      props.onSettingsAllowPlayerTakeChange,
+      props.settingsAllowPlayerLoot,
+      props.onSettingsAllowPlayerLootChange,
     ]
   )
 

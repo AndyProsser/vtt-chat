@@ -146,6 +146,9 @@ export function WorkspaceInitialization({
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
     settingsDndRuleset,
+    settingsAllowPlayerGive,
+    settingsAllowPlayerTake,
+    settingsAllowPlayerLoot,
   } = campaignSettings
 
   // Character settings hook
@@ -388,6 +391,9 @@ export function WorkspaceInitialization({
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
     settingsDndRuleset,
+    settingsAllowPlayerGive,
+    settingsAllowPlayerTake,
+    settingsAllowPlayerLoot,
     settingsData,
     setCampaigns,
     setSelectedCampaignId,
@@ -888,6 +894,12 @@ export function WorkspaceInitialization({
     onSettingsSupportedPlatformsChange: campaignSettingsActions.setSettingsSupportedPlatforms,
     settingsDndRuleset,
     onSettingsDndRulesetChange: campaignSettingsActions.setSettingsDndRuleset,
+    settingsAllowPlayerGive,
+    onSettingsAllowPlayerGiveChange: campaignSettingsActions.setSettingsAllowPlayerGive,
+    settingsAllowPlayerTake,
+    onSettingsAllowPlayerTakeChange: campaignSettingsActions.setSettingsAllowPlayerTake,
+    settingsAllowPlayerLoot,
+    onSettingsAllowPlayerLootChange: campaignSettingsActions.setSettingsAllowPlayerLoot,
     onSessionNameChange: setSessionSettingsName,
     onCopyInviteUrl: handleCopyInviteUrlModal,
     onReissueInvite: handleReissueInviteModal,

@@ -60,6 +60,9 @@ export type EditorWorkspaceProps = {
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
   settingsDndRuleset: '2014' | '2024'
+  settingsAllowPlayerGive: boolean
+  settingsAllowPlayerTake: boolean
+  settingsAllowPlayerLoot: boolean
   sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: PlayerSettingsPanel
@@ -89,6 +92,9 @@ export type EditorWorkspaceProps = {
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
   onSettingsSupportedPlatformsChange: (value: SupportedPlatform[]) => void
   onSettingsDndRulesetChange: (value: '2014' | '2024') => void
+  onSettingsAllowPlayerGiveChange: (value: boolean) => void
+  onSettingsAllowPlayerTakeChange: (value: boolean) => void
+  onSettingsAllowPlayerLootChange: (value: boolean) => void
   onSessionNameChange: (value: string) => void
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void

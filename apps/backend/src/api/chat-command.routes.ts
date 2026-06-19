@@ -26,7 +26,14 @@ import type { WebSocketManager } from '@/ws'
 import type { StoredMessage } from '@/types/chat.types'
 import { findSessionById } from '@/repositories/session.repository'
 import { listCampaignMembersForPresence } from '@/repositories/campaign.repository'
-import { addInventoryItem, adjustCurrency } from '@/services/inventory/inventory.service'
+import { getPrismaClient } from '@/infra/db'
+import {
+  addInventoryItem,
+  adjustCurrency,
+  findItemByOwnerAndName,
+  partialTransferInventoryItem,
+  partialRemoveInventoryItem,
+} from '@/services/inventory/inventory.service'
 import { parseLootRandomArgs, generateLoot, buildLootSummaryMessage, formatCoins } from '@/services/inventory/loot-random.service'
 import crypto from 'node:crypto'
 
@@ -168,6 +175,58 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
+    if (normalizedCommand === 'take') {
+      return handleTakeCommand({
+        req,
+        res,
+        args: typeof args === 'string' ? args.trim() : '',
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        session,
+        effective,
+        requesterRole,
+      })
+    }
+
+    if (normalizedCommand === 'give') {
+      return handleGiveCommand({
+        req,
+        res,
+        args: typeof args === 'string' ? args.trim() : '',
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        session,
+        effective,
+        requesterRole,
+      })
+    }
+
+    if (normalizedCommand === 'drop') {
+      return handleDropCommand({
+        req,
+        res,
+        args: typeof args === 'string' ? args.trim() : '',
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        session,
+        effective,
+        requesterRole,
+      })
+    }
+
+    if (normalizedCommand === 'loot') {
+      return handleLootCommand({
+        req,
+        res,
+        args: typeof args === 'string' ? args.trim() : '',
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        session,
+        effective,
+        requesterRole,
+      })
+    }
+
     if (normalizedCommand === 'loot-random') {
       return handleLootRandomCommand({
         req,
@@ -277,6 +336,534 @@ async function handleRollCommand({
   }
 
   return res.status(201).json({ message: stored })
+}
+
+const prisma = getPrismaClient()
+
+/** Fetch allowPlayerGive/Take/Loot flags for a campaign. Returns nulls if campaign not found. */
+async function getCampaignInventoryPolicy(campaignId: UUID) {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { allowPlayerGive: true, allowPlayerTake: true, allowPlayerLoot: true },
+  })
+  return {
+    allowPlayerGive: campaign?.allowPlayerGive ?? true,
+    allowPlayerTake: campaign?.allowPlayerTake ?? true,
+    allowPlayerLoot: campaign?.allowPlayerLoot ?? false,
+  }
+}
+
+/**
+ * Parse "[item name] [qty?]" — last token is qty if it's a positive integer ≤ 9999.
+ * Returns { itemName, qty } or { error } if args is empty.
+ */
+function parseItemArgs(args: string): { itemName: string; qty: number } | { error: string } {
+  if (!args.trim()) return { error: 'Item name is required.' }
+  const tokens = args.trim().split(/\s+/)
+  let qty = 1
+  let nameTokens = tokens
+  const last = tokens[tokens.length - 1]
+  if (tokens.length > 1 && /^\d+$/.test(last)) {
+    const n = parseInt(last, 10)
+    if (n >= 1 && n <= 9999) {
+      qty = n
+      nameTokens = tokens.slice(0, -1)
+    }
+  }
+  const itemName = nameTokens.join(' ').trim()
+  if (!itemName) return { error: 'Item name is required.' }
+  return { itemName, qty }
+}
+
+/**
+ * /take [item name] [qty?]
+ * Player-only (or DM if allowPlayerLoot bypasses, but normally this is for players).
+ * Takes qty of a named item from party inventory into the caller's character inventory.
+ * Gated by campaign.allowPlayerTake.
+ */
+async function handleTakeCommand({
+  req,
+  res,
+  args,
+  sessionId,
+  roomId,
+  session,
+  effective,
+  requesterRole,
+}: CommandHandlerParams) {
+  if (requesterRole === Role.SPECTATOR) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/take is not available to spectators.' })
+  }
+
+  const parsed = parseItemArgs(args)
+  if ('error' in parsed) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Usage: /take [item name] [qty?] — ${parsed.error}`,
+    })
+  }
+
+  const rawSession = await findSessionById(sessionId)
+  if (!rawSession?.campaignId) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/take requires a campaign-linked session.' })
+  }
+  const campaignId = rawSession.campaignId as UUID
+
+  if (requesterRole === Role.PLAYER) {
+    const policy = await getCampaignInventoryPolicy(campaignId)
+    if (!policy.allowPlayerTake) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'The DM has disabled /take for players in this campaign.' })
+    }
+  }
+
+  const item = await findItemByOwnerAndName({
+    campaignId,
+    ownerType: 'party',
+    ownerId: null,
+    name: parsed.itemName,
+  })
+  if (!item) {
+    return res.status(404).json({
+      code: ErrorCode.NOT_FOUND,
+      message: `No "${parsed.itemName}" found in party inventory.`,
+    })
+  }
+  if (parsed.qty > item.quantity) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Party only has ${item.quantity}× ${item.name}.`,
+    })
+  }
+
+  const transferred = await partialTransferInventoryItem({
+    item,
+    qty: parsed.qty,
+    campaignId,
+    toOwnerType: 'character',
+    toOwnerId: effective.userId,
+    actorUserId: effective.userId,
+    sessionId,
+  })
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  if (wsManager) {
+    const event: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'INVENTORY:ITEM_TRANSFERRED',
+      version: 1,
+      userId: effective.userId,
+      userRole: requesterRole as any,
+      sessionId,
+      roomId: null,
+      timestamp: transferred.updatedAt,
+      payload: {
+        campaignId,
+        itemId: transferred.id,
+        name: transferred.name,
+        quantity: parsed.qty,
+        fromOwnerType: 'party',
+        fromOwnerId: null,
+        toOwnerType: 'character',
+        toOwnerId: effective.userId,
+        transferredByUserId: effective.userId,
+        transferredAt: transferred.updatedAt,
+      },
+    }
+    await wsManager.broadcastToCampaignMembers(campaignId, event)
+  }
+
+  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+  const qtyLabel = parsed.qty > 1 ? ` ×${parsed.qty}` : ''
+  const content = `[Inventory] ${effective.username} took ${item.name}${qtyLabel} from party inventory.`
+  const chatMessage = await sendMessage({
+    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
+    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+  })
+  if (wsManager) {
+    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+  }
+
+  return res.status(201).json({ item: transferred, message: chatMessage })
+}
+
+/**
+ * /give @{party|player} [item name] [qty?]
+ * DM or PLAYER (player needs allowPlayerGive). Transfers an item from caller's inventory
+ * (or party if DM) to the specified target.
+ */
+async function handleGiveCommand({
+  req,
+  res,
+  args,
+  sessionId,
+  roomId,
+  session,
+  effective,
+  requesterRole,
+}: CommandHandlerParams) {
+  if (requesterRole === Role.SPECTATOR) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/give is not available to spectators.' })
+  }
+
+  // Split @target from the rest
+  const atMatch = args.match(/^(@\S+)\s+(.+)$/)
+  if (!atMatch) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Usage: /give @{party|player} [item name] [qty?] — e.g. /give @party Torch 3',
+    })
+  }
+  const targetHandle = atMatch[1].toLowerCase()
+  const itemArgs = atMatch[2].trim()
+
+  const parsed = parseItemArgs(itemArgs)
+  if ('error' in parsed) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Usage: /give @target [item name] [qty?] — ${parsed.error}` })
+  }
+
+  const rawSession = await findSessionById(sessionId)
+  if (!rawSession?.campaignId) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/give requires a campaign-linked session.' })
+  }
+  const campaignId = rawSession.campaignId as UUID
+
+  if (requesterRole === Role.PLAYER) {
+    const policy = await getCampaignInventoryPolicy(campaignId)
+    if (!policy.allowPlayerGive) {
+      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'The DM has disabled /give for players in this campaign.' })
+    }
+  }
+
+  // Resolve target owner
+  let toOwnerType: 'party' | 'character'
+  let toOwnerId: UUID | null
+
+  if (targetHandle === '@party') {
+    toOwnerType = 'party'
+    toOwnerId = null
+  } else {
+    // Resolve @username to userId via campaign members
+    const members = await listCampaignMembersForPresence(campaignId)
+    const username = targetHandle.replace(/^@/, '')
+    const member = members.find(
+      (m) =>
+        m.role === 'PLAYER' &&
+        (m.username.toLowerCase() === username || m.playerName.toLowerCase() === username)
+    )
+    if (!member) {
+      return res.status(404).json({
+        code: ErrorCode.NOT_FOUND,
+        message: `No player "${username}" found in this campaign. Use @party or a player's name.`,
+      })
+    }
+    toOwnerType = 'character'
+    toOwnerId = member.userId as UUID
+  }
+
+  // Players give from their own character inventory
+  const fromOwnerType: 'party' | 'character' = requesterRole === Role.PLAYER ? 'character' : 'party'
+  const fromOwnerId: UUID | null = requesterRole === Role.PLAYER ? effective.userId : null
+
+  const item = await findItemByOwnerAndName({
+    campaignId,
+    ownerType: fromOwnerType,
+    ownerId: fromOwnerId,
+    name: parsed.itemName,
+  })
+  if (!item) {
+    const sourceLabel = fromOwnerType === 'party' ? 'party inventory' : 'your inventory'
+    return res.status(404).json({
+      code: ErrorCode.NOT_FOUND,
+      message: `No "${parsed.itemName}" found in ${sourceLabel}.`,
+    })
+  }
+  if (parsed.qty > item.quantity) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `You only have ${item.quantity}× ${item.name}.`,
+    })
+  }
+
+  const transferred = await partialTransferInventoryItem({
+    item,
+    qty: parsed.qty,
+    campaignId,
+    toOwnerType,
+    toOwnerId,
+    actorUserId: effective.userId,
+    sessionId,
+  })
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  if (wsManager) {
+    const event: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'INVENTORY:ITEM_TRANSFERRED',
+      version: 1,
+      userId: effective.userId,
+      userRole: requesterRole as any,
+      sessionId,
+      roomId: null,
+      timestamp: transferred.updatedAt,
+      payload: {
+        campaignId,
+        itemId: transferred.id,
+        name: transferred.name,
+        quantity: parsed.qty,
+        fromOwnerType,
+        fromOwnerId,
+        toOwnerType,
+        toOwnerId,
+        transferredByUserId: effective.userId,
+        transferredAt: transferred.updatedAt,
+      },
+    }
+    await wsManager.broadcastToCampaignMembers(campaignId, event)
+  }
+
+  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+  const qtyLabel = parsed.qty > 1 ? ` ×${parsed.qty}` : ''
+  const destLabel = toOwnerType === 'party' ? 'party inventory' : `${targetHandle}'s inventory`
+  const content = `[Inventory] ${effective.username} gave ${item.name}${qtyLabel} to ${destLabel}.`
+  const chatMessage = await sendMessage({
+    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
+    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+  })
+  if (wsManager) {
+    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+  }
+
+  return res.status(201).json({ item: transferred, message: chatMessage })
+}
+
+/**
+ * /drop [item name] [qty?]
+ * DM or PLAYER. Removes an item from the caller's own inventory (character for players,
+ * party for DM). DM can also pass --party or --character flags; for simplicity the
+ * initial implementation assumes: players drop from their character, DM drops from party.
+ */
+async function handleDropCommand({
+  req,
+  res,
+  args,
+  sessionId,
+  roomId,
+  session,
+  effective,
+  requesterRole,
+}: CommandHandlerParams) {
+  if (requesterRole === Role.SPECTATOR) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/drop is not available to spectators.' })
+  }
+
+  const parsed = parseItemArgs(args)
+  if ('error' in parsed) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Usage: /drop [item name] [qty?] — ${parsed.error}`,
+    })
+  }
+
+  const rawSession = await findSessionById(sessionId)
+  if (!rawSession?.campaignId) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/drop requires a campaign-linked session.' })
+  }
+  const campaignId = rawSession.campaignId as UUID
+
+  const ownerType: 'party' | 'character' = requesterRole === Role.PLAYER ? 'character' : 'party'
+  const ownerId: UUID | null = requesterRole === Role.PLAYER ? effective.userId : null
+
+  const item = await findItemByOwnerAndName({ campaignId, ownerType, ownerId, name: parsed.itemName })
+  if (!item) {
+    const label = ownerType === 'party' ? 'party inventory' : 'your inventory'
+    return res.status(404).json({
+      code: ErrorCode.NOT_FOUND,
+      message: `No "${parsed.itemName}" found in ${label}.`,
+    })
+  }
+  if (parsed.qty > item.quantity) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `You only have ${item.quantity}× ${item.name}.`,
+    })
+  }
+
+  const removed = await partialRemoveInventoryItem({
+    item,
+    qty: parsed.qty,
+    campaignId,
+    actorUserId: effective.userId,
+    sessionId,
+  })
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  if (wsManager) {
+    const event: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'INVENTORY:ITEM_REMOVED',
+      version: 1,
+      userId: effective.userId,
+      userRole: requesterRole as any,
+      sessionId,
+      roomId: null,
+      timestamp: Date.now(),
+      payload: {
+        campaignId,
+        itemId: item.id,
+        ownerType,
+        ownerId,
+        name: item.name,
+        quantity: parsed.qty,
+        removedByUserId: effective.userId,
+        removedAt: Date.now(),
+      },
+    }
+    await wsManager.broadcastToCampaignMembers(campaignId, event)
+  }
+
+  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+  const qtyLabel = parsed.qty > 1 ? ` ×${parsed.qty}` : ''
+  const content = `[Inventory] ${effective.username} dropped ${item.name}${qtyLabel}.`
+  const chatMessage = await sendMessage({
+    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
+    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+  })
+  if (wsManager) {
+    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+  }
+
+  return res.status(200).json({ item: removed, message: chatMessage })
+}
+
+/**
+ * /loot [item name] [qty?]
+ * DM-only. Adds a named item to the party inventory. The last token is treated
+ * as quantity if it is a whole positive number; everything else is the item name.
+ * Produces INVENTORY:ITEM_ADDED WS event + system chat message.
+ */
+async function handleLootCommand({
+  req,
+  res,
+  args,
+  sessionId,
+  roomId,
+  session,
+  effective,
+  requesterRole,
+}: CommandHandlerParams) {
+  const rawSession = await findSessionById(sessionId)
+
+  if (requesterRole !== Role.DM) {
+    if (rawSession?.campaignId) {
+      const policy = await getCampaignInventoryPolicy(rawSession.campaignId as UUID)
+      if (!policy.allowPlayerLoot) {
+        return res.status(403).json({
+          code: ErrorCode.FORBIDDEN,
+          message: '/loot is restricted to the DM in this campaign.',
+        })
+      }
+    } else {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: '/loot is only available to the DM.',
+      })
+    }
+  }
+
+  if (!args) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Usage: /loot [item name] [qty?] — e.g. /loot Potion of Healing 2',
+    })
+  }
+
+  // Split off trailing integer token as quantity if present
+  const tokens = args.trim().split(/\s+/)
+  let quantity = 1
+  let nameTokens = tokens
+  const lastToken = tokens[tokens.length - 1]
+  if (tokens.length > 1 && /^\d+$/.test(lastToken)) {
+    const parsed = parseInt(lastToken, 10)
+    if (parsed >= 1 && parsed <= 9999) {
+      quantity = parsed
+      nameTokens = tokens.slice(0, -1)
+    }
+  }
+  const itemName = nameTokens.join(' ').trim()
+  if (!itemName) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'Usage: /loot [item name] [qty?] — item name is required.',
+    })
+  }
+  if (!rawSession?.campaignId) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: '/loot requires a campaign-linked session.' })
+  }
+  const campaignId = rawSession.campaignId as UUID
+
+  const item = await addInventoryItem({
+    campaignId,
+    ownerType: 'party',
+    ownerId: null,
+    name: itemName,
+    quantity,
+    source: InventoryItemSource.CUSTOM,
+    srdCategory: InventoryItemCategory.EQUIPMENT,
+    addedByUserId: effective.userId,
+    sessionId,
+  })
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  if (wsManager) {
+    const event: EventEnvelope = {
+      id: crypto.randomUUID() as UUID,
+      type: 'INVENTORY:ITEM_ADDED',
+      version: 1,
+      userId: effective.userId,
+      userRole: requesterRole as any,
+      sessionId,
+      roomId: null,
+      timestamp: item.createdAt,
+      payload: {
+        campaignId: item.campaignId,
+        itemId: item.id,
+        ownerType: item.ownerType,
+        ownerId: item.ownerId,
+        name: item.name,
+        quantity: item.quantity,
+        source: item.source,
+        srdKey: item.srdKey,
+        srdCategory: item.srdCategory,
+        notes: item.notes,
+        addedByUserId: item.addedByUserId,
+        addedAt: item.createdAt,
+      },
+    }
+    await wsManager.broadcastToCampaignMembers(campaignId, event)
+  }
+
+  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+  const content = `[Loot] ${item.name}${item.quantity > 1 ? ` ×${item.quantity}` : ''} added to party inventory.`
+  const chatMessage = await sendMessage({
+    sessionId,
+    roomId,
+    authorId: effective.userId,
+    authorUsername: effective.username,
+    actorRole: requesterRole,
+    dmId: session.dmId,
+    content,
+    type: MessageType.SYSTEM,
+    visibleTo,
+  })
+
+  if (wsManager) {
+    const msgEvent = buildMessageSentEvent(chatMessage, effective.userId, requesterRole)
+    wsManager.broadcastEventToSession(sessionId, msgEvent, chatMessage.visibleTo)
+  }
+
+  return res.status(201).json({ item, message: chatMessage })
 }
 
 /**

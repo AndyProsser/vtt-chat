@@ -52,6 +52,9 @@ interface UseCampaignSettingsState {
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
   settingsDndRuleset: '2014' | '2024'
+  settingsAllowPlayerGive: boolean
+  settingsAllowPlayerTake: boolean
+  settingsAllowPlayerLoot: boolean
 }
 
 interface UseCampaignSettingsActions {
@@ -88,6 +91,9 @@ interface UseCampaignSettingsActions {
   setSettingsDefaultSessionDurationMins: (value: number) => void
   setSettingsSupportedPlatforms: (value: SupportedPlatform[]) => void
   setSettingsDndRuleset: (value: '2014' | '2024') => void
+  setSettingsAllowPlayerGive: (value: boolean) => void
+  setSettingsAllowPlayerTake: (value: boolean) => void
+  setSettingsAllowPlayerLoot: (value: boolean) => void
 }
 
 export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSettingsActions] {
@@ -137,6 +143,9 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
     ['ANY']
   )
   const [settingsDndRuleset, setSettingsDndRuleset] = useState<'2014' | '2024'>('2024')
+  const [settingsAllowPlayerGive, setSettingsAllowPlayerGive] = useState(true)
+  const [settingsAllowPlayerTake, setSettingsAllowPlayerTake] = useState(true)
+  const [settingsAllowPlayerLoot, setSettingsAllowPlayerLoot] = useState(false)
 
   const state: UseCampaignSettingsState = useMemo(
     () => ({
@@ -173,6 +182,9 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsDefaultSessionDurationMins,
       settingsSupportedPlatforms,
       settingsDndRuleset,
+      settingsAllowPlayerGive,
+      settingsAllowPlayerTake,
+      settingsAllowPlayerLoot,
     }),
     [
       isSettingsLoading,
@@ -208,6 +220,9 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsDefaultSessionDurationMins,
       settingsSupportedPlatforms,
       settingsDndRuleset,
+      settingsAllowPlayerGive,
+      settingsAllowPlayerTake,
+      settingsAllowPlayerLoot,
     ]
   )
 
@@ -246,6 +261,9 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       setSettingsDefaultSessionDurationMins,
       setSettingsSupportedPlatforms,
       setSettingsDndRuleset,
+      setSettingsAllowPlayerGive,
+      setSettingsAllowPlayerTake,
+      setSettingsAllowPlayerLoot,
     }),
     []
   )

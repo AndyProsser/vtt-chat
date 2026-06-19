@@ -112,6 +112,12 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
             onSettingsSupportedPlatformsChange={props.onSettingsSupportedPlatformsChange}
             settingsDndRuleset={props.settingsDndRuleset}
             onSettingsDndRulesetChange={props.onSettingsDndRulesetChange}
+            settingsAllowPlayerGive={props.settingsAllowPlayerGive}
+            onSettingsAllowPlayerGiveChange={props.onSettingsAllowPlayerGiveChange}
+            settingsAllowPlayerTake={props.settingsAllowPlayerTake}
+            onSettingsAllowPlayerTakeChange={props.onSettingsAllowPlayerTakeChange}
+            settingsAllowPlayerLoot={props.settingsAllowPlayerLoot}
+            onSettingsAllowPlayerLootChange={props.onSettingsAllowPlayerLootChange}
             sessionNameBase={props.sessionNameBase}
             onSessionNameBaseChange={props.onSessionNameBaseChange}
             sessionNameContext={props.sessionNameContext}

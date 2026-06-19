@@ -2040,22 +2040,22 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [x] Per-item action menu: Edit (inline), Move to… (transfer), Remove (with confirmation) — all three modes wired via state machine in `InventoryPanel.ItemRow.tsx`
 - [x] Inventory history log overlay (within INVENTORY panel): toggle via header button; filterable by action type; shows action badge, description, relative time
 - [ ] Inventory history filter by character and date range
-- [ ] Campaign settings for player permissions: Allow players /give and /take (ON default); Allow players /loot (OFF default)
-- [ ] `/loot [item] [qty?]` — DM adds item to party inventory; chat system message in ACTIVE session
+- [x] Campaign settings for player permissions: Allow players /give and /take (ON default); Allow players /loot (OFF default) — `allowPlayerGive`, `allowPlayerTake`, `allowPlayerLoot` on Campaign; Inventory Permissions section in Campaign Settings panel.
+- [x] `/loot [item] [qty?]` — DM adds item to party inventory; chat system message in ACTIVE session
 - [ ] `/loot-split [item] [qty?]` — DM proposes split; Loot Split Card appears in chat; players accept in one click; unaccepted shares revert to party after 60s
 - [x] `/loot-random [CR] [Rarity?] [hoard?]` — DM generates post-combat loot using DMG Individual / Hoard Treasure tables; coins and items land directly in party inventory; CR/avg-level ratio scales quantity; optional rarity cap limits magic item tier; `hoard` keyword switches to hoard table + 150–300% item multiplier; system chat message summarises the drop. Implementation: `loot-tables.ts` (SRD CC-BY 4.0 static data), `loot-random.service.ts` (generation logic), handler in `chat-command.routes.ts`.
-- [ ] `/take [item] [qty?]` — player takes from party inventory (campaign setting gated)
-- [ ] `/give @{player\|party} [item] [qty?]` — player gives item to target
-- [ ] `/drop [item] [qty?]` — remove item from own/party inventory (confirmation required)
+- [x] `/take [item] [qty?]` — player takes from party inventory (campaign setting gated); partial qty supported; broadcasts `INVENTORY:ITEM_TRANSFERRED` + system chat message
+- [x] `/give @{player|party} [item] [qty?]` — player (needs `allowPlayerGive`) or DM gives item to named player or party; partial qty supported; player gives from own character inventory, DM gives from party
+- [x] `/drop [item] [qty?]` — player drops from own character inventory, DM drops from party; partial qty decrements quantity rather than deleting
 - [ ] Currency shorthand: `/give @party 10gp`, `/take 5sp` etc.
 - [ ] Currency transfer form always shows current balance of both source and destination before confirming
-- [ ] Transfer and Remove amounts capped at available balance per denomination — validated at UI and at API layer (returns `400` with denomination breakdown on insufficient funds)
-- [ ] Take from Party (player): atomically credits character wallet and debits party purse; only available when player has `/take` campaign permission
-- [ ] Give to Party (player/DM): atomically debits sender wallet and credits party purse
-- [ ] Give to Online Player (player/DM): atomically debits sender wallet and credits recipient wallet; only online players shown as eligible targets (offline players pull from party on rejoin)
+- [x] Transfer and Remove amounts capped at available balance per denomination — validated at API layer (returns `400` with denomination breakdown on insufficient funds)
+- [x] Take from Party (player): atomically credits character wallet and debits party purse; only available when player has `/take` campaign permission
+- [x] Give to Party (player/DM): atomically debits sender wallet and credits party purse
+- [x] Give to Online Player (player/DM): atomically debits sender wallet and credits recipient wallet; only online players shown as eligible targets (offline players pull from party on rejoin)
 - [ ] Add currency (inflow — loot award, sale proceeds): credits wallet or purse without requiring a debit source; form shows current balance; DM can add to any owner; players can add to own wallet
 - [ ] Remove currency (outflow — purchase, expenditure): debits wallet or purse without a destination; form shows current balance; capped at available balance; requires confirmation
-- [ ] `POST /api/campaigns/:id/inventory/transfer/currency` — atomic two-sided debit/credit in a single PostgreSQL transaction; emits `INVENTORY:CURRENCY_CHANGED` for both owners on commit
+- [x] `POST /api/inventory/:campaignId/transfer/currency` — atomic two-sided debit/credit in a single PostgreSQL transaction; emits `INVENTORY:CURRENCY_CHANGED` for both owners on commit
 - [x] All inventory mutations during ACTIVE session → system message in chat + history log entry
 - [x] Mutations outside ACTIVE session → history log entry only (no chat message)
 - [x] WS events: `INVENTORY:ITEM_ADDED`, `INVENTORY:ITEM_REMOVED`, `INVENTORY:ITEM_TRANSFERRED`, `INVENTORY:LOOT_SPLIT_PROPOSED`, `INVENTORY:LOOT_SPLIT_ACCEPTED`, `INVENTORY:LOOT_SPLIT_EXPIRED`, `INVENTORY:CURRENCY_CHANGED`

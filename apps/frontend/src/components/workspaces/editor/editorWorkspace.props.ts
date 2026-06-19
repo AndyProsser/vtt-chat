@@ -55,6 +55,9 @@ type BuildEditorWorkspacePropsParams = {
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
   settingsDndRuleset: '2014' | '2024'
+  settingsAllowPlayerGive: boolean
+  settingsAllowPlayerTake: boolean
+  settingsAllowPlayerLoot: boolean
   sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: ComponentProps<typeof EditorWorkspace>['characterSettingsPanel']
@@ -114,6 +117,9 @@ type BuildEditorWorkspacePropsParams = {
     typeof EditorWorkspace
   >['onSettingsSupportedPlatformsChange']
   onSettingsDndRulesetChange: ComponentProps<typeof EditorWorkspace>['onSettingsDndRulesetChange']
+  onSettingsAllowPlayerGiveChange: ComponentProps<typeof EditorWorkspace>['onSettingsAllowPlayerGiveChange']
+  onSettingsAllowPlayerTakeChange: ComponentProps<typeof EditorWorkspace>['onSettingsAllowPlayerTakeChange']
+  onSettingsAllowPlayerLootChange: ComponentProps<typeof EditorWorkspace>['onSettingsAllowPlayerLootChange']
   onSessionNameChange: ComponentProps<typeof EditorWorkspace>['onSessionNameChange']
   onCopyInviteUrl: ComponentProps<typeof EditorWorkspace>['onCopyInviteUrl']
   onReissueInvite: ComponentProps<typeof EditorWorkspace>['onReissueInvite']
@@ -179,6 +185,9 @@ export function buildEditorWorkspaceProps(
     settingsDefaultSessionDurationMins: params.settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms: params.settingsSupportedPlatforms,
     settingsDndRuleset: params.settingsDndRuleset,
+    settingsAllowPlayerGive: params.settingsAllowPlayerGive,
+    settingsAllowPlayerTake: params.settingsAllowPlayerTake,
+    settingsAllowPlayerLoot: params.settingsAllowPlayerLoot,
     sessionSettingsName: params.sessionSettingsName,
     selectedCampaignId: params.selectedCampaignId,
     characterSettingsPanel: params.characterSettingsPanel,
@@ -212,6 +221,9 @@ export function buildEditorWorkspaceProps(
     onSettingsDefaultSessionDurationMinsChange: params.onSettingsDefaultSessionDurationMinsChange,
     onSettingsSupportedPlatformsChange: params.onSettingsSupportedPlatformsChange,
     onSettingsDndRulesetChange: params.onSettingsDndRulesetChange,
+    onSettingsAllowPlayerGiveChange: params.onSettingsAllowPlayerGiveChange,
+    onSettingsAllowPlayerTakeChange: params.onSettingsAllowPlayerTakeChange,
+    onSettingsAllowPlayerLootChange: params.onSettingsAllowPlayerLootChange,
     onSessionNameChange: params.onSessionNameChange,
     onCopyInviteUrl: params.onCopyInviteUrl,
     onReissueInvite: params.onReissueInvite,

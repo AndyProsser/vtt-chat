@@ -146,6 +146,9 @@ model Campaign {
   nextSessionDate               DateTime?
   nextSessionIsManual           Boolean                @default(false)
   dndRuleset                    String                 @default("2024")
+  allowPlayerGive               Boolean                @default(true)
+  allowPlayerTake               Boolean                @default(true)
+  allowPlayerLoot               Boolean                @default(false)
   currentDm                     User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
   members                       CampaignMembership[]
   characters                    Character[]

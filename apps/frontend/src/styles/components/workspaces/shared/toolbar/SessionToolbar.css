@@ -161,7 +161,7 @@
   right: 0;
   left: auto;
   transform: none;
-  width: min(28rem, 24vw);
+  width: min(22rem, 32vw);
   z-index: 24;
   border: 1px solid var(--color-border-soft);
   border-radius: var(--radius-md);
@@ -577,7 +577,7 @@
   }
 
   .workspaces-lobby-invite__panel {
-    width: min(100%, 32rem);
+    width: min(62rem, 32vw);
     right: 0;
     left: auto;
   }

@@ -33,6 +33,16 @@
   border-bottom: 1px solid var(--color-border-soft);
 }
 
+.cip-panel .workspaces-lobby-invite__panel {
+  width: calc(var(--knowledge-panels__right-rail-width) - 4rem);
+}
+
+@media (max-width: 600px) {
+  .cip-panel .workspaces-lobby-invite__panel {
+    width: calc(var(--knowledge-panels__right-rail-width) - 8rem);
+  }
+}
+
 /* DM identity row — spans full width above the 4-column stat chips */
 .cip-dm-row {
   grid-column: 1 / -1;

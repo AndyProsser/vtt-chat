@@ -25,6 +25,8 @@ import {
   removeInventoryItem,
   transferInventoryItem,
   adjustCurrency,
+  transferCurrency,
+  type CurrencyDenomination,
 } from '@/services/inventory/inventory.service'
 import type { WebSocketManager } from '@/ws'
 import type { EventEnvelope } from '@shared'
@@ -566,5 +568,143 @@ router.post('/:campaignId/currency', requireAuth, async (req: Request, res: Resp
     return res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to update currency' })
   }
 })
+
+// ─── POST /api/inventory/:campaignId/transfer/currency ───────────────────────
+// Atomic two-sided transfer: debit fromOwner, credit toOwner in one transaction.
+// Returns 400 with INSUFFICIENT_FUNDS + denomination shortfall if source can't cover.
+
+router.post(
+  '/:campaignId/transfer/currency',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const { campaignId } = req.params
+    const user = (req as any).user
+    const { fromOwnerType, fromOwnerId, toOwnerType, toOwnerId, amounts } = req.body
+
+    if (!isValidUUID(campaignId)) {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'Invalid campaignId' })
+    }
+    if (!['party', 'character'].includes(fromOwnerType)) {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'fromOwnerType must be party or character' })
+    }
+    if (!['party', 'character'].includes(toOwnerType)) {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'toOwnerType must be party or character' })
+    }
+    if (!amounts || typeof amounts !== 'object') {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'amounts is required' })
+    }
+
+    const DENOMS: CurrencyDenomination[] = ['cp', 'sp', 'ep', 'gp', 'pp']
+    const normalizedAmounts: Partial<Record<CurrencyDenomination, number>> = {}
+    for (const denom of DENOMS) {
+      const v = Number(amounts[denom] ?? 0)
+      if (v < 0 || !Number.isFinite(v)) {
+        return res.status(400).json({ code: 'INVALID_INPUT', message: `${denom} must be a non-negative number` })
+      }
+      if (v > 0) normalizedAmounts[denom] = Math.floor(v)
+    }
+    if (Object.keys(normalizedAmounts).length === 0) {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'amounts must include at least one positive denomination' })
+    }
+
+    const role = await resolveCampaignRole(campaignId as UUID, user.userId as UUID)
+    if (!role || role === 'SPECTATOR') {
+      return res.status(403).json({ code: 'FORBIDDEN', message: 'Insufficient role' })
+    }
+
+    // Players may only transfer from their own character wallet
+    if (role === 'PLAYER') {
+      if (fromOwnerType !== 'character' || fromOwnerId !== user.userId) {
+        return res.status(403).json({ code: 'FORBIDDEN', message: 'Players can only transfer from their own wallet' })
+      }
+    }
+
+    try {
+      const session = await getActiveSession(campaignId as UUID)
+      const result = await transferCurrency({
+        campaignId: campaignId as UUID,
+        fromOwnerType,
+        fromOwnerId: fromOwnerId ?? null,
+        toOwnerType,
+        toOwnerId: toOwnerId ?? null,
+        amounts: normalizedAmounts,
+        actorUserId: user.userId as UUID,
+        sessionId: session?.id as UUID | undefined,
+      })
+
+      if ('code' in result && result.code === 'INSUFFICIENT_FUNDS') {
+        return res.status(400).json({
+          code: 'INSUFFICIENT_FUNDS',
+          message: 'Insufficient funds in source wallet',
+          shortfall: result.shortfall,
+        })
+      }
+
+      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+      if (wsManager && 'fromWallet' in result) {
+        const baseEvent = {
+          version: 1 as const,
+          userId: user.userId as UUID,
+          userRole: role as any,
+          sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
+          roomId: null,
+        }
+        // Debit event for source
+        await wsManager.broadcastToCampaignMembers(campaignId as UUID, {
+          ...baseEvent,
+          id: crypto.randomUUID() as UUID,
+          type: 'INVENTORY:CURRENCY_CHANGED' as const,
+          timestamp: result.fromWallet.updatedAt,
+          payload: {
+            campaignId: campaignId as UUID,
+            walletId: result.fromWallet.id,
+            ownerType: result.fromWallet.ownerType,
+            ownerId: result.fromWallet.ownerId,
+            delta: Object.fromEntries(DENOMS.map((d) => [d, -(normalizedAmounts[d] ?? 0)])),
+            newBalance: { cp: result.fromWallet.cp, sp: result.fromWallet.sp, ep: result.fromWallet.ep, gp: result.fromWallet.gp, pp: result.fromWallet.pp },
+            changedByUserId: user.userId,
+            changedAt: result.fromWallet.updatedAt,
+          },
+        })
+        // Credit event for destination
+        await wsManager.broadcastToCampaignMembers(campaignId as UUID, {
+          ...baseEvent,
+          id: crypto.randomUUID() as UUID,
+          type: 'INVENTORY:CURRENCY_CHANGED' as const,
+          timestamp: result.toWallet.updatedAt,
+          payload: {
+            campaignId: campaignId as UUID,
+            walletId: result.toWallet.id,
+            ownerType: result.toWallet.ownerType,
+            ownerId: result.toWallet.ownerId,
+            delta: normalizedAmounts,
+            newBalance: { cp: result.toWallet.cp, sp: result.toWallet.sp, ep: result.toWallet.ep, gp: result.toWallet.gp, pp: result.toWallet.pp },
+            changedByUserId: user.userId,
+            changedAt: result.toWallet.updatedAt,
+          },
+        })
+      }
+
+      if (session && 'fromWallet' in result) {
+        const parts = DENOMS.filter((d) => (normalizedAmounts[d] ?? 0) > 0)
+          .map((d) => `${normalizedAmounts[d]}${d}`)
+          .join(', ')
+        const fromDesc = fromOwnerType === 'party' ? 'party purse' : 'character wallet'
+        const toDesc = toOwnerType === 'party' ? 'party purse' : 'character wallet'
+        await broadcastInventorySystemMessage({
+          session,
+          content: `[Inventory] ${parts} transferred from ${fromDesc} to ${toDesc}.`,
+          actorUserId: user.userId as UUID,
+          wsManager,
+        })
+      }
+
+      return res.json('fromWallet' in result ? { fromWallet: result.fromWallet, toWallet: result.toWallet } : result)
+    } catch (err) {
+      logger.error('inventory.routes', 'Failed to transfer currency', { campaignId, err })
+      return res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to transfer currency' })
+    }
+  }
+)
 
 export default router

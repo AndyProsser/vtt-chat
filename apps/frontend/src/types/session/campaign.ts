@@ -117,6 +117,9 @@ export type CampaignSettingsPayload = {
   nextSessionDate?: string | null
   nextSessionIsManual?: boolean
   dndRuleset?: '2014' | '2024'
+  allowPlayerGive?: boolean
+  allowPlayerTake?: boolean
+  allowPlayerLoot?: boolean
 }
 
 export type CampaignEntryAction =

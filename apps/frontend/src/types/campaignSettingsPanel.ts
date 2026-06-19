@@ -61,6 +61,12 @@ export type CampaignSettingsPanelProps = {
   onSettingsSupportedPlatformsChange: (value: SupportedPlatform[]) => void
   settingsDndRuleset: '2014' | '2024'
   onSettingsDndRulesetChange: (value: '2014' | '2024') => void
+  settingsAllowPlayerGive: boolean
+  onSettingsAllowPlayerGiveChange: (value: boolean) => void
+  settingsAllowPlayerTake: boolean
+  onSettingsAllowPlayerTakeChange: (value: boolean) => void
+  settingsAllowPlayerLoot: boolean
+  onSettingsAllowPlayerLootChange: (value: boolean) => void
   sessionNameBase: string
   onSessionNameBaseChange: (value: string) => void
   sessionNameContext: 'CURRENT' | 'NEXT'
@@ -116,6 +122,12 @@ export type CampaignSettingsPanelPolicyProps = Pick<
   | 'onSettingsSupportedPlatformsChange'
   | 'settingsDndRuleset'
   | 'onSettingsDndRulesetChange'
+  | 'settingsAllowPlayerGive'
+  | 'onSettingsAllowPlayerGiveChange'
+  | 'settingsAllowPlayerTake'
+  | 'onSettingsAllowPlayerTakeChange'
+  | 'settingsAllowPlayerLoot'
+  | 'onSettingsAllowPlayerLootChange'
   | 'sessionNameBase'
   | 'onSessionNameBaseChange'
   | 'sessionNameContext'

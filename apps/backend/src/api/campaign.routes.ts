@@ -1149,6 +1149,9 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       nextSessionDate: (membership.campaign as any).nextSessionDate?.toISOString() ?? null,
       nextSessionIsManual: (membership.campaign as any).nextSessionIsManual ?? false,
       dndRuleset: ((membership.campaign as any).dndRuleset ?? '2024') as '2014' | '2024',
+      allowPlayerGive: (membership.campaign as any).allowPlayerGive ?? true,
+      allowPlayerTake: (membership.campaign as any).allowPlayerTake ?? true,
+      allowPlayerLoot: (membership.campaign as any).allowPlayerLoot ?? false,
     },
   })
 })
@@ -1208,6 +1211,9 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     supportedPlatforms,
     sessionSchedule,
     dndRuleset,
+    allowPlayerGive,
+    allowPlayerTake,
+    allowPlayerLoot,
   } = req.body || {}
 
   if (!isValidUUID(campaignId)) {
@@ -1620,6 +1626,13 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
 
   const effectiveDndRuleset = dndRuleset === '2014' ? '2014' : '2024'
 
+  const effectiveAllowPlayerGive =
+    typeof allowPlayerGive === 'boolean' ? allowPlayerGive : ((campaign as any).allowPlayerGive ?? true)
+  const effectiveAllowPlayerTake =
+    typeof allowPlayerTake === 'boolean' ? allowPlayerTake : ((campaign as any).allowPlayerTake ?? true)
+  const effectiveAllowPlayerLoot =
+    typeof allowPlayerLoot === 'boolean' ? allowPlayerLoot : ((campaign as any).allowPlayerLoot ?? false)
+
   const updated = await prisma.campaign.update({
     where: { id: campaignId as UUID },
     data: {
@@ -1650,6 +1663,9 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       defaultSessionDurationMins: Math.round(parsedDefaultSessionDurationMins),
       supportedPlatforms: effectiveSupportedPlatforms,
       dndRuleset: effectiveDndRuleset,
+      allowPlayerGive: effectiveAllowPlayerGive,
+      allowPlayerTake: effectiveAllowPlayerTake,
+      allowPlayerLoot: effectiveAllowPlayerLoot,
       ...(scheduleUpdateData ?? {}),
     },
     select: {
@@ -1687,6 +1703,9 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       nextSessionDate: true,
       nextSessionIsManual: true,
       dndRuleset: true,
+      allowPlayerGive: true,
+      allowPlayerTake: true,
+      allowPlayerLoot: true,
     },
   })
 

@@ -7,7 +7,17 @@
 
 import { Role, SessionState } from './index'
 
-export type ChatCommandName = 'roll' | 'me' | 'whisper' | 'ooc' | 'dm' | 'loot-random'
+export type ChatCommandName =
+  | 'roll'
+  | 'me'
+  | 'whisper'
+  | 'ooc'
+  | 'dm'
+  | 'loot'
+  | 'loot-random'
+  | 'take'
+  | 'give'
+  | 'drop'
 
 export interface ChatCommandDefinition {
   name: ChatCommandName
@@ -64,6 +74,45 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     description: 'Send a private message to the DM only. Other players cannot see it.',
     example: '/dm I want to pick the lock secretly',
     roles: [Role.PLAYER],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'loot',
+    slash: '/loot',
+    syntax: '/loot [item name] [qty?]',
+    description:
+      'Add a named item to the party inventory. Quantity defaults to 1. Produces a system chat message.',
+    example: '/loot Potion of Healing 2',
+    roles: [Role.DM],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'take',
+    slash: '/take',
+    syntax: '/take [item name] [qty?]',
+    description:
+      'Take an item from the party inventory into your own. Quantity defaults to 1. Requires the /take campaign permission.',
+    example: '/take Potion of Healing',
+    roles: [Role.PLAYER],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'give',
+    slash: '/give',
+    syntax: '/give @{party|player} [item name] [qty?]',
+    description:
+      'Give an item from your inventory to the party or another player. Requires the /give campaign permission.',
+    example: '/give @party Torch 5',
+    roles: [Role.DM, Role.PLAYER],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'drop',
+    slash: '/drop',
+    syntax: '/drop [item name] [qty?]',
+    description: 'Remove an item from your inventory. Quantity defaults to all. Requires confirmation.',
+    example: '/drop Broken Arrow 3',
+    roles: [Role.DM, Role.PLAYER],
     availableInStates: [SessionState.ACTIVE],
   },
   {
