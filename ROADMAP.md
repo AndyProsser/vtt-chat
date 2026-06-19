@@ -1976,7 +1976,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [x] `NextSessionDate` — `React.memo` leaf component in `CampaignInformationPanel/`; renders when session state is `IDLE | ENDED | COOLDOWN | CLEANUP`; DM sees pencil edit icon; clicking opens inline date/time override picker with a "Revert to schedule" option
 - [x] `SessionSchedulePicker` component in `CampaignSettingsPanel/`; structured recurrence controls; live preview of generated label; `[Clear Schedule]` action
 - [x] Dedicated `campaignScheduleSlice` in Zustand; updates on `CAMPAIGN:SCHEDULE_UPDATED`; `CAMPAIGN:SCHEDULE_UPDATED` allowed sessionless in dispatcher
-- [ ] Campaign export payload (`W-DM-Campaign-Portability`) includes schedule fields — deferred to that feature
+- [x] Campaign export payload (`W-DM-Campaign-Portability`) includes schedule fields
 - [x] Unit tests for `formatScheduleLabel()` and `calculateNextOccurrence()`: weekly, biweekly, monthly-Nth, DST boundary cases
 - [x] Unit test: `CAMPAIGN:SCHEDULE_UPDATED` Zustand handler
 

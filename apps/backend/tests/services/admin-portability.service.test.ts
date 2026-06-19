@@ -63,6 +63,7 @@ function makeBundle(): CampaignTransferBundle {
         defaultSessionDurationMins: 240,
         supportedPlatforms: ['ANY' as const],
       },
+      schedule: null,
     },
     members: [
       {

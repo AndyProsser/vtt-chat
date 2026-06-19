@@ -333,6 +333,18 @@ export async function buildCampaignExport(campaignId: string, actorUserId?: stri
         defaultSessionDurationMins: campaign.defaultSessionDurationMins,
         supportedPlatforms: campaign.supportedPlatforms,
       },
+      schedule: campaign.sessionScheduleType
+        ? {
+            sessionScheduleType: campaign.sessionScheduleType,
+            sessionScheduleDay: campaign.sessionScheduleDay ?? null,
+            sessionScheduleNth: campaign.sessionScheduleNth ?? null,
+            sessionScheduleHour: campaign.sessionScheduleHour ?? null,
+            sessionScheduleMinute: campaign.sessionScheduleMinute ?? null,
+            sessionScheduleTz: campaign.sessionScheduleTz ?? null,
+            nextSessionDate: toIso(campaign.nextSessionDate),
+            nextSessionIsManual: campaign.nextSessionIsManual ?? false,
+          }
+        : null,
     },
     members: campaign.members.map((membership) => ({
       userId: membership.userId,
@@ -552,6 +564,18 @@ export async function importCampaignBundle(
               dmAutoTargetOnFirstPlayerJoin: s.dmAutoTargetOnFirstPlayerJoin,
               defaultSessionDurationMins: s.defaultSessionDurationMins,
               supportedPlatforms: s.supportedPlatforms,
+            }
+          : {}),
+        ...(bundle.campaign.schedule
+          ? {
+              sessionScheduleType: bundle.campaign.schedule.sessionScheduleType ?? null,
+              sessionScheduleDay: bundle.campaign.schedule.sessionScheduleDay ?? null,
+              sessionScheduleNth: bundle.campaign.schedule.sessionScheduleNth ?? null,
+              sessionScheduleHour: bundle.campaign.schedule.sessionScheduleHour ?? null,
+              sessionScheduleMinute: bundle.campaign.schedule.sessionScheduleMinute ?? null,
+              sessionScheduleTz: bundle.campaign.schedule.sessionScheduleTz ?? null,
+              nextSessionDate: toDate(bundle.campaign.schedule.nextSessionDate ?? null),
+              nextSessionIsManual: bundle.campaign.schedule.nextSessionIsManual ?? false,
             }
           : {}),
       },

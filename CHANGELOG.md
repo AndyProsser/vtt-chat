@@ -6,9 +6,11 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ---
 
-## Unreleased
+## [0.9.2] — 2026-06-19
 
 ### Added
+
+- W-Session-Schedule / W-DM-Campaign-Portability: Campaign export payload now includes schedule fields (`sessionScheduleType`, `sessionScheduleDay`, `sessionScheduleNth`, `sessionScheduleHour`, `sessionScheduleMinute`, `sessionScheduleTz`, `nextSessionDate`, `nextSessionIsManual`) under `campaign.schedule` in `CampaignTransferBundle`. Both admin and DM self-service exports populate this field; import restores all schedule fields to the new campaign so the recurrence rule does not need to be manually reconfigured after migration.
 
 - W-Extension-MVP: Specified extension session launch flow (`docs/extension/EXTENSION-INTEGRATION.md` §10, §12; `docs/extension/GUEST-AUTH.md` §3.1, §4.10; `docs/CONTRACTS.md` "Extension Device Credential Contract"). Key decisions: returning users bypass the `/join/:code` page entirely via device credential exchange; a new `/ext-launch` route handles auth confirmation (password-only for full accounts, auto-login for guests); any campaign member (including guests) may call the new `POST /api/campaigns/:campaignId/session/ensure` endpoint to create an IDLE (greenroom) session without DM involvement; `GET /api/campaigns/:campaignId/session-status` exposes campaign display state and connected-member count with no auth requirement (campaignId acts as access gate).
 

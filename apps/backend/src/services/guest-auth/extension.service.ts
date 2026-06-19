@@ -8,6 +8,7 @@ import {
   sanitizeInviteCode,
 } from '@/utils/guest-auth.helpers'
 import type { GuestCharacterInput, GuestLoginInput } from '@/types/guest-auth.types'
+import type { Prisma } from '@prisma/client'
 import type { UUID } from '@shared'
 import { externalSystemToPlatform } from '@/services/integrations.service'
 
@@ -86,7 +87,7 @@ async function upsertCharacter(params: {
         avatarUrl: params.character.avatarUrl?.trim(),
         externalSystem: params.externalSystem,
         externalId: externalId || undefined,
-        metadata,
+        metadata: metadata as Prisma.InputJsonValue,
       },
       select: {
         id: true,
@@ -107,7 +108,7 @@ async function upsertCharacter(params: {
       avatarUrl: params.character.avatarUrl?.trim(),
       externalSystem: params.externalSystem,
       externalId: externalId || undefined,
-      metadata,
+      metadata: metadata as Prisma.InputJsonValue,
       isActive: true,
     },
     select: {

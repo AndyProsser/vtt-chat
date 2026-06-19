@@ -102,6 +102,18 @@ export async function buildDmCampaignExport(campaignId: string, actorUserId?: st
         defaultSessionDurationMins: campaign.defaultSessionDurationMins,
         supportedPlatforms: campaign.supportedPlatforms,
       },
+      schedule: campaign.sessionScheduleType
+        ? {
+            sessionScheduleType: campaign.sessionScheduleType,
+            sessionScheduleDay: campaign.sessionScheduleDay ?? null,
+            sessionScheduleNth: campaign.sessionScheduleNth ?? null,
+            sessionScheduleHour: campaign.sessionScheduleHour ?? null,
+            sessionScheduleMinute: campaign.sessionScheduleMinute ?? null,
+            sessionScheduleTz: campaign.sessionScheduleTz ?? null,
+            nextSessionDate: toIso(campaign.nextSessionDate),
+            nextSessionIsManual: campaign.nextSessionIsManual ?? false,
+          }
+        : null,
     },
     // email omitted intentionally — DM self-service exports contain no PII
     members: campaign.members.map((membership: any) => ({

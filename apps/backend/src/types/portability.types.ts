@@ -7,6 +7,7 @@ import type {
   Role,
   RoomType,
   SessionLogEventType,
+  SessionScheduleType,
   SessionState,
   SpectatorPolicy,
   SupportedPlatform,
@@ -40,6 +41,16 @@ export interface CampaignTransferBundle {
       defaultSessionDurationMins: number
       supportedPlatforms: SupportedPlatform[]
     }
+    schedule: {
+      sessionScheduleType: SessionScheduleType | null
+      sessionScheduleDay: number | null
+      sessionScheduleNth: number | null
+      sessionScheduleHour: number | null
+      sessionScheduleMinute: number | null
+      sessionScheduleTz: string | null
+      nextSessionDate: string | null
+      nextSessionIsManual: boolean
+    } | null
   }
   members: Array<{
     userId: string

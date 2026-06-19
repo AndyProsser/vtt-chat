@@ -1,6 +1,6 @@
 {
   "name": "@vtt-chat/shared",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "license": "AGPL-3.0-only",
   "description": "Shared types, events, permissions, and validators for VTT-Chat",
   "type": "module",

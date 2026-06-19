@@ -1,6 +1,6 @@
 {
   "name": "vtt-chat-queues",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "license": "AGPL-3.0-only",
   "description": "Durable BullMQ job queue service for VTT-Chat.",
   "type": "module",
