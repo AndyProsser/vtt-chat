@@ -284,6 +284,25 @@ function ChatWindowComponent({
     [apiUrl, token, sessionId, roomId]
   )
 
+  const handleLootRandomCommand = useCallback(
+    async (args: string) => {
+      const res = await fetch(`${apiUrl}/api/chat/command`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ command: 'loot-random', args, sessionId, roomId }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.message ?? `HTTP ${res.status}`)
+      }
+    },
+    [apiUrl, token, sessionId, roomId]
+  )
+
   const handleCommandError = useCallback((message: string) => {
     showToast({ message, variant: 'error' })
   }, [])
@@ -448,6 +467,7 @@ function ChatWindowComponent({
       <MessageInput
         onSend={handleSend}
         onRollCommand={handleRollCommand}
+        onLootRandomCommand={handleLootRandomCommand}
         onCommandError={handleCommandError}
         onTypingStarted={handleTypingStarted}
         onTypingStopped={handleTypingStopped}

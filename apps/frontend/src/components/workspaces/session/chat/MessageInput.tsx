@@ -25,6 +25,7 @@ import type { ComposerMode } from '@/types/chat'
 interface MessageInputProps {
   onSend: (content: string, type: MessageType, recipientId?: string) => Promise<void>
   onRollCommand?: (args: string) => Promise<void>
+  onLootRandomCommand?: (args: string) => Promise<void>
   onCommandError?: (message: string) => void
   onTypingStarted?: () => void
   onTypingStopped?: () => void
@@ -42,6 +43,7 @@ interface MessageInputProps {
 function MessageInputComponent({
   onSend,
   onRollCommand,
+  onLootRandomCommand,
   onCommandError,
   onTypingStarted,
   onTypingStopped,
@@ -290,6 +292,8 @@ function MessageInputComponent({
           }
           await onRollCommand?.(command.args)
           // No selector change — ROLL is not a persistent compose mode
+        } else if (command.name === 'loot-random') {
+          await onLootRandomCommand?.(command.args)
         } else if (command.name === 'me') {
           if (!command.args) {
             onCommandError?.('Usage: /me [action]')

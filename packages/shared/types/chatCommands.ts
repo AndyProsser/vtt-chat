@@ -7,7 +7,7 @@
 
 import { Role, SessionState } from './index'
 
-export type ChatCommandName = 'roll' | 'me' | 'whisper' | 'ooc' | 'dm'
+export type ChatCommandName = 'roll' | 'me' | 'whisper' | 'ooc' | 'dm' | 'loot-random'
 
 export interface ChatCommandDefinition {
   name: ChatCommandName
@@ -64,6 +64,16 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     description: 'Send a private message to the DM only. Other players cannot see it.',
     example: '/dm I want to pick the lock secretly',
     roles: [Role.PLAYER],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'loot-random',
+    slash: '/loot-random',
+    syntax: '/loot-random [CR] [Rarity?] [hoard?]',
+    description:
+      'Generate random loot for combat using DMG treasure tables. CR sets the challenge tier; Rarity caps the magic item tier (mundane/common/uncommon/rare/very-rare/legendary/artifact); hoard multiplies loot 150–300%. Items and coins are added to the party inventory.',
+    example: '/loot-random 8 rare hoard',
+    roles: [Role.DM],
     availableInStates: [SessionState.ACTIVE],
   },
 ]

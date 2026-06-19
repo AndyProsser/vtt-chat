@@ -237,6 +237,40 @@ For **Add** and **Remove**, "From / To" collapses to a single "Wallet / Purse" l
 
 See `docs/subsystems/CHAT-SYSTEM.md` §9.3 for the full command table. Inventory-specific behaviour:
 
+### `/loot-random [CR] [Rarity?] [hoard?]` (DM only) ✅ implemented
+
+Generates randomised post-combat loot and adds everything directly to the Party Inventory.
+
+**Arguments:**
+
+| Argument | Required | Values | Default |
+| -------- | -------- | ------ | ------- |
+| `CR` | Yes | `0`–`30` | — |
+| `Rarity` | No | `mundane` / `common` / `uncommon` / `rare` / `very-rare` / `legendary` / `artifact` | Auto-selected by CR band |
+| `hoard` | No | keyword flag | Off — individual loot |
+
+**Behaviour:**
+
+- **Coins** — non-hoard uses the DMG Individual Treasure table (d100 per roll, N rolls ≈ 50–75% of connected-player count); `hoard` uses the DMG Treasure Hoard table scaled by player count.
+- **Items** — drawn from static SRD 5.1 item lists in `loot-tables.ts`, weighted by a CR-biased rarity roll. Rarity arg caps the maximum tier that can be selected.
+- **Quantity scaling** — both coins and item count are multiplied by `clamp(CR / avgLevel, 0.5, 2.0)`, where `avgLevel` is the ceiling-average of connected players' character levels (falls back to CR when no character levels are set). Non-hoard generates 50–75% × player count items; hoard generates 150–300% × player count items.
+- **Output** — all items are added to Party Inventory via `addInventoryItem` (one call per item); coins added via `adjustCurrency`; both broadcast `INVENTORY:ITEM_ADDED` / `INVENTORY:CURRENCY_CHANGED` to the campaign. A single `[Loot]` system chat message summarises the drop in the current room.
+
+**Implementation files:**
+
+- `apps/backend/src/services/inventory/loot-tables.ts` — static SRD item lists (D&D 5e SRD 5.1 CC-BY 4.0) and DMG coin-table functions
+- `apps/backend/src/services/inventory/loot-random.service.ts` — arg parser, rarity roller, coin generator, item generator, summary formatter
+- `apps/backend/src/api/chat-command.routes.ts` — `handleLootRandomCommand` handler
+- `packages/shared/types/chatCommands.ts` — command registered (DM, ACTIVE state)
+
+**Examples:**
+```
+/loot-random 5               → individual CR 5 loot, auto rarity (up to uncommon)
+/loot-random 12 rare         → CR 12 loot, magic items up to Rare
+/loot-random 8 uncommon hoard → CR 8 hoard pile, items up to Uncommon, 150–300% quantity
+/loot-random 3 mundane       → CR 3, mundane weapons/armor/gear only
+```
+
 ### `/loot [item] [qty?]` (DM only)
 
 Adds an item directly to Party Inventory. Generates a loot system message in the room's chat:

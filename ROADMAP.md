@@ -2043,6 +2043,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [ ] Campaign settings for player permissions: Allow players /give and /take (ON default); Allow players /loot (OFF default)
 - [ ] `/loot [item] [qty?]` — DM adds item to party inventory; chat system message in ACTIVE session
 - [ ] `/loot-split [item] [qty?]` — DM proposes split; Loot Split Card appears in chat; players accept in one click; unaccepted shares revert to party after 60s
+- [x] `/loot-random [CR] [Rarity?] [hoard?]` — DM generates post-combat loot using DMG Individual / Hoard Treasure tables; coins and items land directly in party inventory; CR/avg-level ratio scales quantity; optional rarity cap limits magic item tier; `hoard` keyword switches to hoard table + 150–300% item multiplier; system chat message summarises the drop. Implementation: `loot-tables.ts` (SRD CC-BY 4.0 static data), `loot-random.service.ts` (generation logic), handler in `chat-command.routes.ts`.
 - [ ] `/take [item] [qty?]` — player takes from party inventory (campaign setting gated)
 - [ ] `/give @{player\|party} [item] [qty?]` — player gives item to target
 - [ ] `/drop [item] [qty?]` — remove item from own/party inventory (confirmation required)

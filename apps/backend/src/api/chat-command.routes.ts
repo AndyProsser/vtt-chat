@@ -19,11 +19,16 @@ import { resolveEffectiveActor } from '@/services/dev-mock/takeover.service'
 import { rollDice } from '@/utils/dice'
 import { isValidUUID } from '@shared'
 import { ErrorCode } from '@shared'
-import { MessageType, SessionState, Role } from '@shared'
+import { MessageType, SessionState, Role, InventoryItemSource, InventoryItemCategory } from '@shared'
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { WebSocketManager } from '@/ws'
 import type { StoredMessage } from '@/types/chat.types'
+import { findSessionById } from '@/repositories/session.repository'
+import { listCampaignMembersForPresence } from '@/repositories/campaign.repository'
+import { addInventoryItem, adjustCurrency } from '@/services/inventory/inventory.service'
+import { parseLootRandomArgs, generateLoot, buildLootSummaryMessage, formatCoins } from '@/services/inventory/loot-random.service'
+import crypto from 'node:crypto'
 
 const router = Router()
 
@@ -163,6 +168,19 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
+    if (normalizedCommand === 'loot-random') {
+      return handleLootRandomCommand({
+        req,
+        res,
+        args: typeof args === 'string' ? args.trim() : '',
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        session,
+        effective,
+        requesterRole,
+      })
+    }
+
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: `Unknown command /${normalizedCommand}. Type / to see available commands.`,
@@ -259,6 +277,193 @@ async function handleRollCommand({
   }
 
   return res.status(201).json({ message: stored })
+}
+
+/**
+ * /loot-random [CR] [Rarity?] [hoard?]
+ * DM-only. Generates coins (DMG tables) and items (SRD) based on CR, connected
+ * player count, and average character level. Adds everything to the party inventory
+ * and broadcasts the INVENTORY events + a system chat message.
+ */
+async function handleLootRandomCommand({
+  req,
+  res,
+  args,
+  sessionId,
+  roomId,
+  session,
+  effective,
+  requesterRole,
+}: CommandHandlerParams) {
+  if (requesterRole !== Role.DM) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: '/loot-random is only available to the DM.',
+    })
+  }
+
+  const parsed = parseLootRandomArgs(args)
+  if ('message' in parsed) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: parsed.message })
+  }
+
+  // Get campaignId — getSession() strips it, so we hit the repo directly
+  const rawSession = await findSessionById(sessionId)
+  if (!rawSession?.campaignId) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: '/loot-random requires a campaign-linked session.',
+    })
+  }
+  const campaignId = rawSession.campaignId as UUID
+
+  // Resolve connected players and their average character level
+  const presenceEntries = await getSessionPresence(sessionId)
+  const connectedUserIds = new Set(presenceEntries.map((p) => p.userId))
+
+  const members = await listCampaignMembersForPresence(campaignId)
+  const connectedPlayers = members.filter(
+    (m) => m.role === 'PLAYER' && connectedUserIds.has(m.userId as UUID)
+  )
+
+  const playerCount = Math.max(1, connectedPlayers.length)
+  const levels = connectedPlayers.filter((m) => m.level != null).map((m) => m.level!)
+  const avgLevel =
+    levels.length > 0
+      ? Math.ceil(levels.reduce((a, b) => a + b, 0) / levels.length)
+      : parsed.cr // fallback: treat avg level = CR (fair fight)
+
+  const loot = generateLoot({
+    cr: parsed.cr,
+    maxRarity: parsed.maxRarity,
+    hoard: parsed.hoard,
+    playerCount,
+    avgLevel,
+  })
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+
+  // Persist + broadcast each item
+  const addedItems = await Promise.all(
+    loot.items.map((item) =>
+      addInventoryItem({
+        campaignId,
+        ownerType: 'party',
+        ownerId: null,
+        name: item.name,
+        quantity: 1,
+        source: InventoryItemSource.SRD,
+        srdKey: item.srdKey,
+        srdCategory:
+          item.rarity === 'mundane' ? InventoryItemCategory.EQUIPMENT : InventoryItemCategory.MAGIC_ITEM,
+        addedByUserId: effective.userId,
+        sessionId,
+      })
+    )
+  )
+
+  if (wsManager) {
+    for (const item of addedItems) {
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'INVENTORY:ITEM_ADDED',
+        version: 1,
+        userId: effective.userId,
+        userRole: requesterRole as any,
+        sessionId,
+        roomId: null,
+        timestamp: item.createdAt,
+        payload: {
+          campaignId: item.campaignId,
+          itemId: item.id,
+          ownerType: item.ownerType,
+          ownerId: item.ownerId,
+          name: item.name,
+          quantity: item.quantity,
+          source: item.source,
+          srdKey: item.srdKey,
+          srdCategory: item.srdCategory,
+          notes: item.notes,
+          addedByUserId: item.addedByUserId,
+          addedAt: item.createdAt,
+        },
+      }
+      await wsManager.broadcastToCampaignMembers(campaignId, event)
+    }
+  }
+
+  // Persist + broadcast coins (only if any)
+  const hasCoin = loot.cp > 0 || loot.sp > 0 || loot.ep > 0 || loot.gp > 0 || loot.pp > 0
+  if (hasCoin) {
+    const delta = { cp: loot.cp, sp: loot.sp, ep: loot.ep, gp: loot.gp, pp: loot.pp }
+    const updatedWallet = await adjustCurrency({
+      campaignId,
+      ownerType: 'party',
+      ownerId: null,
+      delta,
+      actorUserId: effective.userId,
+      sessionId,
+    })
+
+    if (wsManager) {
+      const coinEvent: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'INVENTORY:CURRENCY_CHANGED',
+        version: 1,
+        userId: effective.userId,
+        userRole: requesterRole as any,
+        sessionId,
+        roomId: null,
+        timestamp: updatedWallet.updatedAt,
+        payload: {
+          campaignId: updatedWallet.campaignId,
+          walletId: updatedWallet.id,
+          ownerType: updatedWallet.ownerType,
+          ownerId: updatedWallet.ownerId,
+          delta,
+          newBalance: {
+            cp: updatedWallet.cp,
+            sp: updatedWallet.sp,
+            ep: updatedWallet.ep,
+            gp: updatedWallet.gp,
+            pp: updatedWallet.pp,
+          },
+          changedByUserId: effective.userId,
+          changedAt: updatedWallet.updatedAt,
+        },
+      }
+      await wsManager.broadcastToCampaignMembers(campaignId, coinEvent)
+    }
+  }
+
+  // Single system chat message summarising everything
+  const content = buildLootSummaryMessage(parsed.cr, loot)
+  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+  const chatMessage = await sendMessage({
+    sessionId,
+    roomId,
+    authorId: effective.userId,
+    authorUsername: effective.username,
+    actorRole: requesterRole,
+    dmId: session.dmId,
+    content,
+    type: MessageType.SYSTEM,
+    visibleTo,
+  })
+
+  if (wsManager) {
+    const msgEvent = buildMessageSentEvent(chatMessage, effective.userId, requesterRole)
+    wsManager.broadcastEventToSession(sessionId, msgEvent, chatMessage.visibleTo)
+  }
+
+  return res.status(201).json({
+    items: addedItems,
+    coins: { cp: loot.cp, sp: loot.sp, ep: loot.ep, gp: loot.gp, pp: loot.pp },
+    coinSummary: formatCoins(loot.cp, loot.sp, loot.ep, loot.gp, loot.pp),
+    playerCount,
+    avgLevel,
+    message: chatMessage,
+  })
 }
 
 export default router

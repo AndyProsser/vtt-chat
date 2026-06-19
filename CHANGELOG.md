@@ -6,6 +6,12 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ---
 
+## [0.9.3] — 2026-06-19
+
+### Added
+
+- W-Inventory-System: `/loot-random [CR] [Rarity?] [hoard?]` — DM-only slash command that generates randomised post-combat loot using D&D 5e DMG Individual Treasure / Treasure Hoard tables and adds everything directly to the party inventory. CR (0–30) sets the tier; optional rarity cap limits magic item quality (mundane / common / uncommon / rare / very-rare / legendary / artifact); `hoard` keyword switches to the DMG hoard coin table and multiplies item count 150–300%. Coin amounts scale against the CR/average-character-level ratio; non-hoard item count is 50–75% of connected-player count so someone may miss out; hoard item count is 150–300% of connected-player count for a full pile. Connected-player count and average level are resolved live from session presence crossed with campaign member profiles. All mutations go through the standard 4-layer contract (PostgreSQL → WS broadcast `INVENTORY:ITEM_ADDED` + `INVENTORY:CURRENCY_CHANGED` per-campaign → Zustand via existing handlers) and produce a single `[Loot]` system chat message. Static SRD item lists (D&D 5.1 CC-BY 4.0) live in `apps/backend/src/services/inventory/loot-tables.ts`; generation logic in `apps/backend/src/services/inventory/loot-random.service.ts`. Command registered in `packages/shared/types/chatCommands.ts` and appears in the command-palette autocomplete for DM role. Backend handler in `apps/backend/src/api/chat-command.routes.ts`.
+
 ## [0.9.2] — 2026-06-19
 
 ### Added
