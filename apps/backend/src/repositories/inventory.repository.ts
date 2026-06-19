@@ -264,9 +264,46 @@ export async function listInventoryHistory(params: {
   campaignId: string
   limit?: number
   offset?: number
+  ownerType?: 'party' | 'character'
+  ownerId?: string | null
+  dateFrom?: Date
+  dateTo?: Date
 }): Promise<InventoryHistoryRow[]> {
+  const { ownerType, ownerId, dateFrom, dateTo } = params
+
+  // Owner filter: match any history row where the actor's owned entity appears
+  // in either the from or to side of the action.
+  const ownerWhere =
+    ownerType === 'party'
+      ? {
+          OR: [
+            { fromOwnerType: 'party', fromOwnerId: null },
+            { toOwnerType: 'party', toOwnerId: null },
+          ],
+        }
+      : ownerType === 'character' && ownerId
+        ? {
+            OR: [
+              { fromOwnerType: 'character', fromOwnerId: ownerId },
+              { toOwnerType: 'character', toOwnerId: ownerId },
+              { actorUserId: ownerId },
+            ],
+          }
+        : undefined
+
   return prisma.inventoryHistoryEntry.findMany({
-    where: { campaignId: params.campaignId },
+    where: {
+      campaignId: params.campaignId,
+      ...(ownerWhere ?? {}),
+      ...(dateFrom || dateTo
+        ? {
+            createdAt: {
+              ...(dateFrom ? { gte: dateFrom } : {}),
+              ...(dateTo ? { lte: dateTo } : {}),
+            },
+          }
+        : {}),
+    },
     orderBy: { createdAt: 'desc' },
     take: params.limit ?? 50,
     skip: params.offset ?? 0,

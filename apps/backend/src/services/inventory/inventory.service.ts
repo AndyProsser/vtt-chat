@@ -134,10 +134,16 @@ export interface InventoryHistoryDto {
 export async function getInventoryHistory(
   campaignId: UUID,
   limit = 50,
-  offset = 0
+  offset = 0,
+  filters?: {
+    ownerType?: 'party' | 'character'
+    ownerId?: string | null
+    dateFrom?: Date
+    dateTo?: Date
+  }
 ): Promise<InventoryHistoryDto[]> {
   const [rows, dmId] = await Promise.all([
-    listInventoryHistory({ campaignId, limit, offset }),
+    listInventoryHistory({ campaignId, limit, offset, ...filters }),
     getCampaignDmId(campaignId),
   ])
 

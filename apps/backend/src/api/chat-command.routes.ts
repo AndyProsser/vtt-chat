@@ -33,6 +33,7 @@ import {
   findItemByOwnerAndName,
   partialTransferInventoryItem,
   partialRemoveInventoryItem,
+  transferCurrency,
   type CurrencyDenomination,
 } from '@/services/inventory/inventory.service'
 import { findOrCreateCurrencyWallet } from '@/repositories/inventory.repository'
@@ -417,6 +418,17 @@ function formatCurrencyAmounts(amounts: Partial<Record<CurrencyDenomination, num
     .join(' ')
 }
 
+/**
+ * Returns true when every token in the string is a valid `{number}{denom}` pair —
+ * i.e., the user typed a currency amount like "10gp 3sp", not an item name.
+ */
+function isCurrencyOnlyArgs(args: string): boolean {
+  const trimmed = args.trim()
+  if (!trimmed) return false
+  const leftover = trimmed.replace(/\d+(pp|gp|ep|sp|cp)/gi, '').trim()
+  return leftover.length === 0
+}
+
 // ─── Insufficient-funds quips (50) ────────────────────────────────────────────
 // One is picked at random and broadcast as a SYSTEM message visible to all.
 
@@ -724,14 +736,6 @@ async function handleTakeCommand({
     return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/take is not available to spectators.' })
   }
 
-  const parsed = parseItemArgs(args)
-  if ('error' in parsed) {
-    return res.status(400).json({
-      code: ErrorCode.INVALID_INPUT,
-      message: `Usage: /take [item name] [qty?] — ${parsed.error}`,
-    })
-  }
-
   const rawSession = await findSessionById(sessionId)
   if (!rawSession?.campaignId) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/take requires a campaign-linked session.' })
@@ -743,6 +747,56 @@ async function handleTakeCommand({
     if (!policy.allowPlayerTake) {
       return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'The DM has disabled /take for players in this campaign.' })
     }
+  }
+
+  // Currency shorthand: /take 10gp 3sp — transfer from party purse to own wallet
+  if (isCurrencyOnlyArgs(args)) {
+    const amounts = parseCurrencyArgs(args)
+    if ('error' in amounts) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: amounts.error })
+    }
+    const result = await transferCurrency({
+      campaignId,
+      fromOwnerType: 'party',
+      fromOwnerId: null,
+      toOwnerType: 'character',
+      toOwnerId: effective.userId,
+      amounts,
+      actorUserId: effective.userId,
+      sessionId,
+    })
+    if ('code' in result && result.code === 'INSUFFICIENT_FUNDS') {
+      const quip = pickQuip()
+      const content = `[Wallet] ${effective.username} tries to take ${formatCurrencyAmounts(amounts)} from the party purse. ${quip}`
+      const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+      const chatMessage = await sendMessage({
+        sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
+        actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+      })
+      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+      if (wsManager) wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+      return res.status(400).json({ code: 'INSUFFICIENT_FUNDS', shortfall: result.shortfall, chatMessage })
+    }
+    const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+    if (wsManager && 'fromWallet' in result) {
+      const DENOMS: CurrencyDenomination[] = ['cp', 'sp', 'ep', 'gp', 'pp']
+      const baseEvent = { version: 1 as const, userId: effective.userId, userRole: requesterRole as any, sessionId, roomId: null }
+      await wsManager.broadcastToCampaignMembers(campaignId, { ...baseEvent, id: crypto.randomUUID() as UUID, type: 'INVENTORY:CURRENCY_CHANGED' as const, timestamp: result.fromWallet.updatedAt, payload: { campaignId, walletId: result.fromWallet.id, ownerType: result.fromWallet.ownerType, ownerId: result.fromWallet.ownerId, delta: Object.fromEntries(DENOMS.map((d) => [d, -(amounts[d] ?? 0)])), newBalance: { cp: result.fromWallet.cp, sp: result.fromWallet.sp, ep: result.fromWallet.ep, gp: result.fromWallet.gp, pp: result.fromWallet.pp }, changedByUserId: effective.userId, changedAt: result.fromWallet.updatedAt } })
+      await wsManager.broadcastToCampaignMembers(campaignId, { ...baseEvent, id: crypto.randomUUID() as UUID, type: 'INVENTORY:CURRENCY_CHANGED' as const, timestamp: result.toWallet.updatedAt, payload: { campaignId, walletId: result.toWallet.id, ownerType: result.toWallet.ownerType, ownerId: result.toWallet.ownerId, delta: amounts, newBalance: { cp: result.toWallet.cp, sp: result.toWallet.sp, ep: result.toWallet.ep, gp: result.toWallet.gp, pp: result.toWallet.pp }, changedByUserId: effective.userId, changedAt: result.toWallet.updatedAt } })
+    }
+    const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+    const content = `[Wallet] ${effective.username} took ${formatCurrencyAmounts(amounts)} from the party purse.`
+    const chatMessage = await sendMessage({ sessionId, roomId, authorId: effective.userId, authorUsername: effective.username, actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo })
+    if (wsManager) wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+    return res.status(200).json({ ...('fromWallet' in result ? { fromWallet: result.fromWallet, toWallet: result.toWallet } : {}), message: chatMessage })
+  }
+
+  const parsed = parseItemArgs(args)
+  if ('error' in parsed) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Usage: /take [item name] [qty?] or /take 10gp 3sp — ${parsed.error}`,
+    })
   }
 
   const item = await findItemByOwnerAndName({
@@ -845,11 +899,6 @@ async function handleGiveCommand({
   const targetHandle = atMatch[1].toLowerCase()
   const itemArgs = atMatch[2].trim()
 
-  const parsed = parseItemArgs(itemArgs)
-  if ('error' in parsed) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Usage: /give @target [item name] [qty?] — ${parsed.error}` })
-  }
-
   const rawSession = await findSessionById(sessionId)
   if (!rawSession?.campaignId) {
     return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/give requires a campaign-linked session.' })
@@ -889,9 +938,55 @@ async function handleGiveCommand({
     toOwnerId = member.userId as UUID
   }
 
-  // Players give from their own character inventory
+  // Players give from their own character inventory; DM gives from party
   const fromOwnerType: 'party' | 'character' = requesterRole === Role.PLAYER ? 'character' : 'party'
   const fromOwnerId: UUID | null = requesterRole === Role.PLAYER ? effective.userId : null
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+
+  // Currency shorthand: /give @party 10gp  or  /give @Aria 5gp 2sp
+  if (isCurrencyOnlyArgs(itemArgs)) {
+    const amounts = parseCurrencyArgs(itemArgs)
+    if ('error' in amounts) {
+      return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: amounts.error })
+    }
+    const result = await transferCurrency({
+      campaignId,
+      fromOwnerType,
+      fromOwnerId,
+      toOwnerType,
+      toOwnerId,
+      amounts,
+      actorUserId: effective.userId,
+      sessionId,
+    })
+    if ('code' in result && result.code === 'INSUFFICIENT_FUNDS') {
+      const quip = pickQuip()
+      const sourceLabel = fromOwnerType === 'party' ? 'the party purse' : 'their wallet'
+      const content = `[Wallet] ${effective.username} tries to give ${formatCurrencyAmounts(amounts)} from ${sourceLabel}. ${quip}`
+      const chatMessage = await sendMessage({ sessionId, roomId, authorId: effective.userId, authorUsername: effective.username, actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo })
+      if (wsManager) wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+      return res.status(400).json({ code: 'INSUFFICIENT_FUNDS', shortfall: result.shortfall, chatMessage })
+    }
+    if (wsManager && 'fromWallet' in result) {
+      const DENOMS: CurrencyDenomination[] = ['cp', 'sp', 'ep', 'gp', 'pp']
+      const base = { version: 1 as const, userId: effective.userId, userRole: requesterRole as any, sessionId, roomId: null }
+      await wsManager.broadcastToCampaignMembers(campaignId, { ...base, id: crypto.randomUUID() as UUID, type: 'INVENTORY:CURRENCY_CHANGED' as const, timestamp: result.fromWallet.updatedAt, payload: { campaignId, walletId: result.fromWallet.id, ownerType: result.fromWallet.ownerType, ownerId: result.fromWallet.ownerId, delta: Object.fromEntries(DENOMS.map((d) => [d, -(amounts[d] ?? 0)])), newBalance: { cp: result.fromWallet.cp, sp: result.fromWallet.sp, ep: result.fromWallet.ep, gp: result.fromWallet.gp, pp: result.fromWallet.pp }, changedByUserId: effective.userId, changedAt: result.fromWallet.updatedAt } })
+      await wsManager.broadcastToCampaignMembers(campaignId, { ...base, id: crypto.randomUUID() as UUID, type: 'INVENTORY:CURRENCY_CHANGED' as const, timestamp: result.toWallet.updatedAt, payload: { campaignId, walletId: result.toWallet.id, ownerType: result.toWallet.ownerType, ownerId: result.toWallet.ownerId, delta: amounts, newBalance: { cp: result.toWallet.cp, sp: result.toWallet.sp, ep: result.toWallet.ep, gp: result.toWallet.gp, pp: result.toWallet.pp }, changedByUserId: effective.userId, changedAt: result.toWallet.updatedAt } })
+    }
+    const destLabel = toOwnerType === 'party' ? 'party purse' : `${targetHandle}'s wallet`
+    const content = `[Wallet] ${effective.username} gave ${formatCurrencyAmounts(amounts)} to ${destLabel}.`
+    const chatMessage = await sendMessage({ sessionId, roomId, authorId: effective.userId, authorUsername: effective.username, actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo })
+    if (wsManager) wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+    return res.status(200).json({ ...('fromWallet' in result ? { fromWallet: result.fromWallet, toWallet: result.toWallet } : {}), message: chatMessage })
+  }
+
+  // Item transfer path
+  const parsed = parseItemArgs(itemArgs)
+  if ('error' in parsed) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Usage: /give @target [item name] [qty?] or /give @target 10gp 3sp — ${parsed.error}` })
+  }
 
   const item = await findItemByOwnerAndName({
     campaignId,
@@ -923,7 +1018,6 @@ async function handleGiveCommand({
     sessionId,
   })
 
-  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
   if (wsManager) {
     const event: EventEnvelope = {
       id: crypto.randomUUID() as UUID,
@@ -950,7 +1044,6 @@ async function handleGiveCommand({
     await wsManager.broadcastToCampaignMembers(campaignId, event)
   }
 
-  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
   const qtyLabel = parsed.qty > 1 ? ` ×${parsed.qty}` : ''
   const destLabel = toOwnerType === 'party' ? 'party inventory' : `${targetHandle}'s inventory`
   const content = `[Inventory] ${effective.username} gave ${item.name}${qtyLabel} to ${destLabel}.`

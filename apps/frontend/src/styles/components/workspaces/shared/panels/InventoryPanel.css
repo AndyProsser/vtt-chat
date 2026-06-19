@@ -721,6 +721,17 @@
 
 /* ─── Currency edit mode ───────────────────────────────────────────────────── */
 
+.inventory-currency-row__balance {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 0 0 4px;
+}
+
+.inventory-currency-row__balance-label {
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
 .inventory-currency-row__edit-hint {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
@@ -998,12 +1009,17 @@
   letter-spacing: 0.05em;
 }
 
-.inventory-history__filter {
-  flex: 1;
+.inventory-history__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-2) 0 var(--space-1);
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
 .inventory-history__filter-select {
-  width: 100%;
+  flex: 1;
+  min-width: 100px;
   padding: 2px var(--space-2);
   font-size: var(--font-size-xs);
   color: var(--color-text-primary);
@@ -1012,6 +1028,47 @@
   border-radius: var(--radius-sm);
   outline: none;
   cursor: pointer;
+}
+
+.inventory-history__date-range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+.inventory-history__date-input {
+  flex: 1;
+  padding: 2px var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+  min-width: 0;
+}
+
+.inventory-history__date-sep {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.inventory-history__date-clear {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.12s;
+  flex-shrink: 0;
+}
+
+.inventory-history__date-clear:hover {
+  color: var(--color-text-primary);
 }
 
 .inventory-history__close {

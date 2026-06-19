@@ -144,11 +144,24 @@ router.get('/:campaignId', requireAuth, async (req: Request, res: Response) => {
 router.get('/:campaignId/history', requireAuth, async (req: Request, res: Response) => {
   const { campaignId } = req.params
   const user = (req as any).user
-  const limit = Math.min(Number(req.query.limit) || 50, 200)
+  const limit = Math.min(Number(req.query.limit) || 100, 200)
   const offset = Number(req.query.offset) || 0
+  const ownerType = req.query.ownerType as 'party' | 'character' | undefined
+  const ownerId = (req.query.ownerId as string | undefined) ?? undefined
+  const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined
+  const dateTo = req.query.dateTo ? new Date(req.query.dateTo as string) : undefined
 
   if (!isValidUUID(campaignId)) {
     return res.status(400).json({ code: 'INVALID_INPUT', message: 'Invalid campaignId' })
+  }
+  if (ownerType && !['party', 'character'].includes(ownerType)) {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'ownerType must be party or character' })
+  }
+  if (dateFrom && isNaN(dateFrom.getTime())) {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'Invalid dateFrom' })
+  }
+  if (dateTo && isNaN(dateTo.getTime())) {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'Invalid dateTo' })
   }
 
   const role = await resolveCampaignRole(campaignId as UUID, user.userId as UUID)
@@ -157,7 +170,12 @@ router.get('/:campaignId/history', requireAuth, async (req: Request, res: Respon
   }
 
   try {
-    const history = await getInventoryHistory(campaignId as UUID, limit, offset)
+    const history = await getInventoryHistory(campaignId as UUID, limit, offset, {
+      ownerType,
+      ownerId: ownerType === 'character' ? (ownerId ?? null) : undefined,
+      dateFrom,
+      dateTo,
+    })
     return res.json({ history })
   } catch (err) {
     logger.error('inventory.routes', 'Failed to fetch inventory history', { campaignId, err })

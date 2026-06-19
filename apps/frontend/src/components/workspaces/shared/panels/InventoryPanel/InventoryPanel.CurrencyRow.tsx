@@ -65,11 +65,19 @@ export const InventoryCurrencyRow = memo(function InventoryCurrencyRow({
   }
 
   if (editing) {
+    const balanceParts = COINS.filter(({ key }) => (amounts[key] as number) > 0)
+      .map(({ key, label }) => `${amounts[key]} ${label}`)
+    const balanceSummary = balanceParts.length > 0 ? balanceParts.join(' · ') : 'empty'
+
     return (
       <div
         className="inventory-currency-row inventory-currency-row--edit"
         aria-label="Adjust currency"
       >
+        <p className="inventory-currency-row__balance">
+          <span className="inventory-currency-row__balance-label">Balance:</span>
+          {' '}{balanceSummary}
+        </p>
         <p className="inventory-currency-row__edit-hint">Enter change (+ to add, − to spend):</p>
         <div className="inventory-currency-row__edit-coins">
           {COINS.map(({ key, label, title }) => (

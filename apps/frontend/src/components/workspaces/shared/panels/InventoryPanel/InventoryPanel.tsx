@@ -421,6 +421,14 @@ export function InventoryPanel({
           apiUrl={apiUrl}
           authToken={authToken}
           onClose={() => setShowHistory(false)}
+          ownerOptions={[
+            { label: 'Party', ownerType: 'party', ownerId: null },
+            ...playerProfiles.map((p) => ({
+              label: p.label,
+              ownerType: 'character' as const,
+              ownerId: p.userId,
+            })),
+          ]}
         />
       ) : isLoading ? (
         <div className="inventory-panel__state inventory-panel__state--loading" aria-live="polite">
