@@ -1,12 +1,15 @@
 import { Request, Response, Router } from 'express'
 import authJoinRoutes from './auth-join.routes'
+import authExtensionRoutes from './auth-extension.routes'
 import sessionRoutes from './session.routes'
 import chatRoutes from './chat.routes'
+import chatCommandRoutes from './chat-command.routes'
 import adminRoutes from './admin.routes'
 import notesRoutes from './notes.routes'
 import journalsRoutes from './journals.routes'
 import campaignRoutes from './campaign.routes'
 import campaignDiscoveryRoutes from './campaign-discovery.routes'
+import campaignSessionRoutes from './campaign-session.routes'
 import usersRoutes from './users.routes'
 import roomsRoutes from './rooms.routes'
 import presenceRoutes from './presence.routes'
@@ -16,6 +19,9 @@ import telemetryRoutes from './telemetry.routes'
 import platformRoutes from './platform.routes'
 import integrationsRoutes from './integrations.routes'
 import metadataRoutes from './metadata.routes'
+import inventoryRoutes from './inventory.routes'
+import inventorySyncRoutes from './inventory-sync.routes'
+import srdRoutes from './srd.routes'
 import devRoutes from './dev.routes'
 import internalRoutes from './internal.routes'
 import { config } from '@/infra/config'
@@ -39,6 +45,9 @@ router.get('/health', (_req: Request, res: Response) => {
  */
 
 router.use('/auth', authJoinRoutes)
+// Browser extension auth surface (separate repo) — preflight, guest-login, device credentials.
+// Mounted alongside authJoinRoutes on disjoint /extension/* sub-paths; see auth-extension.routes.ts.
+router.use('/auth', authExtensionRoutes)
 router.use('/session', sessionRoutes)
 router.use('/presence', presenceRoutes)
 router.use('/rooms', roomsRoutes)
@@ -48,14 +57,19 @@ router.use('/integrations', integrationsRoutes)
 
 router.use('/platform', platformRoutes)
 router.use('/chat', chatRoutes)
+router.use('/chat/command', chatCommandRoutes)
 router.use('/admin', adminRoutes)
 router.use('/notes', notesRoutes)
 router.use('/journals', journalsRoutes)
+router.use('/campaigns', campaignSessionRoutes)
 router.use('/campaigns', campaignDiscoveryRoutes)
 router.use('/campaigns', campaignRoutes)
 router.use('/users', usersRoutes)
 router.use('/telemetry', telemetryRoutes)
 router.use('/metadata', metadataRoutes)
+router.use('/inventory', inventoryRoutes)
+router.use('/inventory', inventorySyncRoutes)
+router.use('/srd', srdRoutes)
 
 // Internal job triggers — called by the queues service only, not by clients
 router.use('/internal', internalRoutes)

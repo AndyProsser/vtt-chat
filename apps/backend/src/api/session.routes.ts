@@ -68,6 +68,7 @@ import { sessionDisconnectCascadeService } from '@/services/session/disconnect-c
 import { resolveRoleForSessionJoin } from '@/services/session/authz.service'
 import { broadcastSessionStatsSnapshot } from '@/services/session/stats.service'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
+import { advanceSessionScheduleOnEnded } from '@/services/campaign-schedule.service'
 import { resolveCooldownControlAuthorization } from '@/services/session/cooldown-authz.service'
 import { broadcastLobbyStatsUpdated } from '@/services/lobby/lobby-stats.service'
 import {
@@ -1980,6 +1981,18 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
     if (session.state === SessionStateEnum.ENDED) {
       await disableMockSimulationForSessionExit(session.id)
       await openMainRoomMessageHistory(session.id)
+
+      // Advance campaign's next session date from the recurrence rule (mirrors cleanup-job path)
+      prisma.session.findUnique({ where: { id: session.id }, select: { campaignId: true } })
+        .then((row) => {
+          if (row?.campaignId) {
+            return advanceSessionScheduleOnEnded(row.campaignId as UUID, session.dmId as UUID)
+          }
+        })
+        .catch((err) => console.error('[session] Failed to advance session schedule on manual cooldown end', {
+          sessionId: session.id,
+          err,
+        }))
     }
 
     const users = await getSessionUsers(id as UUID)

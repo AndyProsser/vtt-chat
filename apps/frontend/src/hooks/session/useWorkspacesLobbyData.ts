@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { CampaignLobbyStatsUpdatedPayload, EventEnvelope, UUID } from '@shared'
+import { SessionScheduleType, formatScheduleLabel } from '@shared'
 import type { Session as SessionRecord } from '@/types/session'
 import type { CampaignSummary } from '@/types/session/campaign'
 import type { ApiDiscoverableCampaign, ApiPlatformStatusResponse } from '@/types/session/workspaces'
@@ -13,6 +14,7 @@ import {
   INITIAL_LOBBY_STATS,
   LOBBY_CAMPAIGN_LIST_RELOAD_DEBOUNCE_MS,
 } from '@/constants/lobby.constants'
+import { useStore } from '@/state/store'
 
 const CAMPAIGN_INVALIDATION_SUPPRESS_AFTER_LOAD_MS = 1500
 
@@ -92,6 +94,32 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
 
         const data = await response.json()
         const nextCampaigns = (data.campaigns || []) as CampaignSummary[]
+
+        // Hydrate schedule slice for all campaigns — available to DM and players alike
+        const { setCampaignSchedule } = useStore.getState()
+        for (const c of nextCampaigns) {
+          const schedLabel =
+            c.sessionScheduleType &&
+            c.sessionScheduleDay != null &&
+            c.sessionScheduleHour != null &&
+            c.sessionScheduleMinute != null &&
+            c.sessionScheduleTz
+              ? formatScheduleLabel({
+                  type: c.sessionScheduleType as SessionScheduleType,
+                  dayOfWeek: c.sessionScheduleDay,
+                  nth: c.sessionScheduleNth ?? undefined,
+                  hour: c.sessionScheduleHour,
+                  minute: c.sessionScheduleMinute,
+                  timezone: c.sessionScheduleTz,
+                })
+              : null
+          setCampaignSchedule(c.id, {
+            nextSessionDate: c.nextSessionDate ?? null,
+            scheduleLabel: schedLabel,
+            nextSessionIsManual: c.nextSessionIsManual ?? false,
+          })
+        }
+
         const pendingCampaignId = sessionStorage.getItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY)
         // DEV-HELPER: log campaigns returned from server to diagnose membership issues
         try {

@@ -4,6 +4,7 @@ import { GroupMemberSharedProfileHoverCard } from './GroupMemberSharedProfileHov
 import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
+  StatGroups,
 } from '@/types/groupPanel'
 import { GroupMemberItem } from './GroupMemberItem'
 import type { HoverAnchorRect, HoverContainerRect } from './GroupMemberItem'
@@ -26,7 +27,7 @@ export interface GroupMemberListProps {
   touchFeedbackUserId: UUID | null
   setTouchFeedbackUserId: (userId: UUID | null) => void
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
-  getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
+  getStatEntries: (member: GroupParticipantWithGroupId) => StatGroups
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   distanceTargets: string[]
   conditionTargets: string[]

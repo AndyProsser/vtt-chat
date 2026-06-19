@@ -5,10 +5,13 @@ WORKDIR /workspace
 # Copy shared types (referenced via @shared alias in tsconfig)
 COPY packages/shared ./packages/shared
 
+# Install shared package dependencies so Vite can resolve them from the shared source path
+RUN cd packages/shared && npm install
+
 # Install frontend dependencies
 COPY apps/frontend/package.json apps/frontend/package-lock.json* ./apps/frontend/
 WORKDIR /workspace/apps/frontend
-RUN npm ci
+RUN npm install
 
 # VITE_* vars must be declared as ARGs so docker-compose build.args can inject them.
 # They are baked into the static bundle at build time by Vite.

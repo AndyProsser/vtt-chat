@@ -1,4 +1,5 @@
 import { evaluateDiceExpression } from '@/utils/dmdx/dmdxParser'
+import { Icon } from '@/components/ui/Icon'
 
 export function DmdxRollBlock({ rawContent }: { rawContent: string }) {
   const expr = rawContent.trim()
@@ -7,9 +8,7 @@ export function DmdxRollBlock({ rawContent }: { rawContent: string }) {
   if (!result) {
     return (
       <div className="dmdx-block dmdx-block--roll dmdx-block--warn">
-        <span className="material-symbols-outlined" aria-hidden="true">
-          casino
-        </span>
+        <Icon name="casino" />
         <span className="dmdx-block__type-label">Roll</span>
         <span className="dmdx-roll__expr dmdx-roll__expr--invalid">{expr || '?'}</span>
         <span className="dmdx-block__meta">Invalid expression</span>
@@ -19,9 +18,7 @@ export function DmdxRollBlock({ rawContent }: { rawContent: string }) {
 
   return (
     <div className="dmdx-block dmdx-block--roll">
-      <span className="material-symbols-outlined dmdx-roll__icon" aria-hidden="true">
-        casino
-      </span>
+      <Icon name="casino" className="dmdx-roll__icon" />
       <div className="dmdx-roll__body">
         <span className="dmdx-block__type-label">Roll</span>
         <span className="dmdx-roll__expr">{result.expression}</span>

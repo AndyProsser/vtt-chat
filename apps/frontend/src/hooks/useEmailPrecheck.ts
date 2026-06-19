@@ -6,6 +6,8 @@ interface UseEmailPrecheckParams {
   apiUrl: string
   inviteCode: string
   campaign: InviteCampaign | null
+  /** Pre-fills the email field and auto-triggers the precheck (e.g. when the extension passes email via URL). */
+  initialEmail?: string
   setError: (message: string | null) => void
   setErrorCode: (code: PolicyCode) => void
   /** Called after a successful precheck so the parent can pre-fill player/character fields. */
@@ -17,11 +19,12 @@ export function useEmailPrecheck({
   apiUrl,
   inviteCode,
   campaign,
+  initialEmail,
   setError,
   setErrorCode,
   onPrecheckSuccess,
 }: UseEmailPrecheckParams) {
-  const [emailRaw, setEmailRaw] = useState('')
+  const [emailRaw, setEmailRaw] = useState(initialEmail?.trim() ?? '')
   const [emailChecked, setEmailChecked] = useState(false)
   const [emailCheckStatus, setEmailCheckStatus] = useState<EmailCheckStatus>('idle')
   const [precheckLoading, setPrecheckLoading] = useState(false)

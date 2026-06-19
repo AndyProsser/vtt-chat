@@ -13,6 +13,8 @@ import {
 } from '@/constants/sessionUi.constants'
 import type { SupportedPlatform } from '@/types/sessionUi'
 import type { CampaignSettingsPanelPolicyProps } from '@/types/campaignSettingsPanel'
+import { Icon } from '@/components/ui/Icon'
+import { ExtensionInventorySync } from './Policy.ExtensionInventorySync'
 
 /** Formats minutes as "Xh Ym" (e.g. 240 → "4h 0m", 90 → "1h 30m"). */
 function formatSessionDuration(mins: number): string {
@@ -77,7 +79,7 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
 
   const lockBadge = (
     <span className="crbs-lock-badge" title="Locked during active session">
-      <span className="material-symbols-outlined crbs-lock-icon">lock</span>
+      <Icon name="lock" className="crbs-lock-icon" />
     </span>
   )
 
@@ -217,6 +219,29 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
               disabled={sessionLocked || props.settingsLateJoinPolicy === 'OPEN'}
             />
           </div>
+
+          {/* D&D Ruleset card */}
+          <div className="csp-card">
+            <h5 className="crbs-heading csp-card-heading">D&amp;D Ruleset</h5>
+
+            <label className="session-label" id="label-dnd-ruleset">
+              SRD edition for this campaign
+            </label>
+            <div className="session-toggle-group" role="group" aria-labelledby="label-dnd-ruleset">
+              {(['2024', '2014'] as const).map((ruleset) => (
+                <button
+                  key={ruleset}
+                  type="button"
+                  className={`session-toggle-button ${props.settingsDndRuleset === ruleset ? 'is-active' : ''}`}
+                  aria-pressed={props.settingsDndRuleset === ruleset}
+                  onClick={() => props.onSettingsDndRulesetChange(ruleset)}
+                  disabled={props.isSaving}
+                >
+                  {ruleset}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* ── Right column: Extension + Spectators ─────────────────────── */}
@@ -279,6 +304,36 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
                 </button>
               ))}
             </div>
+
+            {props.settingsExtensionSyncPolicy !== 'NONE' && (
+              <ExtensionInventorySync
+                settingsExtensionInventorySyncEnabled={
+                  props.settingsExtensionInventorySyncEnabled
+                }
+                onSettingsExtensionInventorySyncEnabledChange={
+                  props.onSettingsExtensionInventorySyncEnabledChange
+                }
+                settingsExtensionCurrencySyncEnabled={
+                  props.settingsExtensionCurrencySyncEnabled
+                }
+                onSettingsExtensionCurrencySyncEnabledChange={
+                  props.onSettingsExtensionCurrencySyncEnabledChange
+                }
+                settingsExtensionPartyInventorySyncAccess={
+                  props.settingsExtensionPartyInventorySyncAccess
+                }
+                onSettingsExtensionPartyInventorySyncAccessChange={
+                  props.onSettingsExtensionPartyInventorySyncAccessChange
+                }
+                settingsExtensionSyncConflictResolution={
+                  props.settingsExtensionSyncConflictResolution
+                }
+                onSettingsExtensionSyncConflictResolutionChange={
+                  props.onSettingsExtensionSyncConflictResolutionChange
+                }
+                disabled={sessionLocked}
+              />
+            )}
           </div>
 
           {/* Spectators card */}

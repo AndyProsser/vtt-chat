@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react'
 import type { ComponentProps } from 'react'
 import { RoomType, type UUID } from '@shared'
+import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/hooks/useStore'
 import { useWorkspacesAudioProjection } from '@/hooks/session/useWorkspacesAudioProjection'
 import { useWorkspacesDerivedState } from '@/hooks/session/useWorkspacesDerivedState'
@@ -93,13 +94,15 @@ export const SessionWorkspaceChromeConnector = memo(
     })
     const currentEnvironment = useStore((state) => state.currentEnvironment)
     const roomEnvironmentNames = useStore((state) => state.roomEnvironmentNames)
-    const currentPauseStats = useStore((state) => {
-      if (!state.currentSessionId) {
-        return EMPTY_PAUSE_STATS
-      }
+    const currentPauseStats = useStore(
+      useShallow((state) => {
+        if (!state.currentSessionId) {
+          return EMPTY_PAUSE_STATS
+        }
 
-      return state.pauseStats[state.currentSessionId] ?? EMPTY_PAUSE_STATS
-    })
+        return state.pauseStats[state.currentSessionId] ?? EMPTY_PAUSE_STATS
+      })
+    )
     const setPrivateRoomCleanMode = useStore((state) => state.setPrivateRoomCleanMode)
     const clearEnvironment = useStore((state) => state.clearEnvironment)
     const setEnvironment = useStore((state) => state.setEnvironment)

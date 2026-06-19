@@ -2,6 +2,7 @@ import { SessionState } from '@shared'
 import { useEffect, useState } from 'react'
 import { SPECTATOR_WAIT_SCREEN_COPY } from '@/constants/sessionUi.constants'
 import '@/styles/components/workspaces/session/SpectatorWaitScreen.css'
+import { Icon } from '@/components/ui/Icon'
 
 interface SpectatorWaitScreenProps {
   /** Current session state */
@@ -83,7 +84,7 @@ export function SpectatorWaitScreen({
     return (
       <div className="spectator-wait-screen" role="status" aria-live="polite">
         <div className="spectator-wait-screen__icon" aria-hidden="true">
-          <span className="material-symbols-outlined">theaters</span>
+          <Icon name="theaters" />
         </div>
         <h2 className="spectator-wait-screen__title">
           {SPECTATOR_WAIT_SCREEN_COPY[sessionState === SessionState.IDLE ? 'idle' : 'paused'].title}
@@ -105,7 +106,7 @@ export function SpectatorWaitScreen({
         aria-live="polite"
       >
         <div className="spectator-wait-screen__icon" aria-hidden="true">
-          <span className="material-symbols-outlined">celebration</span>
+          <Icon name="celebration" />
         </div>
         <h2 className="spectator-wait-screen__title">
           {SPECTATOR_WAIT_SCREEN_COPY.cooldown.title}
@@ -132,7 +133,7 @@ export function SpectatorWaitScreen({
         aria-live="polite"
       >
         <div className="spectator-wait-screen__icon" aria-hidden="true">
-          <span className="material-symbols-outlined">history</span>
+          <Icon name="history" />
         </div>
         <h2 className="spectator-wait-screen__title">{SPECTATOR_WAIT_SCREEN_COPY.ended.title}</h2>
         <p className="spectator-wait-screen__body">{SPECTATOR_WAIT_SCREEN_COPY.ended.body}</p>

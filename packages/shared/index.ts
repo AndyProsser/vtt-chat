@@ -13,6 +13,7 @@
  */
 
 export * from './types/index'
+export * from './types/chatCommands'
 export * from './events/index'
 export * from './permissions/index'
 export * from './errors/index'

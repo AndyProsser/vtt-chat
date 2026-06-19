@@ -4,6 +4,7 @@ import { GroupMemberProfileCard } from './GroupMemberProfileCard'
 import type {
   GroupPanelGroupWithParticipants,
   GroupParticipantWithGroupId,
+  StatGroups,
 } from '@/types/groupPanel'
 
 type HoverAnchorRect = {
@@ -29,7 +30,7 @@ type GroupMemberSharedProfileHoverCardProps = {
   anchorRect: HoverAnchorRect | null
   containerRect: HoverContainerRect | null
   getParticipantMetaLine: (member: GroupParticipantWithGroupId) => string
-  getStatEntries: (member: GroupParticipantWithGroupId) => Array<[string, unknown]>
+  getStatEntries: (member: GroupParticipantWithGroupId) => StatGroups
   getResolvedGroupEnvironmentName: (room: GroupPanelGroupWithParticipants) => string
   onMouseEnter: () => void
   onMouseLeave: () => void
@@ -93,7 +94,7 @@ export function GroupMemberSharedProfileHoverCard({
         isSelf={member.userId === currentUserId}
         member={member}
         metaLine={getParticipantMetaLine(member)}
-        statEntries={getStatEntries(member)}
+        statGroups={getStatEntries(member)}
         environmentName={getResolvedGroupEnvironmentName(room)}
         activeTakeover={activeTakeoverUserId === member.userId}
       />

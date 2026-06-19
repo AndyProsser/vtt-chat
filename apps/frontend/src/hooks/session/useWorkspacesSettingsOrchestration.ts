@@ -4,6 +4,8 @@ import type { UUID } from '@shared'
 import { normalizeExtensionSyncPolicy, serializeExtensionSyncPolicy } from '@/utils/sessionUi'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -41,6 +43,10 @@ type UseWorkspacesSettingsOrchestrationParams = {
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsExtensionInventorySyncEnabled: boolean
+  settingsExtensionCurrencySyncEnabled: boolean
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsLateJoinPolicy: LateJoinPolicy
@@ -48,6 +54,7 @@ type UseWorkspacesSettingsOrchestrationParams = {
   settingsDefaultSessionDurationMins: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
   settingsData: CampaignSettingsPayload | null
   setCampaigns: Dispatch<SetStateAction<CampaignSummary[]>>
   setSelectedCampaignId: Dispatch<SetStateAction<UUID | ''>>
@@ -81,12 +88,17 @@ export function useWorkspacesSettingsOrchestration(
     settingsSpectatorWaitlistEnabled,
     settingsSpectatorReconnectGraceSecs,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
     settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
+    settingsDndRuleset,
     settingsData,
     setCampaigns,
     setSelectedCampaignId,
@@ -269,6 +281,10 @@ export function useWorkspacesSettingsOrchestration(
       settingsSpectatorWaitlistEnabled,
       settingsSpectatorReconnectGraceSecs,
       settingsExtensionSyncPolicy,
+      settingsExtensionInventorySyncEnabled,
+      settingsExtensionCurrencySyncEnabled,
+      settingsExtensionPartyInventorySyncAccess,
+      settingsExtensionSyncConflictResolution,
       settingsPostSessionChatEnabled,
       settingsPostSessionChatDurationMinutes,
       settingsDmAutoTargetOnFirstPlayerJoin,
@@ -276,6 +292,7 @@ export function useWorkspacesSettingsOrchestration(
       settingsLateJoinGraceMinutes,
       settingsDefaultSessionDurationMins,
       settingsSupportedPlatforms,
+      settingsDndRuleset,
     })
 
     try {
@@ -318,10 +335,15 @@ export function useWorkspacesSettingsOrchestration(
     settingsDescription,
     settingsDmAutoTargetOnFirstPlayerJoin,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsLateJoinGraceMinutes,
     settingsLateJoinPolicy,
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
+    settingsDndRuleset,
     settingsName,
     settingsPostSessionChatDurationMinutes,
     settingsPostSessionChatEnabled,

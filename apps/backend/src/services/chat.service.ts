@@ -197,7 +197,7 @@ function mapStoredMessage(row: {
   authorUsername: string
   authorCharacterName?: string | null
   content: string
-  type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+  type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
   isDmOnly: boolean
   isOffTheRecord: boolean
   visibleTo: unknown
@@ -400,6 +400,49 @@ export async function sendCampaignGreenroomMessage(params: {
     isDmOnly: false,
     isOffTheRecord: false,
     createdAt: new Date(message.createdAt),
+  })
+
+  return message
+}
+
+/**
+ * Post a SYSTEM message to the campaign greenroom (campaign-scoped).
+ * Uses the canonical SYSTEM author identity. Does NOT broadcast — callers must
+ * emit CHAT:MESSAGE_SENT via eventBroadcaster after calling this.
+ */
+export async function sendCampaignSystemMessage(params: {
+  campaignId: UUID
+  content: string
+}): Promise<StoredMessage> {
+  const { campaignId, content } = params
+  const id = crypto.randomUUID() as UUID
+  const now = Date.now()
+
+  const message: StoredMessage = {
+    id,
+    sessionId: undefined,
+    roomId: undefined,
+    authorId: SYSTEM_CHAT_AUTHOR_ID,
+    authorUsername: SYSTEM_CHAT_AUTHOR_USERNAME,
+    content,
+    type: MessageType.SYSTEM,
+    isDmOnly: false,
+    isOffTheRecord: false,
+    visibleTo: undefined,
+    targetIds: undefined,
+    createdAt: now,
+  }
+
+  await createChatMessageRecord({
+    id,
+    campaignId,
+    authorId: SYSTEM_CHAT_AUTHOR_ID,
+    authorUsername: SYSTEM_CHAT_AUTHOR_USERNAME,
+    content,
+    type: MessageType.SYSTEM,
+    isDmOnly: false,
+    isOffTheRecord: false,
+    createdAt: new Date(now),
   })
 
   return message

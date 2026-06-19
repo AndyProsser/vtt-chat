@@ -8,6 +8,8 @@ import { useMemo, useState } from 'react'
 import type { UUID } from '@shared'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -37,6 +39,10 @@ interface UseCampaignSettingsState {
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsExtensionInventorySyncEnabled: boolean
+  settingsExtensionCurrencySyncEnabled: boolean
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
@@ -45,6 +51,7 @@ interface UseCampaignSettingsState {
   settingsPosterUrl: string
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
 }
 
 interface UseCampaignSettingsActions {
@@ -68,6 +75,10 @@ interface UseCampaignSettingsActions {
   setSettingsSpectatorWaitlistEnabled: (value: boolean) => void
   setSettingsSpectatorReconnectGraceSecs: (value: number) => void
   setSettingsExtensionSyncPolicy: (value: ExtensionSyncPolicy) => void
+  setSettingsExtensionInventorySyncEnabled: (value: boolean) => void
+  setSettingsExtensionCurrencySyncEnabled: (value: boolean) => void
+  setSettingsExtensionPartyInventorySyncAccess: (value: ExtensionPartyInventorySyncAccess) => void
+  setSettingsExtensionSyncConflictResolution: (value: ExtensionSyncConflictResolution) => void
   setSettingsPostSessionChatEnabled: (value: boolean) => void
   setSettingsPostSessionChatDurationMinutes: (value: number) => void
   setSettingsDmAutoTargetOnFirstPlayerJoin: (value: boolean) => void
@@ -76,6 +87,7 @@ interface UseCampaignSettingsActions {
   setSettingsPosterUrl: (value: string) => void
   setSettingsDefaultSessionDurationMins: (value: number) => void
   setSettingsSupportedPlatforms: (value: SupportedPlatform[]) => void
+  setSettingsDndRuleset: (value: '2014' | '2024') => void
 }
 
 export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSettingsActions] {
@@ -102,6 +114,16 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
   const [settingsSpectatorReconnectGraceSecs, setSettingsSpectatorReconnectGraceSecs] = useState(60)
   const [settingsExtensionSyncPolicy, setSettingsExtensionSyncPolicy] =
     useState<ExtensionSyncPolicy>('ALLOW')
+  const [settingsExtensionInventorySyncEnabled, setSettingsExtensionInventorySyncEnabled] =
+    useState(true)
+  const [settingsExtensionCurrencySyncEnabled, setSettingsExtensionCurrencySyncEnabled] =
+    useState(true)
+  const [
+    settingsExtensionPartyInventorySyncAccess,
+    setSettingsExtensionPartyInventorySyncAccess,
+  ] = useState<ExtensionPartyInventorySyncAccess>('DM_ONLY')
+  const [settingsExtensionSyncConflictResolution, setSettingsExtensionSyncConflictResolution] =
+    useState<ExtensionSyncConflictResolution>('OVERWRITE')
   const [settingsPostSessionChatEnabled, setSettingsPostSessionChatEnabled] = useState(true)
   const [settingsPostSessionChatDurationMinutes, setSettingsPostSessionChatDurationMinutes] =
     useState(5)
@@ -114,6 +136,7 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
   const [settingsSupportedPlatforms, setSettingsSupportedPlatforms] = useState<SupportedPlatform[]>(
     ['ANY']
   )
+  const [settingsDndRuleset, setSettingsDndRuleset] = useState<'2014' | '2024'>('2024')
 
   const state: UseCampaignSettingsState = useMemo(
     () => ({
@@ -137,6 +160,10 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsSpectatorWaitlistEnabled,
       settingsSpectatorReconnectGraceSecs,
       settingsExtensionSyncPolicy,
+      settingsExtensionInventorySyncEnabled,
+      settingsExtensionCurrencySyncEnabled,
+      settingsExtensionPartyInventorySyncAccess,
+      settingsExtensionSyncConflictResolution,
       settingsPostSessionChatEnabled,
       settingsPostSessionChatDurationMinutes,
       settingsDmAutoTargetOnFirstPlayerJoin,
@@ -145,6 +172,7 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsPosterUrl,
       settingsDefaultSessionDurationMins,
       settingsSupportedPlatforms,
+      settingsDndRuleset,
     }),
     [
       isSettingsLoading,
@@ -167,6 +195,10 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsSpectatorWaitlistEnabled,
       settingsSpectatorReconnectGraceSecs,
       settingsExtensionSyncPolicy,
+      settingsExtensionInventorySyncEnabled,
+      settingsExtensionCurrencySyncEnabled,
+      settingsExtensionPartyInventorySyncAccess,
+      settingsExtensionSyncConflictResolution,
       settingsPostSessionChatEnabled,
       settingsPostSessionChatDurationMinutes,
       settingsDmAutoTargetOnFirstPlayerJoin,
@@ -175,6 +207,7 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       settingsPosterUrl,
       settingsDefaultSessionDurationMins,
       settingsSupportedPlatforms,
+      settingsDndRuleset,
     ]
   )
 
@@ -200,6 +233,10 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       setSettingsSpectatorWaitlistEnabled,
       setSettingsSpectatorReconnectGraceSecs,
       setSettingsExtensionSyncPolicy,
+      setSettingsExtensionInventorySyncEnabled,
+      setSettingsExtensionCurrencySyncEnabled,
+      setSettingsExtensionPartyInventorySyncAccess,
+      setSettingsExtensionSyncConflictResolution,
       setSettingsPostSessionChatEnabled,
       setSettingsPostSessionChatDurationMinutes,
       setSettingsDmAutoTargetOnFirstPlayerJoin,
@@ -208,6 +245,7 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
       setSettingsPosterUrl,
       setSettingsDefaultSessionDurationMins,
       setSettingsSupportedPlatforms,
+      setSettingsDndRuleset,
     }),
     []
   )

@@ -326,17 +326,37 @@ function pickLevels(count: number): number[] {
   return Array.from({ length: count }, () => clamp(base + Math.floor(Math.random() * 3) - 1, 1, 20))
 }
 
+const MOCK_CONDITIONS = ['Poisoned', 'Blinded', 'Frightened', 'Stunned', 'Prone']
+
 function buildStatBlock(level: number): Prisma.InputJsonValue {
   const proficiencyBonus = level >= 17 ? 6 : level >= 13 ? 5 : level >= 9 ? 4 : level >= 5 ? 3 : 2
+  const con = 8 + Math.floor(Math.random() * 10)
+  const conMod = Math.floor((con - 10) / 2)
+  const hpMax = Math.max(1, level * (6 + conMod))
+  const hpCurrent = Math.max(1, Math.floor(hpMax * (0.4 + Math.random() * 0.6)))
+  const dex = 8 + Math.floor(Math.random() * 10)
+  const dexMod = Math.floor((dex - 10) / 2)
+  const wis = 8 + Math.floor(Math.random() * 10)
+  const wisMod = Math.floor((wis - 10) / 2)
+  const activeCondition = Math.random() < 0.25
+    ? [MOCK_CONDITIONS[Math.floor(Math.random() * MOCK_CONDITIONS.length)]]
+    : []
   return {
     level,
     proficiencyBonus,
     strength: 8 + Math.floor(Math.random() * 10),
-    dexterity: 8 + Math.floor(Math.random() * 10),
-    constitution: 8 + Math.floor(Math.random() * 10),
+    dexterity: dex,
+    constitution: con,
     intelligence: 8 + Math.floor(Math.random() * 10),
-    wisdom: 8 + Math.floor(Math.random() * 10),
+    wisdom: wis,
     charisma: 8 + Math.floor(Math.random() * 10),
+    hpCurrent,
+    hpMax,
+    ac: 10 + Math.floor(Math.random() * 8),
+    initiative: dexMod,
+    passivePerception: 10 + wisMod + (Math.random() < 0.3 ? proficiencyBonus : 0),
+    speed: [25, 30, 30, 30, 35][Math.floor(Math.random() * 5)],
+    conditions: activeCondition,
   }
 }
 

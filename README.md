@@ -320,6 +320,18 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 
 ---
 
+## Third-Party IP Notice
+
+VTT-Chat is a fan project created by players who love Dungeons & Dragons. It is not affiliated with, endorsed by, or intended to compete with Wizards of the Coast LLC or D&D Beyond.
+
+The browser extension reads D&D Beyond data to provide seamless authentication and character sync. This is done via unofficial, undocumented APIs — full details on what data is accessed and how it is used are in the [extension repository](https://github.com/AndyProsser/vtt-chat-extension) and its documentation.
+
+We have no intention of infringing on Wizards of the Coast's intellectual property or negatively impacting D&D Beyond. We are fans who simply want to create a more immersive chat experience for players to enjoy the game they love. If an official API becomes available, we would be delighted to migrate to it or to contribute to its development. If Wizards of the Coast or D&D Beyond has any concerns, we are very open to discussion and happy to make whatever changes are needed — please reach out via [GitHub Issues](https://github.com/AndyProsser/vtt-chat/issues).
+
+*Dungeons & Dragons and D&D Beyond are trademarks of Wizards of the Coast LLC.*
+
+---
+
 ## License
 
 [GNU AGPL v3.0](LICENSE)

@@ -121,9 +121,7 @@ export function NotesPanelCompact({
     <div className="notes-compact">
       <div className="notes-compact__header">
         <h3 className="notes-compact__heading">
-          <span className="material-symbols-outlined" aria-hidden="true">
-            notes
-          </span>
+          <Icon name="notes" />
           Handouts
         </h3>
         {canEdit ? (
@@ -133,9 +131,7 @@ export function NotesPanelCompact({
             onClick={onCreateRequest}
             aria-label="Create handout"
           >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              note_add
-            </span>
+            <Icon name="note_add" />
           </button>
         ) : null}
       </div>
@@ -187,9 +183,7 @@ export function NotesPanelCompact({
           <p className="notes-compact__empty">Loading handouts…</p>
         ) : displayedNotes.length === 0 ? (
           <div className="ui-empty-panel" role="status">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              auto_awesome
-            </span>
+            <Icon name="auto_awesome" />
             <span>{emptyMessage}</span>
           </div>
         ) : (

@@ -37,9 +37,7 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
               disabled={props.isSaving}
               onClick={props.onExport}
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                file_download
-              </span>
+              <Icon name="file_download" />
             </button>
             <button
               type="button"
@@ -80,6 +78,24 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
             }
             settingsExtensionSyncPolicy={props.settingsExtensionSyncPolicy}
             onSettingsExtensionSyncPolicyChange={props.onSettingsExtensionSyncPolicyChange}
+            settingsExtensionInventorySyncEnabled={props.settingsExtensionInventorySyncEnabled}
+            onSettingsExtensionInventorySyncEnabledChange={
+              props.onSettingsExtensionInventorySyncEnabledChange
+            }
+            settingsExtensionCurrencySyncEnabled={props.settingsExtensionCurrencySyncEnabled}
+            onSettingsExtensionCurrencySyncEnabledChange={
+              props.onSettingsExtensionCurrencySyncEnabledChange
+            }
+            settingsExtensionPartyInventorySyncAccess={
+              props.settingsExtensionPartyInventorySyncAccess
+            }
+            onSettingsExtensionPartyInventorySyncAccessChange={
+              props.onSettingsExtensionPartyInventorySyncAccessChange
+            }
+            settingsExtensionSyncConflictResolution={props.settingsExtensionSyncConflictResolution}
+            onSettingsExtensionSyncConflictResolutionChange={
+              props.onSettingsExtensionSyncConflictResolutionChange
+            }
             settingsLateJoinPolicy={props.settingsLateJoinPolicy}
             onSettingsLateJoinPolicyChange={props.onSettingsLateJoinPolicyChange}
             settingsLateJoinGraceMinutes={props.settingsLateJoinGraceMinutes}
@@ -94,6 +110,8 @@ export function CampaignSettingsPanel(props: CampaignSettingsPanelProps) {
             }
             settingsSupportedPlatforms={props.settingsSupportedPlatforms}
             onSettingsSupportedPlatformsChange={props.onSettingsSupportedPlatformsChange}
+            settingsDndRuleset={props.settingsDndRuleset}
+            onSettingsDndRulesetChange={props.onSettingsDndRulesetChange}
             sessionNameBase={props.sessionNameBase}
             onSessionNameBaseChange={props.onSessionNameBaseChange}
             sessionNameContext={props.sessionNameContext}

@@ -283,6 +283,9 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           isCharacterSettingsSaving={props.isCharacterSettingsSaving}
           onRequestOpenPlayerSettings={handleOpenPlayerSettingsFromParty}
           playerSettingsFocusRequestKey={playerSettingsFocusRequestKey}
+          dndRuleset={props.dndRuleset}
+          onSrdFieldFocus={props.onSrdFieldFocus}
+          onSrdFieldBlur={props.onSrdFieldBlur}
         />
       )
     },
@@ -326,6 +329,8 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.token,
       props.totalSessionDurationMs,
       props.userId,
+      props.onSrdFieldFocus,
+      props.onSrdFieldBlur,
       currentSessionId,
       currentSessionName,
       currentSessionStartedAt,

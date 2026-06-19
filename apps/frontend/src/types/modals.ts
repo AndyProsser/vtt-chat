@@ -1,6 +1,12 @@
 import type { ChangeEvent, SubmitEventHandler } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
-import type { CampaignVisibility, ExtensionSyncPolicy, LateJoinPolicy } from '@/types/sessionUi'
+import type {
+  CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
+  ExtensionSyncPolicy,
+  LateJoinPolicy,
+} from '@/types/sessionUi'
 import type { Session as SessionRecord } from '@/types/session'
 import type {
   CampaignExportBundle,
@@ -67,6 +73,16 @@ export type ModalsProps = {
   onSettingsPostSessionChatDurationMinutesChange: (value: number) => void
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
   onSettingsExtensionSyncPolicyChange: (value: ExtensionSyncPolicy) => void
+  settingsExtensionInventorySyncEnabled: boolean
+  onSettingsExtensionInventorySyncEnabledChange: (value: boolean) => void
+  settingsExtensionCurrencySyncEnabled: boolean
+  onSettingsExtensionCurrencySyncEnabledChange: (value: boolean) => void
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  onSettingsExtensionPartyInventorySyncAccessChange: (
+    value: ExtensionPartyInventorySyncAccess
+  ) => void
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
+  onSettingsExtensionSyncConflictResolutionChange: (value: ExtensionSyncConflictResolution) => void
   settingsLateJoinPolicy: LateJoinPolicy
   onSettingsLateJoinPolicyChange: (value: LateJoinPolicy) => void
   settingsLateJoinGraceMinutes: number

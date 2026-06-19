@@ -1,6 +1,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import type { CampaignInformationStatusLineProps } from '@/types/campaignInformationPanel'
 import { DmPresenceStatusLeaf } from './DmPresenceStatusLeaf'
+import { Icon } from '@/components/ui/Icon'
 
 function formatDuration(totalMs: number): string {
   if (!Number.isFinite(totalMs) || totalMs <= 0) {
@@ -98,9 +99,7 @@ export function CampaignInformationStatusLine({
       <Tooltip>
         <TooltipTrigger asChild>
           <button type="button" className="cip-status-chip" aria-label="Sessions stat">
-            <span className="material-symbols-outlined cip-status-chip__icon" aria-hidden="true">
-              history
-            </span>
+            <Icon name="history" className="cip-status-chip__icon" />
             <span className="cip-status-chip__text">{sessionCount} Sessions</span>
           </button>
         </TooltipTrigger>
@@ -110,9 +109,7 @@ export function CampaignInformationStatusLine({
       <Tooltip>
         <TooltipTrigger asChild>
           <button type="button" className="cip-status-chip" aria-label="Total time stat">
-            <span className="material-symbols-outlined cip-status-chip__icon" aria-hidden="true">
-              schedule
-            </span>
+            <Icon name="schedule" className="cip-status-chip__icon" />
             <span className="cip-status-chip__text">{totalTimeLabel} Total played</span>
           </button>
         </TooltipTrigger>
@@ -122,9 +119,7 @@ export function CampaignInformationStatusLine({
       <Tooltip>
         <TooltipTrigger asChild>
           <button type="button" className="cip-status-chip" aria-label="Players stat">
-            <span className="material-symbols-outlined cip-status-chip__icon" aria-hidden="true">
-              groups
-            </span>
+            <Icon name="groups" className="cip-status-chip__icon" />
             <span className="cip-status-chip__text">
               {onlinePlayers}/{registeredPlayers} Players
             </span>
@@ -136,9 +131,7 @@ export function CampaignInformationStatusLine({
       <Tooltip>
         <TooltipTrigger asChild>
           <button type="button" className="cip-status-chip" aria-label="Spectators stat">
-            <span className="material-symbols-outlined cip-status-chip__icon" aria-hidden="true">
-              visibility
-            </span>
+            <Icon name="visibility" className="cip-status-chip__icon" />
             <span className="cip-status-chip__text">{onlineSpectators} Spectators</span>
           </button>
         </TooltipTrigger>

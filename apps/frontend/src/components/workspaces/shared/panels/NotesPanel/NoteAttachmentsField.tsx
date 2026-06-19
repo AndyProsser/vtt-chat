@@ -1,6 +1,7 @@
 import type { NoteAttachmentEntity, UUID } from '@shared'
 import type { ShowToastInput } from '@/state/toastCenter'
 import { createNoteAttachmentsFromPicker, NOTE_ATTACHMENT_MAX_COUNT } from '@/utils/noteAttachments'
+import { Icon } from '@/components/ui/Icon'
 
 interface NoteAttachmentsFieldProps {
   campaignId: UUID
@@ -44,9 +45,7 @@ export function NoteAttachmentsField({
           disabled={disabled || attachments.length >= NOTE_ATTACHMENT_MAX_COUNT}
           className="notes-edit-secondary-button"
         >
-          <span className="material-symbols-outlined" aria-hidden="true">
-            attach_file
-          </span>
+          <Icon name="attach_file" />
           Add image
         </button>
       </div>
@@ -78,9 +77,7 @@ export function NoteAttachmentsField({
                   className="notes-edit-icon-button"
                   aria-label={`Remove ${attachment.name}`}
                 >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    close
-                  </span>
+                  <Icon name="close" />
                 </button>
               </div>
             </article>

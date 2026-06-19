@@ -7,6 +7,7 @@ import {
   sanitizeExternalSystem,
   sanitizeInviteCode,
 } from '@/utils/guest-auth.helpers'
+import { externalSystemToPlatform } from '@/services/integrations.service'
 import { PLATFORM_STATUS_VERSION } from '@/constants/guest-auth.constants'
 import type {
   InviteValidationResult,
@@ -354,6 +355,20 @@ export async function getExtensionPreflight(params: {
   const invite = await validatePlayerInviteCode(params.inviteCode)
   if (!invite.valid) {
     throw new Error('INVITE_EXPIRED')
+  }
+
+  // Check that the campaign's supportedPlatforms allows the requesting external system.
+  const campaignForPlatform = await prisma.campaign.findUnique({
+    where: { id: invite.campaign.id },
+    select: { supportedPlatforms: true },
+  })
+  const platformKey = externalSystemToPlatform(params.externalSystem)
+  const campaignAllowsPlatform =
+    campaignForPlatform?.supportedPlatforms.includes('ANY' as never) ||
+    (platformKey !== null &&
+      campaignForPlatform?.supportedPlatforms.includes(platformKey as never))
+  if (!campaignAllowsPlatform) {
+    throw new Error('PLATFORM_NOT_AUTHORIZED')
   }
 
   const email = sanitizeEmail(params.email)

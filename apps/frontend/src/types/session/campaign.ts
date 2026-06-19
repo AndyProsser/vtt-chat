@@ -1,6 +1,8 @@
 import { Role, SessionState, deriveCampaignDisplayState } from '@shared'
 import type { UUID } from '@shared'
 import type {
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   LateJoinPolicy,
   PersistedExtensionSyncPolicy,
   SupportedPlatform,
@@ -36,6 +38,14 @@ export interface CampaignSummary {
   spectatorsEnabled?: boolean
   activeConnectedCount?: number
   isMember?: boolean
+  sessionScheduleType?: string | null
+  sessionScheduleDay?: number | null
+  sessionScheduleNth?: number | null
+  sessionScheduleHour?: number | null
+  sessionScheduleMinute?: number | null
+  sessionScheduleTz?: string | null
+  nextSessionDate?: string | null
+  nextSessionIsManual?: boolean
 }
 
 export interface CampaignJoinRequestSummary {
@@ -94,6 +104,19 @@ export type CampaignSettingsPayload = {
   dmAutoTargetOnFirstPlayerJoin: boolean
   defaultSessionDurationMins: number
   supportedPlatforms: SupportedPlatform[]
+  extensionInventorySyncEnabled?: boolean
+  extensionCurrencySyncEnabled?: boolean
+  extensionPartyInventorySyncAccess?: ExtensionPartyInventorySyncAccess
+  extensionSyncConflictResolution?: ExtensionSyncConflictResolution
+  sessionScheduleType?: string | null
+  sessionScheduleDay?: number | null
+  sessionScheduleNth?: number | null
+  sessionScheduleHour?: number | null
+  sessionScheduleMinute?: number | null
+  sessionScheduleTz?: string | null
+  nextSessionDate?: string | null
+  nextSessionIsManual?: boolean
+  dndRuleset?: '2014' | '2024'
 }
 
 export type CampaignEntryAction =

@@ -517,6 +517,13 @@ export function RoomSelector({
     [dmFlavorLine]
   )
 
+  const handleToggleCreateGroupModal = useCallback(() => {
+    setEnvironmentPickerRoomId(null)
+    setShowCreateGroupModal((cur) => !cur)
+  }, [])
+
+  const handleCloseCreateGroupModal = useCallback(() => setShowCreateGroupModal(false), [])
+
   const renderRoomCard = (room: GroupPanelGroupWithParticipants) => (
     <GroupCard
       key={room.id}
@@ -578,9 +585,7 @@ export function RoomSelector({
           <Icon name="rooms" /> Groups
           {activeTakeoverUserId ? (
             <span className="room-selector-header__takeover-pill" role="status" aria-live="polite">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                swap_horiz
-              </span>
+              <Icon name="swap_horiz" />
               Takeover Active
             </span>
           ) : null}
@@ -603,25 +608,14 @@ export function RoomSelector({
           sessionId={sessionId}
           activeTakeoverUserId={activeTakeoverUserId || null}
           dmVoicePreset={dmVoicePreset}
-          onBroadcastToggle={() => {
-            void actions.handleBroadcastToggleClick()
-          }}
-          onDevReset={() => {
-            void handleDevResetMocks()
-          }}
+          onBroadcastToggle={actions.handleBroadcastToggleClick}
+          onDevReset={handleDevResetMocks}
           onReturnToUser={handleReturnToMyUser}
-          onToggleCreateGroupModal={() => {
-            setEnvironmentPickerRoomId(null)
-            setShowCreateGroupModal((cur) => !cur)
-          }}
-          onCloseCreateGroupModal={() => setShowCreateGroupModal(false)}
+          onToggleCreateGroupModal={handleToggleCreateGroupModal}
+          onCloseCreateGroupModal={handleCloseCreateGroupModal}
           onCreateGroup={actions.handleCreateGroup}
-          onEndWhisper={() => {
-            void handleEndWhisper()
-          }}
-          onSelectVoicePreset={(preset) => {
-            void actions.handleSetDmVoicePreset(preset)
-          }}
+          onEndWhisper={handleEndWhisper}
+          onSelectVoicePreset={actions.handleSetDmVoicePreset}
         />
       </header>
 
@@ -662,7 +656,7 @@ export function RoomSelector({
                       isSelf={dmDetachedParticipant.userId === currentUser?.id}
                       member={dmDetachedParticipant}
                       metaLine={dmFlavorLine}
-                      statEntries={getGroupStatEntries(dmDetachedParticipant)}
+                      statGroups={getGroupStatEntries(dmDetachedParticipant)}
                       environmentName={dmDetachedEnvironmentName}
                     />
                   </TooltipContent>

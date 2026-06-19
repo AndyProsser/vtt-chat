@@ -41,6 +41,7 @@ export enum MessageType {
   WHISPER = 'WHISPER',
   DM = 'DM',
   SYSTEM = 'SYSTEM',
+  ROLL = 'ROLL',
 }
 
 export enum PresenceState {
@@ -94,6 +95,61 @@ export enum StatusColorKey {
   YELLOW = 'YELLOW',
   ORANGE = 'ORANGE',
   RED = 'RED',
+}
+
+export enum SessionScheduleType {
+  WEEKLY = 'WEEKLY',
+  BIWEEKLY = 'BIWEEKLY',
+  MONTHLY_NTH = 'MONTHLY_NTH',
+}
+
+export enum InventoryItemSource {
+  SRD = 'SRD',
+  CUSTOM = 'CUSTOM',
+  EXTERNAL = 'EXTERNAL',
+}
+
+export enum InventoryItemCategory {
+  EQUIPMENT = 'EQUIPMENT',
+  MAGIC_ITEM = 'MAGIC_ITEM',
+  HOMEBREW = 'HOMEBREW',
+}
+
+export enum InventoryOwnerType {
+  PARTY = 'party',
+  CHARACTER = 'character',
+}
+
+export enum InventoryActionType {
+  ITEM_ADDED = 'ITEM_ADDED',
+  ITEM_REMOVED = 'ITEM_REMOVED',
+  ITEM_TRANSFERRED = 'ITEM_TRANSFERRED',
+  ITEM_EDITED = 'ITEM_EDITED',
+  CURRENCY_CHANGED = 'CURRENCY_CHANGED',
+}
+
+/**
+ * Character stats as synced from the external VTT system.
+ * Stored in Character.metadata.stats and surfaced on participant profiles.
+ */
+export interface CharacterStats {
+  hp?: { current: number; max: number; temp: number }
+  ac?: number
+  speed?: number
+  initiative?: number
+  proficiencyBonus?: number
+  passivePerception?: number
+  abilityScores?: { str: number; dex: number; con: number; int: number; wis: number; cha: number }
+  spellSlots?: { total: Record<string, number>; used: Record<string, number> }
+}
+
+/** GP/SP/CP/EP/PP wallet amounts. All values are non-negative integers. */
+export interface CurrencyWallet {
+  cp: number
+  sp: number
+  ep: number
+  gp: number
+  pp: number
 }
 
 /**
@@ -176,4 +232,5 @@ export type {
   NoteAttachmentEntity,
   NoteSharedMessageMetadata,
   PresenceEntity,
+  RollResultMessageMetadata,
 } from './entities'

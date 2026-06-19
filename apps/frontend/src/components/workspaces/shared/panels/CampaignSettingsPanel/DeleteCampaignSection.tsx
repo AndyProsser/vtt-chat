@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { Icon } from '@/components/ui/Icon'
 
 interface DeleteCampaignSectionProps {
   campaignName: string
@@ -43,9 +44,7 @@ export function DeleteCampaignSection({
   return (
     <section className="csp-danger-zone" aria-label="Danger zone">
       <div className="csp-danger-zone-header">
-        <span className="material-symbols-outlined csp-danger-zone-icon" aria-hidden="true">
-          warning
-        </span>
+        <Icon name="warning" className="csp-danger-zone-icon" />
         <h5 className="csp-danger-zone-title">Danger Zone</h5>
       </div>
 
@@ -68,9 +67,7 @@ export function DeleteCampaignSection({
           <DialogPrimitive.Overlay className="session-modal-backdrop session-modal-backdrop--overlay" />
           <DialogPrimitive.Content className="session-modal session-modal--confirm-dialog session-modal--floating csp-delete-dialog csp-delete-dialog--anchored">
             <DialogPrimitive.Title className="csp-delete-dialog-title">
-              <span className="material-symbols-outlined" aria-hidden="true">
-                delete_forever
-              </span>
+              <Icon name="delete_forever" />
               Delete &ldquo;{campaignName}&rdquo;?
             </DialogPrimitive.Title>
 

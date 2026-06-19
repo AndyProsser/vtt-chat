@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { ModalsProps } from '@/types/modals'
 
 type JoinCampaignModalProps = Pick<
@@ -10,7 +11,7 @@ type JoinCampaignModalProps = Pick<
   | 'onCloseJoinCampaign'
 >
 
-export function JoinCampaignModal(props: JoinCampaignModalProps) {
+export const JoinCampaignModal = memo(function JoinCampaignModal(props: JoinCampaignModalProps) {
   if (!props.showJoinCampaignModal) {
     return null
   }
@@ -49,4 +50,4 @@ export function JoinCampaignModal(props: JoinCampaignModalProps) {
       </div>
     </div>
   )
-}
+})

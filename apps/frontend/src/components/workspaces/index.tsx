@@ -133,6 +133,10 @@ export function WorkspaceInitialization({
     settingsSpectatorWaitlistEnabled,
     settingsSpectatorReconnectGraceSecs,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin,
@@ -141,6 +145,7 @@ export function WorkspaceInitialization({
     settingsPosterUrl,
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
+    settingsDndRuleset,
   } = campaignSettings
 
   // Character settings hook
@@ -368,12 +373,17 @@ export function WorkspaceInitialization({
     settingsSpectatorWaitlistEnabled,
     settingsSpectatorReconnectGraceSecs,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
     settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
     settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms,
+    settingsDndRuleset,
     settingsData,
     setCampaigns,
     setSelectedCampaignId,
@@ -382,8 +392,13 @@ export function WorkspaceInitialization({
     setLobbyNotice,
   })
 
-  const { handleCharacterFieldChange, saveCharacterSettings, loadUserCharacters } =
-    useWorkspacesCharacterSettingsOrchestration({
+  const {
+    handleCharacterFieldChange,
+    saveCharacterSettings,
+    loadUserCharacters,
+    handleSrdFieldFocus,
+    handleSrdFieldBlur,
+  } = useWorkspacesCharacterSettingsOrchestration({
       characterSettingsController,
       characterSettingsActions,
       selectedCampaignId,
@@ -761,6 +776,34 @@ export function WorkspaceInitialization({
     onError: setError,
   })
 
+  const handleCopyInviteUrlModal = useCallback(
+    (inviteType: 'PLAYER' | 'SPECTATOR') => void copyInviteUrl(inviteType),
+    [copyInviteUrl]
+  )
+  const handleReissueInviteModal = useCallback(
+    (inviteType: 'PLAYER' | 'SPECTATOR') => requestInviteReissue(inviteType),
+    [requestInviteReissue]
+  )
+  const handleSaveCampaignSettingsWrapper = useCallback(
+    () => void saveCampaignSettings(),
+    [saveCampaignSettings]
+  )
+  const handleSaveCharacterSettingsWrapper = useCallback(
+    () => void saveCharacterSettings(),
+    [saveCharacterSettings]
+  )
+  const handleDeleteCampaignWrapper = useCallback(
+    async (campaignId: UUID) => {
+      setIsDeletingCampaign(true)
+      try {
+        await handleDeleteCampaign(campaignId)
+      } finally {
+        setIsDeletingCampaign(false)
+      }
+    },
+    [handleDeleteCampaign]
+  )
+
   const editorWorkspaceProps = buildEditorWorkspaceProps({
     hasSessionSelected,
     editorWorkspaceView,
@@ -794,6 +837,10 @@ export function WorkspaceInitialization({
     settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
     settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
     settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin,
@@ -804,63 +851,46 @@ export function WorkspaceInitialization({
     characterSettingsPanel,
     isCharacterSettingsLoading,
     isCharacterSettingsSaving,
-    onSettingsNameChange: (value) => campaignSettingsActions.setSettingsName(value),
-    onSettingsDescriptionChange: (value) => campaignSettingsActions.setSettingsDescription(value),
+    onSettingsNameChange: campaignSettingsActions.setSettingsName,
+    onSettingsDescriptionChange: campaignSettingsActions.setSettingsDescription,
     onPosterFileSelected: handlePosterFileSelected,
-    onSettingsPosterUrlChange: (value) => campaignSettingsActions.setSettingsPosterUrl(value),
-    onSettingsVisibilityChange: (value) => campaignSettingsActions.setSettingsVisibility(value),
-    onSettingsSpectatorsEnabledChange: (value) =>
-      campaignSettingsActions.setSettingsSpectatorsEnabled(value),
-    onSettingsSpectatorMaxChange: (value) => campaignSettingsActions.setSettingsSpectatorMax(value),
-    onSettingsSpectatorWaitlistEnabledChange: (value) =>
-      campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(value),
-    onSettingsSpectatorReconnectGraceSecsChange: (value) =>
-      campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(value),
-    onSettingsPostSessionChatEnabledChange: (value) =>
-      campaignSettingsActions.setSettingsPostSessionChatEnabled(value),
-    onSettingsPostSessionChatDurationMinutesChange: (value) =>
-      campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(value),
-    onSettingsExtensionSyncPolicyChange: (value) =>
-      campaignSettingsActions.setSettingsExtensionSyncPolicy(value),
-    onSettingsLateJoinPolicyChange: (value) =>
-      campaignSettingsActions.setSettingsLateJoinPolicy(value),
-    onSettingsLateJoinGraceMinutesChange: (value) =>
-      campaignSettingsActions.setSettingsLateJoinGraceMinutes(value),
-    onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value) =>
-      campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin(value),
-    onSettingsDefaultSessionDurationMinsChange: (value) =>
-      campaignSettingsActions.setSettingsDefaultSessionDurationMins(value),
-    onSettingsSupportedPlatformsChange: (value) =>
-      campaignSettingsActions.setSettingsSupportedPlatforms(value),
+    onSettingsPosterUrlChange: campaignSettingsActions.setSettingsPosterUrl,
+    onSettingsVisibilityChange: campaignSettingsActions.setSettingsVisibility,
+    onSettingsSpectatorsEnabledChange: campaignSettingsActions.setSettingsSpectatorsEnabled,
+    onSettingsSpectatorMaxChange: campaignSettingsActions.setSettingsSpectatorMax,
+    onSettingsSpectatorWaitlistEnabledChange: campaignSettingsActions.setSettingsSpectatorWaitlistEnabled,
+    onSettingsSpectatorReconnectGraceSecsChange: campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs,
+    onSettingsPostSessionChatEnabledChange: campaignSettingsActions.setSettingsPostSessionChatEnabled,
+    onSettingsPostSessionChatDurationMinutesChange: campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
+    onSettingsExtensionSyncPolicyChange: campaignSettingsActions.setSettingsExtensionSyncPolicy,
+    onSettingsExtensionInventorySyncEnabledChange:
+      campaignSettingsActions.setSettingsExtensionInventorySyncEnabled,
+    onSettingsExtensionCurrencySyncEnabledChange:
+      campaignSettingsActions.setSettingsExtensionCurrencySyncEnabled,
+    onSettingsExtensionPartyInventorySyncAccessChange:
+      campaignSettingsActions.setSettingsExtensionPartyInventorySyncAccess,
+    onSettingsExtensionSyncConflictResolutionChange:
+      campaignSettingsActions.setSettingsExtensionSyncConflictResolution,
+    onSettingsLateJoinPolicyChange: campaignSettingsActions.setSettingsLateJoinPolicy,
+    onSettingsLateJoinGraceMinutesChange: campaignSettingsActions.setSettingsLateJoinGraceMinutes,
+    onSettingsDmAutoTargetOnFirstPlayerJoinChange: campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin,
+    onSettingsDefaultSessionDurationMinsChange: campaignSettingsActions.setSettingsDefaultSessionDurationMins,
+    onSettingsSupportedPlatformsChange: campaignSettingsActions.setSettingsSupportedPlatforms,
+    settingsDndRuleset,
+    onSettingsDndRulesetChange: campaignSettingsActions.setSettingsDndRuleset,
     onSessionNameChange: setSessionSettingsName,
-    onCopyInviteUrl: (inviteType) => {
-      void copyInviteUrl(inviteType)
-    },
-    onReissueInvite: (inviteType) => {
-      requestInviteReissue(inviteType)
-    },
-    onSaveCampaignSettings: () => {
-      void saveCampaignSettings()
-    },
+    onCopyInviteUrl: handleCopyInviteUrlModal,
+    onReissueInvite: handleReissueInviteModal,
+    onSaveCampaignSettings: handleSaveCampaignSettingsWrapper,
     onCharacterFieldChange: handleCharacterFieldChange,
-    onSaveCharacterSettings: () => {
-      void saveCharacterSettings()
-    },
-    onSettingsReferenceSessionChange: (sessionId) =>
-      campaignSettingsActions.setSettingsReferenceSessionId(sessionId),
+    onSaveCharacterSettings: handleSaveCharacterSettingsWrapper,
+    onSettingsReferenceSessionChange: campaignSettingsActions.setSettingsReferenceSessionId,
     onBackToLobby: handleBackToLobbyWorkspace,
     onToggleTheme: handleToggleTheme,
     onOpenUserSettings: handleOpenUserSettingsModal,
     onLaunch: handleLaunchFromEditor,
     onSaveCampaignInfo: handleSaveCampaignInfoPanel,
-    onDeleteCampaign: async (campaignId) => {
-      setIsDeletingCampaign(true)
-      try {
-        await handleDeleteCampaign(campaignId)
-      } finally {
-        setIsDeletingCampaign(false)
-      }
-    },
+    onDeleteCampaign: handleDeleteCampaignWrapper,
     isDeletingCampaign,
     showToast,
   })
@@ -1001,6 +1031,9 @@ export function WorkspaceInitialization({
         isCharacterSettingsLoading,
         isCharacterSettingsSaving,
         userId: user.id,
+        dndRuleset: settingsDndRuleset,
+        onSrdFieldFocus: handleSrdFieldFocus,
+        onSrdFieldBlur: handleSrdFieldBlur,
       }),
     [
       activeTransitionSessionId,
@@ -1014,6 +1047,8 @@ export function WorkspaceInitialization({
       fetchWithAuthGuard,
       handleCancelCooldown,
       handleCharacterFieldChange,
+      handleSrdFieldFocus,
+      handleSrdFieldBlur,
       handleOpenUserSettingsModal,
       handlePauseSession,
       handlePlannedDurationMinutesChange,
@@ -1043,6 +1078,7 @@ export function WorkspaceInitialization({
       settingsCampaignTotalDurationMs,
       settingsDefaultSessionDurationMins,
       settingsDmAutoTargetOnFirstPlayerJoin,
+      settingsDndRuleset,
       setSessionSettingsName,
       token,
       user,
@@ -1054,6 +1090,31 @@ export function WorkspaceInitialization({
     ]
   )
 
+  // Stable modal close/action handlers — useState setters are guaranteed stable by React,
+  // so all close handlers can use []. Async wrappers dep on their own useCallback source.
+  const handleCloseCreateCampaign = useCallback(() => {
+    setShowCreateCampaignModal(false)
+    setPendingImportBundle(null)
+    setConflictCampaign(null)
+  }, [])
+  const handleCloseJoinCampaign = useCallback(() => setShowJoinCampaignModal(false), [])
+  const handleCloseCampaignSettings = useCallback(() => setShowCampaignSettingsModal(false), [])
+  const handleCloseReissueInviteModal = useCallback(() => setPendingInviteReissueType(null), [])
+  const handleConfirmReissueInviteWrapper = useCallback(
+    () => void handleConfirmInviteReissue(),
+    [handleConfirmInviteReissue]
+  )
+  const handleCloseExitSession = useCallback(() => setShowExitSessionModal(false), [])
+  const handleCloseStopSession = useCallback(() => setShowStopSessionModal(false), [])
+  const handleUpgradeAndExitWrapper = useCallback(
+    () => void handleUpgradeAndExit(),
+    [handleUpgradeAndExit]
+  )
+  const handleConfirmStopSessionWrapper = useCallback(
+    () => void handleConfirmStopSession(),
+    [handleConfirmStopSession]
+  )
+
   const lobbyModalsProps = buildLobbyModalsProps({
     showCreateCampaignModal,
     user,
@@ -1061,11 +1122,7 @@ export function WorkspaceInitialization({
     isCreatingCampaign,
     pendingImportBundle,
     conflictCampaign,
-    onCloseCreateCampaign: () => {
-      setShowCreateCampaignModal(false)
-      setPendingImportBundle(null)
-      setConflictCampaign(null)
-    },
+    onCloseCreateCampaign: handleCloseCreateCampaign,
     onCreateCampaignSubmit: handleCreateCampaign,
     onNewCampaignNameChange: setNewCampaignName,
     showJoinCampaignModal,
@@ -1073,66 +1130,63 @@ export function WorkspaceInitialization({
     isJoiningCampaign,
     onJoinCampaignSubmit: handleJoinCampaign,
     onJoinInviteInputChange: setJoinInviteInput,
-    onCloseJoinCampaign: () => setShowJoinCampaignModal(false),
+    onCloseJoinCampaign: handleCloseJoinCampaign,
     showCampaignSettingsModal,
     settingsHomeTab,
-    onSettingsHomeTabChange: (tab) => campaignSettingsActions.setSettingsHomeTab(tab),
+    onSettingsHomeTabChange: campaignSettingsActions.setSettingsHomeTab,
     settingsCampaignSessions,
     settingsReferenceSessionId,
-    onSettingsReferenceSessionChange: (sessionId) =>
-      campaignSettingsActions.setSettingsReferenceSessionId(sessionId),
+    onSettingsReferenceSessionChange: campaignSettingsActions.setSettingsReferenceSessionId,
     settingsReferenceSession: settingsReferenceSession || null,
     isSettingsLoading,
     settingsData,
     isSettingsSaving,
-    onCloseCampaignSettings: () => setShowCampaignSettingsModal(false),
+    onCloseCampaignSettings: handleCloseCampaignSettings,
     onSaveCampaignSettings: handleSaveCampaignSettingsSubmit,
     settingsName,
-    onSettingsNameChange: (name) => campaignSettingsActions.setSettingsName(name),
+    onSettingsNameChange: campaignSettingsActions.setSettingsName,
     settingsDescription,
-    onSettingsDescriptionChange: (desc) => campaignSettingsActions.setSettingsDescription(desc),
+    onSettingsDescriptionChange: campaignSettingsActions.setSettingsDescription,
     onPosterFileSelected: handlePosterFileSelected,
     isInviteReissuing,
-    onCopyInviteUrl: (inviteType) => {
-      void copyInviteUrl(inviteType)
-    },
-    onReissueInvite: (inviteType) => {
-      requestInviteReissue(inviteType)
-    },
+    onCopyInviteUrl: handleCopyInviteUrlModal,
+    onReissueInvite: handleReissueInviteModal,
     showReissueInviteModal: pendingInviteReissueType !== null,
     reissueInviteType: pendingInviteReissueType,
-    onCloseReissueInviteModal: () => setPendingInviteReissueType(null),
-    onConfirmReissueInvite: () => {
-      void handleConfirmInviteReissue()
-    },
+    onCloseReissueInviteModal: handleCloseReissueInviteModal,
+    onConfirmReissueInvite: handleConfirmReissueInviteWrapper,
     settingsVisibility,
-    onSettingsVisibilityChange: (vis) => campaignSettingsActions.setSettingsVisibility(vis),
+    onSettingsVisibilityChange: campaignSettingsActions.setSettingsVisibility,
     settingsSpectatorsEnabled,
-    onSettingsSpectatorsEnabledChange: (enabled) =>
-      campaignSettingsActions.setSettingsSpectatorsEnabled(enabled),
+    onSettingsSpectatorsEnabledChange: campaignSettingsActions.setSettingsSpectatorsEnabled,
     settingsSpectatorMax,
-    onSettingsSpectatorMaxChange: (max) => campaignSettingsActions.setSettingsSpectatorMax(max),
+    onSettingsSpectatorMaxChange: campaignSettingsActions.setSettingsSpectatorMax,
     settingsSpectatorWaitlistEnabled,
-    onSettingsSpectatorWaitlistEnabledChange: (enabled) =>
-      campaignSettingsActions.setSettingsSpectatorWaitlistEnabled(enabled),
+    onSettingsSpectatorWaitlistEnabledChange: campaignSettingsActions.setSettingsSpectatorWaitlistEnabled,
     settingsSpectatorReconnectGraceSecs,
-    onSettingsSpectatorReconnectGraceSecsChange: (secs) =>
-      campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs(secs),
+    onSettingsSpectatorReconnectGraceSecsChange: campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs,
     settingsPostSessionChatEnabled,
-    onSettingsPostSessionChatEnabledChange: (enabled) =>
-      campaignSettingsActions.setSettingsPostSessionChatEnabled(enabled),
+    onSettingsPostSessionChatEnabledChange: campaignSettingsActions.setSettingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
-    onSettingsPostSessionChatDurationMinutesChange: (value) =>
-      campaignSettingsActions.setSettingsPostSessionChatDurationMinutes(value),
+    onSettingsPostSessionChatDurationMinutesChange: campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
     settingsExtensionSyncPolicy,
-    onSettingsExtensionSyncPolicyChange: (policy) =>
-      campaignSettingsActions.setSettingsExtensionSyncPolicy(policy),
+    onSettingsExtensionSyncPolicyChange: campaignSettingsActions.setSettingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled,
+    onSettingsExtensionInventorySyncEnabledChange:
+      campaignSettingsActions.setSettingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled,
+    onSettingsExtensionCurrencySyncEnabledChange:
+      campaignSettingsActions.setSettingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess,
+    onSettingsExtensionPartyInventorySyncAccessChange:
+      campaignSettingsActions.setSettingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution,
+    onSettingsExtensionSyncConflictResolutionChange:
+      campaignSettingsActions.setSettingsExtensionSyncConflictResolution,
     settingsLateJoinPolicy,
-    onSettingsLateJoinPolicyChange: (policy) =>
-      campaignSettingsActions.setSettingsLateJoinPolicy(policy),
+    onSettingsLateJoinPolicyChange: campaignSettingsActions.setSettingsLateJoinPolicy,
     settingsLateJoinGraceMinutes,
-    onSettingsLateJoinGraceMinutesChange: (mins) =>
-      campaignSettingsActions.setSettingsLateJoinGraceMinutes(mins),
+    onSettingsLateJoinGraceMinutesChange: campaignSettingsActions.setSettingsLateJoinGraceMinutes,
     selectedCampaignName: selectedCampaign?.name,
   })
 
@@ -1154,17 +1208,13 @@ export function WorkspaceInitialization({
     onExitUpgradePasswordChange: setExitUpgradePassword,
     exitUpgradeLoading,
     exitUpgradeError,
-    onCloseExitSession: () => setShowExitSessionModal(false),
+    onCloseExitSession: handleCloseExitSession,
     onSkipGuestUpgrade: handleSkipGuestUpgrade,
-    onUpgradeAndExit: () => {
-      void handleUpgradeAndExit()
-    },
+    onUpgradeAndExit: handleUpgradeAndExitWrapper,
     onConfirmExitAsFullAccount: handleConfirmExitAsFullAccount,
     showStopSessionModal,
-    onCloseStopSession: () => setShowStopSessionModal(false),
-    onConfirmStopSession: () => {
-      void handleConfirmStopSession()
-    },
+    onCloseStopSession: handleCloseStopSession,
+    onConfirmStopSession: handleConfirmStopSessionWrapper,
   })
 
   return (

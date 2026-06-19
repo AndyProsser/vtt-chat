@@ -11,6 +11,7 @@ import { HistoryPanel } from '@/components/workspaces/shared/panels/HistoryPanel
 import { JournalPanel } from '@/components/workspaces/shared/panels/JournalPanel'
 import { NotesPanel } from '@/components/workspaces/shared/panels/NotesPanel'
 import { GroupsPanelSession } from '@/components/workspaces/session/GroupsPanel.session'
+import { InventoryPanel } from '@/components/workspaces/shared/panels/InventoryPanel'
 import { RightRailContent } from '@/components/workspaces/session/RightRailContent'
 import type { ExtensionSyncPolicy } from '@/types/sessionUi'
 import type { CampaignSummary } from '@/types/session/campaign'
@@ -66,6 +67,9 @@ type SessionWorkspaceRightRailTabProps = {
   isCharacterSettingsSaving: boolean
   onRequestOpenPlayerSettings: () => void
   playerSettingsFocusRequestKey: number
+  dndRuleset?: '2014' | '2024'
+  onSrdFieldFocus?: () => void
+  onSrdFieldBlur?: () => void
   joinUrl?: string
   watchUrl?: string
   spectatorsEnabled?: boolean
@@ -120,6 +124,9 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
   isInviteReissuing,
   onCopyInviteUrl,
   onReissueInvite,
+  dndRuleset,
+  onSrdFieldFocus,
+  onSrdFieldBlur,
 }: SessionWorkspaceRightRailTabProps) {
   const informationPanel = useMemo(
     () => (
@@ -197,6 +204,34 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
       effectiveSessionRole,
       onRequestOpenPlayerSettings,
     ]
+  )
+
+  const inventoryPanel = useMemo(
+    () =>
+      campaignId ? (
+        <InventoryPanel
+          key={`${campaignId}:${currentSessionId}`}
+          campaignId={campaignId}
+          sessionId={currentSessionId}
+          sessionState={currentSessionState}
+          currentUserId={effectiveSessionUserId}
+          effectiveSessionRole={effectiveSessionRole}
+          apiUrl={apiUrl}
+          authToken={token}
+          dndRuleset={dndRuleset}
+        />
+      ) : (
+        <CampaignScaffoldPanel
+          title="Inventory"
+          iconName="inventory"
+          subtitle="Inventory is unavailable until a campaign is selected."
+          sections={[
+            'Select or open a campaign session',
+            'Character and party inventories will load automatically',
+          ]}
+        />
+      ),
+    [campaignId, currentSessionId, currentSessionState, effectiveSessionUserId, effectiveSessionRole, apiUrl, token, dndRuleset]
   )
 
   const roomsPanel = useMemo(
@@ -329,6 +364,11 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
           isCharacterLoading: isCharacterSettingsLoading,
           isCharacterSaving: isCharacterSettingsSaving,
           focusRequestKey: playerSettingsFocusRequestKey,
+          dndRuleset: dndRuleset ?? '2024',
+          apiUrl,
+          token,
+          onSrdFieldFocus,
+          onSrdFieldBlur,
         }}
       />
     ),
@@ -353,6 +393,8 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
       isCharacterSettingsLoading,
       isCharacterSettingsSaving,
       playerSettingsFocusRequestKey,
+      onSrdFieldFocus,
+      onSrdFieldBlur,
     ]
   )
 
@@ -361,6 +403,7 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
       tab={tab}
       informationPanel={informationPanel}
       partyPanel={partyPanel}
+      inventoryPanel={inventoryPanel}
       roomsPanel={roomsPanel}
       notesPanel={notesPanel}
       journalPanel={journalPanel}

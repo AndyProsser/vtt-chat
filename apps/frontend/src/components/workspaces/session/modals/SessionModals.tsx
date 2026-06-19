@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { ExitSessionModal, StopSessionModal } from '@/components/workspaces/shared/modals'
 import type { ModalsProps } from '@/types/modals'
 
@@ -20,7 +21,7 @@ type SessionModalsProps = Pick<
   leaveSessionWarning: string | null
 }
 
-export function SessionModals(props: SessionModalsProps) {
+export const SessionModals = memo(function SessionModals(props: SessionModalsProps) {
   return (
     <>
       <ExitSessionModal
@@ -44,4 +45,4 @@ export function SessionModals(props: SessionModalsProps) {
       />
     </>
   )
-}
+})

@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { CreateGroupModal } from './CreateGroupModal'
 import { MockTestingPanel } from '../dev/MockTestingPanel'
 import { DmVoicePanel } from './DmVoicePanel'
+import { Icon } from '@/components/ui/Icon'
 
 export interface GroupsHeaderActionsProps {
   headerModeCopy?: string
@@ -232,9 +233,7 @@ export const GroupsHeaderActions = memo(function GroupsHeaderActions({
               disabled={whisperModeLocked}
               onClick={onBroadcastToggle}
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                campaign
-              </span>
+              <Icon name="campaign" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="top">
@@ -264,9 +263,7 @@ export const GroupsHeaderActions = memo(function GroupsHeaderActions({
                 aria-haspopup="dialog"
                 aria-expanded={showVoicePanel}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  record_voice_over
-                </span>
+                <Icon name="record_voice_over" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">
@@ -340,9 +337,7 @@ export const GroupsHeaderActions = memo(function GroupsHeaderActions({
                 aria-haspopup="dialog"
                 aria-expanded={showCreateGroupModal}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  group_add
-                </span>
+                <Icon name="group_add" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">
@@ -364,9 +359,7 @@ export const GroupsHeaderActions = memo(function GroupsHeaderActions({
               disabled={whisperEndBlockedByPendingMoves}
               aria-label="End whisper"
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                exit_to_app
-              </span>
+              <Icon name="exit_to_app" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="top">

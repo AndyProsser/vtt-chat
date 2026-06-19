@@ -1,0 +1,117 @@
+.ssp-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ssp-row {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ssp-label {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.ssp-select,
+.ssp-input {
+  width: 100%;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0.32rem 0.45rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.ssp-select:focus,
+.ssp-input:focus {
+  outline: 2px solid var(--color-brand, #6366f1);
+  outline-offset: -1px;
+}
+
+.ssp-select:disabled,
+.ssp-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ssp-time-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.ssp-select--time {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Preview strip */
+.ssp-preview {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.38rem 0.5rem;
+  background: color-mix(in srgb, var(--color-brand, #6366f1) 8%, var(--color-surface-subtle));
+  border: 1px solid color-mix(in srgb, var(--color-brand, #6366f1) 22%, var(--color-border-soft));
+  border-radius: var(--radius-sm);
+  margin-top: 0.15rem;
+}
+
+.ssp-preview-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.ssp-preview-value {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+/* Action row */
+.ssp-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  padding-top: 0.1rem;
+}
+
+/* Existing schedule indicator */
+.ssp-current {
+  margin: 0.1rem 0 0;
+  font-size: 0.74rem;
+  color: var(--color-text-muted);
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.ssp-manual-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.06rem 0.3rem;
+  border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--color-warning, #f59e0b) 40%, transparent);
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 10%, transparent);
+  color: var(--color-warning, #f59e0b);
+  margin-left: 0.3rem;
+  vertical-align: middle;
+}

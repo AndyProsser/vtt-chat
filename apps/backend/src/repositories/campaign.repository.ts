@@ -156,6 +156,14 @@ export async function listCampaignsForUser(userId: string): Promise<
     discoverable: boolean
     retiredAt: Date | null
     pendingJoinRequests: number
+    sessionScheduleType: string | null
+    sessionScheduleDay: number | null
+    sessionScheduleNth: number | null
+    sessionScheduleHour: number | null
+    sessionScheduleMinute: number | null
+    sessionScheduleTz: string | null
+    nextSessionDate: Date | null
+    nextSessionIsManual: boolean
   }>
 > {
   let memberships: any[]
@@ -340,6 +348,14 @@ export async function listCampaignsForUser(userId: string): Promise<
       discoverable: m.campaign.discoverable ?? false,
       retiredAt: m.campaign.retiredAt ?? null,
       pendingJoinRequests: (m.campaign.joinRequests || []).length,
+      sessionScheduleType: (m.campaign as any).sessionScheduleType ?? null,
+      sessionScheduleDay: (m.campaign as any).sessionScheduleDay ?? null,
+      sessionScheduleNth: (m.campaign as any).sessionScheduleNth ?? null,
+      sessionScheduleHour: (m.campaign as any).sessionScheduleHour ?? null,
+      sessionScheduleMinute: (m.campaign as any).sessionScheduleMinute ?? null,
+      sessionScheduleTz: (m.campaign as any).sessionScheduleTz ?? null,
+      nextSessionDate: (m.campaign as any).nextSessionDate ?? null,
+      nextSessionIsManual: (m.campaign as any).nextSessionIsManual ?? false,
     }))
 }
 
@@ -667,10 +683,15 @@ export async function updateCharacterForCampaignMember(params: {
         ...(params.avatarUrl !== undefined ? { avatarUrl: params.avatarUrl } : {}),
         ...(params.metadata !== undefined
           ? {
+              // Shallow-merge with existing metadata so extension-synced keys (e.g. metadata.stats)
+              // are preserved when the player saves manual edits from the settings panel.
               metadata:
                 params.metadata === null
                   ? Prisma.JsonNull
-                  : (params.metadata as Prisma.InputJsonValue),
+                  : ({
+                      ...((existing.metadata as Record<string, unknown>) ?? {}),
+                      ...params.metadata,
+                    } as Prisma.InputJsonValue),
             }
           : {}),
         ...(params.isActive !== undefined ? { isActive: params.isActive } : {}),

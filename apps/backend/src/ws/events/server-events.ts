@@ -77,6 +77,25 @@ export const SERVER_AUDIO_EVENT_TYPES = [
 ] as const
 
 /**
+ * Campaign-scoped events broadcast via broadcastToCampaignMembers (not session-scoped).
+ * Delivered to all campaign members regardless of active session state.
+ */
+export const SERVER_CAMPAIGN_EVENT_TYPES = [
+  'CAMPAIGN:JOIN_REQUEST_RECEIVED',
+  'CAMPAIGN:JOIN_REQUEST_RESOLVED',
+  'CAMPAIGN:RETIRED',
+  'CAMPAIGN:RESUMED',
+  'CAMPAIGN:LOBBY_STATS_UPDATED',
+  'CAMPAIGN:LIST_INVALIDATED',
+  'CAMPAIGN:PARTY_PRESENCE_UPDATED',
+  'CAMPAIGN:DM_TRANSFER_INITIATED',
+  'CAMPAIGN:DM_TRANSFER_RESPONDED',
+  'CAMPAIGN:DM_TRANSFER_CANCELLED',
+  'CAMPAIGN:DM_TRANSFERRED',
+  'CAMPAIGN:SCHEDULE_UPDATED',
+] as const
+
+/**
  * Full set of event type strings that the server may send to clients.
  */
 export const SERVER_EVENT_TYPES = [
@@ -86,6 +105,7 @@ export const SERVER_EVENT_TYPES = [
   ...SERVER_CHAT_EVENT_TYPES,
   ...SERVER_NOTES_EVENT_TYPES,
   ...SERVER_AUDIO_EVENT_TYPES,
+  ...SERVER_CAMPAIGN_EVENT_TYPES,
 ] as const
 
 export type ServerEventType = (typeof SERVER_EVENT_TYPES)[number]

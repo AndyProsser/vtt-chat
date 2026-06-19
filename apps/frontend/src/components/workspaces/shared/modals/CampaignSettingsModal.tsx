@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
@@ -44,13 +45,21 @@ type CampaignSettingsModalProps = Pick<
   | 'onSettingsPostSessionChatDurationMinutesChange'
   | 'settingsExtensionSyncPolicy'
   | 'onSettingsExtensionSyncPolicyChange'
+  | 'settingsExtensionInventorySyncEnabled'
+  | 'onSettingsExtensionInventorySyncEnabledChange'
+  | 'settingsExtensionCurrencySyncEnabled'
+  | 'onSettingsExtensionCurrencySyncEnabledChange'
+  | 'settingsExtensionPartyInventorySyncAccess'
+  | 'onSettingsExtensionPartyInventorySyncAccessChange'
+  | 'settingsExtensionSyncConflictResolution'
+  | 'onSettingsExtensionSyncConflictResolutionChange'
   | 'settingsLateJoinPolicy'
   | 'onSettingsLateJoinPolicyChange'
   | 'settingsLateJoinGraceMinutes'
   | 'onSettingsLateJoinGraceMinutesChange'
 >
 
-export function CampaignSettingsModal(props: CampaignSettingsModalProps) {
+export const CampaignSettingsModal = memo(function CampaignSettingsModal(props: CampaignSettingsModalProps) {
   if (!props.showCampaignSettingsModal) {
     return null
   }
@@ -98,9 +107,7 @@ export function CampaignSettingsModal(props: CampaignSettingsModalProps) {
                   aria-label="Close settings"
                   onClick={props.onCloseCampaignSettings}
                 >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    close
-                  </span>
+                  <Icon name="close" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">Close settings</TooltipContent>
@@ -242,6 +249,24 @@ export function CampaignSettingsModal(props: CampaignSettingsModalProps) {
             }
             settingsExtensionSyncPolicy={props.settingsExtensionSyncPolicy}
             onSettingsExtensionSyncPolicyChange={props.onSettingsExtensionSyncPolicyChange}
+            settingsExtensionInventorySyncEnabled={props.settingsExtensionInventorySyncEnabled}
+            onSettingsExtensionInventorySyncEnabledChange={
+              props.onSettingsExtensionInventorySyncEnabledChange
+            }
+            settingsExtensionCurrencySyncEnabled={props.settingsExtensionCurrencySyncEnabled}
+            onSettingsExtensionCurrencySyncEnabledChange={
+              props.onSettingsExtensionCurrencySyncEnabledChange
+            }
+            settingsExtensionPartyInventorySyncAccess={
+              props.settingsExtensionPartyInventorySyncAccess
+            }
+            onSettingsExtensionPartyInventorySyncAccessChange={
+              props.onSettingsExtensionPartyInventorySyncAccessChange
+            }
+            settingsExtensionSyncConflictResolution={props.settingsExtensionSyncConflictResolution}
+            onSettingsExtensionSyncConflictResolutionChange={
+              props.onSettingsExtensionSyncConflictResolutionChange
+            }
             settingsLateJoinPolicy={props.settingsLateJoinPolicy}
             onSettingsLateJoinPolicyChange={props.onSettingsLateJoinPolicyChange}
             settingsLateJoinGraceMinutes={props.settingsLateJoinGraceMinutes}
@@ -252,4 +277,4 @@ export function CampaignSettingsModal(props: CampaignSettingsModalProps) {
       </div>
     </div>
   )
-}
+})

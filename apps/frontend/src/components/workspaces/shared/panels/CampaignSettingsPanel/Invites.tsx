@@ -1,5 +1,6 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import type { CampaignSettingsPanelInvitesProps } from '@/types/campaignSettingsPanel'
+import { Icon } from '@/components/ui/Icon'
 
 export function CampaignSettingsPanelInvites(props: CampaignSettingsPanelInvitesProps) {
   return (
@@ -28,9 +29,7 @@ export function CampaignSettingsPanelInvites(props: CampaignSettingsPanelInvites
                 aria-label="Copy player invite URL"
                 onClick={() => props.onCopyInviteUrl('PLAYER')}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  content_copy
-                </span>
+                <Icon name="content_copy" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Copy player invite URL</TooltipContent>
@@ -44,9 +43,7 @@ export function CampaignSettingsPanelInvites(props: CampaignSettingsPanelInvites
                 disabled={props.isInviteReissuing}
                 onClick={() => props.onReissueInvite('PLAYER')}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  refresh
-                </span>
+                <Icon name="refresh" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Refresh player invite URL</TooltipContent>
@@ -76,9 +73,7 @@ export function CampaignSettingsPanelInvites(props: CampaignSettingsPanelInvites
                 disabled={!props.settingsSpectatorsEnabled || !props.hasSpectatorInviteCode}
                 onClick={() => props.onCopyInviteUrl('SPECTATOR')}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  content_copy
-                </span>
+                <Icon name="content_copy" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Copy spectator invite URL</TooltipContent>
@@ -92,9 +87,7 @@ export function CampaignSettingsPanelInvites(props: CampaignSettingsPanelInvites
                 disabled={!props.settingsSpectatorsEnabled || props.isInviteReissuing}
                 onClick={() => props.onReissueInvite('SPECTATOR')}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  refresh
-                </span>
+                <Icon name="refresh" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">Refresh spectator invite URL</TooltipContent>

@@ -76,6 +76,12 @@ export const DEFAULT_CHARACTER_SETTINGS: PlayerSettingsPanel = {
   intelligence: 8,
   wisdom: 8,
   charisma: 8,
+  hpCurrent: 0,
+  hpMax: 0,
+  ac: 0,
+  initiative: 0,
+  passivePerception: 10,
+  speed: 30,
 }
 
 export const SESSION_TIMER_SYNC_POLL_MS = 30_000
@@ -95,6 +101,23 @@ export function buildCharacterDraft(character: UserCharacterRecord | null): Play
   }
 
   const metadata = character.metadata || {}
+  // Extension-synced values live in metadata.stats; manual entries are flat in metadata.
+  // Prefer extension values when present so the panel reflects the live character sheet.
+  const synced = metadata.stats as Record<string, unknown> | undefined
+  const syncedHp = synced?.hp as { current?: number; max?: number } | undefined
+  const syncedAbility = synced?.abilityScores as Record<string, unknown> | undefined
+
+  function resolveNum(
+    syncedVal: unknown,
+    flatVal: unknown,
+    fallback: number,
+    min = 0,
+    max = 9999
+  ): number {
+    const v = syncedVal !== undefined && syncedVal !== null ? syncedVal : flatVal
+    const n = Number(v)
+    return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : fallback
+  }
 
   return {
     name: character.name || '',
@@ -103,12 +126,18 @@ export function buildCharacterDraft(character: UserCharacterRecord | null): Play
     subclass: character.subclass || '',
     avatarUrl: character.avatarUrl || '',
     level: Math.max(1, Math.min(20, Number(metadata.level) || 1)),
-    strength: toValidStat(metadata.strength),
-    dexterity: toValidStat(metadata.dexterity),
-    constitution: toValidStat(metadata.constitution),
-    intelligence: toValidStat(metadata.intelligence),
-    wisdom: toValidStat(metadata.wisdom),
-    charisma: toValidStat(metadata.charisma),
+    strength: resolveNum(syncedAbility?.str, metadata.strength, 8, 1, 30),
+    dexterity: resolveNum(syncedAbility?.dex, metadata.dexterity, 8, 1, 30),
+    constitution: resolveNum(syncedAbility?.con, metadata.constitution, 8, 1, 30),
+    intelligence: resolveNum(syncedAbility?.int, metadata.intelligence, 8, 1, 30),
+    wisdom: resolveNum(syncedAbility?.wis, metadata.wisdom, 8, 1, 30),
+    charisma: resolveNum(syncedAbility?.cha, metadata.charisma, 8, 1, 30),
+    hpCurrent: resolveNum(syncedHp?.current, metadata.hpCurrent, 0, 0, 999),
+    hpMax: resolveNum(syncedHp?.max, metadata.hpMax, 0, 0, 999),
+    ac: resolveNum(synced?.ac, metadata.ac, 0, 0, 30),
+    initiative: resolveNum(synced?.initiative, metadata.initiative, 0, -10, 20),
+    passivePerception: resolveNum(synced?.passivePerception, metadata.passivePerception, 10, 1, 30),
+    speed: resolveNum(synced?.speed, metadata.speed, 30, 0, 120),
   }
 }
 

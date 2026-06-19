@@ -22,6 +22,7 @@ export function InviteJoinPage({
   apiUrl,
   inviteCode,
   authToken,
+  initialEmail,
   onAuthenticated,
 }: InviteJoinPageProps) {
   const [joining, setJoining] = useState(false)
@@ -70,7 +71,7 @@ export function InviteJoinPage({
     setFullAccountPassword,
     isFullUserEmail,
     canEditJoinFields,
-  } = useEmailPrecheck({ apiUrl, inviteCode, campaign, setError, setErrorCode, onPrecheckSuccess })
+  } = useEmailPrecheck({ apiUrl, inviteCode, campaign, initialEmail, setError, setErrorCode, onPrecheckSuccess })
 
   const handleAvatarSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]

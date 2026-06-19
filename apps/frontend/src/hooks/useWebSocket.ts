@@ -13,6 +13,7 @@ import { WebSocketClient, type ConnectionState } from '../ws/client'
 import { EventDispatcher } from '../ws/dispatcher'
 import { useStore } from './useStore'
 import { logger } from '../utils/logger'
+import { showToast } from '../state/toastCenter'
 
 const WS_CONNECT_DEFER_MS = 75
 
@@ -277,6 +278,23 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       useStore.getState().handleNoteHandoutSurfaced(event)
     })
 
+    // Inventory events
+    dispatcher.register('INVENTORY:ITEM_ADDED', (event) => {
+      useStore.getState().handleInventoryItemAdded(event)
+    })
+    dispatcher.register('INVENTORY:ITEM_REMOVED', (event) => {
+      useStore.getState().handleInventoryItemRemoved(event)
+    })
+    dispatcher.register('INVENTORY:ITEM_TRANSFERRED', (event) => {
+      useStore.getState().handleInventoryItemTransferred(event)
+    })
+    dispatcher.register('INVENTORY:ITEM_EDITED', (event) => {
+      useStore.getState().handleInventoryItemEdited(event)
+    })
+    dispatcher.register('INVENTORY:CURRENCY_CHANGED', (event) => {
+      useStore.getState().handleInventoryCurrencyChanged(event)
+    })
+
     // Room events
     dispatcher.register('SESSION:MEMBER_JOINED', (event) => {
       useStore.getState().handleSessionMemberJoined(event)
@@ -455,6 +473,51 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     )
     dispatcher.register('CAMPAIGN:PARTY_PRESENCE_UPDATED', (event) => {
       onPartyPresenceUpdatedRef.current?.(event)
+    })
+
+    // DM transfer events — update Zustand and surface toasts for both parties.
+    dispatcher.register('CAMPAIGN:DM_TRANSFER_INITIATED', (event) => {
+      useStore.getState().handleDmTransferInitiated(event)
+      const p = event.payload as { fromUsername: string; campaignName: string }
+      showToast({
+        message: `${p.fromUsername} is offering you the DM role for "${p.campaignName}". Open campaign settings to respond.`,
+        variant: 'info',
+        durationMs: null, // persist until dismissed
+      })
+    })
+    dispatcher.register('CAMPAIGN:DM_TRANSFER_RESPONDED', (event) => {
+      useStore.getState().handleDmTransferResponded(event)
+      const p = event.payload as { toUsername: string; response: 'ACCEPTED' | 'DECLINED' }
+      if (p.response === 'ACCEPTED') {
+        showToast({
+          message: `${p.toUsername} accepted the DM transfer. They are now the campaign DM.`,
+          variant: 'success',
+          durationMs: 8000,
+        })
+      } else {
+        showToast({
+          message: `${p.toUsername} declined the DM transfer offer.`,
+          variant: 'info',
+          durationMs: 6000,
+        })
+      }
+    })
+    dispatcher.register('CAMPAIGN:DM_TRANSFER_CANCELLED', (event) => {
+      useStore.getState().handleDmTransferCancelled(event)
+      const p = event.payload as { fromUsername: string }
+      showToast({
+        message: `${p.fromUsername} cancelled the DM transfer offer.`,
+        variant: 'info',
+        durationMs: 5000,
+      })
+    })
+    dispatcher.register('CAMPAIGN:DM_TRANSFERRED', (event) => {
+      useStore.getState().handleDmTransferred(event)
+    })
+
+    // Session schedule events — update campaign schedule state for all members.
+    dispatcher.register('CAMPAIGN:SCHEDULE_UPDATED', (event) => {
+      useStore.getState().handleCampaignScheduleUpdated(event)
     })
 
     // Metadata events (WS internal)

@@ -12,7 +12,7 @@ export interface ConditionMessageMetadata {
 
 export interface PreparedMessage {
   msg: Message
-  variant: 'ic' | 'ooc' | 'whisper' | 'dm' | 'system'
+  variant: 'ic' | 'ooc' | 'whisper' | 'dm' | 'system' | 'roll'
   isSystem: boolean
   isSessionBookend: boolean
   sessionBookendState: SessionBookendState | null

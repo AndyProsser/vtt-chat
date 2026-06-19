@@ -23,7 +23,9 @@ import { TypingIndicator } from './TypingIndicator'
 import type { OutgoingChatMessage } from '@/state/chatSlice'
 import type { Message } from '@/types/chat'
 import { generateClientId } from '@/utils/uuid'
+import { showToast } from '@/state/toastCenter'
 import '@/styles/components/workspaces/session/chat/ChatWindow.css'
+import { Icon } from '@/components/ui/Icon'
 
 interface ChatWindowProps {
   apiUrl: string
@@ -263,6 +265,29 @@ function ChatWindowComponent({
     ]
   )
 
+  const handleRollCommand = useCallback(
+    async (args: string) => {
+      const res = await fetch(`${apiUrl}/api/chat/command`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ command: 'roll', args, sessionId, roomId }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.message ?? `HTTP ${res.status}`)
+      }
+    },
+    [apiUrl, token, sessionId, roomId]
+  )
+
+  const handleCommandError = useCallback((message: string) => {
+    showToast({ message, variant: 'error' })
+  }, [])
+
   const emitTypingEvent = useCallback(
     (type: 'CHAT:TYPING_STARTED' | 'CHAT:TYPING_STOPPED') => {
       if (
@@ -291,6 +316,16 @@ function ChatWindowComponent({
       })
     },
     [roomId, sendWsEvent, sessionId, user.id, user.role, user.username]
+  )
+
+  const handleTypingStarted = useCallback(
+    () => emitTypingEvent('CHAT:TYPING_STARTED'),
+    [emitTypingEvent]
+  )
+
+  const handleTypingStopped = useCallback(
+    () => emitTypingEvent('CHAT:TYPING_STOPPED'),
+    [emitTypingEvent]
   )
 
   const retryFailedMessage = useCallback(
@@ -353,12 +388,7 @@ function ChatWindowComponent({
                 onClick={revealOlderGreenroomHistory}
                 aria-label="Load earlier messages"
               >
-                <span
-                  className="material-symbols-outlined session-chat-window__hidden-older-icon"
-                  aria-hidden="true"
-                >
-                  history
-                </span>
+                <Icon name="history" className="session-chat-window__hidden-older-icon" />
                 <span className="session-chat-window__hidden-older-text">
                   Load earlier messages
                 </span>
@@ -417,9 +447,12 @@ function ChatWindowComponent({
 
       <MessageInput
         onSend={handleSend}
-        onTypingStarted={() => emitTypingEvent('CHAT:TYPING_STARTED')}
-        onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
+        onRollCommand={handleRollCommand}
+        onCommandError={handleCommandError}
+        onTypingStarted={handleTypingStarted}
+        onTypingStopped={handleTypingStopped}
         role={user.role}
+        username={user.username}
         sessionId={sessionId}
         currentUserId={user.id}
         currentRoomId={roomId}

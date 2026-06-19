@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import {
   CampaignSettingsModal,
   CreateCampaignModal,
@@ -60,6 +61,14 @@ type LobbyModalsProps = Pick<
   | 'onSettingsPostSessionChatDurationMinutesChange'
   | 'settingsExtensionSyncPolicy'
   | 'onSettingsExtensionSyncPolicyChange'
+  | 'settingsExtensionInventorySyncEnabled'
+  | 'onSettingsExtensionInventorySyncEnabledChange'
+  | 'settingsExtensionCurrencySyncEnabled'
+  | 'onSettingsExtensionCurrencySyncEnabledChange'
+  | 'settingsExtensionPartyInventorySyncAccess'
+  | 'onSettingsExtensionPartyInventorySyncAccessChange'
+  | 'settingsExtensionSyncConflictResolution'
+  | 'onSettingsExtensionSyncConflictResolutionChange'
   | 'settingsLateJoinPolicy'
   | 'onSettingsLateJoinPolicyChange'
   | 'settingsLateJoinGraceMinutes'
@@ -70,7 +79,7 @@ type LobbyModalsProps = Pick<
   | 'onConfirmReissueInvite'
 >
 
-export function LobbyModals(props: LobbyModalsProps) {
+export const LobbyModals = memo(function LobbyModals(props: LobbyModalsProps) {
   return (
     <>
       <CreateCampaignModal
@@ -136,6 +145,24 @@ export function LobbyModals(props: LobbyModalsProps) {
         }
         settingsExtensionSyncPolicy={props.settingsExtensionSyncPolicy}
         onSettingsExtensionSyncPolicyChange={props.onSettingsExtensionSyncPolicyChange}
+        settingsExtensionInventorySyncEnabled={props.settingsExtensionInventorySyncEnabled}
+        onSettingsExtensionInventorySyncEnabledChange={
+          props.onSettingsExtensionInventorySyncEnabledChange
+        }
+        settingsExtensionCurrencySyncEnabled={props.settingsExtensionCurrencySyncEnabled}
+        onSettingsExtensionCurrencySyncEnabledChange={
+          props.onSettingsExtensionCurrencySyncEnabledChange
+        }
+        settingsExtensionPartyInventorySyncAccess={
+          props.settingsExtensionPartyInventorySyncAccess
+        }
+        onSettingsExtensionPartyInventorySyncAccessChange={
+          props.onSettingsExtensionPartyInventorySyncAccessChange
+        }
+        settingsExtensionSyncConflictResolution={props.settingsExtensionSyncConflictResolution}
+        onSettingsExtensionSyncConflictResolutionChange={
+          props.onSettingsExtensionSyncConflictResolutionChange
+        }
         settingsLateJoinPolicy={props.settingsLateJoinPolicy}
         onSettingsLateJoinPolicyChange={props.onSettingsLateJoinPolicyChange}
         settingsLateJoinGraceMinutes={props.settingsLateJoinGraceMinutes}
@@ -151,4 +178,4 @@ export function LobbyModals(props: LobbyModalsProps) {
       />
     </>
   )
-}
+})

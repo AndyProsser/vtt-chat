@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { Icon } from '@/components/ui/Icon'
-import { DND_5_5E_SRD_CLASSES, DND_5_5E_SRD_SPECIES } from '@/constants/characterSrd.constants'
 import { CharacterAvatarUploadField } from './CharacterAvatarUploadField'
 import { VerticalSliderInput } from './VerticalSliderInput'
+import { useSrdOptions } from '@/hooks/useSrdOptions'
 import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 
 export interface PlayerSettingsPanel {
@@ -18,6 +18,13 @@ export interface PlayerSettingsPanel {
   intelligence: number
   wisdom: number
   charisma: number
+  /** Stored when synced from extension; not shown as an editable field. */
+  hpCurrent: number
+  hpMax: number
+  ac: number
+  initiative: number
+  passivePerception: number
+  speed: number
 }
 
 export interface PlayerSettingsPanelProps {
@@ -28,10 +35,19 @@ export interface PlayerSettingsPanelProps {
   isCharacterLoading: boolean
   isCharacterSaving: boolean
   focusRequestKey?: number
+  /** Campaign-level D&D edition for SRD lookups; defaults to 2024. */
+  dndRuleset?: '2014' | '2024'
+  apiUrl?: string
+  token?: string
+  /** Called when race/class/subclass gains focus — suppresses auto-save while popup is open. */
+  onSrdFieldFocus?: () => void
+  /** Called when race/class/subclass loses focus — triggers deferred save. */
+  onSrdFieldBlur?: () => void
 }
 
 export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
   const nameInputRef = useRef<HTMLInputElement | null>(null)
+  const disabled = props.isCharacterLoading || props.isCharacterSaving
 
   useEffect(() => {
     if (typeof props.focusRequestKey !== 'number') {
@@ -41,6 +57,13 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
     nameInputRef.current?.focus()
     nameInputRef.current?.select()
   }, [props.focusRequestKey])
+
+  const { raceOptions, classOptions, subclassOptions } = useSrdOptions({
+    apiUrl: props.apiUrl ?? '',
+    token: props.token ?? '',
+    ruleset: props.dndRuleset ?? '2024',
+    selectedClass: props.characterDraft.className,
+  })
 
   return (
     <div className="crbs-panel" aria-label="Player settings">
@@ -53,7 +76,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
           type="button"
           className="session-icon-action session-icon-action--icon"
           aria-label={props.isCharacterSaving ? 'Saving character' : 'Save character'}
-          disabled={!props.campaignId || props.isCharacterLoading || props.isCharacterSaving}
+          disabled={!props.campaignId || disabled}
           onClick={props.onSaveCharacterSettings}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
@@ -77,7 +100,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 className="crbs-input"
                 value={props.characterDraft.name}
                 onChange={(event) => props.onCharacterFieldChange('name', event.target.value)}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                disabled={disabled}
               />
             </label>
             <label className="crbs-field" htmlFor="crbs-character-race">
@@ -89,11 +112,13 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 list="crbs-character-race-suggestions"
                 value={props.characterDraft.race}
                 onChange={(event) => props.onCharacterFieldChange('race', event.target.value)}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                onFocus={props.onSrdFieldFocus}
+                onBlur={props.onSrdFieldBlur}
+                disabled={disabled}
               />
               <datalist id="crbs-character-race-suggestions">
-                {DND_5_5E_SRD_SPECIES.map((species) => (
-                  <option key={species} value={species} />
+                {raceOptions.map((race) => (
+                  <option key={race} value={race} />
                 ))}
               </datalist>
             </label>
@@ -106,10 +131,12 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 list="crbs-character-class-suggestions"
                 value={props.characterDraft.className}
                 onChange={(event) => props.onCharacterFieldChange('className', event.target.value)}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                onFocus={props.onSrdFieldFocus}
+                onBlur={props.onSrdFieldBlur}
+                disabled={disabled}
               />
               <datalist id="crbs-character-class-suggestions">
-                {DND_5_5E_SRD_CLASSES.map((className) => (
+                {classOptions.map((className) => (
                   <option key={className} value={className} />
                 ))}
               </datalist>
@@ -120,10 +147,20 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 id="crbs-character-subclass"
                 type="text"
                 className="crbs-input"
+                list="crbs-character-subclass-suggestions"
                 value={props.characterDraft.subclass}
                 onChange={(event) => props.onCharacterFieldChange('subclass', event.target.value)}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                onFocus={props.onSrdFieldFocus}
+                onBlur={props.onSrdFieldBlur}
+                disabled={disabled}
               />
+              {subclassOptions.length > 0 && (
+                <datalist id="crbs-character-subclass-suggestions">
+                  {subclassOptions.map((subclass) => (
+                    <option key={subclass} value={subclass} />
+                  ))}
+                </datalist>
+              )}
             </label>
           </div>
 
@@ -137,12 +174,12 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 max={20}
                 value={props.characterDraft.level}
                 onChange={(v) => props.onCharacterFieldChange('level', v)}
-                disabled={props.isCharacterLoading || props.isCharacterSaving}
+                disabled={disabled}
                 triggerMode="click"
               />
             </label>
 
-            <div className="crbs-stats-strip" role="group" aria-label="Character stats">
+            <div className="crbs-stats-strip" role="group" aria-label="Ability scores">
               {[
                 ['strength', 'STR'],
                 ['dexterity', 'DEX'],
@@ -161,7 +198,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                     onChange={(v) =>
                       props.onCharacterFieldChange(field as keyof PlayerSettingsPanel, v)
                     }
-                    disabled={props.isCharacterLoading || props.isCharacterSaving}
+                    disabled={disabled}
                     triggerMode="click"
                   />
                 </label>
@@ -170,10 +207,40 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
           </div>
         </div>
 
+        <span className="crbs-field-label">Combat Stats</span>
+        <div
+          className="crbs-stats-strip crbs-stats-strip--5col"
+          role="group"
+          aria-label="Combat stats"
+        >
+          {(
+            [
+              ['hpMax', 'HP', 0, 999],
+              ['ac', 'AC', 0, 30],
+              ['initiative', 'INIT', -10, 20],
+              ['passivePerception', 'PP', 1, 30],
+              ['speed', 'SPD', 0, 120],
+            ] as const
+          ).map(([field, label, min, max]) => (
+            <label key={field} className="crbs-field crbs-field--stat">
+              <span className="crbs-field-label">{label}</span>
+              <VerticalSliderInput
+                label={`${label} (${min}–${max})`}
+                min={min}
+                max={max}
+                value={props.characterDraft[field] as number}
+                onChange={(v) => props.onCharacterFieldChange(field, v)}
+                disabled={disabled}
+                triggerMode="click"
+              />
+            </label>
+          ))}
+        </div>
+
         <CharacterAvatarUploadField
           value={props.characterDraft.avatarUrl}
           onChange={(value) => props.onCharacterFieldChange('avatarUrl', value)}
-          disabled={props.isCharacterLoading || props.isCharacterSaving}
+          disabled={disabled}
         />
       </section>
     </div>

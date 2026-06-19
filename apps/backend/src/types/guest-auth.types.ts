@@ -46,11 +46,29 @@ export type GuestCharacterInput = {
   externalCharacterId?: string
   characterUrl?: string
   avatarUrl?: string
+  stats?: import('@shared').CharacterStats
+  conditions?: string[]
+  features?: string[]
+}
+
+export type GuestCampaignMember = {
+  externalUserId: string
+  displayName?: string
+  avatarUrl?: string
+  character?: {
+    externalCharacterId: string
+    name: string
+    class?: string
+    level?: number
+    avatarUrl?: string
+  }
 }
 
 export type GuestCampaignPacket = {
   externalCampaignId?: string
+  campaignName?: string
   dmExternalUserId?: string
+  members?: GuestCampaignMember[]
 }
 
 export type SpectatorCharacterSummary = {

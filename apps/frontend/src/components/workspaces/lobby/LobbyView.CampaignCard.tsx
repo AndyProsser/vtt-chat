@@ -14,6 +14,7 @@ import {
   getPrivacyCounterLabel,
 } from '@/types/session/campaign'
 import { LobbyJoinRequestsPanel } from './LobbyJoinRequestsPanel'
+import { Icon } from '@/components/ui/Icon'
 import {
   buildCampaignDescriptionPreviewText,
   formatLastActiveLabel,
@@ -192,12 +193,11 @@ export function CampaignCard({
           {showLock && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span
-                  className="material-symbols-outlined session-campaign-card__lock-icon"
+                <Icon
+                  name="lock"
+                  className="session-campaign-card__lock-icon"
                   aria-label="Private campaign"
-                >
-                  lock
-                </span>
+                />
               </TooltipTrigger>
               <TooltipContent side="top">Private campaign</TooltipContent>
             </Tooltip>
@@ -207,9 +207,7 @@ export function CampaignCard({
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="session-campaign-card__stat">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  groups
-                </span>
+                <Icon name="groups" />
                 <span>{playersLabel}</span>
               </span>
             </TooltipTrigger>
@@ -218,9 +216,7 @@ export function CampaignCard({
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="session-campaign-card__stat">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  visibility
-                </span>
+                <Icon name="visibility" />
                 <span>{spectatorsLabel}</span>
               </span>
             </TooltipTrigger>
@@ -304,9 +300,7 @@ export function CampaignCard({
                 }}
                 aria-label="Campaign settings"
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  tune
-                </span>
+                <Icon name="tune" />
                 <span>{reviewLabel}</span>
               </button>
             </TooltipTrigger>

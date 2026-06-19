@@ -21,7 +21,9 @@
       "Bash(docker compose *)",
       "Bash(python3 - *)",
       "Bash(python3 *)",
-      "Bash(sed -n '*,*p' *)"
+      "Bash(sed -n '*,*p' *)",
+      "Bash(npm --workspace=apps/frontend run tsc)",
+      "Bash(npm --workspace=apps/frontend run typecheck)"
     ]
   }
 }

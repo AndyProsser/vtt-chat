@@ -374,11 +374,25 @@
   color: color-mix(in srgb, #60a5fa 85%, var(--color-text-primary));
 }
 
+.session-groups-member-card__stat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.06rem;
+  width: 100%;
+}
+
 .session-groups-member-card__stats {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.08rem;
   width: 100%;
+}
+
+.session-groups-member-card__stats--5col {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.session-groups-member-card__stats--6col {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .session-groups-member-card__stats--empty {
@@ -410,6 +424,15 @@
   color: var(--color-text-secondary);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  line-height: 1;
+}
+
+.session-groups-member-card__stat-mod {
+  font-size: 0.46rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0;
+  text-transform: none;
   line-height: 1;
 }
 

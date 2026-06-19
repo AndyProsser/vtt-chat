@@ -5,6 +5,9 @@ WORKDIR /workspace
 # Copy shared types (referenced via @shared alias in tsconfig)
 COPY packages/shared ./packages/shared
 
+# Install shared package dependencies so Vite can resolve them from the shared source path
+RUN cd packages/shared && npm install
+
 # Install backend dependencies
 COPY apps/backend/package.json apps/backend/package-lock.json* ./apps/backend/
 COPY apps/backend/prisma ./apps/backend/prisma

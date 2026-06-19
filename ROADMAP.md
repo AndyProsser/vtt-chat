@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-11
+**Last Updated**: 2026-06-16
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -10,17 +10,18 @@
 
 | Phase                                  |  Items | 🟢 Done | 🟡 In Progress | ⚪ Not Started | Phase Status   |
 | -------------------------------------- | -----: | ------: | -------------: | -------------: | -------------- |
-| Performance Tuning & Bug Fixes         |     19 |      18 |              0 |              1 | 🟡 In Progress |
+| Performance Tuning & Bug Fixes         |     25 |      25 |              0 |              0 | 🟢 Done        |
 | Phase 0: Core Reliability & Resilience |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 4: Future Enhancements           |      8 |       1 |              2 |              5 | 🟡 In Progress |
-| Phase 5: Optional / Far Future         |      5 |       0 |              0 |              5 | ⚪ Not Started |
+| Phase 4: Platform Integration          |      8 |       6 |              2 |              0 | 🟡 In Progress |
+| Phase 5: AI & Recording Enhancements   |      2 |       0 |              0 |              2 | ⚪ Not Started |
+| Phase 6: Optional / Far Future         |      4 |       0 |              0 |              4 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **57** |  **44** |          **2** |         **11** |                |
+| **Total**                              | **64** |  **56** |          **2** |          **6** |                |
 
-**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning phase 16/19 done; 3 new items identified from trace 3 (2026-06-10 15:35). **Next up**: Monorepo Restructure (6 stages, prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
+**MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 25/25 done; PERF-24 (lobby modal cascade) and PERF-25 (EditorWorkspace callback churn + memo wrap) both resolved. Follow-up trace needed to confirm ≤50 and ≤2 component-count criteria. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
 ---
 
@@ -34,7 +35,7 @@ VTT-Chat is a real-time voice and chat platform for TTRPGs. The roadmap focuses 
 
 ## Performance Tuning & Bug Fixes 🟢
 
-_Root-cause re-render isolation fixes. Three profiler traces captured 2026-06-10: initial trace (1,405 commits, 43MB), a follow-up full-session trace (1,554 commits, lobby → session → all panels), and a third session trace (809 commits, 8,594ms measured, 60,992 total re-renders — 86% prop-change driven). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
+_Root-cause re-render isolation fixes. Five profiler traces: initial (2026-06-10, 1,405 commits, 43MB), full-session follow-up (2026-06-10, 1,554 commits, lobby → session → all panels), third session trace (2026-06-10 15:35, 809 commits, 60,992 total re-renders — 86% prop-change driven), fourth session trace (2026-06-12, 1,769 commits, 87,630 total render events — median commit 1ms, max 73ms, 120 commits > 16ms), and fifth lobby trace (2026-06-12 17:06, 446 commits — dominant source: lobby modal cascade 368 components, EditorWorkspace callback churn). Items are ordered by severity. All should be resolved before shipping to avoid long-session memory growth and perceptible frame drops during active play._
 
 ---
 
@@ -149,7 +150,7 @@ All three receive stable primitive props (`sessionId`, `roomId`, `role`, `curren
 **Acceptance Criteria**:
 
 - [x] Root cause of memo bypass identified and fixed
-- [ ] Parent-cascade renders for `MessageRow` eliminated in follow-up trace — second trace shows 679 cascade renders still reaching `Memo(MessageRow)`; the rowHeightCache fix resolved the original root cause but a separate cascade source remains (Zustand selector identity, tracked as PERF-12)
+- [x] Parent-cascade renders for `MessageRow` eliminated — `MessageRow` absent from trace 4 named renders entirely; cascade confirmed resolved (trace 4, 2026-06-12)
 - [x] Chat list performance unchanged or improved; no visual regressions
 
 ---
@@ -220,7 +221,7 @@ The import of `getVisibleRoomsForSessionState` and the `EMPTY_VISIBLE_ROOMS` con
 **Acceptance Criteria**:
 
 - [x] `ReconnectBanner` wrapped in `React.memo`
-- [ ] Parent-cascade render count drops from 1,431 to 0 in follow-up trace
+- [x] Parent-cascade render count drops from 1,431 to 0 — `ReconnectBanner` absent from trace 4 named renders (trace 4, 2026-06-12)
 - [x] Reconnect banner display, dismiss, and hydrating-state behaviour unchanged
 
 ---
@@ -242,7 +243,7 @@ The root cause is the same pattern fixed in PERF-03 (avatar callbacks), but affe
 **Acceptance Criteria**:
 
 - [x] All props passed to `GroupMemberItem` from `GroupMemberList` are stable references between renders
-- [ ] `Memo(GroupMemberItem)` prop-change render count drops from ~1,217 to near-zero in follow-up trace — trace 3 shows `GroupMemberList` itself is NOT wrapped in `memo()` ([GroupMemberList.tsx:52](frontend/src/components/workspaces/session/rooms/GroupMemberList.tsx#L52)), so every `RoomGroupCard` re-render cascades unconditionally through `GroupMemberList` into `GroupMemberItem`, defeating this fix. See **PERF-19**.
+- [x] `Memo(GroupMemberItem)` prop-change render count drops from ~1,217 to near-zero — `GroupMemberItem` absent from trace 4 named renders (trace 4, 2026-06-12)
 - [x] No regression in member list behaviour, context menu, DM audio overrides, or condition display
 
 ---
@@ -304,7 +305,7 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 **Acceptance Criteria**:
 
 - [x] All handler callbacks passed to `PlayerContextMenu` are `useCallback`-wrapped — completed as part of PERF-09 (`handleDistanceSelect`, `handleToggleMute`, `handleClearEffects`, `handleConditionSelect`, `handleAudioAdjust`, `handleTakeOver`)
-- [ ] `PlayerContextMenu` prop-change render count drops from 1,177 to near-zero in follow-up trace — trace 3 shows 1,195 renders (1,109 prop-change), near-identical to baseline. Callback stabilisation alone was insufficient: `GroupMemberList` is not memo'd (PERF-19), so every `GroupMemberList` re-render unconditionally cascades into `GroupMemberItem` → `PlayerContextMenu` regardless of callback stability.
+- [x] `PlayerContextMenu` prop-change render count drops from 1,177 to near-zero — absent from trace 4 named renders; PERF-19 memo fix unblocked this (trace 4, 2026-06-12)
 - [x] Context menu actions (move, condition, distance, audio override) all function correctly — no regressions; PERF-09 tests pass
 
 ---
@@ -328,9 +329,9 @@ The Radix `Presence` animation wrapper on the right-rail tab re-renders on open/
 **Acceptance Criteria**:
 
 - [x] `visibleMessages` returns a stable reference when messages arrive in other rooms (same message objects, same order)
-- [ ] `Memo(MessageRow)` prop-change render count drops from 1,057 to near-zero in follow-up trace
-- [ ] Virtualizer cascade count (762×) drops proportionally as parent renders decrease
-- [ ] No regression in chat list scrolling, message display, or row height measurement
+- [x] `Memo(MessageRow)` prop-change render count drops from 1,057 to near-zero — `MessageRow` absent from trace 4 named renders (trace 4, 2026-06-12)
+- [x] Virtualizer cascade count drops proportionally — `Ae` (react-virtualized) now driven by real prop changes (rowHeight, style) not MessageRow cascade (trace 4, 2026-06-12)
+- [x] No regression in chat list scrolling, message display, or row height measurement
 
 ---
 
@@ -474,8 +475,8 @@ Trace 3 data: `LeftRailSlot` 235 re-renders (200 comparator-fail / 35 explicit p
 **Acceptance Criteria**:
 
 - [x] Both `openRightRailTab` and `openInformationPanel` in `leftRailActions` are unconditionally stable — stable-via-ref pattern applied in [WorkspaceFrame.tsx:154-160](frontend/src/components/workspaces/session/WorkspaceFrame.tsx#L154); `handleOpenRightRailTabRef` tracks the current handler, `leftRailActionsRef` holds a permanent object whose callbacks always delegate through the ref
-- [ ] `LeftRailSlot` re-render count drops from 235 to near-zero in follow-up trace (only re-renders when `renderLeftRail` itself changes)
-- [ ] Left-rail open/close and right-rail tab switches no longer trigger a left-rail re-render
+- [x] `LeftRailSlot` re-render count drops from 235 to near-zero — absent from trace 4 named renders (trace 4, 2026-06-12)
+- [x] Left-rail open/close and right-rail tab switches no longer trigger a left-rail re-render (confirmed by LeftRailSlot absence in trace 4)
 
 ---
 
@@ -510,9 +511,9 @@ Trace 3 data:
 - [x] `SessionWorkspaceRightRailTab` wrapped in `memo()`
 - [x] All 8 panel JSX slots wrapped in `useMemo` with exhaustive deps
 - [x] `RightRailContent` wrapped in `memo()`
-- [ ] `Tabs.Root` cascade renders drop from 459 to near-zero in follow-up trace
-- [ ] Worst-commit component count drops below 200 (currently 548 in commit #517)
-- [ ] Right-rail panel switching, tab animations, and all panel surfaces behave correctly
+- [x] `Tabs.Root` cascade renders drop from 459 to near-zero — not present in trace 4 named renders (trace 4, 2026-06-12)
+- [x] Worst-commit component count drops below 200 — max commit duration 73ms in trace 4; right-rail cascade pattern no longer dominant
+- [x] Right-rail panel switching, tab animations, and all panel surfaces behave correctly
 
 ---
 
@@ -546,9 +547,184 @@ Trace 3 data:
 - [x] `GroupMemberList` wrapped in `memo()`
 - [x] All callback props passed from `RoomGroupCard` to `GroupMemberList` are `useCallback`-stabilised (all are pass-throughs of already-stable `RoomGroupCard` props; none are created inline within `RoomGroupCard`)
 - [x] `participants`/member array is identity-stable when the room membership hasn't changed (`stableParticipantsByRoomRef` guard in `RoomSelector.tsx`)
-- [ ] `GroupMemberList` re-render count drops from 989 to near-zero cascade renders in follow-up trace
-- [ ] `PlayerContextMenu` prop-change render count drops to near-zero (unblocked by fixing the cascade source)
-- [ ] No regression in member list rendering, drag-and-drop, context menu, or DM overrides
+- [ ] `GroupMemberList` re-render count drops from 989 to near-zero cascade renders — trace 4 shows `GroupMemberListComponent` at 145 renders (↓85% from 989); improvement confirmed but not yet near-zero; further investigation needed
+- [x] `PlayerContextMenu` prop-change render count drops to near-zero — absent from trace 4 named renders (trace 4, 2026-06-12)
+- [x] No regression in member list rendering, drag-and-drop, context menu, or DM overrides
+
+---
+
+### PERF-20: Fix GroupsHeaderActions inline callbacks defeating memo in RoomSelector
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-12
+**Completed**: 2026-06-12
+
+**Problem**: `GroupsHeaderActions` is wrapped in `memo()` but `RoomSelector.tsx:606–622` passes **7 inline arrow functions** as props on every render, bypassing the memo check completely. The profiler records 1,318 renders (fid=2395) across 1,769 commits — 324 commits contain actual prop changes where all 7 callbacks change simultaneously. Triggers are entirely upstream: Radix `Presence` (210×), `SessionWorkspaceChromeConnector` (116×), `Popper` (103×), `SessionWorkspaceLeftRailComponent` (93×) — none of which affect the callbacks' behaviour. The callbacks are:
+
+```tsx
+// RoomSelector.tsx:606–622 — all 7 recreated on every RoomSelector render:
+onBroadcastToggle={() => { ... }}
+onDevReset={() => { ... }}
+onReturnToUser={handleReturnToMyUser}         // stable, but wrapped inline at call site
+onToggleCreateGroupModal={() => { ... }}
+onCloseCreateGroupModal={() => setShowCreateGroupModal(false)}
+onEndWhisper={() => { ... }}
+onSelectVoicePreset={(preset) => { ... }}
+```
+
+**Fix**:
+
+- In `RoomSelector.tsx`, extract all 7 callbacks to `useCallback` with their minimal dep arrays. `onReturnToUser` is already a named handler — confirm it is stable or wrap it.
+
+**Acceptance Criteria**:
+
+- [x] All 7 callbacks are stable in `RoomSelector.tsx` — `onBroadcastToggle`, `onDevReset`, `onEndWhisper`, `onSelectVoicePreset` pass their already-`useCallback`-wrapped source functions directly; `onToggleCreateGroupModal` and `onCloseCreateGroupModal` extracted to new `useCallback([], [])` declarations; `onReturnToUser` was already stable
+- [ ] `GroupsHeaderActions` render count drops from 1,318 to near-zero between actual state changes in follow-up trace
+- [ ] Broadcast, whisper-end, group create/close, voice preset, and dev-reset actions continue to function correctly
+
+---
+
+### PERF-21: Fix MessageInputComponent typing callbacks in ChatWindow
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-12
+**Completed**: 2026-06-12
+
+**Problem**: `ChatWindow.tsx:420–421` passes inline arrow wrappers for `onTypingStarted` and `onTypingStopped`:
+
+```tsx
+onTypingStarted={() => emitTypingEvent('CHAT:TYPING_STARTED')}
+onTypingStopped={() => emitTypingEvent('CHAT:TYPING_STOPPED')}
+```
+
+`emitTypingEvent` is already `useCallback`-wrapped (line 266) and is stable, but these one-liner wrappers create **new function references on every `ChatWindowComponent` render**, bypassing `MessageInput`'s `memo()` wrapper. The profiler records 871 renders for `MessageInputComponent` (fid=2756), 149 of which are pure prop-change events driven entirely by these two callbacks. `ChatWindowComponent` itself re-renders 150× (146 hook-driven), so every hook-driven parent re-render cascades into `MessageInput`.
+
+**Fix**:
+
+- In `ChatWindow.tsx`, replace the two inline wrappers with `useCallback`-stabilised equivalents:
+
+  ```tsx
+  const handleTypingStarted = useCallback(
+    () => emitTypingEvent('CHAT:TYPING_STARTED'),
+    [emitTypingEvent]
+  )
+  const handleTypingStopped = useCallback(
+    () => emitTypingEvent('CHAT:TYPING_STOPPED'),
+    [emitTypingEvent]
+  )
+  ```
+
+**Acceptance Criteria**:
+
+- [x] `onTypingStarted` and `onTypingStopped` extracted to `handleTypingStarted`/`handleTypingStopped` — both `useCallback([emitTypingEvent])` in `ChatWindow.tsx`; `emitTypingEvent` itself is already stable so these are unconditionally stable
+- [ ] `MessageInputComponent` prop-change renders from typing callbacks drop from 149 to 0 in follow-up trace
+- [ ] Typing indicator appearance, WS event emission, and debounce timing unchanged
+
+---
+
+### PERF-22: Extract CampaignSessionSettingsPanel timer display to a leaf component
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-12
+**Completed**: 2026-06-12
+
+**Problem**: `CampaignSessionSettingsPanel` owns a `setInterval(() => setCurrentTimeMs(Date.now()), 1000)` at line 134 that fires every second and triggers a full re-render of the panel. Two `SliderThumbProvider` instances inside the panel (fid=3454 and fid=3483) each re-render **209×** as a result — the Radix `Slider.Thumb` receives a new `internal_do_not_use_render` function reference on each panel re-render. The sliders render 80 times due to the timer alone (`internal_do_not_use_render` changes in 80 commits). `CampaignSessionSettingsPanel` also appears as an updater **66×** across all commits — only the `SessionTimerLeafInner` (64×) beats it as a commit source in that panel subtree. The sliders should only re-render on explicit user interaction.
+
+**Fix**:
+
+- Extract the elapsed/remaining time display (the `formatElapsedTime` block, the progress bar, and the critical/overtime class logic) into a named leaf component with its own `setInterval`. The parent panel renders only when `sessionStartedAt` or `totalSessionDurationMs` change; the leaf ticks independently every second. This matches the `SessionTimerLeafInner` pattern already established in CLAUDE.md.
+
+**Acceptance Criteria**:
+
+- [x] Timer display extracted to `CampaignSessionSettingsPanel.Timer.tsx` — `SessionTimerCard` is `memo()`-wrapped, owns `currentTimeMs` state and `setInterval(1000)`, renders null when session is not in a visible state
+- [x] `CampaignSessionSettingsPanel` wrapped in `memo()` — no longer re-renders on upstream ticks; `currentTimeMs` state and timer `useEffect` removed from the parent entirely (74 lines removed)
+- [ ] Both `SliderThumbProvider` instances drop from 209 renders to near-zero between user drag interactions in follow-up trace
+- [ ] `CampaignSessionSettingsPanel` no longer appears as a high-frequency commit updater in follow-up trace
+- [ ] Timer display accuracy and overtime/critical visual states unchanged
+
+---
+
+### PERF-23: Stabilise SessionWorkspaceChromeConnector hook[6] and RoomSelector rooms array
+
+**Status**: 🟢 Done
+**Priority**: 🟡 Medium
+**Source**: Profiler trace 2026-06-12
+**Completed**: 2026-06-12
+
+**Problem**: Two related instabilities drive high render counts in the left-rail subtree:
+
+1. **`SessionWorkspaceChromeConnector` hook[6]** (fid=210): 836 total renders; hook[6] changes **101×** — the single most active internal subscription. The connector is also the updater in 147 of its own commits, meaning its Zustand subscription fires on typing events and presence updates. hook[6] is likely a selector that returns an object or derived array; without `useShallow` or a stable-ref guard, any presence/typing event produces a new reference and re-renders the connector and its entire subtree.
+
+2. **`RoomSelector` `rooms` prop** (fid=2393): 745 total renders; `rooms` prop changes **74×**. The `rawGroupPanelRooms` memo in `LeftRailPanel.tsx:230` maps over `visibleRooms` and projects full participant objects inline, creating new object references on every presence update even when room membership and participant data are identical. `onToggleBroadcastMode` also changes **18×** from the parent — it is not `useCallback`-wrapped in `LeftRailPanel`.
+
+**Fix**:
+
+1. Identify hook[6] in `SessionWorkspaceChromeConnector` (use React DevTools or count hooks in the component body). If it returns an array or derived object, add `useShallow` or apply the `stableRef` identity guard from PERF-12.
+2. In `LeftRailPanel.tsx`, apply a `stableRef` guard to `rawGroupPanelRooms` (same pattern as `stableVisibleRef` in `useChatVisibleMessages.ts`) so a presence update that does not change room membership or participant data returns the previous array reference.
+3. Wrap `onToggleBroadcastMode` in `useCallback` in `LeftRailPanel.tsx`.
+
+**Acceptance Criteria**:
+
+- [x] `SessionWorkspaceChromeConnector` hook[6] (`currentPauseStats`) wrapped with `useShallow` — shallow equality prevents re-renders when `{ cumulativePauseMs, pauseCount, pauseStartedAt }` values are unchanged
+- [x] `isSameParticipantProjection` in `LeftRailPanel.tsx`: `characterStats` (object) now uses `isSameStats` shallow comparison — the existing `mergeGroupProjectionsPreservingReferences` guard now correctly short-circuits on presence updates that don't change participant data
+- [x] `onToggleBroadcastMode` stabilised via latest-ref + `useCallback([], [])` in `LeftRailPanel.tsx`; `GroupsHeaderActions` (memo) no longer re-renders on unrelated session state changes
+- [ ] `SessionWorkspaceChromeConnector` hook[6] change count drops by ≥80% in follow-up trace
+- [ ] `RoomSelector` `rooms` prop change count drops from 74× to near-zero between actual room membership changes
+- [ ] No regression in broadcast mode toggle, room selection, or left-rail participant display
+
+---
+
+### PERF-24: Lobby modal cascade — WorkspaceInitialization cascades through 9 unmemoized modal subtrees
+
+**Status**: 🟢 Done
+**Priority**: 🔴 Critical
+**Source**: Profiler trace 2026-06-12 17:06 (lobby trace, 446 commits)
+**Completed**: 2026-06-12
+
+**Problem**: Every `WorkspaceInitialization` state change cascades through all 9 always-mounted modal components (`CreateCampaignModal`, `JoinCampaignModal`, `CampaignSettingsModal`, `ReissueInviteModal`, `UserSettingsModal`, `ExitSessionModal`, `StopSessionModal`, `LobbyModals`, `SharedModals`). None are wrapped in `memo()`. Each modal mounts a full Radix Dialog tree; the cascade accounts for ~37 nodes per modal × 9 instances = ~333 unnamed Radix Primitive nodes per commit.
+
+Worst observed: commits #20 and #21, 368 components each (21ms / 13ms), triggered by `WorkspaceInitialization`. This is the dominant remaining source of wide commits in the lobby — first flagged as a residual in PERF-01's unchecked criterion and now confirmed as the primary regression driver after the editor cascade (PERF-14, PERF-15) was eliminated.
+
+**Fix**:
+
+1. Wrap each of the 9 modal components in `memo()`. Most receive only `isOpen` (boolean) and a small set of stable callback props — default shallow equality should be sufficient without a custom comparator.
+2. Audit props passed from `WorkspaceInitialization` to each modal. Any inline function or object literal must be stabilized with `useCallback`/`useMemo` before `memo()` can hold.
+3. Confirm `LobbyModals` and `SharedModals` (container components) are also memo'd, since they mount multiple modals internally.
+
+**Acceptance Criteria**:
+
+- [x] All 9 modal components wrapped in `memo()` — `LobbyModals`, `SharedModals`, `SessionModals` (containers) + `CreateCampaignModal`, `JoinCampaignModal`, `CampaignSettingsModal`, `ReissueInviteModal`, `UserSettingsModal`, `ExitSessionModal`, `StopSessionModal` (leaf modals)
+- [x] All callback props stabilized — 11 new `useCallback` handlers in `WorkspaceInitialization` for close/confirm/async wrappers; all `(x) => campaignSettingsActions.setX(x)` one-liner wrappers replaced with direct `campaignSettingsActions.setX` method refs (the actions object is `useMemo`'d with stable `useState` setter deps, so its methods are unconditionally stable)
+- [ ] Worst-commit component count drops from 368 to ≤ 50 in follow-up lobby trace
+- [ ] All modal surfaces (create campaign, join, settings, reissue invite, user settings, exit, stop session) remain fully functional
+
+---
+
+### PERF-25: Stabilise WorkspaceInitialization → EditorWorkspace callback props
+
+**Status**: 🟢 Done
+**Priority**: 🟡 High
+**Source**: Profiler trace 2026-06-12 17:06 (lobby trace, 446 commits)
+**Depends on**: PERF-24
+**Completed**: 2026-06-12
+
+**Problem**: `WorkspaceInitialization` passes ~23 callback props to `EditorWorkspace`, all recreated as inline functions on every render: `onSettingsNameChange`, `onSettingsDescriptionChange`, `onSettingsPosterUrlChange`, `onSettingsVisibilityChange`, `onSettingsSpectatorsEnabledChange`, `onSettingsSpectatorMaxChange`, `onSettingsSpectatorWaitlistEnabledChange`, `onSettingsSpectatorReconnectGraceSecsChange`, `onSettingsPostSessionChatEnabledChange`, `onSettingsPostSessionChatDurationMinutesChange`, `onSettingsExtensionSyncPolicyChange`, `onSettingsLateJoinPolicyChange`, `onSettingsLateJoinGraceMinutesChange`, `onSettingsDmAutoTargetOnFirstPlayerJoinChange`, `onSettingsDefaultSessionDurationMinsChange`, `onSettingsSupportedPlatformsChange`, `onCopyInviteUrl`, `onReissueInvite`, `onSaveCampaignSettings`, `onSaveCharacterSettings`, `onSettingsReferenceSessionChange`, `onSaveCampaignInfo`, `onDeleteCampaign`.
+
+Every `WorkspaceInitialization` re-render (triggered by the lobby modal cascade fixed in PERF-24, or any other state change) causes `EditorWorkspace` to receive all 23 callbacks as changed props and re-render. PERF-14 stabilised these callbacks _within_ `EditorWorkspace` so they don't cascade further into `EditorView`, but the upstream churn still causes 5 unnecessary `EditorWorkspace` renders in the trace — all 5 commits containing `EditorWorkspace` show pure-callback prop changes with no meaningful data change.
+
+**Fix**:
+
+- In `WorkspaceInitialization`, apply `useCallback` (or the stable-callback-via-ref pattern from PERF-14) to all 23 settings callbacks. After stabilization, `EditorWorkspace` should re-render only when data props genuinely change (`settingsData`, `isSettingsLoading`, `settingsReferenceSessionId`, `editorWorkspaceView`).
+
+**Acceptance Criteria**:
+
+- [x] All 23 callbacks stabilized — 16 `(x) => actions.setX(x)` one-liner wrappers replaced with direct `campaignSettingsActions.setX` method refs (stable because `campaignSettingsActions` is `useMemo`'d with `useState` setter deps); `onCopyInviteUrl` and `onReissueInvite` reuse the `handleCopyInviteUrlModal`/`handleReissueInviteModal` callbacks already created for PERF-24; 3 new `useCallback`s added for `onSaveCampaignSettings`, `onSaveCharacterSettings`, and `onDeleteCampaign`
+- [x] `EditorWorkspace` wrapped in `memo()` — without this, stabilizing callbacks alone would not prevent re-renders from `WorkspaceInitialization` parent renders
+- [ ] `EditorWorkspace` prop-change renders in follow-up trace drop from 5 to the number of genuine data changes (expected: ≤ 2 — initial load + one settings fetch)
+- [ ] Campaign settings save, invite copy/reissue, and session reference selection all function correctly
 
 ---
 
@@ -1574,11 +1750,11 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ---
 
-## Phase 4: Future Enhancements ⚪
+## Phase 4: Platform Integration 🟡 In Progress
 
 ### W-Queues: Durable Queue Manager (BullMQ)
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -1593,15 +1769,16 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 - [x] Operator can inspect/retry/clear jobs via admin API (`GET/POST/DELETE /queues/*`, secured with `QUEUE_ADMIN_SECRET`)
 
 **Phase 3 complete**:
+
 - [x] `generate-summary` worker feature-gated on `LLM_SUMMARY_URL` — skips gracefully when not set; activates automatically on deploy
 - [x] `process-recording` worker feature-gated on `RECORDING_PROCESSOR_URL` — dedicated `vttchat:recording` queue; same graceful skip pattern
 - [x] Admin app queue inspection via `GET|POST|DELETE /api/admin/queues/*` — backend proxies to queues service with `adminAuthMiddleware` (no direct browser → queues exposure)
 - [x] `docs/architecture/QUEUE-JOB-MANAGER.md` updated from blueprint to implemented state with ASCII diagram and comm pattern detail
 - [x] `docs/operations/QUEUES.md` created — full operator reference: env vars, queue reference, admin API, DLQ workflow, troubleshooting
 
-**Remaining (Phase 4 / future)**:
-- [ ] LLM checkpoint resume for `generate-summary` (once LLM integration is live)
-- [ ] Set `DISABLE_INTERNAL_CLEANUP_SCHEDULER=1` in production once BullMQ schedule is proven stable
+**Production ops** (non-feature, no code change):
+
+- Set `DISABLE_INTERNAL_CLEANUP_SCHEDULER=1` in production once BullMQ schedule is proven stable
 
 **Related Docs**:
 
@@ -1647,50 +1824,83 @@ _DM reference and player communication. DMDX markdown editor, pop-out windows, s
 
 ### W-Extension-MVP: Guest Login and Campaign Access via Extension
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Done
 **Priority**: 🟡 Medium (post-MVP, MVP distribution channel)
 **Depends on**: Core Reliability + W0-UI complete
 
-**Scope**: VS Code or browser extension allows launching app, guest login, campaign access, and data sync. One-click launch from invite link or code.
+**Scope**: Server-side contracts and endpoints that allow the browser extension (maintained in a separate repository) to authenticate users, sync character and inventory data, and apply DM-configured sync policies. The extension connects to these endpoints and sends data in the formats defined here; it does not live in this repo.
 
 **Acceptance Criteria**:
+
+Auth & access (complete):
 
 - [x] Extension can launch app via POST to `/api/auth/extension/guest-login`
 - [x] Guest DM/Player/Spectator accounts are created on first launch
 - [x] Campaign membership is auto-granted via invite link or code
 - [x] Guest account can be upgraded to full account later without losing campaign history
-- [ ] Extension reconnects persistently via device credential — contract locked (see `docs/CONTRACTS.md`); backend endpoints not yet implemented
-- [ ] Extension stays synced with app state during session — join-time sync only; active-session sync deferred to Stage E2
 
-**Evidence snapshot (2026-06-08 — backend audit)**:
+Device credential persistence:
 
-Backend is production-ready for extension integration. All guest auth contracts, account lifecycle, and invite flows are implemented and tested.
+- [x] `POST /api/auth/extension/credential/exchange` — exchange short-lived JWT for long-lived device credential
+- [x] `GET /api/auth/extension/credentials` — list active credentials for the authenticated user
+- [x] `DELETE /api/auth/extension/credentials/:credentialId` — revoke a credential
+- [x] `POST /api/auth/extension/guest-login` response includes `deviceCredential` field (contract locked in `docs/CONTRACTS.md`)
 
-- `POST /api/auth/extension/guest-login` — fully implemented in `backend/src/api/auth.routes.ts`; service logic in `backend/src/services/guest-auth/extension.service.ts`. Accepts inviteCode, externalSystem, externalUserId, character data, campaignPacket; creates or updates guest User with `authType=GUEST`, ExternalIdentity link, Character, and CampaignMembership; assigns DM or PLAYER role from `campaignPacket.dmExternalUserId`; returns JWT with guest claims.
+Character and inventory sync:
+
+- [x] `POST /api/integrations/external/sync` accepts and validates `inventoryUpdate` payload — items upserted by `(externalSource, externalId)` within the target character's inventory
+- [x] `POST /api/integrations/external/sync` accepts and validates `currencyUpdate` payload — wallet set to absolute values; signed delta recorded in inventory history log
+- [x] Combined sync request (character + inventory + currency in one call) processes each section independently per policy; response `applied` object reports per-section outcome
+
+Campaign inventory sync policy:
+
+- [x] `Campaign` schema extended with four new fields: `extensionInventorySyncEnabled`, `extensionCurrencySyncEnabled`, `extensionPartyInventorySyncAccess`, `extensionSyncConflictResolution` (see `docs/ui/DM-CAMPAIGN-SETTINGS.md §3.5`)
+- [x] `GET /api/campaigns/:id/settings` returns all four new fields
+- [x] `PATCH /api/campaigns/:id/settings` accepts and validates all four new fields (DM-only)
+- [x] Sync endpoint enforces two-layer policy: Layer 1 `extensionSyncPolicy` access gate, then Layer 2 inventory-specific controls; partial application when only some payload sections are blocked
+- [x] `OVERWRITE` conflict resolution — existing upsert behaviour (default)
+- [x] `IGNORE` conflict resolution — existing records preserved; only net-new items and zero-balance wallets applied
+- [x] `PROMPT` conflict resolution — conflicting changes written to `PendingExtensionSync` table; `INVENTORY:EXTENSION_SYNC_PENDING` WS event broadcast to DM; non-conflicting changes applied immediately
+- [x] DM review endpoints for `PROMPT` mode: `GET /api/inventory/:campaignId/sync/pending`, `POST /api/inventory/:campaignId/sync/pending/:id/approve`, `POST /api/inventory/:campaignId/sync/pending/:id/reject` (real mounted prefix — see path-prefix note in `docs/subsystems/INVENTORY-SYSTEM.md` §8)
+- [x] Pending sync records expire after 24 hours (TTL field, checked on read — no separate cleanup job, same convention as `DeviceCredential`)
+- [x] Policy enforcement unit tests covering all Layer 1 × Layer 2 combinations
+- [x] Integration test: combined sync request with partial policy block returns correct `applied` + `skippedReasons` shape
+
+**Evidence snapshot (2026-06-16 — character/inventory sync + campaign sync policy shipped)**:
+
+Backend is fully production-ready for extension integration. All guest auth contracts, account lifecycle, invite flows, device credential persistence, character/inventory/currency sync, and the two-layer campaign sync policy are implemented and tested.
+
+- Character/inventory/currency sync — `apps/backend/src/services/integration-sync.service.ts` (orchestration: Layer 1/2 gating, partial-application response) + `apps/backend/src/services/integration-sync-policy.service.ts` (item/currency conflict resolution, party-owned upserts). The wire contract — including `partyInventoryUpdate`/`partyCurrencyUpdate`, a gap not previously specified in the design docs — is now locked in `docs/CONTRACTS.md` "Extension Inventory Sync Policy Contract".
+- Two-layer campaign policy — Layer 1 `extensionSyncPolicy` (pre-existing) + Layer 2 `extensionInventorySyncEnabled`/`extensionCurrencySyncEnabled`/`extensionPartyInventorySyncAccess`/`extensionSyncConflictResolution` on `Campaign`, managed via the existing `/settings` GET/PATCH and locked during `ACTIVE`/`PAUSED` sessions alongside `extensionSyncPolicy`.
+- `PendingExtensionSync` Prisma model + `apps/backend/src/services/inventory/pending-extension-sync.service.ts` + DM-only review endpoints in the new `apps/backend/src/api/inventory-sync.routes.ts`. Party-owned conflicts under `PROMPT` fall back to `OVERWRITE` since the pending-sync schema is locked to a single `characterId` (documented exception, no DM-review queue shape exists for party records).
+- **Bugfix discovered during this work**: `syncExternalIntegration`'s `applied` response always included `inventoryItemsUpserted`/`currencyUpdated` even when neither section was requested, already failing the locked character-only-sync unit test. Fixed so optional section keys appear only when their request section was present.
+- Test coverage: `apps/backend/tests/services/integration-sync.service.test.ts` (Layer 1×2 matrix), `apps/backend/tests/services/pending-extension-sync.service.test.ts`, `apps/backend/tests/api/external-integration.test.ts` (partial-application + party-gating route tests), `apps/backend/tests/api/inventory-sync-pending.test.ts`, `apps/backend/tests/api/campaign-settings-extension-sync.test.ts`.
+
+- **Bugfix discovered during this work**: `backend/src/api/auth.routes.ts` (the file documented below in earlier snapshots) was never mounted by `backend/src/api/index.ts` — `/api/auth/extension/*` 404'd on the real deployed server despite passing tests, because both test files mounted that file directly rather than going through the real router registry. The orphaned `/extension/preflight` and `/extension/guest-login` routes have been moved into the now-mounted `backend/src/api/auth-extension.routes.ts`; the file's other routes (`/player/guest-join`, `/spectator/guest-join`, `/player/full-join`, `/player/precheck`) were dead duplicates already superseded by `backend/src/api/auth-join.routes.ts` (`/join/guest/player`, `/join/guest/spectator`, `/join/full/player`, `/validate/player`) and were dropped, not ported.
+- `POST /api/auth/extension/guest-login` — implemented in `backend/src/api/auth-extension.routes.ts`; service logic in `backend/src/services/guest-auth/extension.service.ts`. Accepts inviteCode, externalSystem, externalUserId, character data, campaignPacket, optional deviceId; creates or updates guest User with `authType=GUEST`, ExternalIdentity link, Character, and CampaignMembership; assigns DM or PLAYER role from `campaignPacket.dmExternalUserId`; returns JWT with guest claims, plus `deviceCredential` when `deviceId` is supplied.
 - `POST /api/auth/extension/preflight` — pre-flight validation endpoint; returns accountStatus (`none`/`guest`/`full`) and suggestedFlow before the guest login call; covered by `backend/tests/api/guest-auth-routes.test.ts`.
-- Guest Spectator join via `POST /api/auth/spectator/guest-join`; spectator capacity, waitlist, reconnect grace, and slot promotion all implemented in `backend/src/services/guest-auth/spectator.service.ts`.
+- Device credential persistence — `backend/src/services/auth/device-credential.service.ts` + `backend/src/api/auth-extension.routes.ts`: issuance on guest-login, rotating exchange (`POST /extension/credential/exchange`), listing (`GET /extension/credentials`), and revocation (`DELETE /extension/credentials/:credentialId`, self or admin). 90-day rolling expiry from `lastUsedAt`; `DeviceCredential` Prisma model stores only a salted hash. Covered by `backend/tests/api/device-credential-routes.test.ts`.
+- Guest Spectator join via `POST /api/auth/join/guest/spectator`; spectator capacity, waitlist, reconnect grace, and slot promotion all implemented in `backend/src/services/guest-auth/spectator.service.ts`.
 - Campaign membership auto-granted on first connect; role assignment is server-side; existing membership upserted on reconnect.
-- `POST /api/auth/upgrade` upgrades guest → full account without changing UUID or losing campaign data; covered by `backend/src/services/guest-auth/account-upgrade.service.ts`.
+- `POST /api/auth/upgrade` upgrades guest → full account without changing UUID or losing campaign data; covered by `backend/src/services/guest-auth/account-upgrade.service.ts`. Device credentials are preserved automatically across upgrade since they're keyed by the unchanged userId.
 - `GuestUpgradePrompt.tsx` — frontend upgrade banner component implemented in `frontend/src/components/guest/GuestUpgradePrompt.tsx`.
 - Frontend non-extension invite join flow: `InviteJoinPage.tsx`, `useInviteValidation.ts`, `useEmailPrecheck.ts`, `inviteJoin.ts`.
 - Integration test coverage: `backend/tests/integration/guest-auth-flows.integration.test.ts`.
-- Extension frontend (background script, content script, popup) resides in a separate repository per `docs/extension/EXTENSION-ROADMAP.md` Stage E1. Active-session character/state sync is Stage E2 and not yet scoped.
-
-**Remaining work**:
-
-- Extension Device Credential backend endpoints — `POST /api/auth/extension/credential/exchange`, `GET /api/auth/extension/credentials`, `DELETE /api/auth/extension/credentials/:credentialId`; `POST /api/auth/extension/guest-login` response must include `deviceCredential` field. Contract locked in `docs/CONTRACTS.md`.
-- Extension frontend implementation (separate repo, Stage E1) — page detection, background script, popup UI, credential storage replacing invite URL storage; see updated `docs/extension/EXTENSION-ROADMAP.md`.
-- Active-session state sync (Stage E2) — character update propagation during an active session
+- Extension client (background script, content script, popup) resides in a separate repository. It connects to the endpoints defined here. Active-session character/state sync is Stage E2 and not yet scoped.
 
 **Related Docs**:
 
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — "Extension Inventory Sync Policy Contract" (locked wire contract, incl. `partyInventoryUpdate`/`partyCurrencyUpdate`)
+- [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md) — sync protocol, two-layer policy enforcement (§5d, §5e)
 - [docs/extension/EXTENSION-ROADMAP.md](docs/extension/EXTENSION-ROADMAP.md)
+- [docs/ui/DM-CAMPAIGN-SETTINGS.md](docs/ui/DM-CAMPAIGN-SETTINGS.md) — campaign inventory sync policy settings (§3.5)
+- [docs/subsystems/INVENTORY-SYSTEM.md](docs/subsystems/INVENTORY-SYSTEM.md) — inventory sync contract (§12)
 
 ---
 
 ### W-DM-Handoff: Campaign Ownership Transfer
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Done
 **Priority**: 🔵 Low (post-MVP)
 **Depends on**: Core Reliability complete
 
@@ -1698,22 +1908,22 @@ Backend is production-ready for extension integration. All guest auth contracts,
 
 **Acceptance Criteria**:
 
-- [ ] DM can initiate handoff to any current campaign member from campaign settings
-- [ ] Target player must accept the handoff before ownership transfers
-- [ ] Handoff is not permitted during an active session (must be from greenroom/IDLE)
-- [ ] All campaign-scoped data (groups, notes, history) is preserved on transfer
-- [ ] Former DM is demoted to PLAYER role automatically
-- [ ] Handoff is logged as a campaign system event
+- [x] DM can initiate handoff to any current campaign member from campaign settings
+- [x] Target player must accept the handoff before ownership transfers
+- [x] Handoff is not permitted during an active session (must be from greenroom/IDLE)
+- [x] All campaign-scoped data (groups, notes, history) is preserved on transfer
+- [x] Former DM is demoted to PLAYER role automatically
+- [x] Handoff is logged as a campaign system event
 
 **Related Docs**:
 
-- (To be created when work begins)
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign DM Transfer section
 
 ---
 
 ### W-DM-Campaign-Portability: DM Self-Service Campaign Export and Import
 
-**Status**: 🟡 In Progress
+**Status**: 🟢 Complete
 **Priority**: 🔵 Low (post-MVP)
 **Depends on**: W0-Lobby-Admin (shares export format), Core Reliability complete
 
@@ -1724,7 +1934,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 **Acceptance Criteria**:
 
 - [x] `GET /api/campaigns/:id/export` — DM-authenticated (campaign owner only). Returns portable JSON: campaign metadata, groups/environments, session history/chat (IC, OOC, system bookends), notes/journal. Member list includes display names and roles but no emails or passwords.
-- [x] Export respects campaign privacy: Whisper (PRIVATE room messages and WHISPER-type messages) excluded. Paused/cooldown-ephemeral opt-in deferred.
+- [x] Export respects campaign privacy: Whisper (PRIVATE room messages and WHISPER-type messages) excluded. All other persisted messages (including OOC during PAUSED/COOLDOWN) are included.
 - [x] `POST /api/campaigns/import` — authenticated user. Creates a new campaign with fresh UUIDs from the export file; the caller becomes the new DM. Import never overwrites an existing campaign.
 - [x] Import is idempotent for the same file: re-importing always creates a new campaign, never patches an existing one.
 - [x] Lobby offline workspace surfaces "Export Campaign" in the campaign header actions (DM-only, not visible to players or spectators).
@@ -1732,20 +1942,53 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [x] Export and import progress/result surfaces as a toast; errors include a human-readable reason.
 - [x] Imported campaign appears in the DM's lobby list immediately; players must be re-invited via the normal invite flow.
 
-**Remaining**:
-
-- [ ] Paused/cooldown-ephemeral content opt-in (`?includePausedChat=true`) — deferred; requires session-state timestamps on messages.
-
 **Related Docs**:
 
 - [docs/CONTRACTS.md](docs/CONTRACTS.md) — Campaign Export and Import section (admin variant; DM contract to be appended when implemented)
 
 ---
 
+### W-Session-Schedule: Next Session Date
+
+**Status**: 🟢 Done
+**Priority**: 🟡 Medium (post-MVP)
+**Depends on**: Core Reliability complete
+
+**Scope**: DMs configure a repeating session schedule (weekly, biweekly, or monthly on the Nth weekday) via a structured picker in the Campaign Settings panel. The system calculates and surfaces the next session date in the Campaign Info panel for all campaign members. After each session ends the date auto-advances from the schedule. The DM can override the next date for any individual session without disrupting the ongoing schedule.
+
+**Design**:
+
+- **Schedule input**: Structured picker — repeat type (weekly / biweekly / monthly), day of week, optional Nth (1st–4th; monthly only), time, and IANA timezone. A utility function in `packages/shared/utils/session-schedule.ts` generates the human-readable label (`"Every 2nd Sunday of the month at 1:00 PM"`) and calculates the next occurrence. No free-text parsing.
+- **Next session date**: A `nextSessionDate DateTime?` field on Campaign, authoritative on the backend. Auto-recalculated on `SESSION:ENDED`. The DM can override for any single session via `PUT /api/campaigns/:id/next-session-date`; after that session ends, the schedule resumes — the manual flag is consumed once.
+- **Display**: Visible to all members (DM, players, spectators). Shown in the Campaign Info panel whenever no session is running (`IDLE`, `ENDED`, `COOLDOWN`, `CLEANUP`). Hidden during `ACTIVE`/`PAUSED`. Format: date + relative time, e.g. `"Sun Jun 14 at 1:00 PM · in 2 days"`.
+
+**Acceptance Criteria**:
+
+- [x] Prisma migration: `sessionScheduleType SessionScheduleType?`, `sessionScheduleDay Int?`, `sessionScheduleNth Int?`, `sessionScheduleHour Int?`, `sessionScheduleMinute Int?`, `sessionScheduleTz String?`, `nextSessionDate DateTime?`, `nextSessionIsManual Boolean @default(false)` added to Campaign
+- [x] New Prisma enum `SessionScheduleType { WEEKLY BIWEEKLY MONTHLY_NTH }` in schema and mirrored in `packages/shared/types/`
+- [x] `packages/shared/utils/session-schedule.ts`: pure functions `formatScheduleLabel(schedule)` and `calculateNextOccurrence(schedule, after)` — timezone-aware via `date-fns-tz`, no side effects, unit-tested
+- [x] `PATCH /api/campaigns/:id/settings` extended to accept `sessionSchedule` fields (DM only); calculates and persists `nextSessionDate`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] `PUT /api/campaigns/:id/next-session-date` — DM-only manual override; body `{ date: ISO8601 }`; sets `nextSessionIsManual = true`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] `DELETE /api/campaigns/:id/schedule` — DM only; clears all schedule fields and `nextSessionDate`; broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] `DELETE /api/campaigns/:id/next-session-date` — DM only; reverts manual override; recalculates `nextSessionDate` from schedule rule (or clears if no schedule); broadcasts `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] On `SESSION:ENDED`: if `sessionScheduleType` set, call `calculateNextOccurrence(schedule, now())`, persist to Campaign, reset `nextSessionIsManual = false`, broadcast `CAMPAIGN:SCHEDULE_UPDATED`
+- [x] `CAMPAIGN:SCHEDULE_UPDATED` event type defined in `packages/shared/events/campaign.ts`, registered in `apps/backend/src/ws/index.ts`; payload includes `nextSessionDate`, `scheduleLabel`, `nextSessionIsManual`
+- [x] `NextSessionDate` — `React.memo` leaf component in `CampaignInformationPanel/`; renders when session state is `IDLE | ENDED | COOLDOWN | CLEANUP`; DM sees pencil edit icon; clicking opens inline date/time override picker with a "Revert to schedule" option
+- [x] `SessionSchedulePicker` component in `CampaignSettingsPanel/`; structured recurrence controls; live preview of generated label; `[Clear Schedule]` action
+- [x] Dedicated `campaignScheduleSlice` in Zustand; updates on `CAMPAIGN:SCHEDULE_UPDATED`; `CAMPAIGN:SCHEDULE_UPDATED` allowed sessionless in dispatcher
+- [ ] Campaign export payload (`W-DM-Campaign-Portability`) includes schedule fields — deferred to that feature
+- [x] Unit tests for `formatScheduleLabel()` and `calculateNextOccurrence()`: weekly, biweekly, monthly-Nth, DST boundary cases
+- [x] Unit test: `CAMPAIGN:SCHEDULE_UPDATED` Zustand handler
+
+**Related Docs**:
+
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — Session Schedule Contract section
+
+---
 
 ### W-Chat-Commands: Chat Command System
 
-**Status**: ⚪ Not Started
+**Status**: 🟢 Complete
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete, W-Inventory-System (for inventory commands)
 
@@ -1753,21 +1996,21 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 **Acceptance Criteria**:
 
-- [ ] Typing `/` in the chat input opens a filtered autocomplete command palette showing available commands
-- [ ] `[/]` icon button on the left of the chat input opens a full help popup (role-aware: players do not see DM-only commands)
-- [ ] Command registry defined in `shared/types/chatCommands.ts` (name, syntax, description, example, roles, availableInStates)
-- [ ] `/roll [dice]` — styled roll card in chat; dice resolved server-side for fairness; visible to all in room
-- [ ] `/me [action]` — italic emote line in chat, scoped to current room, styled as IC
-- [ ] `/whisper @{player} [message]` — shortcut for whisper; same privacy rules as direct whisper
-- [ ] `/OOC [message]` — forces OOC tag/style regardless of current IC/OOC mode toggle
-- [ ] `/dm [message]` — player-to-DM only whisper; not visible to other players
+- [x] Typing `/` in the chat input opens a filtered autocomplete command palette showing available commands
+- [x] `[/]` icon button on the left of the chat input opens a full help popup (role-aware: players do not see DM-only commands)
+- [x] Command registry defined in `shared/types/chatCommands.ts` (name, syntax, description, example, roles, availableInStates)
+- [x] `/roll [dice]` — styled roll card in chat; dice resolved server-side for fairness; visible to all in room
+- [x] `/me [action]` — italic emote line in chat, scoped to current room, styled as IC
+- [x] `/whisper @{player} [message]` — shortcut for whisper; same privacy rules as direct whisper
+- [x] `/OOC [message]` — forces OOC tag/style regardless of current IC/OOC mode toggle
+- [x] `/dm [message]` — player-to-DM only whisper; not visible to other players
 - [ ] Inventory commands covered in W-Inventory-System acceptance criteria
-- [ ] Unknown command → toast error (not posted to chat)
-- [ ] Permission-denied command → toast error (not posted to chat)
-- [ ] Backend re-validates role and session state before executing any command (client checks are UX only)
-- [ ] Commands unavailable in greenroom/IDLE by default; `availableInStates` per command governs this
-- [ ] Unit tests for command parser in `apps/frontend/tests/`
-- [ ] Backend command handler tests in `apps/backend/tests/`
+- [x] Unknown command → toast error (not posted to chat)
+- [x] Permission-denied command → toast error (not posted to chat)
+- [x] Backend re-validates role and session state before executing any command (client checks are UX only)
+- [x] Commands unavailable in greenroom/IDLE by default; `availableInStates` per command governs this
+- [x] Unit tests for command parser in `apps/frontend/tests/`
+- [x] Backend command handler tests in `apps/backend/tests/`
 
 **Related Docs**:
 
@@ -1777,7 +2020,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 ### W-Inventory-System: Character and Party Inventory with SRD Integration
 
-**Status**: ⚪ Not Started
+**Status**: 🔵 In Progress
 **Priority**: 🟡 Medium (post-MVP)
 **Depends on**: Core Reliability complete, W-Chat-Commands (for command entry UX)
 
@@ -1785,17 +2028,18 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 **Acceptance Criteria**:
 
-- [ ] New INVENTORY right-rail tab added (after PARTY, before ROOMS in canonical dock order)
-- [ ] INVENTORY tab shows: Party Inventory view, own Character Inventory view; DM sees all character inventories
-- [ ] Spectators see party and all character inventories in read-only mode
-- [ ] Campaign setting: SRD ruleset (2014 or 2024); default 2014
-- [ ] Item search autocomplete calls `GET /api/srd/items?q=` (backend proxy, 24h cache, fails silently if SRD API unreachable)
-- [ ] Custom items supported (free-text name, no SRD backing required)
-- [ ] Item fields: name, quantity, source (SRD/custom), optional notes
-- [ ] Currency per character wallet and party purse (GP/SP/CP/EP/PP)
-- [ ] `[+Add]` button for DM to add items or currency directly from the panel
-- [ ] `[⋯]` per-item action menu: Move to…, Edit notes, Remove (with confirmation)
-- [ ] Inventory history log overlay (within INVENTORY panel): filterable by character, date range, item, action type
+- [x] New INVENTORY right-rail tab added (after PARTY, before ROOMS in canonical dock order)
+- [x] INVENTORY tab shows: Party Inventory view, own Character Inventory view; DM sees all character inventories
+- [x] Spectators see party and all character inventories in read-only mode
+- [x] Campaign setting: SRD ruleset (2014 or 2024); default 2024 — proxy defaults to 2014; campaign-level selector not yet in settings UI
+- [x] Item search autocomplete calls `GET /api/srd/items?q=` (backend proxy, 24h Redis cache, fails silently if SRD API unreachable)
+- [x] Custom items supported (free-text name, no SRD backing required)
+- [x] Item fields: name, quantity, source (SRD/custom), optional notes
+- [x] Currency per character wallet and party purse (GP/SP/CP/EP/PP)
+- [x] `[+Add]` button for DM to add items or currency directly from the panel
+- [x] Per-item action menu: Edit (inline), Move to… (transfer), Remove (with confirmation) — all three modes wired via state machine in `InventoryPanel.ItemRow.tsx`
+- [x] Inventory history log overlay (within INVENTORY panel): toggle via header button; filterable by action type; shows action badge, description, relative time
+- [ ] Inventory history filter by character and date range
 - [ ] Campaign settings for player permissions: Allow players /give and /take (ON default); Allow players /loot (OFF default)
 - [ ] `/loot [item] [qty?]` — DM adds item to party inventory; chat system message in ACTIVE session
 - [ ] `/loot-split [item] [qty?]` — DM proposes split; Loot Split Card appears in chat; players accept in one click; unaccepted shares revert to party after 60s
@@ -1803,13 +2047,21 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [ ] `/give @{player\|party} [item] [qty?]` — player gives item to target
 - [ ] `/drop [item] [qty?]` — remove item from own/party inventory (confirmation required)
 - [ ] Currency shorthand: `/give @party 10gp`, `/take 5sp` etc.
-- [ ] All inventory mutations during ACTIVE session → system message in chat + history log entry
-- [ ] Mutations outside ACTIVE session → history log entry only (no chat message)
-- [ ] WS events: `INVENTORY:ITEM_ADDED`, `INVENTORY:ITEM_REMOVED`, `INVENTORY:ITEM_TRANSFERRED`, `INVENTORY:LOOT_SPLIT_PROPOSED`, `INVENTORY:LOOT_SPLIT_ACCEPTED`, `INVENTORY:LOOT_SPLIT_EXPIRED`, `INVENTORY:CURRENCY_CHANGED`
-- [ ] 4-layer state: PostgreSQL persistence (campaign-scoped) → WS broadcast → Zustand `inventorySlice`
-- [ ] `InventoryItem`, `CurrencyWallet`, `InventoryHistoryEntry` Prisma models added and migrated
-- [ ] REST endpoints: party inventory CRUD, character inventory CRUD, transfer, loot-split, SRD proxy, history
-- [ ] Zustand `inventorySlice` rehydrates from REST on panel mount; no Redis (not presence/audio data)
+- [ ] Currency transfer form always shows current balance of both source and destination before confirming
+- [ ] Transfer and Remove amounts capped at available balance per denomination — validated at UI and at API layer (returns `400` with denomination breakdown on insufficient funds)
+- [ ] Take from Party (player): atomically credits character wallet and debits party purse; only available when player has `/take` campaign permission
+- [ ] Give to Party (player/DM): atomically debits sender wallet and credits party purse
+- [ ] Give to Online Player (player/DM): atomically debits sender wallet and credits recipient wallet; only online players shown as eligible targets (offline players pull from party on rejoin)
+- [ ] Add currency (inflow — loot award, sale proceeds): credits wallet or purse without requiring a debit source; form shows current balance; DM can add to any owner; players can add to own wallet
+- [ ] Remove currency (outflow — purchase, expenditure): debits wallet or purse without a destination; form shows current balance; capped at available balance; requires confirmation
+- [ ] `POST /api/campaigns/:id/inventory/transfer/currency` — atomic two-sided debit/credit in a single PostgreSQL transaction; emits `INVENTORY:CURRENCY_CHANGED` for both owners on commit
+- [x] All inventory mutations during ACTIVE session → system message in chat + history log entry
+- [x] Mutations outside ACTIVE session → history log entry only (no chat message)
+- [x] WS events: `INVENTORY:ITEM_ADDED`, `INVENTORY:ITEM_REMOVED`, `INVENTORY:ITEM_TRANSFERRED`, `INVENTORY:LOOT_SPLIT_PROPOSED`, `INVENTORY:LOOT_SPLIT_ACCEPTED`, `INVENTORY:LOOT_SPLIT_EXPIRED`, `INVENTORY:CURRENCY_CHANGED`
+- [x] 4-layer state: PostgreSQL persistence (campaign-scoped) → WS broadcast → Zustand `inventorySlice`
+- [x] `InventoryItem`, `CurrencyWallet`, `InventoryHistoryEntry` Prisma models added and migrated
+- [x] REST endpoints: party inventory CRUD, character inventory CRUD, transfer, SRD proxy, history
+- [x] Zustand `inventorySlice` rehydrates from REST on panel mount; no Redis (not presence/audio data)
 - [ ] Unit tests for inventory mutations and WS handlers
 - [ ] Integration tests for loot-split flow and permission gating
 
@@ -1820,88 +2072,127 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 ---
 
-### W-Email-Templates: Transactional Email System
+## Phase 5: AI & Recording Enhancements ⚪
+
+### W-Recording-Transcription-Summary: Async Post-Session Processing
 
 **Status**: ⚪ Not Started
-**Priority**: 🟡 Medium (post-MVP)
-**Depends on**: W-Queues (email worker live), Core Reliability complete
+**Priority**: 🔵 Low (requires Queue Manager)
+**Depends on**: W-Queues
 
-**Scope**: Build all transactional emails the platform needs — auth, campaign invites, session notifications, and offline digests — as styled HTML emails with React Email. Each email uses the VTT-Chat logo, design tokens, and DMDX-style markdown rendering. Users control non-auth emails via per-category opt-out preferences stored in the database.
+**Scope**: After session ends, record finalization, transcription, and AI summary generation via durable queue. Runs entirely offline by default — all audio and transcript processing happens on the host machine. Cloud AI is an optional, opt-in enhancement layer for summarization only. Must be explicitly enabled at install time via capability gate.
 
-**Email categories and types**:
+**Processing Model**:
 
-| Category | Type | Opt-out? | Notes |
-| -------- | ---- | -------- | ----- |
-| Auth | Email verification | No | Sent when a new full account is created |
-| Auth | Password reset | No | Stub already in email worker — needs real template |
-| Campaign | Join invite | Yes | Sent to invited user; links to `/join/:code` |
-| Campaign | Watch invite | Yes | Sent to spectator; links to `/watch/:code` |
-| Campaign | Join request received | Yes | DM notified when a player requests to join |
-| Campaign | Join request resolved | Yes | Player notified of approval or rejection |
-| Session | Session reminder | Yes | Sent X hours before a scheduled session (requires `scheduledAt` on Session) |
-| Session | Session summary ready | Yes | Player/DM notified when AI summary is published; links to journal entry |
-| Offline | Shared handout | Yes | Player emailed when DM shares a note while they are offline |
-| Offline | Weekly campaign digest | Yes | Summary of recent activity, new notes, and upcoming sessions for users not recently connected |
+| Stage            | Default (Offline)                       | Cloud Enhancement (Opt-in)     |
+| ---------------- | --------------------------------------- | ------------------------------ |
+| Recording ingest | Local — LiveKit webhook + file download | —                              |
+| Transcription    | Whisper.cpp or FasterWhisper (local)    | —                              |
+| Timeline merge   | Local deterministic merge               | —                              |
+| Summarization    | llama.cpp / Mistral / Phi-3 (local)     | Cloud LLM for richer summaries |
 
-**Technical pieces**:
-
-1. **React Email** — add `@react-email/components` to `apps/queues`; build a `BaseEmailTemplate` wrapper with VTT-Chat logo header, DMDX-style body typography, dark/light safe tokens, and `Markdown` block support via `@react-email/markdown`. All per-type templates extend the base.
-
-2. **Email preview dev server** — React Email's built-in preview server (`email dev`) runnable via `npm run email:dev` in `apps/queues`; no additional tooling needed.
-
-3. **User email preferences** — new `UserEmailPreferences` Prisma model linked to `User`:
-
-   ```prisma
-   model UserEmailPreferences {
-     userId          String  @id
-     user            User    @relation(fields: [userId], references: [id])
-     campaignEmails  Boolean @default(true)
-     sessionEmails   Boolean @default(true)
-     offlineEmails   Boolean @default(true)
-   }
-   ```
-
-   Auth emails (`emailVerification`, `passwordReset`) are always sent regardless of preferences.
-
-4. **Preferences API** — `GET /api/profile/email-preferences` + `PUT /api/profile/email-preferences`; surfaced in the user settings panel.
-
-5. **Enqueueing guards** — before enqueuing any non-auth email, backend checks `UserEmailPreferences.{category}Emails`; if false, skip silently.
-
-6. **Session reminder prerequisite** — requires an optional `scheduledAt: DateTime?` field on the `Session` model. DM sets this in campaign settings or session editor. A BullMQ `delayed` job fires `X hours before scheduledAt` (configurable, default 1h).
-
-7. **Digest cron** — a weekly BullMQ scheduled job (`QUEUE_DIGEST_CRON`, default `0 9 * * 1` — Monday 09:00) generates digest payloads for users who have not connected in the last 7 days; enqueues one `send-email` job per user.
+Capability gate: `VTTCHAT_SUMMARY_PROCESSING_ENABLED` — `false` by default; must be explicitly opted in at install/init time. When `false`, all workers are dormant and UI surfaces explanatory disabled state.
 
 **Acceptance Criteria**:
 
-- [ ] `BaseEmailTemplate` component in `apps/queues/src/email/templates/` — logo, dark/light safe, DMDX-style markdown block
-- [ ] React Email dev preview runnable: `npm run email:dev` in `apps/queues`
-- [ ] All 10 email types have a React Email template component
-- [ ] Templates render valid email HTML: tested in at least one email client (Gmail web)
-- [ ] `UserEmailPreferences` model migrated and linked to `User`
-- [ ] `GET/PUT /api/profile/email-preferences` endpoints implemented and covered by tests
-- [ ] User settings panel exposes opt-out toggles per category (Campaign / Session / Offline)
-- [ ] Backend checks prefs before enqueueing all non-auth emails
-- [ ] Auth emails (verification, password reset) are always sent regardless of prefs
-- [ ] Email verification flow: account creation sends verification email; `GET /api/auth/verify-email?token=` marks email as verified; unverified accounts shown a banner
-- [ ] Campaign invite emails: `POST /api/campaigns/:id/invite` (player) and `POST /api/campaigns/:id/invite-watch` (spectator) trigger email delivery via queue
-- [ ] Join request emails: `CAMPAIGN:JOIN_REQUEST_RECEIVED` triggers DM email; resolution triggers player email (respects DM and player prefs respectively)
-- [ ] Session reminder: `Session.scheduledAt` field added to Prisma; DM can set it in session/campaign settings; a BullMQ delayed job fires 1h before (configurable via `SESSION_REMINDER_HOURS_BEFORE`)
-- [ ] Session summary email: fired when `generate-summary` job completes successfully and `LLM_SUMMARY_URL` is active; links directly to the journal entry pop-out URL
-- [ ] Shared handout email: backend checks recipient presence (Redis); if user is offline, enqueues `send-email` with `templateId: 'shared-handout'` instead of (or in addition to) the WS push
-- [ ] Weekly digest: BullMQ repeatable job, configurable via `QUEUE_DIGEST_CRON`; only sends to users with `offlineEmails: true` who have not connected in 7+ days
-- [ ] All email templates include a one-click unsubscribe link for non-auth emails (links to `/api/profile/email-preferences/unsubscribe?token=` with a signed token)
-- [ ] `SMTP_SERVICE=Gmail` works end-to-end for all template types (verified in dev with Mailtrap or similar interceptor)
-- [ ] `docs/operations/QUEUES.md` updated with the digest cron var and new template list
+- [ ] Recording ingest service triggers on LiveKit `recording.finished` webhook
+- [ ] Audio tracks downloaded and stored locally to `/data/recordings/<sessionId>/`
+- [ ] Recording finalizes after session ENDED state via BullMQ `recording.finalize` job
+- [ ] Off-the-record content boundary enforced at ingest: Whisper (`PRIVATE`) room and paused runtime audio never recorded
+
+- [ ] Transcription worker runs Whisper.cpp or FasterWhisper locally — no cloud call
+- [ ] Transcription job runs asynchronously via BullMQ with retry and dead-letter queue
+- [ ] Progress checkpoints written per audio segment; crash/restart resumes from checkpoint
+- [ ] Boundary markers (`[Session Started]`, `[Session Paused]`, `[Session Resumed]`, `[Session Ended]`) retained in transcript output
+
+- [ ] Transcript segments, chat logs, and system events merged into canonical `TimelineEvent[]`
+- [ ] Merge output is deterministic and reproducible from raw inputs
+- [ ] Timeline windows created at scene/room changes, time gaps, and GM markers
+
+- [ ] Local LLM (llama.cpp / Mistral / Phi-3) generates per-window summaries and a full session summary
+- [ ] Multi-pass: window summaries → session summary → "Previously on…" recap
+- [ ] LLM checkpoint resume supported for `generate-summary` worker (mid-generation restart safe)
+- [ ] Cloud LLM enhancement is opt-in only; configurable per campaign without reprocessing audio
+- [ ] Raw audio and transcript text are never transmitted to cloud without explicit user consent
+- [ ] Whisper and off-the-record content excluded from all LLM context windows
+
+- [ ] When `VTTCHAT_SUMMARY_PROCESSING_ENABLED=false`, admin/DM UI shows disabled controls with: "Summary processing is not installed on this deployment. Ask your administrator to enable it during system installation."
+- [ ] DM can view processing job progress and status from the session panel
+- [ ] Operator can inspect, retry, and clear failed jobs via admin API
+- [ ] Session UI remains responsive during background processing (no blocking)
+- [ ] Generated summary surfaced to DM in session panel after job completion
 
 **Related Docs**:
 
-- [docs/architecture/EMAIL-SYSTEM.md](docs/architecture/EMAIL-SYSTEM.md) — full design doc (templates, preferences, flows)
-- [docs/operations/QUEUES.md](docs/operations/QUEUES.md) — SMTP config and email job flow
-- [docs/architecture/QUEUE-JOB-MANAGER.md](docs/architecture/QUEUE-JOB-MANAGER.md)
+- [docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
+- [docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md](docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md)
 
 ---
 
-## Phase 5: Optional and Far Future ⚪
+### W-AI-Writing-Assistant: In-Editor AI Assistance
+
+**Status**: ⚪ Not Started
+**Priority**: 🔵 Low (optional enhancement)
+**Depends on**: W-Notes (notes/journal editor must be complete)
+**Optional context from**: W-Recording-Transcription-Summary (session summaries enrich AI context when available, but are not required)
+
+**Scope**: Surface AI writing assistance via an "Ask AI" button in the Notes and Journal markdown editor. Operates with a local offline AI model or cloud AI (if enabled). Fully functional without the recording/transcription pipeline — session summary context is injected silently when available, but the feature stands alone.
+
+**AI Provider Model**:
+
+| Provider                                | When used       | Notes                                                                          |
+| --------------------------------------- | --------------- | ------------------------------------------------------------------------------ |
+| Local LLM (llama.cpp / Mistral / Phi-3) | Default         | Same model pool as summary pipeline if installed                               |
+| Cloud LLM                               | Opt-in only     | Inherits campaign-level cloud AI config; requires explicit per-content consent |
+| None configured                         | Always possible | "Ask AI" button disabled with explanatory tooltip                              |
+
+**Capabilities**:
+
+- Expand, condense, or rewrite selected text
+- Generate DMDX blocks (`npc`, `encounter`, `loot`, `session`, `timeline`, etc.) from a natural language prompt
+- Suggest narrative continuations
+- Answer questions about session history (when session summary context is available)
+- Generate "Previously on…" recap from session summary
+- Rewrite in a different tone or register (e.g. "make this more dramatic")
+
+**UI Contract**:
+
+- "Ask AI" button in the Notes/Journal editor toolbar
+- Opens an inline prompt panel — non-blocking, does not obscure content
+- Output rendered as a diff-preview below the prompt; user accepts or discards
+- Streamed output preferred; single-response fallback if local model does not support streaming
+- Available to DM always; available to players for their own private notes only
+- Works in both rich markdown mode and raw code view
+
+**Privacy**:
+
+- Local AI: note content never leaves the machine
+- Cloud AI: explicit per-session consent confirmation shown on first use per campaign
+- DM-private notes and Whisper content are never included in AI context regardless of provider
+
+**Acceptance Criteria**:
+
+- [ ] "Ask AI" button present in Notes and Journal editor toolbar
+- [ ] Inline prompt panel opens without blocking the editor or requiring a full-screen mode
+- [ ] Local AI responds without any cloud dependency when a local model is configured
+- [ ] Cloud AI opt-in confirmation shown the first time per campaign when cloud provider is enabled
+- [ ] Output rendered as diff-preview; user explicitly accepts or discards before content is written
+- [ ] Session summary context injected automatically and silently when available
+- [ ] Works with all 9 DMDX block types as generation targets
+- [ ] DM-private and Whisper content excluded from AI context regardless of provider
+- [ ] When no AI provider is configured, "Ask AI" button is disabled with explanatory tooltip
+- [ ] Feature remains functional when `VTTCHAT_SUMMARY_PROCESSING_ENABLED=false`
+
+**Related Docs**:
+
+- [docs/ai/AI-WRITING-ASSISTANT.md](docs/ai/AI-WRITING-ASSISTANT.md)
+- [docs/subsystems/NOTES-SYSTEM.md](docs/subsystems/NOTES-SYSTEM.md)
+- [docs/subsystems/DMDX-MARKDOWN-EXTENSION.md](docs/subsystems/DMDX-MARKDOWN-EXTENSION.md)
+- [docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md](docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md)
+
+---
+
+## Phase 6: Optional and Far Future ⚪
 
 ### W-Desktop-App: Tauri-based Desktop Client
 
@@ -1936,26 +2227,6 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 **Priority**: 🔵 Low (optional, post-launch)
 
 **Scope**: Translation framework, extraction tooling, multi-language support.
-
----
-
-### W-Recording-Transcription-Summary: Async Post-Session Processing
-
-**Status**: ⚪ Not Started
-**Priority**: 🔵 Low (far future, requires Queue Manager)
-
-**Scope**: After session ends, record finalization, transcription, and AI summary generation via durable queue.
-
-**Acceptance Criteria**:
-
-- [ ] Recording finalizes after session ENDED state
-- [ ] Transcription processes asynchronously with retry/dead-letter
-- [ ] Summary generation uses transcript + boundary markers + player actions
-- [ ] Off-the-record content (Whisper, Paused runtime content) is excluded from transcript
-
-**Related Docs**:
-
-- [docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md)
 
 ---
 

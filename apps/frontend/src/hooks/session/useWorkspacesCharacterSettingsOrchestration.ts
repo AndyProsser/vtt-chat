@@ -43,10 +43,13 @@ export function useWorkspacesCharacterSettingsOrchestration(
   /**
    * isDirtyRef: true when the user has edited a non-avatar field since the last save/load.
    * pendingImmediateSaveRef: true when an avatar change just occurred and requires an immediate save.
+   * srdFieldFocusedRef: true while race/class/subclass input has focus — suppresses the debounce
+   *   timer so the popup isn't dismissed by a mid-typing save. Save fires on blur instead.
    * doAutoSaveRef: always holds the latest auto-save closure to avoid stale captures in setTimeout.
    */
   const isDirtyRef = useRef(false)
   const pendingImmediateSaveRef = useRef(false)
+  const srdFieldFocusedRef = useRef(false)
   const doAutoSaveRef = useRef<() => Promise<void>>(async () => {})
 
   const loadUserCharacters = useCallback(async () => {
@@ -150,6 +153,11 @@ export function useWorkspacesCharacterSettingsOrchestration(
       return
     }
 
+    // Suppress the timer while a SRD field has focus — save fires on blur instead.
+    if (srdFieldFocusedRef.current) {
+      return
+    }
+
     const timer = setTimeout(() => {
       isDirtyRef.current = false
       void doAutoSaveRef.current()
@@ -189,9 +197,29 @@ export function useWorkspacesCharacterSettingsOrchestration(
     [characterSettingsActions, characterSettingsPanel]
   )
 
+  /** Called when race/class/subclass input receives focus — suppresses auto-save timer. */
+  const handleSrdFieldFocus = useCallback(() => {
+    srdFieldFocusedRef.current = true
+  }, [])
+
+  /**
+   * Called when race/class/subclass input loses focus.
+   * If the user made changes while focused, triggers an immediate background save
+   * now that the popup is safely dismissed.
+   */
+  const handleSrdFieldBlur = useCallback(() => {
+    srdFieldFocusedRef.current = false
+    if (isDirtyRef.current && !isCharacterSettingsLoading && !isCharacterSettingsSaving) {
+      isDirtyRef.current = false
+      void doAutoSaveRef.current()
+    }
+  }, [isCharacterSettingsLoading, isCharacterSettingsSaving])
+
   return {
     loadUserCharacters,
     saveCharacterSettings,
     handleCharacterFieldChange,
+    handleSrdFieldFocus,
+    handleSrdFieldBlur,
   }
 }

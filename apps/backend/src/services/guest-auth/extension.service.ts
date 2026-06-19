@@ -9,6 +9,7 @@ import {
 } from '@/utils/guest-auth.helpers'
 import type { GuestCharacterInput, GuestLoginInput } from '@/types/guest-auth.types'
 import type { UUID } from '@shared'
+import { externalSystemToPlatform } from '@/services/integrations.service'
 
 const prisma = getPrismaClient()
 
@@ -58,9 +59,19 @@ async function upsertCharacter(params: {
       })
     : null
 
-  const metadata = {
+  const metadata: Record<string, unknown> = {
     level: params.character.level ?? null,
     characterUrl: params.character.characterUrl || null,
+  }
+
+  if (params.character.stats !== undefined) {
+    metadata.stats = params.character.stats
+  }
+  if (params.character.conditions !== undefined) {
+    metadata.conditions = params.character.conditions
+  }
+  if (params.character.features !== undefined) {
+    metadata.features = params.character.features
   }
 
   if (existing) {
@@ -132,6 +143,7 @@ export async function loginGuestViaExtension(params: GuestLoginInput): Promise<{
     select: {
       id: true,
       currentDmId: true,
+      supportedPlatforms: true,
       externalLinks: {
         where: { externalSystem: sanitizeExternalSystem(params.externalSystem) },
         select: { id: true, externalId: true },
@@ -145,6 +157,15 @@ export async function loginGuestViaExtension(params: GuestLoginInput): Promise<{
   }
 
   const externalSystem = sanitizeExternalSystem(params.externalSystem)
+
+  // Enforce campaign-level platform gate before doing any account work.
+  const platformKey = externalSystemToPlatform(externalSystem)
+  const campaignAllowsPlatform =
+    campaign.supportedPlatforms.includes('ANY' as never) ||
+    (platformKey !== null && campaign.supportedPlatforms.includes(platformKey as never))
+  if (!campaignAllowsPlatform) {
+    throw new Error('PLATFORM_NOT_AUTHORIZED')
+  }
   const externalUserId = String(params.externalUserId || '').trim()
   const link = campaign.externalLinks[0] || null
 

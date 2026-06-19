@@ -96,6 +96,7 @@ model User {
   externalIdentities       ExternalIdentity[]
   linkedExternalCampaigns  CampaignExternalLink[] @relation("CampaignExternalLinkLinkedBy")
   passwordResetTokens      PasswordResetToken[]
+  deviceCredentials        DeviceCredential[]
   spectatorWaitlistEntries SpectatorWaitlist[]
   portabilityArtifacts     ImportExportArtifact[]
   joinRequests             CampaignJoinRequest[]
@@ -127,11 +128,24 @@ model Campaign {
   postSessionChatDurationMs     Int                    @default(300000)
   discoverable                  Boolean                @default(false)
   extensionSyncPolicy           ExtensionSyncPolicy    @default(DM_AND_PLAYERS)
+  extensionInventorySyncEnabled Boolean                @default(true)
+  extensionCurrencySyncEnabled  Boolean                @default(true)
+  extensionPartyInventorySyncAccess ExtensionPartyInventorySyncAccess @default(DM_ONLY)
+  extensionSyncConflictResolution   ExtensionSyncConflictResolution   @default(OVERWRITE)
   defaultSessionDurationMins    Int                    @default(240)
   supportedPlatforms            SupportedPlatform[]    @default([ANY])
   currentDmId                   String                 @db.Uuid
   retiredAt                     DateTime?
   deletedAt                     DateTime?
+  sessionScheduleType           SessionScheduleType?
+  sessionScheduleDay            Int?
+  sessionScheduleNth            Int?
+  sessionScheduleHour           Int?
+  sessionScheduleMinute         Int?
+  sessionScheduleTz             String?
+  nextSessionDate               DateTime?
+  nextSessionIsManual           Boolean                @default(false)
+  dndRuleset                    String                 @default("2024")
   currentDm                     User                   @relation("CampaignCurrentDm", fields: [currentDmId], references: [id], onDelete: Restrict)
   members                       CampaignMembership[]
   characters                    Character[]
@@ -143,6 +157,10 @@ model Campaign {
   recordings                    RecordingMetadata[]
   portabilityArtifacts          ImportExportArtifact[]
   joinRequests                  CampaignJoinRequest[]
+  inventoryItems                InventoryItem[]
+  currencyWallets               CurrencyWallet[]
+  inventoryHistory              InventoryHistoryEntry[]
+  pendingExtensionSyncs         PendingExtensionSync[]
   createdAt                     DateTime               @default(now())
   updatedAt                     DateTime               @updatedAt
 
@@ -386,6 +404,22 @@ model PasswordResetToken {
   @@index([expiresAt])
 }
 
+model DeviceCredential {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId       String
+  credentialHash String    @unique
+  createdAt      DateTime  @default(now())
+  lastUsedAt     DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model RecordingMetadata {
   id              String    @id @default(uuid()) @db.Uuid
   campaignId      String    @db.Uuid
@@ -499,6 +533,23 @@ enum ExtensionSyncPolicy {
   DM_AND_PLAYERS
 }
 
+enum ExtensionPartyInventorySyncAccess {
+  DISABLED
+  DM_ONLY
+  ALL_PLAYERS
+}
+
+enum ExtensionSyncConflictResolution {
+  OVERWRITE
+  IGNORE
+  PROMPT
+}
+
+enum PendingExtensionSyncKind {
+  ITEM
+  CURRENCY
+}
+
 enum SupportedPlatform {
   ANY
   DDB
@@ -519,6 +570,7 @@ enum MessageType {
   WHISPER
   DM
   SYSTEM
+  ROLL
 }
 
 enum SessionState {
@@ -563,6 +615,12 @@ enum SessionLogEventType {
   STATE_CHANGED
 }
 
+enum SessionScheduleType {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY_NTH
+}
+
 enum PortabilityArtifactType {
   CAMPAIGN_EXPORT
   CAMPAIGN_IMPORT
@@ -572,4 +630,105 @@ enum PortabilityArtifactType {
 enum DmVoiceMode {
   TARGET_GROUP
   BROADCAST
+}
+
+enum InventoryItemSource {
+  SRD
+  CUSTOM
+  EXTERNAL
+}
+
+enum InventoryItemCategory {
+  EQUIPMENT
+  MAGIC_ITEM
+  HOMEBREW
+}
+
+model InventoryItem {
+  id             String                @id @default(uuid()) @db.Uuid
+  campaignId     String                @db.Uuid
+  campaign       Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ownerType      String                // 'party' | 'character'
+  ownerId        String?               @db.Uuid
+  name           String
+  quantity       Int                   @default(1)
+  source         InventoryItemSource   @default(CUSTOM)
+  srdKey         String?
+  srdCategory    InventoryItemCategory @default(EQUIPMENT)
+  notes          String?               @db.Text
+  externalId     String?               // External system item ID (e.g. DDB item ID)
+  externalSource String?               // External system name (e.g. 'DDB', 'Roll20')
+  addedByUserId  String                @db.Uuid
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  historyEntries InventoryHistoryEntry[]
+
+  @@index([campaignId])
+  @@index([campaignId, ownerType])
+  @@index([campaignId, ownerId])
+  @@index([campaignId, ownerId, externalSource, externalId])
+}
+
+model CurrencyWallet {
+  id         String   @id @default(uuid()) @db.Uuid
+  campaignId String   @db.Uuid
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ownerType  String   // 'party' | 'character'
+  ownerId    String?  @db.Uuid
+  cp         Int      @default(0)
+  sp         Int      @default(0)
+  ep         Int      @default(0)
+  gp         Int      @default(0)
+  pp         Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([campaignId, ownerType, ownerId])
+  @@index([campaignId])
+}
+
+/// Holds a single conflicting inventory item or currency wallet change from extension sync,
+/// pending DM approve/reject, when the campaign's extensionSyncConflictResolution is PROMPT.
+/// Reference: docs/subsystems/INVENTORY-SYSTEM.md §2.3, §12.3
+model PendingExtensionSync {
+  id               String                   @id @default(uuid()) @db.Uuid
+  campaignId       String                   @db.Uuid
+  campaign         Campaign                 @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  characterId      String                   @db.Uuid
+  externalSource   String
+  externalId       String                   // item externalId, or 'currency' for a wallet conflict
+  kind             PendingExtensionSyncKind
+  incomingPayload  Json
+  existingSnapshot Json
+  createdAt        DateTime                 @default(now())
+  expiresAt        DateTime
+
+  @@index([campaignId])
+  @@index([campaignId, expiresAt])
+  @@index([characterId])
+}
+
+model InventoryHistoryEntry {
+  id           String         @id @default(uuid()) @db.Uuid
+  campaignId   String         @db.Uuid
+  campaign     Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  itemId       String?        @db.Uuid
+  item         InventoryItem? @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  sessionId    String?        @db.Uuid
+  actorUserId  String         @db.Uuid
+  actionType   String         // InventoryActionType values
+  fromOwnerType String?
+  fromOwnerId  String?        @db.Uuid
+  toOwnerType  String?
+  toOwnerId    String?        @db.Uuid
+  quantity     Int?
+  currencyDelta Json?
+  itemName     String?
+  notes        String?        @db.Text
+  createdAt    DateTime       @default(now())
+
+  @@index([campaignId])
+  @@index([campaignId, sessionId])
+  @@index([campaignId, actorUserId])
+  @@index([itemId])
+  @@index([createdAt])
 }

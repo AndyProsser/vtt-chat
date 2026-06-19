@@ -1,5 +1,6 @@
 import type { DmdxParsed } from '@/utils/dmdx/dmdxParser'
 import { dmdxArr, dmdxObj, dmdxStr } from '@/utils/dmdx/dmdxParser'
+import { Icon } from '@/components/ui/Icon'
 
 const ABILITY_LABELS: Record<string, string> = {
   str: 'STR',
@@ -32,9 +33,7 @@ export function DmdxMonsterBlock({ parsed }: { parsed: DmdxParsed }) {
       <div className="dmdx-block__header">
         <div className="dmdx-block__header-text">
           <span className="dmdx-block__type-label">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              pets
-            </span>
+            <Icon name="pets" />
             Monster
           </span>
           <h4 className="dmdx-block__title">{name}</h4>

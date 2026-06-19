@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useMemo, useRef } from 'react'
 import type { UUID } from '@shared'
 import { EditorView } from '@/components/workspaces/editor/EditorView'
 import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
+import { DmTransferOfferBanner } from '@/components/workspaces/shared/DmTransferOfferBanner'
 import type { EditorWorkspaceProps } from '@/types/editorWorkspace'
 
-export function EditorWorkspace(props: EditorWorkspaceProps) {
+export const EditorWorkspace = memo(function EditorWorkspace(props: EditorWorkspaceProps) {
   // Destructure props used inside useCallback hooks so deps reference named
   // variables, satisfying exhaustive-deps without listing the whole props object.
   const {
@@ -141,6 +142,19 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             props.onSettingsPostSessionChatDurationMinutesChange,
           settingsExtensionSyncPolicy: props.settingsExtensionSyncPolicy,
           onSettingsExtensionSyncPolicyChange: props.onSettingsExtensionSyncPolicyChange,
+          settingsExtensionInventorySyncEnabled: props.settingsExtensionInventorySyncEnabled,
+          onSettingsExtensionInventorySyncEnabledChange:
+            props.onSettingsExtensionInventorySyncEnabledChange,
+          settingsExtensionCurrencySyncEnabled: props.settingsExtensionCurrencySyncEnabled,
+          onSettingsExtensionCurrencySyncEnabledChange:
+            props.onSettingsExtensionCurrencySyncEnabledChange,
+          settingsExtensionPartyInventorySyncAccess:
+            props.settingsExtensionPartyInventorySyncAccess,
+          onSettingsExtensionPartyInventorySyncAccessChange:
+            props.onSettingsExtensionPartyInventorySyncAccessChange,
+          settingsExtensionSyncConflictResolution: props.settingsExtensionSyncConflictResolution,
+          onSettingsExtensionSyncConflictResolutionChange:
+            props.onSettingsExtensionSyncConflictResolutionChange,
           settingsLateJoinPolicy: props.settingsLateJoinPolicy,
           onSettingsLateJoinPolicyChange: props.onSettingsLateJoinPolicyChange,
           settingsLateJoinGraceMinutes: props.settingsLateJoinGraceMinutes,
@@ -153,6 +167,8 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             props.onSettingsDefaultSessionDurationMinsChange,
           settingsSupportedPlatforms: props.settingsSupportedPlatforms,
           onSettingsSupportedPlatformsChange: props.onSettingsSupportedPlatformsChange,
+          settingsDndRuleset: props.settingsDndRuleset,
+          onSettingsDndRulesetChange: props.onSettingsDndRulesetChange,
           sessionNameBase: props.sessionSettingsName,
           onSessionNameBaseChange: props.onSessionNameChange,
           sessionNameContext: 'NEXT',
@@ -165,6 +181,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
           onSave: props.onSaveCampaignSettings,
           onDeleteCampaign: handleDeleteCampaign,
           isDeletingCampaign: props.isDeletingCampaign,
+          campaignId: props.selectedCampaignId || null,
         }}
         playerSettings={{
           campaignId: props.selectedCampaignId || null,
@@ -199,6 +216,10 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       props.onSettingsDescriptionChange,
       props.onSettingsDmAutoTargetOnFirstPlayerJoinChange,
       props.onSettingsExtensionSyncPolicyChange,
+      props.onSettingsExtensionInventorySyncEnabledChange,
+      props.onSettingsExtensionCurrencySyncEnabledChange,
+      props.onSettingsExtensionPartyInventorySyncAccessChange,
+      props.onSettingsExtensionSyncConflictResolutionChange,
       props.onSettingsLateJoinGraceMinutesChange,
       props.onSettingsLateJoinPolicyChange,
       props.onSettingsNameChange,
@@ -210,6 +231,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       props.onSettingsSpectatorReconnectGraceSecsChange,
       props.onSettingsSpectatorWaitlistEnabledChange,
       props.onSettingsSupportedPlatformsChange,
+      props.onSettingsDndRulesetChange,
       props.onSettingsVisibilityChange,
       props.onSaveCharacterSettings,
       props.selectedCampaign,
@@ -220,6 +242,10 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       props.settingsDmAutoTargetOnFirstPlayerJoin,
       props.settingsDescription,
       props.settingsExtensionSyncPolicy,
+      props.settingsExtensionInventorySyncEnabled,
+      props.settingsExtensionCurrencySyncEnabled,
+      props.settingsExtensionPartyInventorySyncAccess,
+      props.settingsExtensionSyncConflictResolution,
       props.settingsLateJoinGraceMinutes,
       props.settingsLateJoinPolicy,
       props.settingsName,
@@ -240,7 +266,11 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   }
 
   return (
-    <EditorView
+    <>
+      {props.selectedCampaignId && (
+        <DmTransferOfferBanner campaignId={props.selectedCampaignId as UUID} />
+      )}
+      <EditorView
       campaign={props.selectedCampaign}
       role={props.membershipRole}
       themeMode={props.themeMode}
@@ -292,5 +322,6 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       onSaveCampaignInfo={props.onSaveCampaignInfo}
       onSettingsReferenceSessionChange={props.onSettingsReferenceSessionChange}
     />
+    </>
   )
-}
+})

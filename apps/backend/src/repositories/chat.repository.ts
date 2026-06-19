@@ -10,7 +10,7 @@ export async function createChatMessageRecord(params: {
   authorId: string
   authorUsername: string
   content: string
-  type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+  type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
   isDmOnly: boolean
   isOffTheRecord?: boolean
   visibleTo?: unknown
@@ -42,7 +42,7 @@ export async function listSessionMessages(sessionId: string): Promise<
     authorId: string
     authorUsername: string
     content: string
-    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
@@ -66,7 +66,7 @@ export async function listSessionMessagesSince(
     authorId: string
     authorUsername: string
     content: string
-    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
@@ -114,7 +114,7 @@ export async function listSessionMessagesPage(params: {
   since?: Date
   before?: Date
   limit: number
-  types?: Array<'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'>
+  types?: Array<'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'>
 }): Promise<{
   rows: Array<{
     id: string
@@ -123,7 +123,7 @@ export async function listSessionMessagesPage(params: {
     authorUsername: string
     authorCharacterName: string | null
     content: string
-    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
@@ -228,7 +228,7 @@ export async function listMessagesBySessionIds(sessionIds: string[]): Promise<
     authorId: string
     authorUsername: string
     content: string
-    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
@@ -281,7 +281,7 @@ export async function listMessagesBySessionIdsPage(params: {
     authorId: string
     authorUsername: string
     content: string
-    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
@@ -347,7 +347,7 @@ export async function findMessageById(messageId: string): Promise<{
   authorId: string
   authorUsername: string
   content: string
-  type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+  type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
   isDmOnly: boolean
   isOffTheRecord: boolean
   visibleTo: unknown
@@ -434,7 +434,7 @@ export async function listCampaignMessages(campaignId: string): Promise<
     authorId: string
     authorUsername: string
     content: string
-    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
@@ -458,7 +458,7 @@ export async function listCampaignMessagesSince(
     authorId: string
     authorUsername: string
     content: string
-    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown
@@ -520,7 +520,7 @@ export async function listCampaignMessagesPage(params: {
     authorId: string
     authorUsername: string
     content: string
-    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM'
+    type: 'IC' | 'OOC' | 'WHISPER' | 'DM' | 'SYSTEM' | 'ROLL'
     isDmOnly: boolean
     isOffTheRecord: boolean
     visibleTo: unknown

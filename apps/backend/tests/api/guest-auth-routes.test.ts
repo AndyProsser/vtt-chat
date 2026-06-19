@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => ({
   mockSpectatorWaitlistUpdate: vi.fn(),
   mockCampaignFindMany: vi.fn(),
   mockGetLobbyStatsSnapshot: vi.fn(),
+  mockDeviceCredentialUpsert: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -100,6 +101,9 @@ vi.mock('@/infra/db', () => ({
       count: mocks.mockSpectatorWaitlistCount,
       update: mocks.mockSpectatorWaitlistUpdate,
     },
+    deviceCredential: {
+      upsert: mocks.mockDeviceCredentialUpsert,
+    },
   }),
 }))
 
@@ -131,14 +135,34 @@ vi.mock('@/services/lobby/lobby-stats.service', () => ({
   getLobbyStatsSnapshot: (...args: unknown[]) => mocks.mockGetLobbyStatsSnapshot(...args),
 }))
 
-import authRoutes from '@/api/auth.routes'
+// auth-join.routes.ts also imports self-service-auth and handoff.service, neither of
+// which is exercised by any test in this file (no /register, /password-reset/*, or
+// /handoff/* calls). Stub them out rather than letting them resolve for real — the
+// real self-service-auth chain pulls in email.service, which trips a pre-existing
+// '@shared/jobs/index' path-alias resolution issue under vitest.
+vi.mock('@/services/self-service-auth', () => ({
+  suggestAvailableUsername: vi.fn(),
+  registerFullAccount: vi.fn(),
+  requestPasswordReset: vi.fn(),
+  verifyPasswordResetToken: vi.fn(),
+  completePasswordReset: vi.fn(),
+}))
+
+vi.mock('@/services/handoff.service', () => ({
+  issueHandoffToken: vi.fn(),
+  consumeHandoffToken: vi.fn(),
+}))
+
+import authJoinRoutes from '@/api/auth-join.routes'
+import authExtensionRoutes from '@/api/auth-extension.routes'
 import campaignRoutes from '@/api/campaign.routes'
 import platformRoutes from '@/api/platform.routes'
 
 function buildApp() {
   const app = express()
   app.use(express.json())
-  app.use('/api/auth', authRoutes)
+  app.use('/api/auth', authJoinRoutes)
+  app.use('/api/auth', authExtensionRoutes)
   app.use('/api/campaigns', campaignRoutes)
   app.use('/api/platform', platformRoutes)
   return app
@@ -146,7 +170,6 @@ function buildApp() {
 
 describe('guest auth routes', () => {
   const originalNodeEnv = process.env.NODE_ENV
-  const testToken = 'test-jwt-token-xyz'
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -213,6 +236,7 @@ describe('guest auth routes', () => {
       tokenInvalidBefore: null,
       authType: 'GUEST',
     })
+    mocks.mockDeviceCredentialUpsert.mockResolvedValue({ id: 'device-credential-1' })
   })
 
   afterEach(() => {
@@ -363,6 +387,82 @@ describe('guest auth routes', () => {
     })
     expect(response.body.campaignBootstrapped).toBe(true)
     expect(mocks.mockExternalIdentityUpsert).toHaveBeenCalledTimes(1)
+  })
+
+  it('issues a deviceCredential on guest-login when deviceId is provided', async () => {
+    const app = buildApp()
+    mocks.mockCampaignFindFirst.mockResolvedValueOnce({
+      id: 'campaign-1',
+      currentDmId: 'old-dm',
+      externalLinks: [],
+    })
+    mocks.mockUserFindFirst.mockResolvedValueOnce(null)
+    mocks.mockUserFindUnique.mockResolvedValueOnce(null)
+    mocks.mockUserCreate.mockResolvedValueOnce({
+      id: 'guest-user',
+      username: 'aragorn-a1b2',
+      displayName: 'Aragorn Player',
+      avatarUrl: 'https://ddb/player.png',
+    })
+    mocks.mockCampaignExternalLinkCreate.mockResolvedValueOnce({ id: 'link-1' })
+    mocks.mockCampaignMembershipUpsert.mockResolvedValueOnce({ id: 'membership-1' })
+    mocks.mockExternalIdentityUpsert.mockResolvedValueOnce({ id: 'identity-1' })
+
+    const response = await request(app)
+      .post('/api/auth/extension/guest-login')
+      .send({
+        inviteCode: 'ABC123',
+        externalSystem: 'dndbeyond',
+        externalUserId: 'ddb-user-1',
+        email: 'aragorn@example.com',
+        deviceId: 'device-abc',
+        campaignPacket: {
+          externalCampaignId: 'ddb-campaign-1',
+          dmExternalUserId: 'ddb-user-dm',
+        },
+      })
+
+    expect(response.status).toBe(200)
+    expect(typeof response.body.deviceCredential).toBe('string')
+    expect(response.body.deviceCredential.length).toBeGreaterThan(0)
+    expect(mocks.mockDeviceCredentialUpsert).toHaveBeenCalledTimes(1)
+  })
+
+  it('omits deviceCredential on guest-login when no deviceId is provided', async () => {
+    const app = buildApp()
+    mocks.mockCampaignFindFirst.mockResolvedValueOnce({
+      id: 'campaign-1',
+      currentDmId: 'old-dm',
+      externalLinks: [],
+    })
+    mocks.mockUserFindFirst.mockResolvedValueOnce(null)
+    mocks.mockUserFindUnique.mockResolvedValueOnce(null)
+    mocks.mockUserCreate.mockResolvedValueOnce({
+      id: 'guest-user',
+      username: 'aragorn-a1b2',
+      displayName: 'Aragorn Player',
+      avatarUrl: 'https://ddb/player.png',
+    })
+    mocks.mockCampaignExternalLinkCreate.mockResolvedValueOnce({ id: 'link-1' })
+    mocks.mockCampaignMembershipUpsert.mockResolvedValueOnce({ id: 'membership-1' })
+    mocks.mockExternalIdentityUpsert.mockResolvedValueOnce({ id: 'identity-1' })
+
+    const response = await request(app)
+      .post('/api/auth/extension/guest-login')
+      .send({
+        inviteCode: 'ABC123',
+        externalSystem: 'dndbeyond',
+        externalUserId: 'ddb-user-1',
+        email: 'aragorn@example.com',
+        campaignPacket: {
+          externalCampaignId: 'ddb-campaign-1',
+          dmExternalUserId: 'ddb-user-dm',
+        },
+      })
+
+    expect(response.status).toBe(200)
+    expect(response.body.deviceCredential).toBeUndefined()
+    expect(mocks.mockDeviceCredentialUpsert).not.toHaveBeenCalled()
   })
 
   it('rejects extension guest-login for blocked integrations', async () => {
@@ -546,373 +646,23 @@ describe('guest auth routes', () => {
     expect(mocks.mockCampaignUpdate).toHaveBeenCalledTimes(1)
   })
 
-  it('upgrades guest accounts to full accounts', async () => {
-    const app = buildApp()
-    mocks.mockUserFindUnique
-      .mockResolvedValueOnce({
-        id: 'guest-user',
-        username: 'guest-user',
-        role: 'PLAYER',
-        adminRole: null,
-        isActive: true,
-        password: null,
-        displayName: 'Guest User',
-        avatarUrl: null,
-        email: 'guest@example.com',
-        tokenInvalidBefore: null,
-        authType: 'GUEST',
-      })
-      .mockResolvedValueOnce({
-        id: 'guest-user',
-        username: 'guest-user',
-        role: 'PLAYER',
-        authType: 'GUEST',
-      })
-    mocks.mockUserUpdate.mockResolvedValueOnce({
-      id: 'guest-user',
-      username: 'guest-user',
-      role: 'PLAYER',
-    })
-
-    const response = await request(app)
-      .post('/api/auth/upgrade')
-      .set('Authorization', 'Bearer token')
-      .send({ password: 'ValidPassword!23' })
-
-    expect(response.status).toBe(200)
-    expect(response.body.user).toEqual({
-      id: 'guest-user',
-      username: 'guest-user',
-      role: 'PLAYER',
-      authType: 'FULL',
-    })
-    expect(mocks.mockHashPassword).toHaveBeenCalledWith('ValidPassword!23')
-  })
-
-  it('validates auth login payload and access mode', async () => {
-    const app = buildApp()
-
-    let response = await request(app).post('/api/auth/login').send({
-      username: 'a',
-      accessMode: 'USER',
-    })
-
-    expect(response.status).toBe(400)
-    expect(response.body.code).toBe('INVALID_INPUT')
-
-    response = await request(app).post('/api/auth/login').send({
-      username: 'validname',
-      accessMode: 'INVALID_MODE',
-    })
-
-    expect(response.status).toBe(400)
-    expect(response.body.code).toBe('INVALID_INPUT')
-  })
-
-  it('blocks direct login when user is missing and when account is guest-only', async () => {
-    const app = buildApp()
-
-    mocks.mockUserFindFirst.mockResolvedValueOnce(null)
-    let response = await request(app).post('/api/auth/login').send({
-      username: 'validname',
-      accessMode: 'USER',
-    })
-
-    expect(response.status).toBe(403)
-    expect(response.body.code).toBe('LOGIN_DISABLED')
-
-    mocks.mockUserFindFirst.mockResolvedValueOnce({
-      id: 'u-guest',
-      username: 'validname',
-      displayName: 'Guest',
-      avatarUrl: null,
-      role: 'PLAYER',
-      authType: 'GUEST',
-    })
-    response = await request(app).post('/api/auth/login').send({
-      username: 'validname',
-      accessMode: 'USER',
-    })
-
-    expect(response.status).toBe(403)
-    expect(response.body.code).toBe('GUEST_INVITE_REQUIRED')
-  })
-
-  it('issues login tokens for full accounts with normalized access mode', async () => {
-    const app = buildApp()
-
-    mocks.mockUserFindFirst.mockResolvedValueOnce({
-      id: 'u-full',
-      username: 'validname',
-      displayName: 'Valid User',
-      avatarUrl: 'avatar.png',
-      role: 'PLAYER',
-      authType: 'FULL',
-    })
-
-    const response = await request(app).post('/api/auth/login').send({
-      username: 'validname',
-      accessMode: 'campaign',
-      role: 'PLAYER',
-    })
-
-    expect(response.status).toBe(200)
-    expect(response.body.token).toBe('jwt-token')
-    expect(response.body.accessMode).toBe('CAMPAIGN')
-    expect(response.body.user).toMatchObject({
-      id: 'u-full',
-      username: 'validname',
-      authType: 'FULL',
-    })
-  })
-
-  it('creates a development full account when direct login is allowed', async () => {
-    const app = buildApp()
-    process.env.NODE_ENV = 'development'
-
-    mocks.mockUserFindFirst.mockResolvedValueOnce(null)
-    mocks.mockUserCreate.mockResolvedValueOnce({
-      id: 'u-dev',
-      username: 'devuser',
-      displayName: 'Dev User',
-      avatarUrl: 'dev.png',
-      role: 'DM',
-      authType: 'FULL',
-    })
-
-    const response = await request(app).post('/api/auth/login').send({
-      username: 'devuser',
-      role: 'DM',
-      accessMode: 'USER',
-      displayName: 'Dev User',
-      avatarUrl: 'dev.png',
-    })
-
-    expect(response.status).toBe(200)
-    expect(response.body.user).toMatchObject({
-      id: 'u-dev',
-      username: 'devuser',
-      role: 'DM',
-      authType: 'FULL',
-    })
-    expect(mocks.mockUserCreate).toHaveBeenCalled()
-  })
-
-  it('refreshes tokens and validates authenticated users', async () => {
-    const app = buildApp()
-    mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
-    mocks.mockVerifyToken.mockReturnValue({
-      userId: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      accessMode: 'USER',
-      authType: 'FULL',
-      sessionId: 'session-1',
-      iat: Math.floor(Date.now() / 1000),
-    })
-    mocks.mockCreateToken.mockReturnValue('refreshed-token')
-
-    let response = await request(app)
-      .post('/api/auth/refresh')
-      .set('Authorization', `Bearer ${testToken}`)
-    expect(response.status).toBe(200)
-    expect(response.body.token).toBe('refreshed-token')
-
-    response = await request(app)
-      .get('/api/auth/validate')
-      .set('Authorization', `Bearer ${testToken}`)
-    expect(response.status).toBe(200)
-    expect(response.body).toMatchObject({
-      valid: true,
-      user: {
-        id: 'u-full',
-        username: 'validname',
-        accessMode: 'USER',
-        sessionId: 'session-1',
-      },
-    })
-  })
-
-  it('returns the current user profile and default campaign access mode', async () => {
-    const app = buildApp()
-    mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
-    mocks.mockVerifyToken.mockReturnValue({
-      userId: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      authType: 'FULL',
-      iat: Math.floor(Date.now() / 1000),
-    })
-    const userContext = {
-      id: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      adminRole: 'NONE',
-      isActive: true,
-      password: 'hashed',
-      displayName: 'Valid User',
-      avatarUrl: null,
-      email: 'valid@example.com',
-      tokenInvalidBefore: null,
-      authType: 'FULL',
-    }
-    mocks.mockGetUserAuthContext.mockResolvedValueOnce(userContext)
-    mocks.mockGetUserAuthContext.mockResolvedValueOnce(userContext)
-
-    const response = await request(app)
-      .get('/api/auth/me')
-      .set('Authorization', `Bearer ${testToken}`)
-
-    expect(response.status).toBe(200)
-    expect(response.body).toMatchObject({
-      id: 'u-full',
-      username: 'validname',
-      accessMode: 'CAMPAIGN',
-      email: 'valid@example.com',
-      authType: 'FULL',
-    })
-  })
-
-  it('maps auth middleware failure branches for refresh and me', async () => {
-    const app = buildApp()
-
-    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(null)
-    let response = await request(app).post('/api/auth/refresh')
-    expect(response.status).toBe(401)
-    expect(response.body.code).toBe('UNAUTHORIZED')
-
-    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(testToken)
-    mocks.mockVerifyToken.mockReturnValueOnce(null)
-    response = await request(app)
-      .post('/api/auth/refresh')
-      .set('Authorization', `Bearer ${testToken}`)
-    expect(response.status).toBe(401)
-    expect(response.body.code).toBe('TOKEN_EXPIRED')
-
-    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(testToken)
-    mocks.mockVerifyToken.mockReturnValueOnce({
-      userId: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      authType: 'FULL',
-      iat: Math.floor(Date.now() / 1000),
-    })
-    mocks.mockGetUserAuthContext.mockResolvedValueOnce(null)
-    response = await request(app)
-      .post('/api/auth/refresh')
-      .set('Authorization', `Bearer ${testToken}`)
-    expect(response.status).toBe(401)
-    expect(response.body.code).toBe('UNAUTHORIZED')
-
-    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(testToken)
-    mocks.mockVerifyToken.mockReturnValueOnce({
-      userId: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      authType: 'FULL',
-      iat: Math.floor(Date.now() / 1000),
-    })
-    mocks.mockGetUserAuthContext.mockRejectedValueOnce(new Error('lookup failed'))
-    response = await request(app)
-      .post('/api/auth/refresh')
-      .set('Authorization', `Bearer ${testToken}`)
-    expect(response.status).toBe(500)
-    expect(response.body.code).toBe('AUTH_CONTEXT_LOOKUP_FAILED')
-
-    mocks.mockExtractTokenFromHeader.mockReturnValueOnce(testToken)
-    mocks.mockVerifyToken.mockReturnValueOnce({
-      userId: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      authType: 'FULL',
-      iat: Math.floor(Date.now() / 1000) - 120,
-    })
-    mocks.mockGetUserAuthContext.mockResolvedValueOnce({
-      id: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      adminRole: null,
-      isActive: true,
-      password: 'hashed',
-      displayName: 'Valid User',
-      avatarUrl: null,
-      email: 'valid@example.com',
-      tokenInvalidBefore: new Date(Date.now() - 60_000),
-      authType: 'FULL',
-    })
-    response = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${testToken}`)
-    expect(response.status).toBe(401)
-    expect(response.body.message).toBe('Session is no longer valid')
-  })
-
-  it('maps me lookup not-found and failure responses after auth succeeds', async () => {
-    const app = buildApp()
-    mocks.mockExtractTokenFromHeader.mockReturnValue(testToken)
-    mocks.mockVerifyToken.mockReturnValue({
-      userId: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      authType: 'FULL',
-      iat: Math.floor(Date.now() / 1000),
-    })
-    mocks.mockGetUserAuthContext.mockResolvedValueOnce({
-      id: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      adminRole: null,
-      isActive: true,
-      password: 'hashed',
-      displayName: 'Valid User',
-      avatarUrl: null,
-      email: 'valid@example.com',
-      tokenInvalidBefore: null,
-      authType: 'FULL',
-    })
-    mocks.mockGetUserAuthContext.mockResolvedValueOnce(null)
-
-    let response = await request(app)
-      .get('/api/auth/me')
-      .set('Authorization', `Bearer ${testToken}`)
-    expect(response.status).toBe(404)
-    expect(response.body.code).toBe('USER_NOT_FOUND')
-
-    mocks.mockGetUserAuthContext.mockResolvedValueOnce({
-      id: 'u-full',
-      username: 'validname',
-      role: 'PLAYER',
-      adminRole: null,
-      isActive: true,
-      password: 'hashed',
-      displayName: 'Valid User',
-      avatarUrl: null,
-      email: 'valid@example.com',
-      tokenInvalidBefore: null,
-      authType: 'FULL',
-    })
-    mocks.mockGetUserAuthContext.mockRejectedValueOnce(new Error('me failed'))
-
-    response = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${testToken}`)
-    expect(response.status).toBe(500)
-    expect(response.body.code).toBe('ME_LOOKUP_FAILED')
-  })
-
   it('rejects full player join requests with missing fields', async () => {
     const app = buildApp()
 
-    const response = await request(app).post('/api/auth/player/full-join').send({
+    const response = await request(app).post('/api/auth/join/full/player').send({
       inviteCode: 'ABC123',
       email: 'player@example.com',
     })
 
     expect(response.status).toBe(400)
-    expect(response.body.code).toBe('INVALID_PLAYER_FULL_JOIN_REQUEST')
+    expect(response.body.code).toBe('INVALID_FULL_PLAYER_JOIN_REQUEST')
   })
 
   it('rejects full player join when invite is invalid', async () => {
     const app = buildApp()
     mocks.mockCampaignFindFirst.mockResolvedValueOnce(null)
 
-    const response = await request(app).post('/api/auth/player/full-join').send({
+    const response = await request(app).post('/api/auth/join/full/player').send({
       inviteCode: 'BAD999',
       email: 'player@example.com',
       password: 'Password123!',
@@ -930,7 +680,7 @@ describe('guest auth routes', () => {
     })
 
     mocks.mockUserFindFirst.mockResolvedValueOnce(null)
-    let response = await request(app).post('/api/auth/player/full-join').send({
+    let response = await request(app).post('/api/auth/join/full/player').send({
       inviteCode: 'ABC123',
       email: 'player@example.com',
       password: 'Password123!',
@@ -946,7 +696,7 @@ describe('guest auth routes', () => {
       password: 'hashed',
       isActive: false,
     })
-    response = await request(app).post('/api/auth/player/full-join').send({
+    response = await request(app).post('/api/auth/join/full/player').send({
       inviteCode: 'ABC123',
       email: 'player@example.com',
       password: 'Password123!',
@@ -962,7 +712,7 @@ describe('guest auth routes', () => {
       password: null,
       isActive: true,
     })
-    response = await request(app).post('/api/auth/player/full-join').send({
+    response = await request(app).post('/api/auth/join/full/player').send({
       inviteCode: 'ABC123',
       email: 'player@example.com',
       password: 'Password123!',
@@ -987,7 +737,7 @@ describe('guest auth routes', () => {
     })
 
     mocks.mockVerifyPassword.mockResolvedValueOnce(false)
-    let response = await request(app).post('/api/auth/player/full-join').send({
+    let response = await request(app).post('/api/auth/join/full/player').send({
       inviteCode: 'ABC123',
       email: 'player@example.com',
       password: 'Wrong!',
@@ -997,7 +747,7 @@ describe('guest auth routes', () => {
 
     mocks.mockVerifyPassword.mockResolvedValueOnce(true)
     mocks.mockJoinCampaignForUser.mockResolvedValueOnce(false)
-    response = await request(app).post('/api/auth/player/full-join').send({
+    response = await request(app).post('/api/auth/join/full/player').send({
       inviteCode: 'ABC123',
       email: 'player@example.com',
       password: 'Password123!',
@@ -1075,7 +825,7 @@ describe('guest auth routes', () => {
     })
     mocks.mockSpectatorWaitlistCount.mockResolvedValueOnce(1)
 
-    const response = await request(app).post('/api/auth/spectator/guest-join').send({
+    const response = await request(app).post('/api/auth/join/guest/spectator').send({
       spectatorInviteCode: 'SPEC123',
       email: 'spectator@example.com',
       displayName: 'Spectator User',
@@ -1122,7 +872,7 @@ describe('guest auth routes', () => {
       })
     mocks.mockSpectatorWaitlistCount.mockResolvedValueOnce(2)
 
-    const response = await request(app).post('/api/auth/spectator/guest-join').send({
+    const response = await request(app).post('/api/auth/join/guest/spectator').send({
       spectatorInviteCode: 'SPEC123',
       email: 'spectator-queued@example.com',
       displayName: 'Spectator Queued',
@@ -1161,7 +911,7 @@ describe('guest auth routes', () => {
       authType: 'GUEST',
     })
 
-    const response = await request(app).post('/api/auth/spectator/guest-join').send({
+    const response = await request(app).post('/api/auth/join/guest/spectator').send({
       spectatorInviteCode: 'SPEC123',
       email: 'spectator2@example.com',
       displayName: 'Spectator Two',
@@ -1199,7 +949,7 @@ describe('guest auth routes', () => {
       displayName: 'Spectator Full',
     })
 
-    const response = await request(app).post('/api/auth/spectator/guest-join').send({
+    const response = await request(app).post('/api/auth/join/guest/spectator').send({
       spectatorInviteCode: 'SPEC123',
       email: 'spectator-full@example.com',
       displayName: 'Spectator Full',
@@ -1220,7 +970,7 @@ describe('guest auth routes', () => {
       sessions: [],
     })
 
-    const nonePolicy = await request(app).post('/api/auth/spectator/guest-join').send({
+    const nonePolicy = await request(app).post('/api/auth/join/guest/spectator').send({
       spectatorInviteCode: 'SPEC123',
       email: 'spectator-none@example.com',
       displayName: 'Spectator None',
@@ -1237,7 +987,7 @@ describe('guest auth routes', () => {
       sessions: [],
     })
 
-    const usersPolicy = await request(app).post('/api/auth/spectator/guest-join').send({
+    const usersPolicy = await request(app).post('/api/auth/join/guest/spectator').send({
       spectatorInviteCode: 'SPEC123',
       email: 'spectator-users@example.com',
       displayName: 'Spectator Users',

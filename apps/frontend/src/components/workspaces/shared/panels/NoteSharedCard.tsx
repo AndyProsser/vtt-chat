@@ -3,6 +3,7 @@ import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEd
 import { openNotePopout } from '@/utils/route-view'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
 import '@/styles/components/workspaces/shared/panels/NoteSharedCard.css'
+import { Icon } from '@/components/ui/Icon'
 
 function handleOpenNotePopout(noteId: string) {
   const token = sessionStorage.getItem('authToken') ?? ''
@@ -54,12 +55,7 @@ export function NoteSharedCard({
   return (
     <article className={rootClass} aria-label={`Shared handout ${note.title}`}>
       <div className="session-note-shared-card__header">
-        <span
-          className="session-note-shared-card__icon material-symbols-outlined"
-          aria-hidden="true"
-        >
-          menu_book
-        </span>
+        <Icon name="menu_book" className="session-note-shared-card__icon" />
         <div className="session-note-shared-card__headline">
           <div className="session-note-shared-card__label-row">
             <span className="session-note-shared-card__label">Handout Shared</span>
@@ -78,13 +74,10 @@ export function NoteSharedCard({
 
       {isExcerpt ? (
         <p className="session-note-shared-card__full-note-hint">
-          <span
-            className="material-symbols-outlined"
-            aria-hidden="true"
+          <Icon
+            name="menu_book"
             style={{ fontSize: '14px', verticalAlign: 'middle', marginRight: '4px' }}
-          >
-            menu_book
-          </span>
+          />
           Full note available in the Notes tab
         </p>
       ) : null}

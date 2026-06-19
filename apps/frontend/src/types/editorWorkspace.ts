@@ -3,6 +3,8 @@ import type { ShowToastInput } from '@/state/toastCenter'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -48,11 +50,16 @@ export type EditorWorkspaceProps = {
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsExtensionInventorySyncEnabled: boolean
+  settingsExtensionCurrencySyncEnabled: boolean
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
   settingsLateJoinPolicy: LateJoinPolicy
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
   sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: PlayerSettingsPanel
@@ -70,11 +77,18 @@ export type EditorWorkspaceProps = {
   onSettingsPostSessionChatEnabledChange: (value: boolean) => void
   onSettingsPostSessionChatDurationMinutesChange: (value: number) => void
   onSettingsExtensionSyncPolicyChange: (value: ExtensionSyncPolicy) => void
+  onSettingsExtensionInventorySyncEnabledChange: (value: boolean) => void
+  onSettingsExtensionCurrencySyncEnabledChange: (value: boolean) => void
+  onSettingsExtensionPartyInventorySyncAccessChange: (
+    value: ExtensionPartyInventorySyncAccess
+  ) => void
+  onSettingsExtensionSyncConflictResolutionChange: (value: ExtensionSyncConflictResolution) => void
   onSettingsLateJoinPolicyChange: (value: LateJoinPolicy) => void
   onSettingsLateJoinGraceMinutesChange: (value: number) => void
   onSettingsDmAutoTargetOnFirstPlayerJoinChange: (value: boolean) => void
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
   onSettingsSupportedPlatformsChange: (value: SupportedPlatform[]) => void
+  onSettingsDndRulesetChange: (value: '2014' | '2024') => void
   onSessionNameChange: (value: string) => void
   onCopyInviteUrl: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void

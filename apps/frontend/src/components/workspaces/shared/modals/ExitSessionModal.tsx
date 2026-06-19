@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { ModalsProps } from '@/types/modals'
 
 type ExitSessionModalProps = Pick<
@@ -16,7 +17,7 @@ type ExitSessionModalProps = Pick<
   leaveSessionWarning: string | null
 }
 
-export function ExitSessionModal(props: ExitSessionModalProps) {
+export const ExitSessionModal = memo(function ExitSessionModal(props: ExitSessionModalProps) {
   if (!props.showExitSessionModal) {
     return null
   }
@@ -115,4 +116,4 @@ export function ExitSessionModal(props: ExitSessionModalProps) {
       </div>
     </div>
   )
-}
+})

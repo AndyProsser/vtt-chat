@@ -3,6 +3,8 @@ import type { UUID } from '@shared'
 import { EditorWorkspace } from '@/components/workspaces/EditorWorkspace'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -43,11 +45,16 @@ type BuildEditorWorkspacePropsParams = {
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsExtensionInventorySyncEnabled: boolean
+  settingsExtensionCurrencySyncEnabled: boolean
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
   settingsLateJoinPolicy: LateJoinPolicy
   settingsLateJoinGraceMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
   sessionSettingsName: string
   selectedCampaignId: UUID | ''
   characterSettingsPanel: ComponentProps<typeof EditorWorkspace>['characterSettingsPanel']
@@ -79,6 +86,18 @@ type BuildEditorWorkspacePropsParams = {
   onSettingsExtensionSyncPolicyChange: ComponentProps<
     typeof EditorWorkspace
   >['onSettingsExtensionSyncPolicyChange']
+  onSettingsExtensionInventorySyncEnabledChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsExtensionInventorySyncEnabledChange']
+  onSettingsExtensionCurrencySyncEnabledChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsExtensionCurrencySyncEnabledChange']
+  onSettingsExtensionPartyInventorySyncAccessChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsExtensionPartyInventorySyncAccessChange']
+  onSettingsExtensionSyncConflictResolutionChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsExtensionSyncConflictResolutionChange']
   onSettingsLateJoinPolicyChange: ComponentProps<
     typeof EditorWorkspace
   >['onSettingsLateJoinPolicyChange']
@@ -94,6 +113,7 @@ type BuildEditorWorkspacePropsParams = {
   onSettingsSupportedPlatformsChange: ComponentProps<
     typeof EditorWorkspace
   >['onSettingsSupportedPlatformsChange']
+  onSettingsDndRulesetChange: ComponentProps<typeof EditorWorkspace>['onSettingsDndRulesetChange']
   onSessionNameChange: ComponentProps<typeof EditorWorkspace>['onSessionNameChange']
   onCopyInviteUrl: ComponentProps<typeof EditorWorkspace>['onCopyInviteUrl']
   onReissueInvite: ComponentProps<typeof EditorWorkspace>['onReissueInvite']
@@ -149,11 +169,16 @@ export function buildEditorWorkspaceProps(
     settingsPostSessionChatEnabled: params.settingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes: params.settingsPostSessionChatDurationMinutes,
     settingsExtensionSyncPolicy: params.settingsExtensionSyncPolicy,
+    settingsExtensionInventorySyncEnabled: params.settingsExtensionInventorySyncEnabled,
+    settingsExtensionCurrencySyncEnabled: params.settingsExtensionCurrencySyncEnabled,
+    settingsExtensionPartyInventorySyncAccess: params.settingsExtensionPartyInventorySyncAccess,
+    settingsExtensionSyncConflictResolution: params.settingsExtensionSyncConflictResolution,
     settingsLateJoinPolicy: params.settingsLateJoinPolicy,
     settingsLateJoinGraceMinutes: params.settingsLateJoinGraceMinutes,
     settingsDmAutoTargetOnFirstPlayerJoin: params.settingsDmAutoTargetOnFirstPlayerJoin,
     settingsDefaultSessionDurationMins: params.settingsDefaultSessionDurationMins,
     settingsSupportedPlatforms: params.settingsSupportedPlatforms,
+    settingsDndRuleset: params.settingsDndRuleset,
     sessionSettingsName: params.sessionSettingsName,
     selectedCampaignId: params.selectedCampaignId,
     characterSettingsPanel: params.characterSettingsPanel,
@@ -172,12 +197,21 @@ export function buildEditorWorkspaceProps(
     onSettingsPostSessionChatDurationMinutesChange:
       params.onSettingsPostSessionChatDurationMinutesChange,
     onSettingsExtensionSyncPolicyChange: params.onSettingsExtensionSyncPolicyChange,
+    onSettingsExtensionInventorySyncEnabledChange:
+      params.onSettingsExtensionInventorySyncEnabledChange,
+    onSettingsExtensionCurrencySyncEnabledChange:
+      params.onSettingsExtensionCurrencySyncEnabledChange,
+    onSettingsExtensionPartyInventorySyncAccessChange:
+      params.onSettingsExtensionPartyInventorySyncAccessChange,
+    onSettingsExtensionSyncConflictResolutionChange:
+      params.onSettingsExtensionSyncConflictResolutionChange,
     onSettingsLateJoinPolicyChange: params.onSettingsLateJoinPolicyChange,
     onSettingsLateJoinGraceMinutesChange: params.onSettingsLateJoinGraceMinutesChange,
     onSettingsDmAutoTargetOnFirstPlayerJoinChange:
       params.onSettingsDmAutoTargetOnFirstPlayerJoinChange,
     onSettingsDefaultSessionDurationMinsChange: params.onSettingsDefaultSessionDurationMinsChange,
     onSettingsSupportedPlatformsChange: params.onSettingsSupportedPlatformsChange,
+    onSettingsDndRulesetChange: params.onSettingsDndRulesetChange,
     onSessionNameChange: params.onSessionNameChange,
     onCopyInviteUrl: params.onCopyInviteUrl,
     onReissueInvite: params.onReissueInvite,

@@ -16,6 +16,7 @@ import { NoteDeleteDialog } from './NoteDeleteDialog'
 import { NoteSurfaceDialog } from './NoteSurfaceDialog'
 import { NoteSharePopover } from './NoteSharePopover'
 import { areStringArraysEqual, areUuidArraysEqual } from './noteCard.utils'
+import { Icon } from '@/components/ui/Icon'
 
 const EMPTY_UUIDS: UUID[] = []
 const EMPTY_ATTACHMENTS: NoteAttachmentEntity[] = []
@@ -280,9 +281,7 @@ export function NoteCard({
                     className="notes-note-header-action"
                     aria-label="Pop out note"
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      open_in_new
-                    </span>
+                    <Icon name="open_in_new" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Open in separate window</TooltipContent>
@@ -302,9 +301,7 @@ export function NoteCard({
                     className={`notes-note-header-action notes-note-header-action--publish${hasPublishedThisSession ? ' is-published' : ''}`}
                     aria-label="Publish handout to chat"
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      publish
-                    </span>
+                    <Icon name="publish" />
                   </button>
                 }
                 triggerTooltip={
@@ -359,9 +356,7 @@ export function NoteCard({
                     className="notes-note-header-action notes-note-header-action--delete"
                     aria-label="Delete handout"
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      delete
-                    </span>
+                    <Icon name="delete" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Delete handout</TooltipContent>

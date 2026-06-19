@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { ModalsProps } from '@/types/modals'
 
 type StopSessionModalProps = Pick<
@@ -5,7 +6,7 @@ type StopSessionModalProps = Pick<
   'showStopSessionModal' | 'onCloseStopSession' | 'onConfirmStopSession'
 >
 
-export function StopSessionModal(props: StopSessionModalProps) {
+export const StopSessionModal = memo(function StopSessionModal(props: StopSessionModalProps) {
   if (!props.showStopSessionModal) {
     return null
   }
@@ -47,4 +48,4 @@ export function StopSessionModal(props: StopSessionModalProps) {
       </div>
     </div>
   )
-}
+})

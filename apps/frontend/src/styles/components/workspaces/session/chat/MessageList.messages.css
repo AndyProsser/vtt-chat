@@ -357,3 +357,138 @@
   gap: 0.5rem;
   width: 100%;
 }
+
+/* ── Roll Card ───────────────────────────────────────────────────────────── */
+
+.session-roll-card .session-message-list__message-row {
+  align-items: flex-start;
+}
+
+.session-roll-card__dice-icon {
+  font-size: 1.1rem;
+  color: var(--color-accent);
+  opacity: 0.85;
+}
+
+.session-roll-card__body {
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface) 92%);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, var(--color-border-soft) 75%);
+  border-radius: 0.55rem;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 10rem;
+}
+
+.session-roll-card__expression {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.session-roll-card__expression-icon {
+  font-size: 0.9rem;
+  color: var(--color-accent);
+  opacity: 0.7;
+}
+
+.session-roll-card__expression-text {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.session-roll-card__result {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.session-roll-card__dice {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.session-roll-card__die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.25rem;
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface) 86%);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-radius: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: monospace;
+  color: var(--color-text-primary);
+}
+
+.session-roll-card__die--dropped {
+  opacity: 0.38;
+  position: relative;
+  border-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+/* text-decoration doesn't apply to inline-flex — draw the strikethrough manually */
+.session-roll-card__die--dropped::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: currentColor;
+  transform: translateY(-50%);
+}
+
+.session-roll-card__advantage-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.32rem;
+  border-radius: 0.25rem;
+  border: 1px solid;
+  line-height: 1.4;
+  align-self: center;
+}
+
+.session-roll-card__advantage-badge--adv {
+  background: color-mix(in srgb, #22c55e 15%, transparent);
+  border-color: color-mix(in srgb, #22c55e 35%, transparent);
+  color: #4ade80;
+}
+
+.session-roll-card__advantage-badge--dis {
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  border-color: color-mix(in srgb, #f59e0b 35%, transparent);
+  color: #fbbf24;
+}
+
+.session-roll-card__modifier {
+  font-family: monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.session-roll-card__equals {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.session-roll-card__total {
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-family: monospace;
+  color: var(--color-accent);
+  line-height: 1;
+}

@@ -70,6 +70,30 @@ type BuildLobbyModalsPropsParams = {
   onSettingsExtensionSyncPolicyChange: ComponentProps<
     typeof LobbyModals
   >['onSettingsExtensionSyncPolicyChange']
+  settingsExtensionInventorySyncEnabled: ComponentProps<
+    typeof LobbyModals
+  >['settingsExtensionInventorySyncEnabled']
+  onSettingsExtensionInventorySyncEnabledChange: ComponentProps<
+    typeof LobbyModals
+  >['onSettingsExtensionInventorySyncEnabledChange']
+  settingsExtensionCurrencySyncEnabled: ComponentProps<
+    typeof LobbyModals
+  >['settingsExtensionCurrencySyncEnabled']
+  onSettingsExtensionCurrencySyncEnabledChange: ComponentProps<
+    typeof LobbyModals
+  >['onSettingsExtensionCurrencySyncEnabledChange']
+  settingsExtensionPartyInventorySyncAccess: ComponentProps<
+    typeof LobbyModals
+  >['settingsExtensionPartyInventorySyncAccess']
+  onSettingsExtensionPartyInventorySyncAccessChange: ComponentProps<
+    typeof LobbyModals
+  >['onSettingsExtensionPartyInventorySyncAccessChange']
+  settingsExtensionSyncConflictResolution: ComponentProps<
+    typeof LobbyModals
+  >['settingsExtensionSyncConflictResolution']
+  onSettingsExtensionSyncConflictResolutionChange: ComponentProps<
+    typeof LobbyModals
+  >['onSettingsExtensionSyncConflictResolutionChange']
   settingsLateJoinPolicy: ComponentProps<typeof LobbyModals>['settingsLateJoinPolicy']
   onSettingsLateJoinPolicyChange: ComponentProps<
     typeof LobbyModals
@@ -143,6 +167,18 @@ export function buildLobbyModalsProps(
       ),
     settingsExtensionSyncPolicy: params.settingsExtensionSyncPolicy,
     onSettingsExtensionSyncPolicyChange: params.onSettingsExtensionSyncPolicyChange,
+    settingsExtensionInventorySyncEnabled: params.settingsExtensionInventorySyncEnabled,
+    onSettingsExtensionInventorySyncEnabledChange:
+      params.onSettingsExtensionInventorySyncEnabledChange,
+    settingsExtensionCurrencySyncEnabled: params.settingsExtensionCurrencySyncEnabled,
+    onSettingsExtensionCurrencySyncEnabledChange:
+      params.onSettingsExtensionCurrencySyncEnabledChange,
+    settingsExtensionPartyInventorySyncAccess: params.settingsExtensionPartyInventorySyncAccess,
+    onSettingsExtensionPartyInventorySyncAccessChange:
+      params.onSettingsExtensionPartyInventorySyncAccessChange,
+    settingsExtensionSyncConflictResolution: params.settingsExtensionSyncConflictResolution,
+    onSettingsExtensionSyncConflictResolutionChange:
+      params.onSettingsExtensionSyncConflictResolutionChange,
     settingsLateJoinPolicy: params.settingsLateJoinPolicy,
     onSettingsLateJoinPolicyChange: params.onSettingsLateJoinPolicyChange,
     settingsLateJoinGraceMinutes: params.settingsLateJoinGraceMinutes,

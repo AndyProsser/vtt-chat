@@ -1,0 +1,1117 @@
+@import '../../session/theme.css';
+
+/* ─── Panel shell ──────────────────────────────────────────────────────────── */
+
+.inventory-panel {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 0;
+  min-height: 0;
+  height: 100%;
+  background: color-mix(in srgb, var(--color-surface) 95%, var(--color-surface-subtle) 5%);
+  padding: 0.1rem 0.25rem;
+}
+
+.inventory-panel__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.inventory-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.inventory-panel__history-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    background 0.12s;
+}
+
+.inventory-panel__history-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.inventory-panel__history-btn--active {
+  color: var(--color-accent);
+}
+
+.inventory-panel__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+/* ─── View tabs ────────────────────────────────────────────────────────────── */
+
+.inventory-panel__view-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-soft);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.inventory-panel__view-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.inventory-panel__view-tab {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.inventory-panel__view-tab:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.inventory-panel__view-tab[data-active='true'] {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+/* ─── DM character picker strip ────────────────────────────────────────────── */
+
+.inventory-char-picker {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.inventory-char-picker__strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+  width: calc(var(--knowledge-panels__right-rail-width) - 6.25rem);
+  max-width: calc(var(--knowledge-panels__right-rail-width) - 5.25rem);
+}
+
+.inventory-char-picker__strip::-webkit-scrollbar {
+  display: none;
+}
+
+.inventory-char-picker__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    color 0.12s,
+    background 0.12s;
+}
+
+.inventory-char-picker__arrow:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.inventory-char-picker__arrow--hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.inventory-char-picker__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface-subtle) 82%);
+  color: var(--color-text-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    opacity 0.15s,
+    background 0.15s;
+}
+
+.inventory-char-picker__avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.inventory-char-picker__avatar:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+
+.inventory-char-picker__avatar--selected {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 28%, var(--color-surface-subtle) 72%);
+}
+
+.inventory-char-picker__avatar--offline {
+  opacity: 0.38;
+  filter: grayscale(60%);
+}
+
+.inventory-char-picker__avatar--party {
+  border-radius: var(--radius-sm);
+  background: color-mix(
+    in srgb,
+    var(--color-success, #4caf50) 18%,
+    var(--color-surface-subtle) 82%
+  );
+  color: var(--color-success, #4caf50);
+  font-size: 1rem;
+}
+
+/* ─── Selected character label ──────────────────────────────────────────────── */
+
+.inventory-panel__char-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-1);
+}
+
+.inventory-panel__char-label-offline {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+/* ─── Loading / error states ───────────────────────────────────────────────── */
+
+.inventory-panel__state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.inventory-panel__state--error {
+  color: var(--color-error);
+}
+
+/* ─── Body ─────────────────────────────────────────────────────────────────── */
+
+.inventory-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: calc(var(--session-knowledge-panel-height) - 0.5rem);
+  overflow-y: auto;
+  padding: var(--space-2) 0;
+}
+
+.inventory-panel__items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-1);
+}
+
+.inventory-panel__items-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.inventory-panel__add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.inventory-panel__add-btn:hover {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.inventory-panel__empty {
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* ─── Item list ────────────────────────────────────────────────────────────── */
+
+.inventory-panel__item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ─── Item row — view ──────────────────────────────────────────────────────── */
+
+.inventory-item-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  border: 1px solid transparent;
+  justify-content: space-between;
+  min-height: 2rem;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+
+.inventory-item-row:hover {
+  border-color: var(--color-border-soft);
+}
+
+.inventory-item-row--danger {
+  border-color: color-mix(in srgb, var(--color-error) 30%, transparent);
+  background: color-mix(in srgb, var(--color-error) 6%, var(--color-surface-subtle));
+}
+
+/* Magic item — faint arcane glow */
+.inventory-item-row--magic {
+  border-color: color-mix(in srgb, #60a5fa 35%, transparent);
+  background: color-mix(in srgb, #60a5fa 5%, var(--color-surface-subtle));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #60a5fa 12%, transparent),
+    inset 0 0 8px color-mix(in srgb, #60a5fa 8%, transparent);
+}
+
+.inventory-item-row--magic:hover {
+  border-color: color-mix(in srgb, #60a5fa 55%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #60a5fa 22%, transparent),
+    inset 0 0 10px color-mix(in srgb, #60a5fa 12%, transparent);
+}
+
+/* Homebrew item — faint green glow */
+.inventory-item-row--homebrew {
+  border-color: color-mix(in srgb, #4ade80 35%, transparent);
+  background: color-mix(in srgb, #4ade80 5%, var(--color-surface-subtle));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #4ade80 12%, transparent),
+    inset 0 0 8px color-mix(in srgb, #4ade80 8%, transparent);
+}
+
+.inventory-item-row--homebrew:hover {
+  border-color: color-mix(in srgb, #4ade80 55%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #4ade80 22%, transparent),
+    inset 0 0 10px color-mix(in srgb, #4ade80 12%, transparent);
+}
+
+.inventory-item-row--edit,
+.inventory-item-row--move {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+.inventory-item-row__qty {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  min-width: 2rem;
+  text-align: right;
+}
+
+.inventory-item-row__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.inventory-item-row__name {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-item-row__notes {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-item-row__magic-badge {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 9px;
+  color: #60a5fa;
+  opacity: 0.9;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.inventory-item-row__homebrew-badge {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 9px;
+  color: #4ade80;
+  opacity: 0.9;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* ─── Item row — actions ───────────────────────────────────────────────────── */
+
+.inventory-item-row__actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.inventory-item-row:hover .inventory-item-row__actions {
+  opacity: 1;
+}
+
+.inventory-item-row__action-icon {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    background 0.12s;
+}
+
+.inventory-item-row__action-icon:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.inventory-item-row__action-icon--danger:hover {
+  color: var(--color-error);
+}
+
+/* ─── Item row — edit mode ─────────────────────────────────────────────────── */
+
+.inventory-item-row__edit-fields {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inventory-item-row__edit-name,
+.inventory-item-row__edit-notes {
+  flex: 1;
+  padding: 3px var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.inventory-item-row__edit-name:focus,
+.inventory-item-row__edit-notes:focus {
+  border-color: var(--color-accent);
+}
+
+.inventory-item-row__edit-qty {
+  width: 3.5rem;
+  padding: 3px var(--space-1);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.inventory-item-row__edit-notes {
+  width: 100%;
+}
+
+.inventory-item-row__edit-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inventory-item-row__action-btn {
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.inventory-item-row__action-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.inventory-item-row__action-btn--primary {
+  color: var(--color-surface);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.inventory-item-row__action-btn--primary:hover {
+  opacity: 0.85;
+}
+.inventory-item-row__action-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.inventory-item-row__action-btn--danger {
+  color: var(--color-surface);
+  background: var(--color-error);
+  border-color: var(--color-error);
+}
+
+/* ─── Item row — move mode ─────────────────────────────────────────────────── */
+
+.inventory-item-row__move-title {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  padding: var(--space-1) 0 var(--space-1);
+  display: block;
+}
+
+.inventory-item-row__move-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.inventory-item-row__move-card {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  padding: 0.28rem 0.34rem;
+  text-align: left;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+  min-width: 0;
+}
+
+.inventory-item-row__move-card--offline {
+  opacity: 0.58;
+  filter: grayscale(60%);
+  cursor: not-allowed;
+}
+
+.inventory-item-row__move-card:hover:not(:disabled),
+.inventory-item-row__move-card:focus-visible {
+  background: var(--color-surface-subtle);
+  outline: none;
+}
+
+.inventory-item-row__move-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inventory-item-row__move-card-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-accent) 20%, var(--color-surface-subtle) 80%);
+  color: var(--color-text-primary);
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.inventory-item-row__move-card--party .inventory-item-row__move-card-avatar {
+  background: color-mix(
+    in srgb,
+    var(--color-success, #4caf50) 22%,
+    var(--color-surface-subtle) 78%
+  );
+  color: var(--color-success, #4caf50);
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+}
+
+.inventory-item-row__move-card-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.inventory-item-row__move-card-name {
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Currency row ─────────────────────────────────────────────────────────── */
+
+.inventory-currency-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-soft);
+}
+
+.inventory-currency-row--edit {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  border-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+.inventory-currency-row__coins {
+  display: flex;
+  gap: var(--space-1);
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.inventory-currency-row__coin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 2.5rem;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+
+.inventory-currency-row__coin[data-has-value='true'] {
+  opacity: 1;
+}
+
+.inventory-currency-row__amount {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.inventory-currency-row__label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.inventory-currency-row__empty {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  align-self: center;
+}
+
+.inventory-currency-row__edit-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.12s,
+    color 0.12s;
+}
+
+.inventory-currency-row:hover .inventory-currency-row__edit-btn {
+  opacity: 1;
+}
+.inventory-currency-row__edit-btn:hover {
+  color: var(--color-accent);
+}
+
+/* ─── Currency edit mode ───────────────────────────────────────────────────── */
+
+.inventory-currency-row__edit-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.inventory-currency-row__edit-coins {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.inventory-currency-row__edit-coin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 2.5rem;
+}
+
+.inventory-currency-row__edit-input {
+  width: 100%;
+  padding: 2px var(--space-1);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.inventory-currency-row__edit-input:focus {
+  border-color: var(--color-accent);
+}
+
+.inventory-currency-row__edit-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ─── Add item form ────────────────────────────────────────────────────────── */
+
+.inventory-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  background: color-mix(in srgb, var(--color-surface) 90%, var(--color-accent) 5%);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.inventory-add-form__row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inventory-add-form__name,
+.inventory-add-form__notes {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.inventory-add-form__name:focus,
+.inventory-add-form__notes:focus {
+  border-color: var(--color-accent);
+}
+
+.inventory-add-form__qty {
+  width: 3.5rem;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+  text-align: center;
+}
+
+.inventory-add-form__qty:focus {
+  border-color: var(--color-accent);
+}
+.inventory-add-form__notes {
+  width: 100%;
+}
+
+.inventory-add-form__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.inventory-add-form__save {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-surface);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.inventory-add-form__save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.inventory-add-form__cancel {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.inventory-add-form__cancel:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+/* ─── Add form — name autocomplete ────────────────────────────────────────── */
+
+.inventory-add-form__name-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.inventory-add-form__name-wrap .inventory-add-form__name {
+  width: 100%;
+}
+
+.inventory-add-form__suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  list-style: none;
+  margin: 2px 0 0;
+  padding: var(--space-1) 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.inventory-add-form__suggestion {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.inventory-add-form__suggestion:hover,
+.inventory-add-form__suggestion[aria-selected='true'] {
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  color: var(--color-accent);
+}
+
+.inventory-add-form__suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.inventory-add-form__suggestion-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-add-form__suggestion-tag {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  letter-spacing: 0.03em;
+}
+
+.inventory-add-form__suggestion-tag--magic {
+  background: color-mix(in srgb, #60a5fa 15%, transparent);
+  color: #60a5fa;
+}
+
+.inventory-add-form__suggestion-tag--homebrew {
+  background: color-mix(in srgb, #4ade80 15%, transparent);
+  color: #4ade80;
+}
+
+/* ─── Category chips ───────────────────────────────────────────────────────── */
+
+.inventory-add-form__category-row {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.inventory-add-form__category-chip {
+  flex: 1;
+  padding: 2px var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.inventory-add-form__category-chip--active {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.inventory-add-form__category-chip--active[data-category='MAGIC_ITEM'] {
+  color: #60a5fa;
+  background: color-mix(in srgb, #60a5fa 10%, transparent);
+  border-color: color-mix(in srgb, #60a5fa 35%, transparent);
+}
+
+.inventory-add-form__category-chip--active[data-category='HOMEBREW'] {
+  color: #4ade80;
+  background: color-mix(in srgb, #4ade80 10%, transparent);
+  border-color: color-mix(in srgb, #4ade80 35%, transparent);
+}
+
+/* ─── History overlay ──────────────────────────────────────────────────────── */
+
+.inventory-history {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  height: 100%;
+}
+
+.inventory-history__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.inventory-history__title {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.inventory-history__filter {
+  flex: 1;
+}
+
+.inventory-history__filter-select {
+  width: 100%;
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+}
+
+.inventory-history__close {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.inventory-history__close:hover {
+  color: var(--color-text-primary);
+}
+
+.inventory-history__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) 0;
+}
+
+.inventory-history__state {
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.inventory-history__state--error {
+  color: var(--color-error);
+}
+
+.inventory-history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inventory-history__entry {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.inventory-history__entry:hover {
+  background: var(--color-surface-hover);
+}
+
+.inventory-history__entry-badge {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--color-text-muted) 15%, transparent);
+  color: var(--color-text-muted);
+}
+
+.inventory-history__entry--item-added .inventory-history__entry-badge {
+  background: color-mix(in srgb, var(--color-success, #4caf50) 15%, transparent);
+  color: var(--color-success, #4caf50);
+}
+
+.inventory-history__entry--item-removed .inventory-history__entry-badge {
+  background: color-mix(in srgb, var(--color-error) 15%, transparent);
+  color: var(--color-error);
+}
+
+.inventory-history__entry--item-transferred .inventory-history__entry-badge {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+}
+
+.inventory-history__entry--currency-changed .inventory-history__entry-badge {
+  background: color-mix(in srgb, #f0a500 15%, transparent);
+  color: #f0a500;
+}
+
+.inventory-history__entry-desc {
+  flex: 1;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.inventory-history__entry-time {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}

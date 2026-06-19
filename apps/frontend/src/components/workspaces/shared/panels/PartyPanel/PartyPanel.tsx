@@ -478,9 +478,7 @@ export function PartyPanel({
                 aria-label="Refresh party presence"
                 onClick={handleRefresh}
               >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  refresh
-                </span>
+                <Icon name="refresh" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="left">Refresh party presence</TooltipContent>
@@ -495,9 +493,7 @@ export function PartyPanel({
           <p className="party-sheet__empty">Loading party status...</p>
         ) : members.length === 0 ? (
           <div className="ui-empty-panel" role="status">
-            <span className="material-symbols-outlined" aria-hidden="true">
-              group
-            </span>
+            <Icon name="group" />
             <span>No party members yet.</span>
           </div>
         ) : (

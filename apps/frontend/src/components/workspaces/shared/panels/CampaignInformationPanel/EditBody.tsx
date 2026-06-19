@@ -1,6 +1,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { MarkdownEditor } from '@/components/workspaces/shared/panels/MarkdownEditor'
 import type { CampaignInformationEditBodyProps } from '@/types/campaignInformationPanel'
+import { Icon } from '@/components/ui/Icon'
 
 /**
  * Editable campaign metadata body (name/description/poster) with status summary.
@@ -70,9 +71,7 @@ export function CampaignInformationEditBody({
                     onClick={onClearPoster}
                     disabled={isSaving}
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      close
-                    </span>
+                    <Icon name="close" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Remove poster image</TooltipContent>

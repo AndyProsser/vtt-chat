@@ -8,6 +8,7 @@ import { CampaignInformationStatusLine } from './StatusLine'
 import { CampaignInformationEditBody } from './EditBody'
 import { CampaignInformationReadOnlyBody } from './ReadOnlyBody'
 import { CampaignInformationHeader } from './Header'
+import { NextSessionDate } from './NextSessionDate'
 import '@/styles/components/workspaces/shared/panels/CampaignInformationPanel.css'
 
 export function CampaignInformationPanel({
@@ -186,6 +187,13 @@ export function CampaignInformationPanel({
               campaignDescription={campaign.description}
               currentPoster={currentPoster}
               statusLine={statusLine}
+              nextSessionCard={
+                <NextSessionDate
+                  campaignId={campaign.id}
+                  sessionState={campaign.latestSessionState}
+                  canEdit={canEdit}
+                />
+              }
             />
           )}
         </div>

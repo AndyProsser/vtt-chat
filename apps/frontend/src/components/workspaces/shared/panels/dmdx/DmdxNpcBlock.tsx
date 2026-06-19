@@ -1,5 +1,6 @@
 import type { DmdxParsed } from '@/utils/dmdx/dmdxParser'
 import { dmdxArr, dmdxStr } from '@/utils/dmdx/dmdxParser'
+import { Icon } from '@/components/ui/Icon'
 
 export function DmdxNpcBlock({ parsed }: { parsed: DmdxParsed }) {
   const name = dmdxStr(parsed, 'name', 'Unknown NPC')
@@ -20,7 +21,7 @@ export function DmdxNpcBlock({ parsed }: { parsed: DmdxParsed }) {
       <div className="dmdx-block__header">
         {portrait && portrait.startsWith('attachment://') ? (
           <div className="dmdx-npc__portrait-placeholder" aria-hidden="true">
-            <span className="material-symbols-outlined">person</span>
+            <Icon name="person" />
           </div>
         ) : null}
         <div className="dmdx-block__header-text">

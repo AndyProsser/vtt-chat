@@ -70,19 +70,40 @@ function getAllowedScopes(
   return scopes
 }
 
+/**
+ * Maps ExternalSystemKey values to their SupportedPlatform equivalents used on
+ * campaigns. Systems without a campaign-level platform entry return null.
+ */
+const EXTERNAL_SYSTEM_TO_PLATFORM: Partial<Record<ExternalSystemKey, string>> = {
+  dndbeyond: 'DDB',
+  roll20: 'ROLL20',
+  foundry: 'FOUNDRY',
+}
+
+export function externalSystemToPlatform(system: string): string | null {
+  const key = system.trim().toLowerCase() as ExternalSystemKey
+  return EXTERNAL_SYSTEM_TO_PLATFORM[key] ?? null
+}
+
 function buildInitialState(): Map<ExternalSystemKey, ExternalSystemRecord> {
   const now = new Date().toISOString()
   const map = new Map<ExternalSystemKey, ExternalSystemRecord>()
 
   SYSTEM_DEFINITIONS.forEach((definition) => {
+    // Auth-capable systems default to AUTHORIZED so the campaign-level
+    // supportedPlatforms gate is the effective control. Admins can explicitly
+    // BLOCK a system to override all campaign settings.
+    const defaultState: IntegrationAuthorizationState = definition.authCapable
+      ? 'AUTHORIZED'
+      : 'BLOCKED'
     map.set(definition.system, {
       system: definition.system,
       displayName: definition.displayName,
       authCapable: definition.authCapable,
       logIngestionCapable: definition.logIngestionCapable,
       metadataSyncCapable: definition.metadataSyncCapable,
-      authorizationState: 'BLOCKED',
-      allowedScopes: [],
+      authorizationState: defaultState,
+      allowedScopes: getAllowedScopes(definition, defaultState),
       notes: '',
       lastUpdatedAt: now,
     })

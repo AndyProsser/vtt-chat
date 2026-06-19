@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Role, SessionState, UUID } from '@shared'
 import { RoomType } from '@shared'
 import { isGreenroomSessionState } from '@shared'
@@ -11,6 +11,17 @@ import type { GroupPanelGroupWithParticipants, GroupParticipantStatus } from '@/
 
 // Stable empty objects to avoid creating new references on every render
 const EMPTY_ROOM_MEMBERS: RoomUser[] = []
+
+function isSameStats(
+  a: Record<string, unknown> | null | undefined,
+  b: Record<string, unknown> | null | undefined
+): boolean {
+  if (a === b) return true
+  if (a == null || b == null) return false
+  const aKeys = Object.keys(a)
+  if (aKeys.length !== Object.keys(b).length) return false
+  return aKeys.every((k) => a[k] === b[k])
+}
 
 function isSameParticipantProjection(
   previous: GroupParticipantStatus,
@@ -26,7 +37,7 @@ function isSameParticipantProjection(
     previous.characterSubclass === next.characterSubclass &&
     previous.characterRace === next.characterRace &&
     previous.level === next.level &&
-    previous.characterStats === next.characterStats &&
+    isSameStats(previous.characterStats, next.characterStats) &&
     previous.roleLabel === next.roleLabel &&
     previous.condition === next.condition &&
     previous.distanceLabel === next.distanceLabel
@@ -283,6 +294,14 @@ export function LeftRailPanel({
                 (currentConditionName && member.userId === currentUserId
                   ? currentConditionName
                   : undefined),
+            characterConditions: (() => {
+              const cs = member.characterStats as Record<string, unknown> | null
+              // Extension stores conditions in stats.conditions; manual/mock stores flat.
+              const nested = (cs?.stats as Record<string, unknown> | undefined)?.conditions
+              const flat = cs?.conditions
+              const raw = Array.isArray(nested) ? nested : Array.isArray(flat) ? flat : null
+              return raw && raw.length > 0 ? (raw as string[]) : undefined
+            })(),
           }
         })
         .filter((participant): participant is NonNullable<typeof participant> =>
@@ -311,6 +330,15 @@ export function LeftRailPanel({
     previousGroupPanelRoomsRef.current = merged
     return merged
   }, [rawGroupPanelRooms])
+
+  // Stable wrapper so GroupsHeaderActions (memo) doesn't re-render when the
+  // parent re-creates onToggleBroadcastMode on unrelated session state changes.
+  const onToggleBroadcastModeRef = useRef(onToggleBroadcastMode)
+  onToggleBroadcastModeRef.current = onToggleBroadcastMode
+  const stableOnToggleBroadcastMode = useCallback(
+    (enabled: boolean) => onToggleBroadcastModeRef.current(enabled),
+    []
+  )
 
   return (
     <>
@@ -343,7 +371,7 @@ export function LeftRailPanel({
           headerModeCopy={greenroomHeaderCopy}
           canManageRooms={role === 'DM'}
           broadcastModeEnabled={broadcastModeEnabled}
-          onToggleBroadcastMode={onToggleBroadcastMode}
+          onToggleBroadcastMode={stableOnToggleBroadcastMode}
           dmAutoTargetOnFirstPlayerJoin={dmAutoTargetOnFirstPlayerJoin}
           rooms={groupPanelRooms}
           selectedRoomId={selectedRoomId}

@@ -5,6 +5,7 @@ import { BrowseRouteView } from './components/routes/BrowseRouteView'
 import { JoinRouteView } from './components/routes/JoinRouteView'
 import { PopoutRouteView } from './components/routes/PopoutRouteView'
 import { WatchRouteView } from './components/routes/WatchRouteView'
+import { ExtLaunchRouteView } from './components/routes/ExtLaunchRouteView'
 import { ToastViewport } from './components/ui/ToastViewport'
 import { TooltipProvider } from '@/components/ui'
 import { useAuthSession } from './hooks/useAuthSession'
@@ -32,7 +33,7 @@ export default function App() {
   }
 
   const [routeView, setRouteView] = useState<RouteView>(() =>
-    resolveRoute(window.location.pathname)
+    resolveRoute(window.location.pathname, window.location.search)
   )
 
   const browserOrigin = window.location.origin
@@ -215,12 +216,25 @@ export default function App() {
 
   const renderRouteView = () => {
     switch (routeView.kind) {
+      case 'ext-launch':
+        return (
+          <ExtLaunchRouteView
+            apiUrl={apiUrl}
+            campaignId={routeView.campaignId}
+            sessionId={routeView.sessionId}
+            token={routeView.token}
+            hint={routeView.hint}
+            onFullAccountAuthenticated={handleLoginSuccess}
+            onGuestAuthenticated={handleGuestExtensionAuthenticated}
+          />
+        )
       case 'join':
         return (
           <JoinRouteView
             apiUrl={apiUrl}
             inviteCode={routeView.inviteCode}
             authToken={auth.token}
+            initialEmail={routeView.initialEmail}
             onAuthenticated={handleGuestExtensionAuthenticated}
           />
         )

@@ -7,6 +7,7 @@ import {
 import type { LobbyConnectionStatus, LobbyStats } from '@/types/session/lobby'
 import { CampaignCard } from './LobbyView.CampaignCard'
 import { LobbyToolbar } from '@/components/workspaces/shared/toolbar/LobbyToolbar'
+import { Icon } from '@/components/ui/Icon'
 
 type LobbyViewProps = {
   campaigns: CampaignSummary[]
@@ -76,9 +77,7 @@ export function LobbyView(props: LobbyViewProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="workspaces-lobby-stats__chip">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  rocket_launch
-                </span>
+                <Icon name="rocket_launch" />
                 <strong>{props.lobbyStats.activeSessions}</strong>
                 <span>Active</span>
               </span>
@@ -91,9 +90,7 @@ export function LobbyView(props: LobbyViewProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="workspaces-lobby-stats__chip">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  groups
-                </span>
+                <Icon name="groups" />
                 <strong>{props.lobbyStats.connectedPlayersAndDms}</strong>
                 <span>Players + DMs</span>
               </span>
@@ -105,9 +102,7 @@ export function LobbyView(props: LobbyViewProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="workspaces-lobby-stats__chip">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  visibility
-                </span>
+                <Icon name="visibility" />
                 <strong>{props.lobbyStats.connectedSpectators}</strong>
                 <span>Spectators</span>
               </span>
@@ -119,9 +114,7 @@ export function LobbyView(props: LobbyViewProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="workspaces-lobby-stats__chip">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  schedule
-                </span>
+                <Icon name="schedule" />
                 <strong>{props.lobbyStats.totalTimePlayedLabel}</strong>
                 <span>Total played</span>
               </span>
@@ -135,9 +128,7 @@ export function LobbyView(props: LobbyViewProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="workspaces-lobby-stats__chip">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  speed
-                </span>
+                <Icon name="speed" />
                 <strong>{props.lobbyStats.peakConcurrentUsers24h}</strong>
                 <span>Peak 24h</span>
               </span>
@@ -237,9 +228,7 @@ export function LobbyView(props: LobbyViewProps) {
 
             {shouldShowSparseFiller && (
               <div className="workspaces-lobby-campaign-filler" aria-hidden="true">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  auto_awesome
-                </span>
+                <Icon name="auto_awesome" />
                 <span>More adventures will appear here as campaigns join your roster.</span>
               </div>
             )}

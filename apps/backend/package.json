@@ -22,6 +22,8 @@
     "@prisma/client": "^7.8.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
+    "date-fns": "^4.4.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
@@ -43,9 +45,9 @@
     "@vitest/coverage-v8": "^4.1.4",
     "prisma": "^7.8.0",
     "supertest": "^7.2.2",
-    "tsx": "^4.20.6",
     "tsc-alias": "^1.8.0",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.20.6",
     "typescript": "^6.0.2",
     "vitest": "^4.1.6"
   },
@@ -53,6 +55,6 @@
     "bcrypt@6.0.0": true,
     "prisma@7.8.0": true,
     "@prisma/engines@7.8.0": true,
-    "esbuild@0.28.0": true
+    "esbuild@0.28.1": true
   }
 }

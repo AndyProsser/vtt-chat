@@ -21,6 +21,8 @@ export function getWorkspacePanelLabel(tab: WorkspacePanelTab): string {
       return 'Information'
     case 'party':
       return 'Party'
+    case 'inventory':
+      return 'Inventory'
     case 'rooms':
       return 'Groups'
     case 'journal':
@@ -38,12 +40,14 @@ export function getWorkspacePanelLabel(tab: WorkspacePanelTab): string {
 
 export function getWorkspacePanelIcon(
   tab: WorkspacePanelTab
-): 'panel' | 'party' | 'rooms' | 'journal' | 'notes' | 'history' | 'settings' {
+): 'panel' | 'party' | 'inventory' | 'rooms' | 'journal' | 'notes' | 'history' | 'settings' {
   switch (tab) {
     case 'information':
       return 'panel'
     case 'party':
       return 'party'
+    case 'inventory':
+      return 'inventory'
     case 'rooms':
       return 'rooms'
     case 'journal':

@@ -23,6 +23,7 @@ import {
   roomHandlers,
   notesHandlers,
   audioHandlers,
+  inventoryHandlers,
 } from './handlers'
 import type { EventEnvelope, UUID } from '@shared'
 import type { DeviceClass } from '@shared'
@@ -164,6 +165,13 @@ export class WebSocketManager {
     this.dispatcher.registerHandler('NOTES:CREATED', notesHandlers.handleNoteCreated)
     this.dispatcher.registerHandler('NOTES:UPDATED', notesHandlers.handleNoteUpdated)
     this.dispatcher.registerHandler('NOTES:DELETED', notesHandlers.handleNoteDeleted)
+
+    // Inventory events
+    this.dispatcher.registerHandler('INVENTORY:ITEM_ADDED', inventoryHandlers.handleInventoryItemAdded)
+    this.dispatcher.registerHandler('INVENTORY:ITEM_REMOVED', inventoryHandlers.handleInventoryItemRemoved)
+    this.dispatcher.registerHandler('INVENTORY:ITEM_TRANSFERRED', inventoryHandlers.handleInventoryItemTransferred)
+    this.dispatcher.registerHandler('INVENTORY:ITEM_EDITED', inventoryHandlers.handleInventoryItemEdited)
+    this.dispatcher.registerHandler('INVENTORY:CURRENCY_CHANGED', inventoryHandlers.handleInventoryCurrencyChanged)
 
     // Audio events
     this.dispatcher.registerHandler('AUDIO:EFFECT_APPLIED', audioHandlers.handleEffectApplied)

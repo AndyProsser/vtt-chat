@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { memo, useRef } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import {
   UserSettingsPanel,
@@ -17,7 +17,7 @@ type UserSettingsModalProps = Pick<
   | 'user'
 >
 
-export function UserSettingsModal(props: UserSettingsModalProps) {
+export const UserSettingsModal = memo(function UserSettingsModal(props: UserSettingsModalProps) {
   const panelRef = useRef<UserSettingsPanelHandle | null>(null)
 
   return (
@@ -55,4 +55,4 @@ export function UserSettingsModal(props: UserSettingsModalProps) {
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   )
-}
+})

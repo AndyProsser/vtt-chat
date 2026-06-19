@@ -321,9 +321,7 @@ export function NotesPanel({
               onClick={() => setShowCreateForm(false)}
               aria-label="Back to notes list"
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                arrow_back
-              </span>
+              <Icon name="arrow_back" />
               <span>Notes</span>
             </button>
           </div>
@@ -425,9 +423,7 @@ export function NotesPanel({
                 <p className="text-sm text-ui-secondary">Loading handouts…</p>
               ) : displayedNotes.length === 0 ? (
                 <div className="ui-empty-panel" role="status">
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    auto_awesome
-                  </span>
+                  <Icon name="auto_awesome" />
                   <span>{emptyStateMessage}</span>
                 </div>
               ) : (
@@ -522,9 +518,7 @@ export function NotesPanel({
               </div>
             ) : (
               <div className="ui-empty-panel ui-empty-panel--fill" role="status">
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  article
-                </span>
+                <Icon name="article" />
                 <span>Select a handout to view or edit it.</span>
               </div>
             )}

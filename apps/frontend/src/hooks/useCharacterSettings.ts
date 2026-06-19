@@ -21,6 +21,12 @@ export const DEFAULT_CHARACTER_SETTINGS: PlayerSettingsPanel = {
   intelligence: 8,
   wisdom: 8,
   charisma: 8,
+  hpCurrent: 6,
+  hpMax: 6,
+  ac: 10,
+  initiative: 0,
+  passivePerception: 10,
+  speed: 30,
 }
 
 export interface UserCharacterRecord {

@@ -1,6 +1,8 @@
 import type { ChangeEvent, ReactNode } from 'react'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -37,6 +39,16 @@ export type CampaignSettingsPanelProps = {
   onSettingsPostSessionChatDurationMinutesChange: (value: number) => void
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
   onSettingsExtensionSyncPolicyChange: (value: ExtensionSyncPolicy) => void
+  settingsExtensionInventorySyncEnabled: boolean
+  onSettingsExtensionInventorySyncEnabledChange: (value: boolean) => void
+  settingsExtensionCurrencySyncEnabled: boolean
+  onSettingsExtensionCurrencySyncEnabledChange: (value: boolean) => void
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  onSettingsExtensionPartyInventorySyncAccessChange: (
+    value: ExtensionPartyInventorySyncAccess
+  ) => void
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
+  onSettingsExtensionSyncConflictResolutionChange: (value: ExtensionSyncConflictResolution) => void
   settingsLateJoinPolicy: LateJoinPolicy
   onSettingsLateJoinPolicyChange: (value: LateJoinPolicy) => void
   settingsLateJoinGraceMinutes: number
@@ -47,6 +59,8 @@ export type CampaignSettingsPanelProps = {
   onSettingsDefaultSessionDurationMinsChange: (value: number) => void
   settingsSupportedPlatforms: SupportedPlatform[]
   onSettingsSupportedPlatformsChange: (value: SupportedPlatform[]) => void
+  settingsDndRuleset: '2014' | '2024'
+  onSettingsDndRulesetChange: (value: '2014' | '2024') => void
   sessionNameBase: string
   onSessionNameBaseChange: (value: string) => void
   sessionNameContext: 'CURRENT' | 'NEXT'
@@ -59,6 +73,8 @@ export type CampaignSettingsPanelProps = {
   onDeleteCampaign: () => void
   isDeletingCampaign: boolean
   sessionSettingsPanel?: ReactNode
+  /** Campaign UUID — required to enable the DM transfer section. */
+  campaignId?: string | null
 }
 
 export type CampaignSettingsPanelPolicyProps = Pick<
@@ -80,6 +96,14 @@ export type CampaignSettingsPanelPolicyProps = Pick<
   | 'onSettingsPostSessionChatDurationMinutesChange'
   | 'settingsExtensionSyncPolicy'
   | 'onSettingsExtensionSyncPolicyChange'
+  | 'settingsExtensionInventorySyncEnabled'
+  | 'onSettingsExtensionInventorySyncEnabledChange'
+  | 'settingsExtensionCurrencySyncEnabled'
+  | 'onSettingsExtensionCurrencySyncEnabledChange'
+  | 'settingsExtensionPartyInventorySyncAccess'
+  | 'onSettingsExtensionPartyInventorySyncAccessChange'
+  | 'settingsExtensionSyncConflictResolution'
+  | 'onSettingsExtensionSyncConflictResolutionChange'
   | 'settingsLateJoinPolicy'
   | 'onSettingsLateJoinPolicyChange'
   | 'settingsLateJoinGraceMinutes'
@@ -90,6 +114,8 @@ export type CampaignSettingsPanelPolicyProps = Pick<
   | 'onSettingsDefaultSessionDurationMinsChange'
   | 'settingsSupportedPlatforms'
   | 'onSettingsSupportedPlatformsChange'
+  | 'settingsDndRuleset'
+  | 'onSettingsDndRulesetChange'
   | 'sessionNameBase'
   | 'onSessionNameBaseChange'
   | 'sessionNameContext'

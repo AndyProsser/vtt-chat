@@ -8,9 +8,13 @@ import {
   Role,
   RoomType,
   SessionState,
+  SessionScheduleType,
   isValidRoomName,
   isValidSessionName,
   isValidUUID,
+  calculateNextOccurrence,
+  formatScheduleLabel,
+  type SessionSchedule,
 } from '@shared'
 import type { UUID } from '@shared'
 import { createToken, extractTokenFromHeader, verifyToken } from '@/services/auth.service'
@@ -69,6 +73,13 @@ import { logger } from '@/utils/logger'
 import type { WebSocketManager } from '@/ws'
 import eventBroadcaster from '@/ws/event-broadcaster'
 import type { SupportedPlatform } from '@prisma/client'
+import {
+  clearPendingDmTransfer,
+  consumePendingDmTransfer,
+  getPendingDmTransfer,
+  storePendingDmTransfer,
+} from '@/services/dm-transfer.service'
+import { sendCampaignSystemMessage } from '@/services/chat.service'
 
 const router = Router()
 const prisma = getPrismaClient()
@@ -1117,6 +1128,10 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       postSessionChatEnabled: membership.campaign.postSessionChatEnabled,
       postSessionChatDurationMs: membership.campaign.postSessionChatDurationMs,
       extensionSyncPolicy: membership.campaign.extensionSyncPolicy,
+      extensionInventorySyncEnabled: membership.campaign.extensionInventorySyncEnabled,
+      extensionCurrencySyncEnabled: membership.campaign.extensionCurrencySyncEnabled,
+      extensionPartyInventorySyncAccess: membership.campaign.extensionPartyInventorySyncAccess,
+      extensionSyncConflictResolution: membership.campaign.extensionSyncConflictResolution,
       lateJoinPolicy: membership.campaign.lateJoinPolicy,
       lateJoinGraceMinutes: membership.campaign.lateJoinGraceMinutes,
       defaultSessionDurationMins: (membership.campaign as any).defaultSessionDurationMins ?? 240,
@@ -1125,7 +1140,45 @@ router.get('/:campaignId/settings', requireAuth, async (req: Request, res: Respo
       inviteActive: membership.campaign.inviteActive,
       spectatorInviteCode: membership.campaign.spectatorInviteCode,
       spectatorInviteActive: membership.campaign.spectatorInviteActive,
+      sessionScheduleType: (membership.campaign as any).sessionScheduleType ?? null,
+      sessionScheduleDay: (membership.campaign as any).sessionScheduleDay ?? null,
+      sessionScheduleNth: (membership.campaign as any).sessionScheduleNth ?? null,
+      sessionScheduleHour: (membership.campaign as any).sessionScheduleHour ?? null,
+      sessionScheduleMinute: (membership.campaign as any).sessionScheduleMinute ?? null,
+      sessionScheduleTz: (membership.campaign as any).sessionScheduleTz ?? null,
+      nextSessionDate: (membership.campaign as any).nextSessionDate?.toISOString() ?? null,
+      nextSessionIsManual: (membership.campaign as any).nextSessionIsManual ?? false,
+      dndRuleset: ((membership.campaign as any).dndRuleset ?? '2024') as '2014' | '2024',
     },
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GET /:campaignId/ruleset — lightweight endpoint readable by any campaign member
+// Returns the campaign's D&D ruleset so players can use the right SRD lookups.
+// ---------------------------------------------------------------------------
+router.get('/:campaignId/ruleset', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  const membership = await prisma.campaignMembership.findUnique({
+    where: { campaignId_userId: { campaignId: campaignId as UUID, userId: user.userId as UUID } },
+    include: { campaign: { select: { dndRuleset: true } } },
+  })
+
+  if (!membership) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+
+  return res.status(200).json({
+    campaignId,
+    dndRuleset: ((membership.campaign as any).dndRuleset ?? '2024') as '2014' | '2024',
   })
 })
 
@@ -1145,22 +1198,22 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     postSessionChatEnabled,
     postSessionChatDurationMs,
     extensionSyncPolicy,
+    extensionInventorySyncEnabled,
+    extensionCurrencySyncEnabled,
+    extensionPartyInventorySyncAccess,
+    extensionSyncConflictResolution,
     lateJoinPolicy,
     lateJoinGraceMinutes,
     defaultSessionDurationMins,
     supportedPlatforms,
+    sessionSchedule,
+    dndRuleset,
   } = req.body || {}
 
   if (!isValidUUID(campaignId)) {
     return res
       .status(400)
       .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
-  }
-
-  if (!name || typeof name !== 'string' || !name.trim()) {
-    return res
-      .status(400)
-      .json({ code: ErrorCode.INVALID_INPUT, message: 'Campaign name is required', field: 'name' })
   }
 
   if (posterUrl != null && (typeof posterUrl !== 'string' || posterUrl.trim().length > 2_000_000)) {
@@ -1182,6 +1235,10 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       .status(403)
       .json({ code: ErrorCode.FORBIDDEN, message: 'Only campaign DM can manage campaign settings' })
   }
+
+  // name is optional for partial updates (e.g. schedule-only); fall back to existing value
+  const effectiveName =
+    typeof name === 'string' && name.trim() ? name.trim() : campaign.name
 
   // Optional boolean fields — fall back to existing campaign values if not provided
   const effectiveDiscoverable =
@@ -1234,6 +1291,38 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       code: ErrorCode.INVALID_INPUT,
       message: 'extensionSyncPolicy must be NONE, DM_ONLY, or ALLOW',
       field: 'extensionSyncPolicy',
+    })
+  }
+
+  // Layer 2 inventory-specific extension sync settings — omitted fields fall back to the
+  // campaign's existing value (unlike extensionSyncPolicy above, these must not silently reset).
+  const effectiveExtensionInventorySyncEnabled =
+    typeof extensionInventorySyncEnabled === 'boolean'
+      ? extensionInventorySyncEnabled
+      : (campaign.extensionInventorySyncEnabled ?? true)
+
+  const effectiveExtensionCurrencySyncEnabled =
+    typeof extensionCurrencySyncEnabled === 'boolean'
+      ? extensionCurrencySyncEnabled
+      : (campaign.extensionCurrencySyncEnabled ?? true)
+
+  const effectiveExtensionPartyInventorySyncAccess =
+    extensionPartyInventorySyncAccess ?? campaign.extensionPartyInventorySyncAccess ?? 'DM_ONLY'
+  if (!['DISABLED', 'DM_ONLY', 'ALL_PLAYERS'].includes(String(effectiveExtensionPartyInventorySyncAccess))) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'extensionPartyInventorySyncAccess must be DISABLED, DM_ONLY, or ALL_PLAYERS',
+      field: 'extensionPartyInventorySyncAccess',
+    })
+  }
+
+  const effectiveExtensionSyncConflictResolution =
+    extensionSyncConflictResolution ?? campaign.extensionSyncConflictResolution ?? 'OVERWRITE'
+  if (!['OVERWRITE', 'IGNORE', 'PROMPT'].includes(String(effectiveExtensionSyncConflictResolution))) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'extensionSyncConflictResolution must be OVERWRITE, IGNORE, or PROMPT',
+      field: 'extensionSyncConflictResolution',
     })
   }
 
@@ -1301,8 +1390,13 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
   }
   const effectiveSupportedPlatforms = effectiveSupportedPlatformsRaw as SupportedPlatform[]
 
+  // Preserve existing values when fields are omitted from a partial update (e.g. schedule-only PATCH)
   const normalizedPosterUrl =
-    typeof posterUrl === 'string' && posterUrl.trim().length > 0 ? posterUrl.trim() : null
+    posterUrl === undefined
+      ? campaign.posterUrl
+      : typeof posterUrl === 'string' && posterUrl.trim().length > 0
+        ? posterUrl.trim()
+        : null
 
   const normalizedPostSessionChatEnabled =
     typeof postSessionChatEnabled === 'boolean'
@@ -1384,6 +1478,14 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       changedLockedFields.push('postSessionChatDurationMs')
     if (normalizedExtensionSyncPolicy !== campaign.extensionSyncPolicy)
       changedLockedFields.push('extensionSyncPolicy')
+    if (effectiveExtensionInventorySyncEnabled !== campaign.extensionInventorySyncEnabled)
+      changedLockedFields.push('extensionInventorySyncEnabled')
+    if (effectiveExtensionCurrencySyncEnabled !== campaign.extensionCurrencySyncEnabled)
+      changedLockedFields.push('extensionCurrencySyncEnabled')
+    if (effectiveExtensionPartyInventorySyncAccess !== campaign.extensionPartyInventorySyncAccess)
+      changedLockedFields.push('extensionPartyInventorySyncAccess')
+    if (effectiveExtensionSyncConflictResolution !== campaign.extensionSyncConflictResolution)
+      changedLockedFields.push('extensionSyncConflictResolution')
     if (
       JSON.stringify(effectiveSupportedPlatforms.slice().sort()) !==
       JSON.stringify(((campaign as any).supportedPlatforms ?? ['ANY']).slice().sort())
@@ -1405,14 +1507,129 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Session schedule validation (optional — omitting leaves existing schedule intact)
+  // ---------------------------------------------------------------------------
+  let scheduleUpdateData: {
+    sessionScheduleType: SessionScheduleType | null
+    sessionScheduleDay: number | null
+    sessionScheduleNth: number | null
+    sessionScheduleHour: number | null
+    sessionScheduleMinute: number | null
+    sessionScheduleTz: string | null
+    nextSessionDate: Date | null
+    nextSessionIsManual: boolean
+  } | null = null
+
+  if (sessionSchedule !== undefined) {
+    if (sessionSchedule === null) {
+      // Explicit null clears the schedule entirely
+      scheduleUpdateData = {
+        sessionScheduleType: null,
+        sessionScheduleDay: null,
+        sessionScheduleNth: null,
+        sessionScheduleHour: null,
+        sessionScheduleMinute: null,
+        sessionScheduleTz: null,
+        nextSessionDate: null,
+        nextSessionIsManual: false,
+      }
+    } else {
+      const VALID_SCHEDULE_TYPES = Object.values(SessionScheduleType)
+      if (!VALID_SCHEDULE_TYPES.includes(sessionSchedule.type)) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: `sessionSchedule.type must be one of: ${VALID_SCHEDULE_TYPES.join(', ')}`,
+          field: 'sessionSchedule.type',
+        })
+      }
+      const schedDay = Number(sessionSchedule.dayOfWeek)
+      if (!Number.isInteger(schedDay) || schedDay < 0 || schedDay > 6) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'sessionSchedule.dayOfWeek must be an integer 0–6 (0 = Sunday)',
+          field: 'sessionSchedule.dayOfWeek',
+        })
+      }
+      const schedNth = sessionSchedule.nth != null ? Number(sessionSchedule.nth) : null
+      if (sessionSchedule.type === SessionScheduleType.MONTHLY_NTH) {
+        if (!schedNth || !Number.isInteger(schedNth) || schedNth < 1 || schedNth > 4) {
+          return res.status(400).json({
+            code: ErrorCode.INVALID_INPUT,
+            message: 'sessionSchedule.nth must be an integer 1–4 for MONTHLY_NTH',
+            field: 'sessionSchedule.nth',
+          })
+        }
+      }
+      const schedHour = Number(sessionSchedule.hour)
+      const schedMinute = Number(sessionSchedule.minute)
+      if (!Number.isInteger(schedHour) || schedHour < 0 || schedHour > 23) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'sessionSchedule.hour must be an integer 0–23',
+          field: 'sessionSchedule.hour',
+        })
+      }
+      if (!Number.isInteger(schedMinute) || schedMinute < 0 || schedMinute > 59) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'sessionSchedule.minute must be an integer 0–59',
+          field: 'sessionSchedule.minute',
+        })
+      }
+      if (typeof sessionSchedule.timezone !== 'string' || !sessionSchedule.timezone.trim()) {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'sessionSchedule.timezone must be a valid IANA timezone string',
+          field: 'sessionSchedule.timezone',
+        })
+      }
+
+      const scheduleObj: SessionSchedule = {
+        type: sessionSchedule.type as SessionScheduleType,
+        dayOfWeek: schedDay,
+        nth: schedNth ?? undefined,
+        hour: schedHour,
+        minute: schedMinute,
+        timezone: sessionSchedule.timezone.trim(),
+      }
+
+      let nextDate: Date
+      try {
+        nextDate = calculateNextOccurrence(scheduleObj, new Date())
+      } catch {
+        return res.status(400).json({
+          code: ErrorCode.INVALID_INPUT,
+          message: 'Could not calculate next occurrence from provided schedule',
+          field: 'sessionSchedule',
+        })
+      }
+
+      scheduleUpdateData = {
+        sessionScheduleType: scheduleObj.type,
+        sessionScheduleDay: schedDay,
+        sessionScheduleNth: schedNth,
+        sessionScheduleHour: schedHour,
+        sessionScheduleMinute: schedMinute,
+        sessionScheduleTz: scheduleObj.timezone,
+        nextSessionDate: nextDate,
+        nextSessionIsManual: false,
+      }
+    }
+  }
+
+  const effectiveDndRuleset = dndRuleset === '2014' ? '2014' : '2024'
+
   const updated = await prisma.campaign.update({
     where: { id: campaignId as UUID },
     data: {
-      name: name.trim(),
+      name: effectiveName,
       description:
-        typeof description === 'string' && description.trim().length > 0
-          ? description.trim()
-          : null,
+        description === undefined
+          ? campaign.description
+          : typeof description === 'string' && description.trim().length > 0
+            ? description.trim()
+            : null,
       posterUrl: normalizedPosterUrl,
       discoverable: effectiveDiscoverable,
       spectatorPolicy: effectiveSpectatorsEnabled ? 'GUESTS' : 'NONE',
@@ -1424,10 +1641,16 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       postSessionChatEnabled: normalizedPostSessionChatEnabled,
       postSessionChatDurationMs: Math.round(parsedPostSessionChatDurationMs),
       extensionSyncPolicy: normalizedExtensionSyncPolicy,
+      extensionInventorySyncEnabled: effectiveExtensionInventorySyncEnabled,
+      extensionCurrencySyncEnabled: effectiveExtensionCurrencySyncEnabled,
+      extensionPartyInventorySyncAccess: effectiveExtensionPartyInventorySyncAccess,
+      extensionSyncConflictResolution: effectiveExtensionSyncConflictResolution,
       lateJoinPolicy: effectiveLateJoinPolicy,
       lateJoinGraceMinutes: Math.round(parsedGraceMinutes),
       defaultSessionDurationMins: Math.round(parsedDefaultSessionDurationMins),
       supportedPlatforms: effectiveSupportedPlatforms,
+      dndRuleset: effectiveDndRuleset,
+      ...(scheduleUpdateData ?? {}),
     },
     select: {
       id: true,
@@ -1443,6 +1666,10 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       postSessionChatEnabled: true,
       postSessionChatDurationMs: true,
       extensionSyncPolicy: true,
+      extensionInventorySyncEnabled: true,
+      extensionCurrencySyncEnabled: true,
+      extensionPartyInventorySyncAccess: true,
+      extensionSyncConflictResolution: true,
       lateJoinPolicy: true,
       lateJoinGraceMinutes: true,
       defaultSessionDurationMins: true,
@@ -1451,10 +1678,271 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
       inviteActive: true,
       spectatorInviteCode: true,
       spectatorInviteActive: true,
+      sessionScheduleType: true,
+      sessionScheduleDay: true,
+      sessionScheduleNth: true,
+      sessionScheduleHour: true,
+      sessionScheduleMinute: true,
+      sessionScheduleTz: true,
+      nextSessionDate: true,
+      nextSessionIsManual: true,
+      dndRuleset: true,
     },
   })
 
+  // Broadcast schedule change to all campaign members when the schedule was touched
+  if (scheduleUpdateData !== null) {
+    const schedLabel =
+      updated.sessionScheduleType && updated.sessionScheduleDay != null &&
+      updated.sessionScheduleHour != null && updated.sessionScheduleMinute != null &&
+      updated.sessionScheduleTz
+        ? formatScheduleLabel({
+            type: updated.sessionScheduleType as SessionScheduleType,
+            dayOfWeek: updated.sessionScheduleDay,
+            nth: updated.sessionScheduleNth ?? undefined,
+            hour: updated.sessionScheduleHour,
+            minute: updated.sessionScheduleMinute,
+            timezone: updated.sessionScheduleTz,
+          })
+        : null
+
+    await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+      id: randomUUID() as UUID,
+      type: 'CAMPAIGN:SCHEDULE_UPDATED',
+      version: 1,
+      userId: user.userId as UUID,
+      userRole: Role.DM,
+      sessionId: null as unknown as UUID,
+      roomId: null,
+      timestamp: Date.now(),
+      payload: {
+        campaignId: campaignId as UUID,
+        nextSessionDate: updated.nextSessionDate?.toISOString() ?? null,
+        scheduleLabel: schedLabel,
+        nextSessionIsManual: updated.nextSessionIsManual,
+      },
+    })
+  }
+
   return res.status(200).json({ campaign: updated })
+})
+
+// ---------------------------------------------------------------------------
+// PUT /:campaignId/next-session-date — DM manual override for next session date
+// Sets nextSessionIsManual = true; schedule resumes after that session ends.
+// ---------------------------------------------------------------------------
+router.put('/:campaignId/next-session-date', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+  const { date } = req.body || {}
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  if (typeof date !== 'string' || !date.trim()) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'date must be an ISO 8601 string', field: 'date' })
+  }
+
+  const parsedDate = new Date(date)
+  if (isNaN(parsedDate.getTime())) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'date is not a valid ISO 8601 string', field: 'date' })
+  }
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only the campaign DM can override the next session date' })
+  }
+
+  const updated = await prisma.campaign.update({
+    where: { id: campaignId as UUID },
+    data: { nextSessionDate: parsedDate, nextSessionIsManual: true },
+    select: {
+      sessionScheduleType: true,
+      sessionScheduleDay: true,
+      sessionScheduleNth: true,
+      sessionScheduleHour: true,
+      sessionScheduleMinute: true,
+      sessionScheduleTz: true,
+      nextSessionDate: true,
+      nextSessionIsManual: true,
+    },
+  })
+
+  const schedLabel =
+    updated.sessionScheduleType && updated.sessionScheduleDay != null &&
+    updated.sessionScheduleHour != null && updated.sessionScheduleMinute != null &&
+    updated.sessionScheduleTz
+      ? formatScheduleLabel({
+          type: updated.sessionScheduleType as SessionScheduleType,
+          dayOfWeek: updated.sessionScheduleDay,
+          nth: updated.sessionScheduleNth ?? undefined,
+          hour: updated.sessionScheduleHour,
+          minute: updated.sessionScheduleMinute,
+          timezone: updated.sessionScheduleTz,
+        })
+      : null
+
+  await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:SCHEDULE_UPDATED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: {
+      campaignId: campaignId as UUID,
+      nextSessionDate: updated.nextSessionDate?.toISOString() ?? null,
+      scheduleLabel: schedLabel,
+      nextSessionIsManual: true,
+    },
+  })
+
+  return res.status(200).json({
+    nextSessionDate: updated.nextSessionDate?.toISOString() ?? null,
+    nextSessionIsManual: true,
+  })
+})
+
+// ---------------------------------------------------------------------------
+// DELETE /:campaignId/next-session-date — Revert manual override; recalculates nextSessionDate from the schedule rule
+// ---------------------------------------------------------------------------
+router.delete('/:campaignId/next-session-date', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only the campaign DM can revert the date override' })
+  }
+
+  // Recalculate from schedule if one exists; otherwise clear nextSessionDate entirely
+  let nextDate: Date | null = null
+  let schedLabel: string | null = null
+
+  if (
+    campaign.sessionScheduleType &&
+    campaign.sessionScheduleDay != null &&
+    campaign.sessionScheduleHour != null &&
+    campaign.sessionScheduleMinute != null &&
+    campaign.sessionScheduleTz
+  ) {
+    const schedule: SessionSchedule = {
+      type: campaign.sessionScheduleType as SessionScheduleType,
+      dayOfWeek: campaign.sessionScheduleDay,
+      nth: campaign.sessionScheduleNth ?? undefined,
+      hour: campaign.sessionScheduleHour,
+      minute: campaign.sessionScheduleMinute,
+      timezone: campaign.sessionScheduleTz,
+    }
+    nextDate = calculateNextOccurrence(schedule, new Date())
+    schedLabel = formatScheduleLabel(schedule)
+  }
+
+  await prisma.campaign.update({
+    where: { id: campaignId as UUID },
+    data: { nextSessionDate: nextDate, nextSessionIsManual: false },
+  })
+
+  await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:SCHEDULE_UPDATED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: {
+      campaignId: campaignId as UUID,
+      nextSessionDate: nextDate?.toISOString() ?? null,
+      scheduleLabel: schedLabel,
+      nextSessionIsManual: false,
+    },
+  })
+
+  return res.status(204).send()
+})
+
+// ---------------------------------------------------------------------------
+// DELETE /:campaignId/schedule — DM clears the entire recurrence schedule
+// ---------------------------------------------------------------------------
+router.delete('/:campaignId/schedule', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
+  }
+
+  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+  if (campaign.currentDmId !== (user.userId as UUID)) {
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: 'Only the campaign DM can clear the schedule' })
+  }
+
+  await prisma.campaign.update({
+    where: { id: campaignId as UUID },
+    data: {
+      sessionScheduleType: null,
+      sessionScheduleDay: null,
+      sessionScheduleNth: null,
+      sessionScheduleHour: null,
+      sessionScheduleMinute: null,
+      sessionScheduleTz: null,
+      nextSessionDate: null,
+      nextSessionIsManual: false,
+    },
+  })
+
+  await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:SCHEDULE_UPDATED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: {
+      campaignId: campaignId as UUID,
+      nextSessionDate: null,
+      scheduleLabel: null,
+      nextSessionIsManual: false,
+    },
+  })
+
+  return res.status(204).send()
 })
 
 router.get(
@@ -1616,6 +2104,13 @@ router.post('/:campaignId/invites/reissue', requireAuth, async (req: Request, re
   })
 })
 
+/**
+ * POST /:campaignId/dm/handoff
+ * Phase 1 — DM initiates a campaign ownership transfer to a target player.
+ * Stores a pending offer in Redis and notifies the target via WS.
+ * The transfer does not execute until the target accepts via /dm/handoff/accept.
+ * Only permitted when the latest session is IDLE or there is no session yet.
+ */
 router.post('/:campaignId/dm/handoff', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
   const { campaignId } = req.params
@@ -1647,10 +2142,14 @@ router.post('/:campaignId/dm/handoff', requireAuth, async (req: Request, res: Re
     where: { id: campaignId as UUID },
     include: {
       members: {
-        select: {
-          userId: true,
-          role: true,
+        include: {
+          user: { select: { id: true, username: true } },
         },
+      },
+      sessions: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { id: true, state: true },
       },
     },
   })
@@ -1666,23 +2165,173 @@ router.post('/:campaignId/dm/handoff', requireAuth, async (req: Request, res: Re
     })
   }
 
-  const targetMembership = campaign.members.find((member) => member.userId === targetUserId)
+  // Transfer is only permitted while the greenroom session is open (IDLE state).
+  const latestSession = campaign.sessions[0]
+  const latestSessionState = latestSession?.state ?? null
+  if (latestSessionState !== SessionState.IDLE) {
+    return res.status(409).json({
+      code: ErrorCode.CONFLICT,
+      message: latestSessionState
+        ? `DM transfer is only permitted while the session is in the greenroom (IDLE). Current state: ${latestSessionState}.`
+        : 'DM transfer requires an open greenroom session (IDLE state).',
+    })
+  }
+
+  // Target player must be online so they can receive and act on the offer.
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  const activeByUser = wsManager?.getActiveRuntimeSessionsByUser() ?? {}
+  const unassignedUsers = wsManager?.getUsersWithUnassignedConnections() ?? []
+  const targetIsOnline =
+    (activeByUser[targetUserId as UUID] ?? []).length > 0 ||
+    unassignedUsers.includes(targetUserId as UUID)
+  if (!targetIsOnline) {
+    return res.status(409).json({
+      code: ErrorCode.CONFLICT,
+      message: 'The target player must be online to receive a DM transfer offer.',
+    })
+  }
+
+  const targetMembership = campaign.members.find((m) => m.userId === targetUserId)
   if (!targetMembership || targetMembership.role !== 'PLAYER') {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
-      message: 'targetUserId must belong to an existing player in this campaign',
+      message: 'targetUserId must be an existing PLAYER in this campaign',
       field: 'targetUserId',
     })
   }
 
+  const now = Date.now()
+  const TTL_MS = 60 * 60 * 24 * 1000 // 24 hours
+  await storePendingDmTransfer({
+    campaignId,
+    campaignName: campaign.name,
+    fromUserId: user.userId,
+    fromUsername: user.username,
+    toUserId: targetUserId,
+    toUsername: targetMembership.user.username,
+    initiatedAt: now,
+    expiresAt: now + TTL_MS,
+  })
+
+  eventBroadcaster.sendToUser(targetUserId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:DM_TRANSFER_INITIATED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: now,
+    payload: {
+      campaignId,
+      campaignName: campaign.name,
+      fromUserId: user.userId,
+      fromUsername: user.username,
+      toUserId: targetUserId,
+      toUsername: targetMembership.user.username,
+      initiatedAt: now,
+      expiresAt: now + TTL_MS,
+    },
+  })
+
+  logger.info('campaign.routes', 'DM transfer initiated', {
+    campaignId,
+    fromUserId: user.userId,
+    toUserId: targetUserId,
+  })
+
+  return res.status(200).json({ pending: true, expiresAt: new Date(now + TTL_MS).toISOString() })
+})
+
+/**
+ * GET /:campaignId/dm/handoff/pending
+ * Returns the current pending DM transfer for the campaign, or null.
+ * Accessible to both the current DM and the target player.
+ */
+router.get('/:campaignId/dm/handoff/pending', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+  }
+
+  const membership = await prisma.campaignMembership.findUnique({
+    where: { campaignId_userId: { campaignId: campaignId as UUID, userId: user.userId as UUID } },
+  })
+  if (!membership) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'Not a campaign member' })
+  }
+
+  const pending = await getPendingDmTransfer(campaignId)
+  return res.status(200).json({ pending })
+})
+
+/**
+ * POST /:campaignId/dm/handoff/accept
+ * Phase 2 — target player accepts the pending ownership offer.
+ * Executes the ownership transfer atomically and broadcasts the result.
+ */
+router.post('/:campaignId/dm/handoff/accept', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+  }
+
+  const pending = await getPendingDmTransfer(campaignId)
+  if (!pending) {
+    return res
+      .status(404)
+      .json({ code: ErrorCode.NOT_FOUND, message: 'No pending DM transfer for this campaign' })
+  }
+
+  if (pending.toUserId !== (user.userId as UUID)) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'You are not the target of this DM transfer',
+    })
+  }
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId as UUID },
+    select: { id: true, name: true, currentDmId: true },
+  })
+
+  if (!campaign) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+  }
+
+  if (campaign.currentDmId !== (pending.fromUserId as UUID)) {
+    // The DM changed between initiate and accept — stale offer.
+    await clearPendingDmTransfer(campaignId)
+    return res.status(409).json({
+      code: ErrorCode.CONFLICT,
+      message: 'The pending transfer is no longer valid — the campaign DM has changed.',
+    })
+  }
+
+  const now = Date.now()
+
   await prisma.$transaction(async (tx) => {
     await tx.campaign.update({
       where: { id: campaignId as UUID },
-      data: {
-        currentDmId: targetUserId as UUID,
-      },
+      data: { currentDmId: user.userId as UUID },
     })
 
+    // Demote old DM's campaign membership role.
+    await tx.campaignMembership.update({
+      where: {
+        campaignId_userId: {
+          campaignId: campaignId as UUID,
+          userId: pending.fromUserId as UUID,
+        },
+      },
+      data: { role: 'PLAYER' },
+    })
+
+    // Promote new DM's campaign membership role.
     await tx.campaignMembership.update({
       where: {
         campaignId_userId: {
@@ -1690,51 +2339,244 @@ router.post('/:campaignId/dm/handoff', requireAuth, async (req: Request, res: Re
           userId: user.userId as UUID,
         },
       },
-      data: {
-        role: 'PLAYER',
-      },
+      data: { role: 'DM' },
     })
 
-    await tx.campaignMembership.update({
+    // Promote new DM's global role if needed.
+    await tx.user.update({
+      where: { id: user.userId as UUID },
+      data: { role: 'DM', adminRole: 'CAMPAIGN_DM' },
+    })
+
+    // Demote old DM's global role only if they are no longer DM of any other campaign.
+    const remainingDmCampaigns = await tx.campaign.count({
       where: {
-        campaignId_userId: {
-          campaignId: campaignId as UUID,
-          userId: targetUserId as UUID,
+        currentDmId: pending.fromUserId as UUID,
+        id: { not: campaignId as UUID },
+        deletedAt: null,
+        retiredAt: null,
+      },
+    })
+    if (remainingDmCampaigns === 0) {
+      await tx.user.updateMany({
+        where: {
+          id: pending.fromUserId as UUID,
+          adminRole: 'CAMPAIGN_DM',
         },
-      },
-      data: {
-        role: 'DM',
-      },
-    })
+        data: { role: 'PLAYER', adminRole: null },
+      })
+    }
+  })
 
-    await tx.user.updateMany({
-      where: {
-        id: targetUserId as UUID,
-      },
-      data: {
-        role: 'DM',
-      },
-    })
+  await consumePendingDmTransfer(campaignId)
 
-    await tx.user.updateMany({
-      where: {
-        id: targetUserId as UUID,
-        adminRole: null,
-      },
-      data: {
-        adminRole: 'CAMPAIGN_DM',
+  const transferredPayload = {
+    campaignId,
+    campaignName: campaign.name,
+    previousDmId: pending.fromUserId,
+    previousDmUsername: pending.fromUsername,
+    newDmId: user.userId,
+    newDmUsername: user.username,
+    transferredAt: now,
+  }
+
+  // Log a campaign-scoped system message so the handoff survives refresh.
+  let systemMessage: Awaited<ReturnType<typeof sendCampaignSystemMessage>> | null = null
+  try {
+    systemMessage = await sendCampaignSystemMessage({
+      campaignId: campaignId as UUID,
+      content: `[DM Role Transferred] ${pending.fromUsername} passed the DM role to ${user.username}.`,
+    })
+  } catch (err) {
+    logger.warn('campaign.routes', 'Failed to post DM transfer system message', {
+      campaignId,
+      err,
+    })
+  }
+
+  // Notify all campaign members.
+  await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:DM_TRANSFERRED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: now,
+    payload: transferredPayload,
+  })
+
+  // Broadcast the system message to greenroom listeners.
+  if (systemMessage) {
+    await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+      id: randomUUID() as UUID,
+      type: 'CHAT:MESSAGE_SENT',
+      version: 1,
+      userId: user.userId as UUID,
+      userRole: Role.DM,
+      sessionId: null as unknown as UUID,
+      roomId: null,
+      timestamp: systemMessage.createdAt,
+      payload: {
+        messageId: systemMessage.id,
+        roomId: systemMessage.roomId,
+        authorId: systemMessage.authorId,
+        authorUsername: systemMessage.authorUsername,
+        content: systemMessage.content,
+        type: systemMessage.type,
+        isDmOnly: systemMessage.isDmOnly,
+        isOffTheRecord: systemMessage.isOffTheRecord,
+        visibleTo: systemMessage.visibleTo,
+        targetIds: systemMessage.targetIds,
       },
     })
+  }
+
+  // Notify the old DM of the accepted response.
+  eventBroadcaster.sendToUser(pending.fromUserId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:DM_TRANSFER_RESPONDED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.PLAYER,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: now,
+    payload: {
+      campaignId,
+      toUserId: user.userId,
+      toUsername: user.username,
+      response: 'ACCEPTED',
+      respondedAt: now,
+    },
+  })
+
+  logger.info('campaign.routes', 'DM transfer accepted', {
+    campaignId,
+    previousDmId: pending.fromUserId,
+    newDmId: user.userId,
   })
 
   return res.status(200).json({
-    campaign: {
-      id: campaignId,
-      previousDmId: user.userId as UUID,
-      currentDmId: targetUserId as UUID,
-      transferredAt: new Date().toISOString(),
+    campaignId,
+    previousDmId: pending.fromUserId,
+    newDmId: user.userId,
+    transferredAt: new Date(now).toISOString(),
+  })
+})
+
+/**
+ * POST /:campaignId/dm/handoff/decline
+ * Target player declines a pending ownership offer.
+ * Clears the pending state and notifies the DM.
+ */
+router.post('/:campaignId/dm/handoff/decline', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+  }
+
+  const pending = await getPendingDmTransfer(campaignId)
+  if (!pending) {
+    return res
+      .status(404)
+      .json({ code: ErrorCode.NOT_FOUND, message: 'No pending DM transfer for this campaign' })
+  }
+
+  if (pending.toUserId !== (user.userId as UUID)) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'You are not the target of this DM transfer',
+    })
+  }
+
+  await clearPendingDmTransfer(campaignId)
+
+  const declinedAt = Date.now()
+  eventBroadcaster.sendToUser(pending.fromUserId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:DM_TRANSFER_RESPONDED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.PLAYER,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: declinedAt,
+    payload: {
+      campaignId,
+      toUserId: user.userId,
+      toUsername: user.username,
+      response: 'DECLINED',
+      respondedAt: declinedAt,
     },
   })
+
+  logger.info('campaign.routes', 'DM transfer declined', {
+    campaignId,
+    fromUserId: pending.fromUserId,
+    toUserId: user.userId,
+  })
+
+  return res.status(200).json({ declined: true })
+})
+
+/**
+ * POST /:campaignId/dm/handoff/cancel
+ * Current DM cancels their pending outgoing offer.
+ * Clears the pending state and notifies the target player.
+ */
+router.post('/:campaignId/dm/handoff/cancel', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId } = req.params
+
+  if (!isValidUUID(campaignId)) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId' })
+  }
+
+  const pending = await getPendingDmTransfer(campaignId)
+  if (!pending) {
+    return res
+      .status(404)
+      .json({ code: ErrorCode.NOT_FOUND, message: 'No pending DM transfer to cancel' })
+  }
+
+  if (pending.fromUserId !== (user.userId as UUID)) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Only the DM who initiated the transfer can cancel it',
+    })
+  }
+
+  await clearPendingDmTransfer(campaignId)
+
+  const cancelledAt = Date.now()
+  eventBroadcaster.sendToUser(pending.toUserId as UUID, {
+    id: randomUUID() as UUID,
+    type: 'CAMPAIGN:DM_TRANSFER_CANCELLED',
+    version: 1,
+    userId: user.userId as UUID,
+    userRole: Role.DM,
+    sessionId: null as unknown as UUID,
+    roomId: null,
+    timestamp: cancelledAt,
+    payload: {
+      campaignId,
+      fromUserId: user.userId,
+      fromUsername: user.username,
+      cancelledAt,
+    },
+  })
+
+  logger.info('campaign.routes', 'DM transfer cancelled', {
+    campaignId,
+    fromUserId: user.userId,
+    toUserId: pending.toUserId,
+  })
+
+  return res.status(200).json({ cancelled: true })
 })
 
 router.get('/:campaignId', requireAuth, async (req: Request, res: Response) => {

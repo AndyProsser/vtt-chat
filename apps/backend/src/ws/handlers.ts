@@ -234,3 +234,26 @@ export const notesHandlers = {
     logHandled('NOTES:DELETED', event)
   },
 }
+
+/**
+ * Inventory event handlers
+ * Inventory mutations arrive via REST; these handlers are stubs for WS-originated events
+ * (e.g. future mobile clients or extensions that bypass REST).
+ */
+export const inventoryHandlers = {
+  async handleInventoryItemAdded(event: EventEnvelope) {
+    logHandled('INVENTORY:ITEM_ADDED', event)
+  },
+  async handleInventoryItemRemoved(event: EventEnvelope) {
+    logHandled('INVENTORY:ITEM_REMOVED', event)
+  },
+  async handleInventoryItemTransferred(event: EventEnvelope) {
+    logHandled('INVENTORY:ITEM_TRANSFERRED', event)
+  },
+  async handleInventoryItemEdited(event: EventEnvelope) {
+    logHandled('INVENTORY:ITEM_EDITED', event)
+  },
+  async handleInventoryCurrencyChanged(event: EventEnvelope) {
+    logHandled('INVENTORY:CURRENCY_CHANGED', event)
+  },
+}

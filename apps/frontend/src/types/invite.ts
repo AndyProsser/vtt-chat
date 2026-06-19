@@ -38,6 +38,7 @@ export interface InviteJoinPageProps {
   apiUrl: string
   inviteCode: string
   authToken: string | null
+  initialEmail?: string
   onAuthenticated?: (token: string, user: { id: UUID; username: string; role: Role }) => void
 }
 

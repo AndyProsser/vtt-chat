@@ -28,7 +28,12 @@ export class EventDispatcher {
       event.type === 'CAMPAIGN:JOIN_REQUEST_RECEIVED' ||
       event.type === 'CAMPAIGN:JOIN_REQUEST_RESOLVED' ||
       event.type === 'CAMPAIGN:LOBBY_STATS_UPDATED' ||
-      event.type === 'CAMPAIGN:PARTY_PRESENCE_UPDATED'
+      event.type === 'CAMPAIGN:PARTY_PRESENCE_UPDATED' ||
+      event.type === 'CAMPAIGN:DM_TRANSFER_INITIATED' ||
+      event.type === 'CAMPAIGN:DM_TRANSFER_RESPONDED' ||
+      event.type === 'CAMPAIGN:DM_TRANSFER_CANCELLED' ||
+      event.type === 'CAMPAIGN:DM_TRANSFERRED' ||
+      event.type === 'CAMPAIGN:SCHEDULE_UPDATED'
     )
   }
 

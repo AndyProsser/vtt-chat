@@ -32,6 +32,8 @@ export interface GroupParticipantStatus {
   characterStats?: Record<string, unknown> | null
   roleLabel?: 'DM' | 'PLAYER' | 'SPECTATOR'
   condition?: string
+  /** D&D status conditions synced from extension (e.g. "Poisoned", "Stunned"). Separate from DM audio conditions. */
+  characterConditions?: string[]
   distanceLabel?: string
 }
 
@@ -41,6 +43,18 @@ export interface GroupParticipantWithGroupId extends GroupParticipantStatus {
 
 export interface GroupPanelGroupWithParticipants extends GroupPanelGroup {
   participants: GroupParticipantStatus[]
+}
+
+export interface AbilityScoreStat {
+  label: string
+  value: number
+  modifier: string
+}
+
+/** Structured stat groups returned by getGroupStatEntries. */
+export interface StatGroups {
+  combatStats: Array<[string, string]>
+  abilityScores: AbilityScoreStat[]
 }
 
 export interface GroupsPanelProps {

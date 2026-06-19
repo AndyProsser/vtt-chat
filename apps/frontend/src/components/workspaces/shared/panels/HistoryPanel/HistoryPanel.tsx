@@ -270,9 +270,7 @@ export function HistoryPanel({
           History
         </h3>
         <div className="ui-empty-panel" role="status">
-          <span className="material-symbols-outlined" aria-hidden="true">
-            history
-          </span>
+          <Icon name="history" />
           <span>No previous session chat yet.</span>
         </div>
       </section>

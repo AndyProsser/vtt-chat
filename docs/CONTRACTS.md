@@ -1011,6 +1011,38 @@ Guests who exit a session are routed to an upgrade screen only — they do not s
 
 ---
 
+## Campaign DM Transfer (W-DM-Handoff)
+
+Two-phase ownership handoff: DM initiates, target player accepts or declines. Pending state is stored in Redis with a 24-hour TTL.
+
+### Endpoints
+
+| Method | Path                                    | Auth           | Description                                                                       |
+| ------ | --------------------------------------- | -------------- | --------------------------------------------------------------------------------- |
+| `POST` | `/api/campaigns/:id/dm/handoff`         | DM of campaign | Initiate transfer — stores pending offer in Redis, notifies target via WS         |
+| `GET`  | `/api/campaigns/:id/dm/handoff/pending` | Any member     | Returns current pending offer or `null`                                           |
+| `POST` | `/api/campaigns/:id/dm/handoff/accept`  | Target player  | Accept offer — executes DB transaction, broadcasts `CAMPAIGN:DM_TRANSFERRED`      |
+| `POST` | `/api/campaigns/:id/dm/handoff/decline` | Target player  | Decline offer — clears Redis, notifies DM via `CAMPAIGN:DM_TRANSFER_RESPONDED`    |
+| `POST` | `/api/campaigns/:id/dm/handoff/cancel`  | Initiating DM  | Cancel offer — clears Redis, notifies target via `CAMPAIGN:DM_TRANSFER_CANCELLED` |
+
+### Constraints
+
+- Transfer is rejected (`409`) if the latest session is `ACTIVE`, `PAUSED`, or `COOLDOWN`.
+- Target must be an existing `PLAYER` member (not a spectator, not already DM).
+- Only one pending transfer per campaign at a time; re-initiating replaces the previous.
+- On `accept`: `Campaign.currentDmId` updates, both `CampaignMembership.role` rows swap, old DM's `user.role` demotes to `PLAYER` only if they hold no other DM campaigns.
+
+### WS Events (all campaign-scoped, no `sessionId` required)
+
+| Event                            | Sent to              |
+| -------------------------------- | -------------------- |
+| `CAMPAIGN:DM_TRANSFER_INITIATED` | Target player        |
+| `CAMPAIGN:DM_TRANSFER_RESPONDED` | Initiating DM        |
+| `CAMPAIGN:DM_TRANSFER_CANCELLED` | Target player        |
+| `CAMPAIGN:DM_TRANSFERRED`        | All campaign members |
+
+---
+
 ## Campaign Export and Import (Admin-Only)
 
 ### Export
@@ -1121,11 +1153,11 @@ On success (`200`): returns `{ token: string, credential: string }` — a fresh 
 
 On failure (`401`):
 
-| Code | Meaning | Required extension behaviour |
-| ---- | ------- | ---------------------------- |
-| `CREDENTIAL_INVALID` | Token not found, already rotated, or explicitly revoked | Treat as first launch — prompt for invite code |
-| `CREDENTIAL_EXPIRED_GUEST` | 90-day inactivity window elapsed; account is still guest | Prompt user to re-enter a fresh invite code |
-| `CREDENTIAL_EXPIRED_FULL` | 90-day inactivity window elapsed; account is full | Prompt user for email and password to re-authenticate |
+| Code                       | Meaning                                                  | Required extension behaviour                          |
+| -------------------------- | -------------------------------------------------------- | ----------------------------------------------------- |
+| `CREDENTIAL_INVALID`       | Token not found, already rotated, or explicitly revoked  | Treat as first launch — prompt for invite code        |
+| `CREDENTIAL_EXPIRED_GUEST` | 90-day inactivity window elapsed; account is still guest | Prompt user to re-enter a fresh invite code           |
+| `CREDENTIAL_EXPIRED_FULL`  | 90-day inactivity window elapsed; account is full        | Prompt user for email and password to re-authenticate |
 
 ### Expiry policy
 
@@ -1154,6 +1186,261 @@ When a guest upgrades to a full account (`POST /api/auth/upgrade`), all active e
 - All extension credential endpoints require HTTPS.
 - Rotation on every exchange prevents replay of intercepted tokens.
 
+### Campaign Session Status (Extension Popup Display)
+
+`GET /api/campaigns/:campaignId/session-status`
+
+No authentication required. The `campaignId` path parameter acts as an implicit access gate — it is only known to users who have previously joined the campaign via the extension.
+
+Response (200):
+
+```json
+{
+  "campaignId": "uuid",
+  "sessionState": "IDLE | ACTIVE | PAUSED | COOLDOWN | ENDED | null",
+  "campaignDisplayState": "IDLE | GREENROOM | ACTIVE | PAUSED | COOLDOWN",
+  "connectedCount": 3,
+  "sessionId": "uuid | null"
+}
+```
+
+- `sessionState` is the raw `SessionState` enum value of the most recent session, or `null` if no session has ever been created.
+- `campaignDisplayState` is derived via `deriveCampaignDisplayState()` and is what the extension popup should display.
+- `connectedCount` is the number of currently connected campaign members (DM + players; excludes spectators). The extension uses this to show whether anyone else is online.
+- `sessionId` is included so the extension can pass it to `POST /api/campaigns/:campaignId/session/ensure` without a separate lookup.
+
+This endpoint must not expose user identities, character names, or any personally identifiable information. It is a public signal surface — treat it accordingly.
+
+### Session Ensure (Extension GREENROOM Launch)
+
+`POST /api/campaigns/:campaignId/session/ensure`
+
+Requires a valid extension-credential JWT (any campaign member, any role). This is the only session-creation path available to non-DM users.
+
+Request body: none required.
+
+Response (200):
+
+```json
+{
+  "sessionId": "uuid",
+  "sessionState": "IDLE | ACTIVE | PAUSED | COOLDOWN | ENDED",
+  "campaignDisplayState": "IDLE | GREENROOM | ACTIVE | PAUSED | COOLDOWN",
+  "created": true
+}
+```
+
+- `created: true` means the backend created a new IDLE session. `created: false` means an existing session was returned unchanged.
+- If a session in any state already exists for the campaign, it is returned as-is. This endpoint never advances or regresses session state.
+- DM-only session controls (`ACTIVE`, `PAUSED`, etc.) continue to require the DM role and are unaffected by this endpoint.
+- Non-extension JWTs (standard web auth) receive `403 EXTENSION_CREDENTIAL_REQUIRED`. This endpoint is intentionally not accessible from the main web app.
+
+---
+
+## Extension Inventory Sync Policy Contract (W-Extension-MVP)
+
+`POST /api/integrations/external/sync` enforces two independent layers of campaign policy on every
+call. See [EXTENSION-INTEGRATION.md §5e](extension/EXTENSION-INTEGRATION.md) and
+[INVENTORY-SYSTEM.md §12.3](subsystems/INVENTORY-SYSTEM.md) for the full design spec — this section
+is the locked wire contract, including the party-target payload shape (not previously specified).
+
+### Layer 1 — `extensionSyncPolicy` (existing)
+
+Gates **all** sync payloads — character, inventory, currency. `NONE` rejects everything;
+`DM_ONLY` permits only `source: 'dm'` requests; `DM_AND_PLAYERS` permits both.
+
+### Layer 2 — inventory-specific campaign settings
+
+Four `Campaign` fields, evaluated independently once Layer 1 permits the caller:
+
+| Field | Type | Default |
+| --- | --- | --- |
+| `extensionInventorySyncEnabled` | `boolean` | `true` |
+| `extensionCurrencySyncEnabled` | `boolean` | `true` |
+| `extensionPartyInventorySyncAccess` | `DISABLED \| DM_ONLY \| ALL_PLAYERS` | `DM_ONLY` |
+| `extensionSyncConflictResolution` | `OVERWRITE \| IGNORE \| PROMPT` | `OVERWRITE` |
+
+Managed via `GET`/`PATCH /api/campaigns/:campaignId/settings` (DM-only); locked while a session is
+`ACTIVE`/`PAUSED`, same as `extensionSyncPolicy`.
+
+### Party-target wire shape
+
+Party-targeted sync uses **separate top-level payload keys** — `partyInventoryUpdate` and
+`partyCurrencyUpdate` — mirroring `inventoryUpdate`/`currencyUpdate` but with no
+`externalCharacterId` (the target is always the campaign's party inventory/purse):
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "DDB",
+  "source": "dm",
+  "partyInventoryUpdate": { "items": [{ "externalId": "ddb-item-999", "name": "Bag of Holding", "quantity": 1 }] },
+  "partyCurrencyUpdate": { "wallet": { "gp": 200 } }
+}
+```
+
+`extensionPartyInventorySyncAccess` gates these two keys: `DISABLED` always skips them;
+`DM_ONLY` skips unless `source === 'dm'`; `ALL_PLAYERS` never skips. They are additionally gated by
+the master toggles above (`extensionInventorySyncEnabled` for `partyInventoryUpdate`,
+`extensionCurrencySyncEnabled` for `partyCurrencyUpdate`).
+
+### Conflict resolution (`extensionSyncConflictResolution`)
+
+A conflict is an incoming item/wallet value that differs from an existing persisted record
+(matched by `externalSource`+`externalId` for items; any non-zero requested denomination for
+currency). Net-new items and zero-balance wallets are never conflicts and always apply immediately.
+
+| Value | Behaviour |
+| --- | --- |
+| `OVERWRITE` | Incoming value always wins (historical default behaviour). |
+| `IGNORE` | Conflicting item discarded, existing record untouched; conflicting currency update discarded in full. |
+| `PROMPT` | Conflicting change written to `PendingExtensionSync` (campaign+characterId-scoped, see INVENTORY-SYSTEM.md §2.3); `INVENTORY:EXTENSION_SYNC_PENDING` sent to the DM only (`eventBroadcaster.sendToUser`). |
+
+**Party-owned conflicts under `PROMPT` fall back to `OVERWRITE`.** `PendingExtensionSync` is
+schema-locked to a single `characterId` — there is no DM-review queue shape for party-owned
+records — so a party item/wallet conflict applies immediately rather than queuing, regardless of
+the campaign's `PROMPT` setting. Only character-owned conflicts queue for DM review.
+
+### Response shape (`applied`)
+
+`characterUpdate` and `campaignUpdate` are always present booleans. Every other key
+(`inventoryItemsUpserted`, `currencyUpdated`, `partyInventoryItemsUpserted`, `partyCurrencyUpdated`,
+`pendingConflicts`, `skippedReasons`) is present **only** when its corresponding request section
+(`inventoryUpdate`, `currencyUpdate`, `partyInventoryUpdate`, `partyCurrencyUpdate`) was present in
+the request. `skippedReasons` maps a blocked section name to `SYNC_POLICY_DISABLED` or
+`SYNC_POLICY_PARTY_ACCESS_DENIED`.
+
+### Error responses
+
+| Status | Code | Cause |
+| --- | --- | --- |
+| 403 | `SYNC_POLICY_DISABLED` | Request contains only sections blocked by a Layer 2 master toggle (no other section present). |
+| 403 | `SYNC_POLICY_PARTY_ACCESS_DENIED` | Request contains only party sections blocked by `extensionPartyInventorySyncAccess`. |
+
+A request that mixes blocked and allowed sections is never rejected wholesale — allowed sections
+apply and blocked ones are reported via `applied.skippedReasons` (HTTP 200).
+
+### DM Review Endpoints (`PROMPT` mode)
+
+Mounted alongside the existing inventory routes at `/api/inventory/:campaignId/...` (the real
+runtime prefix — see the corrective note in INVENTORY-SYSTEM.md §8):
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/inventory/:campaignId/sync/pending` | List non-expired pending syncs (DM only) |
+| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/approve` | Apply the change via the standard 4-layer contract; broadcasts the normal `INVENTORY:ITEM_ADDED`/`ITEM_EDITED`/`CURRENCY_CHANGED` event (DM only) |
+| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/reject` | Discard the pending change (DM only) |
+
+Pending syncs expire 24h after creation (TTL field, checked on read — same convention as
+`DeviceCredential`; no separate sweep job). Expired or missing rows return `404 NOT_FOUND` from
+approve/reject.
+
+---
+
+## Session Schedule Contract (W-Session-Schedule)
+
+DMs can configure a repeating session schedule on a campaign. The schedule drives the next session date displayed in the Campaign Info panel for all members.
+
+### Data model
+
+Four fields on Campaign (all nullable; absence means no schedule configured):
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `sessionScheduleType` | `SessionScheduleType` enum | `WEEKLY`, `BIWEEKLY`, or `MONTHLY_NTH` |
+| `sessionScheduleDay` | `Int` (0–6) | Day of week (0 = Sunday) |
+| `sessionScheduleNth` | `Int` (1–4) | Nth occurrence of the day; `MONTHLY_NTH` only |
+| `sessionScheduleHour` | `Int` (0–23) | Hour component of session start time |
+| `sessionScheduleMinute` | `Int` (0–59) | Minute component of session start time |
+| `sessionScheduleTz` | `String` | IANA timezone (e.g. `"America/New_York"`) |
+| `nextSessionDate` | `DateTime?` | Authoritative next session datetime |
+| `nextSessionIsManual` | `Boolean` | `true` when DM has overridden auto-calc for this one session |
+
+### Endpoints
+
+**Update schedule** (extends existing settings endpoint, DM only):
+
+```http
+PATCH /api/campaigns/:id/settings
+Body: {
+  sessionSchedule?: {
+    type: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY_NTH'
+    day: 0–6
+    nth?: 1–4          // required when type === 'MONTHLY_NTH'
+    hour: 0–23
+    minute: 0–59
+    timezone: string   // IANA timezone
+  }
+}
+Response 200: { nextSessionDate: ISO8601 | null, scheduleLabel: string | null }
+```
+
+On success: calculates `nextSessionDate` as the first occurrence after `now()`, persists all fields, emits `CAMPAIGN:SCHEDULE_UPDATED`.
+
+**Manual override for next session** (DM only):
+
+```http
+PUT /api/campaigns/:id/next-session-date
+Body: { date: ISO8601 }
+Response 200: { nextSessionDate: ISO8601 }
+```
+
+Sets `nextSessionIsManual = true`. Does not alter the recurring schedule. Emits `CAMPAIGN:SCHEDULE_UPDATED`. Rejected with `400` if no schedule is configured (use `PATCH /settings` to set the schedule first, or set an explicit one-off date there).
+
+**Clear schedule** (DM only):
+
+```http
+DELETE /api/campaigns/:id/schedule
+Response 204
+```
+
+Clears all `sessionSchedule*` fields and `nextSessionDate`. Emits `CAMPAIGN:SCHEDULE_UPDATED` with all null values.
+
+### Auto-advance on session end
+
+On `SESSION:ENDED`:
+
+1. If `sessionScheduleType` is set: call `calculateNextOccurrence(schedule, now())` and persist the result to `nextSessionDate`.
+2. Reset `nextSessionIsManual = false` unconditionally — the manual override (if any) was consumed by the session that just ended.
+3. Broadcast `CAMPAIGN:SCHEDULE_UPDATED`.
+
+The DM's manual override therefore applies to exactly one session. After that session ends, the schedule resumes automatically.
+
+### WS Event
+
+```ts
+CAMPAIGN:SCHEDULE_UPDATED
+{
+  campaignId:          string
+  scheduleType:        SessionScheduleType | null
+  scheduleDay:         number | null
+  scheduleNth:         number | null
+  scheduleHour:        number | null
+  scheduleMinute:      number | null
+  scheduleTz:          string | null
+  nextSessionDate:     string | null   // ISO8601
+  scheduleLabel:       string | null   // e.g. "Every 2nd Sunday of the month at 1:00 PM"
+  nextSessionIsManual: boolean
+}
+```
+
+Broadcast to all connected campaign members (DM, players, spectators).
+
+### Display contract
+
+The next session date is visible to **all campaign members**. It is shown in the Campaign Info panel when session state is `IDLE`, `ENDED`, `COOLDOWN`, or `CLEANUP`. It is hidden during `ACTIVE` and `PAUSED` (the session is already running). Display format: `"Sun Jun 14 at 1:00 PM · in 2 days"` (date localised to the viewing user's browser timezone; the relative label uses the authoritative `nextSessionDate` from the server).
+
+DM-only controls: pencil icon to open an inline override date/time picker; "Revert to schedule" link to clear the manual override without clearing the schedule.
+
+### Constraints
+
+- Only the campaign DM may set, override, or clear the schedule.
+- `sessionScheduleNth` is required when `type === MONTHLY_NTH` and must be 1–4.
+- `sessionScheduleTz` must be a valid IANA timezone string; backend validates with `Intl.DateTimeFormat`.
+- `nextSessionDate` is always stored in UTC; display conversion happens client-side.
+- Schedule fields persist across session boundaries (campaign-scoped). Exporting a campaign includes all schedule fields.
+- Clearing the schedule does not clear session history or any other campaign state.
+
 ---
 
 **Document Version**: 1.1
@@ -1162,3 +1449,4 @@ When a guest upgrades to a full account (`POST /api/auth/upgrade`), all active e
 **Amendment Date**: 2026-05-21 — Campaign visibility model, request-to-join, WATCH entry, guest upgrade, campaign retire/resume, admin export/import contracts added.
 **Amendment Date**: 2026-06-04 — Groups panel contracts added: reserved names, group close, group delete, environment apply, DM audio override (GAIN/FILTER/GATE).
 **Amendment Date**: 2026-06-08 — Extension Device Credential Contract added: per-browser persistent credential, 90-day rolling expiry, credential exchange endpoint, expiry behaviour by account type, revocation.
+**Amendment Date**: 2026-06-12 — Session Schedule Contract added: structured recurrence picker, next session date auto-advance, DM manual override, CAMPAIGN:SCHEDULE_UPDATED event.

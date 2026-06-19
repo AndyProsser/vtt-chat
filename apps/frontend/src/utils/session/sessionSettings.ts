@@ -7,6 +7,8 @@ import {
 } from '@/utils/sessionUi'
 import type {
   CampaignVisibility,
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
   ExtensionSyncPolicy,
   LateJoinPolicy,
   SupportedPlatform,
@@ -18,6 +20,8 @@ import {
   DEFAULT_CHARACTER_SETTINGS,
   toValidPostSessionDurationMinutes,
 } from '@/utils/session/workspaces'
+import { SessionScheduleType, formatScheduleLabel } from '@shared'
+import { useStore } from '@/state/store'
 
 export function applyCampaignSettingsPayload(
   campaignSettingsActions: UseCampaignSettingsActions,
@@ -44,6 +48,18 @@ export function applyCampaignSettingsPayload(
   campaignSettingsActions.setSettingsExtensionSyncPolicy(
     normalizeExtensionSyncPolicy(settings.extensionSyncPolicy)
   )
+  campaignSettingsActions.setSettingsExtensionInventorySyncEnabled(
+    settings.extensionInventorySyncEnabled ?? true
+  )
+  campaignSettingsActions.setSettingsExtensionCurrencySyncEnabled(
+    settings.extensionCurrencySyncEnabled ?? true
+  )
+  campaignSettingsActions.setSettingsExtensionPartyInventorySyncAccess(
+    settings.extensionPartyInventorySyncAccess ?? 'DM_ONLY'
+  )
+  campaignSettingsActions.setSettingsExtensionSyncConflictResolution(
+    settings.extensionSyncConflictResolution ?? 'OVERWRITE'
+  )
   campaignSettingsActions.setSettingsLateJoinPolicy(settings.lateJoinPolicy)
   campaignSettingsActions.setSettingsLateJoinGraceMinutes(settings.lateJoinGraceMinutes)
   campaignSettingsActions.setSettingsPosterUrl(settings.posterUrl || '')
@@ -53,6 +69,30 @@ export function applyCampaignSettingsPayload(
   campaignSettingsActions.setSettingsSupportedPlatforms(
     (settings.supportedPlatforms ?? ['ANY']) as SupportedPlatform[]
   )
+  campaignSettingsActions.setSettingsDndRuleset(settings.dndRuleset ?? '2024')
+
+  // Hydrate campaign schedule slice — needed for NextSessionDate on refresh and after info edits
+  const schedLabel =
+    settings.sessionScheduleType &&
+    settings.sessionScheduleDay != null &&
+    settings.sessionScheduleHour != null &&
+    settings.sessionScheduleMinute != null &&
+    settings.sessionScheduleTz
+      ? formatScheduleLabel({
+          type: settings.sessionScheduleType as SessionScheduleType,
+          dayOfWeek: settings.sessionScheduleDay,
+          nth: settings.sessionScheduleNth ?? undefined,
+          hour: settings.sessionScheduleHour,
+          minute: settings.sessionScheduleMinute,
+          timezone: settings.sessionScheduleTz,
+        })
+      : null
+
+  useStore.getState().setCampaignSchedule(settings.id, {
+    nextSessionDate: settings.nextSessionDate ?? null,
+    scheduleLabel: schedLabel,
+    nextSessionIsManual: settings.nextSessionIsManual ?? false,
+  })
 }
 
 export function buildCampaignSettingsSavePayload(params: {
@@ -65,6 +105,10 @@ export function buildCampaignSettingsSavePayload(params: {
   settingsSpectatorWaitlistEnabled: boolean
   settingsSpectatorReconnectGraceSecs: number
   settingsExtensionSyncPolicy: ExtensionSyncPolicy
+  settingsExtensionInventorySyncEnabled: boolean
+  settingsExtensionCurrencySyncEnabled: boolean
+  settingsExtensionPartyInventorySyncAccess: ExtensionPartyInventorySyncAccess
+  settingsExtensionSyncConflictResolution: ExtensionSyncConflictResolution
   settingsPostSessionChatEnabled: boolean
   settingsPostSessionChatDurationMinutes: number
   settingsDmAutoTargetOnFirstPlayerJoin: boolean
@@ -72,6 +116,7 @@ export function buildCampaignSettingsSavePayload(params: {
   settingsLateJoinGraceMinutes: number
   settingsDefaultSessionDurationMins: number
   settingsSupportedPlatforms: SupportedPlatform[]
+  settingsDndRuleset: '2014' | '2024'
 }) {
   return {
     name: params.settingsName,
@@ -87,6 +132,10 @@ export function buildCampaignSettingsSavePayload(params: {
       ? params.settingsSpectatorReconnectGraceSecs
       : 60,
     extensionSyncPolicy: serializeExtensionSyncPolicy(params.settingsExtensionSyncPolicy),
+    extensionInventorySyncEnabled: params.settingsExtensionInventorySyncEnabled,
+    extensionCurrencySyncEnabled: params.settingsExtensionCurrencySyncEnabled,
+    extensionPartyInventorySyncAccess: params.settingsExtensionPartyInventorySyncAccess,
+    extensionSyncConflictResolution: params.settingsExtensionSyncConflictResolution,
     postSessionChatEnabled: Boolean(params.settingsPostSessionChatEnabled),
     postSessionChatDurationMs:
       toValidPostSessionDurationMinutes(params.settingsPostSessionChatDurationMinutes) * 60_000,
@@ -96,6 +145,7 @@ export function buildCampaignSettingsSavePayload(params: {
       params.settingsLateJoinPolicy === 'OPEN' ? 30 : params.settingsLateJoinGraceMinutes,
     defaultSessionDurationMins: params.settingsDefaultSessionDurationMins,
     supportedPlatforms: params.settingsSupportedPlatforms,
+    dndRuleset: params.settingsDndRuleset,
   }
 }
 

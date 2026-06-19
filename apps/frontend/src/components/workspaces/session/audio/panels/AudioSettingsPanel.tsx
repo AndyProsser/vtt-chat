@@ -125,7 +125,7 @@ export function AudioSettingsPanel({
                 ))}
               </select>
               <span className="session-audio-settings-panel__select-icon" aria-hidden="true">
-                <span className="material-symbols-outlined">arrow_drop_down</span>
+                <Icon name="arrow_drop_down" />
               </span>
             </span>
           </label>
@@ -151,7 +151,7 @@ export function AudioSettingsPanel({
                 ))}
               </select>
               <span className="session-audio-settings-panel__select-icon" aria-hidden="true">
-                <span className="material-symbols-outlined">arrow_drop_down</span>
+                <Icon name="arrow_drop_down" />
               </span>
             </span>
           </label>

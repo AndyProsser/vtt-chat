@@ -66,9 +66,7 @@ export const LeftRailSummary = memo(function LeftRailSummary({
                     className="voice-rail-summary__stat"
                     aria-label={`Connected spectators ${connectedSpectatorsCount}`}
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      visibility
-                    </span>
+                    <Icon name="visibility" />
                     <strong>{connectedSpectatorsCount}</strong>
                   </article>
                 </TooltipTrigger>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from '@/components/ui/Icon'
 
 type InviteType = 'PLAYER' | 'SPECTATOR'
 
@@ -38,9 +39,7 @@ function InviteLinkRow(props: InviteLinkRowProps) {
         onClick={props.onCopy}
         disabled={props.canCopy === false}
       >
-        <span className="material-symbols-outlined" aria-hidden="true">
-          content_copy
-        </span>
+        <Icon name="content_copy" />
       </button>
       {props.showRefresh ? (
         <button
@@ -50,9 +49,7 @@ function InviteLinkRow(props: InviteLinkRowProps) {
           onClick={props.onRefresh}
           disabled={props.canRefresh === false}
         >
-          <span className="material-symbols-outlined" aria-hidden="true">
-            refresh
-          </span>
+          <Icon name="refresh" />
         </button>
       ) : null}
     </div>
@@ -110,9 +107,7 @@ export function InvitePopoverWidget(props: InvitePopoverWidgetProps) {
         aria-haspopup="dialog"
         onClick={() => setIsOpen((value) => !value)}
       >
-        <span className="material-symbols-outlined" aria-hidden="true">
-          person_add
-        </span>
+        <Icon name="person_add" />
         <span>Invite</span>
       </button>
 

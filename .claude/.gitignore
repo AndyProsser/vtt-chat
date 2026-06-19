@@ -1,5 +1,8 @@
 # Trace Logs
 trace/
 
+# Worktrees
+worktrees/
+
 # Local Settings
 !settings.*.json

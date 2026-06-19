@@ -548,7 +548,7 @@
   transform: translateX(-50%);
   max-height: calc(100dvh - 88px);
   overflow-y: auto;
-  width: min(480px, 90vw);
+  width: min(380px, 90vw);
 }
 
 .csp-delete-dialog-title {
@@ -622,5 +622,204 @@
 
 .csp-delete-dialog-confirm:disabled {
   opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* DM Transfer — member picker in dialog */
+
+.csp-dm-transfer-member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem;
+  background: var(--color-surface-subtle);
+}
+
+.csp-dm-transfer-member-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.83rem;
+  text-align: left;
+  color: inherit;
+}
+
+.csp-dm-transfer-member-row:hover {
+  background: color-mix(in srgb, var(--color-brand) 8%, transparent);
+}
+
+.csp-dm-transfer-member-row.is-selected {
+  background: color-mix(in srgb, var(--color-brand) 15%, transparent);
+  border-color: color-mix(in srgb, var(--color-brand) 50%, transparent);
+}
+
+.csp-dm-transfer-member-row.is-selected .csp-dm-transfer-member-primary {
+  color: var(--color-brand);
+}
+
+.csp-dm-transfer-member-check {
+  margin-left: auto;
+  font-size: 1.1rem;
+  color: var(--color-brand);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.csp-dm-transfer-member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.csp-dm-transfer-member-primary {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.csp-dm-transfer-member-class {
+  font-weight: 400;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.csp-dm-transfer-member-secondary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.csp-dm-transfer-member-player {
+  color: var(--color-text-secondary);
+}
+
+.csp-dm-transfer-member-username {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+/* DM Transfer — pending state uses a softer amber color instead of danger red */
+
+.csp-dm-transfer-pending {
+  border-color: color-mix(in srgb, var(--color-warning, #d97706) 35%, transparent);
+  background: color-mix(in srgb, var(--color-warning, #d97706) 5%, var(--color-surface));
+}
+
+.csp-dm-transfer-pending .csp-danger-zone-icon,
+.csp-dm-transfer-pending .csp-danger-zone-title {
+  color: var(--color-warning, #d97706);
+}
+
+.csp-dm-transfer-pending .csp-danger-zone-trigger {
+  border-color: color-mix(in srgb, var(--color-warning, #d97706) 55%, transparent);
+  color: var(--color-warning, #d97706);
+}
+
+.csp-dm-transfer-pending .csp-danger-zone-trigger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-warning, #d97706) 10%, transparent);
+  border-color: var(--color-warning, #d97706);
+}
+
+/* DM Transfer offer banner — fixed notification for target player */
+
+.dm-transfer-offer-banner {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  max-width: min(560px, calc(100vw - 2rem));
+  border: 1px solid color-mix(in srgb, var(--color-brand) 45%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-brand) 10%, var(--color-surface));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.dm-transfer-offer-banner__icon {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  color: var(--color-brand);
+}
+
+.dm-transfer-offer-banner__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dm-transfer-offer-banner__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-brand);
+}
+
+.dm-transfer-offer-banner__message {
+  font-size: 0.84rem;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.dm-transfer-offer-banner__actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.dm-transfer-offer-banner__btn {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background var(--duration-fast),
+    border-color var(--duration-fast);
+}
+
+.dm-transfer-offer-banner__btn--accept {
+  background: var(--color-brand);
+  color: var(--color-text-on-brand, #fff);
+  border-color: var(--color-brand);
+}
+
+.dm-transfer-offer-banner__btn--accept:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-brand) 80%, #000);
+}
+
+.dm-transfer-offer-banner__btn--decline {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: var(--color-border-soft);
+}
+
+.dm-transfer-offer-banner__btn--decline:hover:not(:disabled) {
+  background: var(--color-surface-subtle);
+}
+
+.dm-transfer-offer-banner__btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }

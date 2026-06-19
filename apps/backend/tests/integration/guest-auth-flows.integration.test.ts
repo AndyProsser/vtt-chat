@@ -119,14 +119,33 @@ vi.mock('@/services/lobby/lobby-stats.service', () => ({
   getLobbyStatsSnapshot: (...args: unknown[]) => mocks.mockGetLobbyStatsSnapshot(...args),
 }))
 
-import authRoutes from '@/api/auth.routes'
+// auth-join.routes.ts also imports self-service-auth and handoff.service, neither of
+// which is exercised by any test in this file. Stub them out rather than letting them
+// resolve for real — the real self-service-auth chain pulls in email.service, which
+// trips a pre-existing '@shared/jobs/index' path-alias resolution issue under vitest.
+vi.mock('@/services/self-service-auth', () => ({
+  suggestAvailableUsername: vi.fn(),
+  registerFullAccount: vi.fn(),
+  requestPasswordReset: vi.fn(),
+  verifyPasswordResetToken: vi.fn(),
+  completePasswordReset: vi.fn(),
+}))
+
+vi.mock('@/services/handoff.service', () => ({
+  issueHandoffToken: vi.fn(),
+  consumeHandoffToken: vi.fn(),
+}))
+
+import authJoinRoutes from '@/api/auth-join.routes'
+import authExtensionRoutes from '@/api/auth-extension.routes'
 import campaignRoutes from '@/api/campaign.routes'
 import platformRoutes from '@/api/platform.routes'
 
 function buildApp() {
   const app = express()
   app.use(express.json())
-  app.use('/api/auth', authRoutes)
+  app.use('/api/auth', authJoinRoutes)
+  app.use('/api/auth', authExtensionRoutes)
   app.use('/api/campaigns', campaignRoutes)
   app.use('/api/platform', platformRoutes)
   return app
@@ -338,7 +357,7 @@ describe('guest and spectator multi-step flows', () => {
     expect(watchValidate.status).toBe(200)
     expect(watchValidate.body.valid).toBe(true)
 
-    const spectatorJoin = await request(app).post('/api/auth/spectator/guest-join').send({
+    const spectatorJoin = await request(app).post('/api/auth/join/guest/spectator').send({
       spectatorInviteCode: 'SPEC123',
       email: 'spectator@example.com',
       displayName: 'Spectator User',

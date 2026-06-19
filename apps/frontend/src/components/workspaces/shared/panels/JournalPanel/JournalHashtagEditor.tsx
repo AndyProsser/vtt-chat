@@ -1,4 +1,5 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
+import { Icon } from '@/components/ui/Icon'
 
 interface JournalHashtagEditorProps {
   isEditing: boolean
@@ -48,9 +49,7 @@ export function JournalHashtagEditor({
                     onClick={onTagHelp}
                     aria-label="Insert Recommended Tags"
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      sell
-                    </span>
+                    <Icon name="sell" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">Insert Recommended Tags</TooltipContent>
