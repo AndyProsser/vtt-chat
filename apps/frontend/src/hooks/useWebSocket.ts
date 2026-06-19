@@ -26,6 +26,8 @@ export interface UseWebSocketOptions {
   onCampaignListInvalidated?: (event: EventEnvelope) => void
   onLobbyStatsUpdated?: (event: EventEnvelope) => void
   onPartyPresenceUpdated?: (event: EventEnvelope) => void
+  /** Fired when PRESENCE:PROFILE_UPDATED arrives for the authenticated user. */
+  onOwnProfileUpdated?: () => void
 }
 
 export interface UseWebSocketReturn {
@@ -51,6 +53,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     onCampaignListInvalidated,
     onLobbyStatsUpdated,
     onPartyPresenceUpdated,
+    onOwnProfileUpdated,
   } = options
 
   const [state, setState] = useState<ConnectionState>('disconnected')
@@ -63,6 +66,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     useRef<typeof onCampaignListInvalidated>(onCampaignListInvalidated)
   const onLobbyStatsUpdatedRef = useRef<typeof onLobbyStatsUpdated>(onLobbyStatsUpdated)
   const onPartyPresenceUpdatedRef = useRef<typeof onPartyPresenceUpdated>(onPartyPresenceUpdated)
+  const onOwnProfileUpdatedRef = useRef<typeof onOwnProfileUpdated>(onOwnProfileUpdated)
 
   useEffect(() => {
     onAuthFailureRef.current = onAuthFailure
@@ -79,6 +83,10 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   useEffect(() => {
     onPartyPresenceUpdatedRef.current = onPartyPresenceUpdated
   }, [onPartyPresenceUpdated])
+
+  useEffect(() => {
+    onOwnProfileUpdatedRef.current = onOwnProfileUpdated
+  }, [onOwnProfileUpdated])
 
   // Initialize WebSocket client and dispatcher
   useEffect(() => {
@@ -369,6 +377,12 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     })
     dispatcher.register('PRESENCE:PROFILE_UPDATED', (event) => {
       useStore.getState().handlePresenceProfileUpdated(event)
+      const store = useStore.getState()
+      const currentUserId = (store as any).currentUser?.id as UUID | undefined
+      const payloadUserId = (event.payload as { userId?: UUID })?.userId
+      if (currentUserId && payloadUserId === currentUserId) {
+        onOwnProfileUpdatedRef.current?.()
+      }
     })
 
     // Audio events

@@ -180,6 +180,7 @@ export function WorkspaceInitialization({
   const [messageGroupingWindowMs, setMessageGroupingWindowMs] = useState<number>(
     getInitialMessageGroupingWindowMs
   )
+  const loadUserCharactersRef = useRef<(() => Promise<void>) | null>(null)
   const lobbyAutoEnterTriggeredRef = useRef(false)
   const pendingGreenroomCarryBySessionIdRef = useRef<Map<UUID, UUID>>(new Map())
   const hasSignaledReadyRef = useRef(false)
@@ -316,6 +317,9 @@ export function WorkspaceInitialization({
     onCampaignListInvalidated: handleCampaignListInvalidated,
     onLobbyStatsUpdated: handleLobbyStatsUpdated,
     onPartyPresenceUpdated: handlePartyPresenceUpdated,
+    onOwnProfileUpdated: useCallback(() => {
+      loadUserCharactersRef.current?.()
+    }, []),
   })
 
   useSpeakingPresenceSync({
@@ -409,6 +413,12 @@ export function WorkspaceInitialization({
       setError,
       setLobbyNotice,
     })
+
+  // Keep the ref in sync so onOwnProfileUpdated (passed to useWebSocket above)
+  // always calls the latest loadUserCharacters without being re-created.
+  useEffect(() => {
+    loadUserCharactersRef.current = loadUserCharacters
+  }, [loadUserCharacters])
 
   useWorkspacesSettingsStateBridge({
     currentSession,
