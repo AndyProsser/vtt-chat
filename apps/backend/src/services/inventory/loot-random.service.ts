@@ -207,6 +207,50 @@ function addCoins(
   return { cp: a.cp + b.cp, sp: a.sp + b.sp, ep: a.ep + b.ep, gp: a.gp + b.gp, pp: a.pp + b.pp }
 }
 
+/**
+ * Apply CR-based coin conversions:
+ * - PP (platinum): only for CR 10+. Below CR 10, convert to GP (1pp -> 10gp).
+ *   At CR 10+, 50% of PP converts to GP, 50% stays as PP.
+ * - EP (electrum): only for CR 5+. Below CR 5, convert to SP (1ep -> 5sp).
+ *   At CR 5+, 50% of EP converts to SP, 50% stays as EP.
+ */
+function applyCRBasedCoinConversions(
+  coins: { cp: number; sp: number; ep: number; gp: number; pp: number },
+  cr: number
+): { cp: number; sp: number; ep: number; gp: number; pp: number } {
+  let result = { ...coins }
+
+  // PP: only exists for CR 10+
+  if (result.pp > 0) {
+    if (cr < 10) {
+      // Convert all PP to GP
+      result.gp += result.pp * 10
+      result.pp = 0
+    } else {
+      // For CR 10+, 50% of PP converts to GP, 50% stays as PP
+      const toConvert = Math.floor(result.pp / 2)
+      result.gp += toConvert * 10
+      result.pp -= toConvert
+    }
+  }
+
+  // EP: only exists for CR 5+
+  if (result.ep > 0) {
+    if (cr < 5) {
+      // Convert all EP to SP
+      result.sp += result.ep * 5
+      result.ep = 0
+    } else {
+      // For CR 5+, 50% of EP converts to SP, 50% stays as EP
+      const toConvert = Math.floor(result.ep / 2)
+      result.sp += toConvert * 5
+      result.ep -= toConvert
+    }
+  }
+
+  return result
+}
+
 function generateCoins(
   cr: number,
   hoard: boolean,
@@ -218,14 +262,14 @@ function generateCoins(
   if (hoard) {
     const base = resolveHoardTreasureCoin(cr, rollDie)
     // Scale by player count and CR ratio; hoard is a shared pile
-    const multiplier = playerCount * crRatio
-    return {
-      cp: Math.round(base.cp * multiplier),
-      sp: Math.round(base.sp * multiplier),
-      ep: Math.round(base.ep * multiplier),
-      gp: Math.round(base.gp * multiplier),
-      pp: Math.round(base.pp * multiplier),
+    const scaled = {
+      cp: Math.round(base.cp * playerCount * crRatio),
+      sp: Math.round(base.sp * playerCount * crRatio),
+      ep: Math.round(base.ep * playerCount * crRatio),
+      gp: Math.round(base.gp * playerCount * crRatio),
+      pp: Math.round(base.pp * playerCount * crRatio),
     }
+    return applyCRBasedCoinConversions(scaled, cr)
   }
 
   // Non-hoard: sum N individual rolls where N ≈ 50–75% of player count
@@ -234,7 +278,7 @@ function generateCoins(
   for (let i = 0; i < rolls; i++) {
     total = addCoins(total, resolveIndividualTreasureCoin(cr, rollDie(100), rollDie))
   }
-  return total
+  return applyCRBasedCoinConversions(total, cr)
 }
 
 // ─── Main generator ───────────────────────────────────────────────────────────
