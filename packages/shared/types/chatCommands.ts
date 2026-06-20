@@ -82,10 +82,10 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
   {
     name: 'loot',
     slash: '/loot',
-    syntax: '/loot [item name] [qty?]',
+    syntax: '/loot [items] — comma-separated list',
     description:
-      'Add a named item to the party inventory. Quantity defaults to 1. Produces a system chat message.',
-    example: '/loot Potion of Healing 2',
+      'Add items and/or currency to the party inventory in one command. Each comma-separated entry can be a currency amount (25gp, 3sp), an item with leading quantity (3x daggers), trailing quantity (dart x5), or a plain name (Shortsword). Values in parentheses are notes, not parsed as currency. SRD items are auto-matched.',
+    example: '/loot 25gp, 3x daggers, Potion of Healing, 2x gems (25gp), dart x5',
     roles: [Role.DM],
     availableInStates: [SessionState.ACTIVE],
   },

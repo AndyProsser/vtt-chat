@@ -297,6 +297,64 @@ export const ALL_ITEMS_BY_RARITY: Record<LootRarity, LootTableItem[]> = {
   artifact: ARTIFACT_ITEMS,
 }
 
+export const ALL_SRD_ITEMS: LootTableItem[] = [
+  ...MUNDANE_ITEMS,
+  ...COMMON_ITEMS,
+  ...UNCOMMON_ITEMS,
+  ...RARE_ITEMS,
+  ...VERY_RARE_ITEMS,
+  ...LEGENDARY_ITEMS,
+  ...ARTIFACT_ITEMS,
+]
+
+/**
+ * Fuzzy-match an item name string against the full SRD catalogue.
+ * Match order (first hit wins):
+ *   1. Exact (case-insensitive)
+ *   2. Singular — strip trailing 's' or 'es'
+ *   3. Without parenthetical notes — "gems (25gp)" → "gems"
+ *   4. Input is a prefix of the SRD item name — "shortsword" → "Shortsword"
+ *   5. SRD item name is a prefix of the input — "Dagger of Venom" prefix = "Dagger" matches input "Dagger of Venom"
+ * Returns null if no match found; caller treats the item as CUSTOM.
+ */
+export function matchSrdItem(name: string): LootTableItem | null {
+  const clean = name.trim()
+  // Strip parenthetical notes for matching
+  const stripped = clean.replace(/\s*\(.*?\)\s*/g, '').trim()
+
+  const lower = clean.toLowerCase()
+  const strippedLower = stripped.toLowerCase()
+
+  // 1. Exact
+  let hit = ALL_SRD_ITEMS.find((i) => i.name.toLowerCase() === lower)
+  if (hit) return hit
+
+  // 2. Stripped (removes parenthetical value notes)
+  if (strippedLower !== lower) {
+    hit = ALL_SRD_ITEMS.find((i) => i.name.toLowerCase() === strippedLower)
+    if (hit) return hit
+  }
+
+  // 3. Singular form — strip 's' or 'es'
+  const singulars: string[] = []
+  if (strippedLower.endsWith('es')) singulars.push(strippedLower.slice(0, -2))
+  if (strippedLower.endsWith('s')) singulars.push(strippedLower.slice(0, -1))
+  for (const s of singulars) {
+    hit = ALL_SRD_ITEMS.find((i) => i.name.toLowerCase() === s)
+    if (hit) return hit
+  }
+
+  // 4. Prefix: input starts with SRD item name (e.g. "Shortsword +1" → "Shortsword")
+  hit = ALL_SRD_ITEMS.find((i) => strippedLower.startsWith(i.name.toLowerCase() + ' ') || strippedLower === i.name.toLowerCase())
+  if (hit) return hit
+
+  // 5. Prefix: SRD name starts with input (e.g. "Potion of Healing" matches "potion of healing")
+  hit = ALL_SRD_ITEMS.find((i) => i.name.toLowerCase().startsWith(strippedLower + ' ') || i.name.toLowerCase() === strippedLower)
+  if (hit) return hit
+
+  return null
+}
+
 // ─── DMG Individual Treasure Table (per monster CR band) ─────────────────────
 // Each row: { roll: [min, max], cp, sp, ep, gp, pp }
 // All multiplied per roll — roll d100 to select the row.

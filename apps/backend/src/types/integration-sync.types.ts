@@ -5,9 +5,14 @@ type SyncSkipReason = 'SYNC_POLICY_DISABLED' | 'SYNC_POLICY_PARTY_ACCESS_DENIED'
  * `characterUpdate`/`campaignUpdate` are always present. Every other key is only present when its
  * corresponding request section (`inventoryUpdate`, `currencyUpdate`, `partyInventoryUpdate`,
  * `partyCurrencyUpdate`) was present in the request — see docs/extension/EXTENSION-INTEGRATION.md §5d.
+ *
+ * `characterUpdateApplied`: true = character was found by externalId and updated;
+ * false = characterUpdate was present but the character was not found in the DB (externalId mismatch).
+ * Absent when no characterUpdate was in the request.
  */
 type SyncOutcome = {
   characterUpdate: boolean
+  characterUpdateApplied?: boolean
   campaignUpdate: boolean
   inventoryItemsUpserted?: number
   currencyUpdated?: boolean

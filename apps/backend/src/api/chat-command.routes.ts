@@ -39,6 +39,7 @@ import {
 import { findOrCreateCurrencyWallet } from '@/repositories/inventory.repository'
 import { parseLootRandomArgs, generateLoot, buildLootSummaryMessage, formatCoins } from '@/services/inventory/loot-random.service'
 import { createLootSplit } from '@/services/inventory/loot-split.service'
+import { matchSrdItem } from '@/services/inventory/loot-tables'
 import crypto from 'node:crypto'
 
 const router = Router()
@@ -442,6 +443,9 @@ function isCurrencyOnlyArgs(args: string): boolean {
   const leftover = trimmed.replace(/\d+(pp|gp|ep|sp|cp)/gi, '').trim()
   return leftover.length === 0
 }
+
+// ─── Loot list parser (imported from shared utility) ──────────────────────────
+import { parseLootList } from '@/services/inventory/loot-list-parser'
 
 // ─── Insufficient-funds quips (50) ────────────────────────────────────────────
 // One is picked at random and broadcast as a SYSTEM message visible to all.
@@ -1172,10 +1176,19 @@ async function handleDropCommand({
 }
 
 /**
- * /loot [item name] [qty?]
- * DM-only. Adds a named item to the party inventory. The last token is treated
- * as quantity if it is a whole positive number; everything else is the item name.
- * Produces INVENTORY:ITEM_ADDED WS event + system chat message.
+ * /loot [comma-separated list]
+ * Adds items and/or currency to the party inventory in one command.
+ *
+ * Each comma-separated token is classified as:
+ *   - Pure currency if it matches exactly `{digits}{denom}` (25sp, 3gp, 1cp)
+ *   - Item otherwise, with optional leading/trailing quantity:
+ *       "3x daggers", "dart x5", "Potion of Healing", "2x gems (25gp)"
+ *
+ * Currency tokens are aggregated and applied in a single adjustCurrency call.
+ * Item names in parentheses are preserved as-is (not parsed as currency).
+ * SRD matching is attempted for each item; unmatched items are stored as CUSTOM.
+ *
+ * A single consolidated system chat message summarises the whole batch.
  */
 async function handleLootCommand({
   req,
@@ -1206,32 +1219,14 @@ async function handleLootCommand({
     }
   }
 
-  if (!args) {
+  if (!args?.trim()) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
-      message: 'Usage: /loot [item name] [qty?] — e.g. /loot Potion of Healing 2',
+      message:
+        'Usage: /loot [items] — e.g. /loot 25gp, 3x daggers, Potion of Healing, 2x gems (25gp)',
     })
   }
 
-  // Split off trailing integer token as quantity if present
-  const tokens = args.trim().split(/\s+/)
-  let quantity = 1
-  let nameTokens = tokens
-  const lastToken = tokens[tokens.length - 1]
-  if (tokens.length > 1 && /^\d+$/.test(lastToken)) {
-    const parsed = parseInt(lastToken, 10)
-    if (parsed >= 1 && parsed <= 9999) {
-      quantity = parsed
-      nameTokens = tokens.slice(0, -1)
-    }
-  }
-  const itemName = nameTokens.join(' ').trim()
-  if (!itemName) {
-    return res.status(400).json({
-      code: ErrorCode.INVALID_INPUT,
-      message: 'Usage: /loot [item name] [qty?] — item name is required.',
-    })
-  }
   if (!rawSession?.campaignId) {
     return res
       .status(400)
@@ -1239,49 +1234,112 @@ async function handleLootCommand({
   }
   const campaignId = rawSession.campaignId as UUID
 
-  const item = await addInventoryItem({
-    campaignId,
-    ownerType: 'party',
-    ownerId: null,
-    name: itemName,
-    quantity,
-    source: InventoryItemSource.CUSTOM,
-    srdCategory: InventoryItemCategory.EQUIPMENT,
-    addedByUserId: effective.userId,
-    sessionId,
-  })
+  const { currencies, items } = parseLootList(args)
 
-  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-  if (wsManager) {
-    const event: EventEnvelope = {
-      id: crypto.randomUUID() as UUID,
-      type: 'INVENTORY:ITEM_ADDED',
-      version: 1,
-      userId: effective.userId,
-      userRole: requesterRole as any,
-      sessionId,
-      roomId: null,
-      timestamp: item.createdAt,
-      payload: {
-        campaignId: item.campaignId,
-        itemId: item.id,
-        ownerType: item.ownerType,
-        ownerId: item.ownerId,
-        name: item.name,
-        quantity: item.quantity,
-        source: item.source,
-        srdKey: item.srdKey,
-        srdCategory: item.srdCategory,
-        notes: item.notes,
-        addedByUserId: item.addedByUserId,
-        addedAt: item.createdAt,
-      },
-    }
-    await wsManager.broadcastToCampaignMembers(campaignId, event)
+  if (Object.keys(currencies).length === 0 && items.length === 0) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'No valid items or currency found. Use e.g. /loot 10gp, shortsword, 3x daggers',
+    })
   }
 
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  const addedItems: Awaited<ReturnType<typeof addInventoryItem>>[] = []
+
+  // ── Add each item ───────────────────────────────────────────────────────────
+  for (const parsed of items) {
+    const srdMatch = matchSrdItem(parsed.rawName)
+    const item = await addInventoryItem({
+      campaignId,
+      ownerType: 'party',
+      ownerId: null,
+      name: srdMatch?.name ?? parsed.rawName,
+      quantity: parsed.quantity,
+      source: srdMatch ? InventoryItemSource.SRD : InventoryItemSource.CUSTOM,
+      srdKey: srdMatch?.srdKey,
+      srdCategory:
+        srdMatch?.rarity === 'mundane'
+          ? InventoryItemCategory.EQUIPMENT
+          : srdMatch
+            ? InventoryItemCategory.MAGIC_ITEM
+            : InventoryItemCategory.EQUIPMENT,
+      addedByUserId: effective.userId,
+      sessionId,
+    })
+    addedItems.push(item)
+
+    if (wsManager) {
+      const event: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'INVENTORY:ITEM_ADDED',
+        version: 1,
+        userId: effective.userId,
+        userRole: requesterRole as any,
+        sessionId,
+        roomId: null,
+        timestamp: item.createdAt,
+        payload: {
+          campaignId: item.campaignId,
+          itemId: item.id,
+          ownerType: item.ownerType,
+          ownerId: item.ownerId,
+          name: item.name,
+          quantity: item.quantity,
+          source: item.source,
+          srdKey: item.srdKey,
+          srdCategory: item.srdCategory,
+          notes: item.notes,
+          addedByUserId: item.addedByUserId,
+          addedAt: item.createdAt,
+        },
+      }
+      await wsManager.broadcastToCampaignMembers(campaignId, event)
+    }
+  }
+
+  // ── Apply currency ──────────────────────────────────────────────────────────
+  const hasCurrency = Object.keys(currencies).length > 0
+  if (hasCurrency) {
+    const wallet = await adjustCurrency({
+      campaignId,
+      ownerType: 'party',
+      ownerId: null,
+      delta: currencies,
+      actorUserId: effective.userId,
+    })
+
+    if (wsManager) {
+      const currencyEvent: EventEnvelope = {
+        id: crypto.randomUUID() as UUID,
+        type: 'INVENTORY:CURRENCY_CHANGED',
+        version: 1,
+        userId: effective.userId,
+        userRole: requesterRole as any,
+        sessionId,
+        roomId: null,
+        timestamp: Date.now(),
+        payload: {
+          campaignId,
+          ownerType: 'party',
+          ownerId: null,
+          wallet,
+          delta: currencies,
+          changedByUserId: effective.userId,
+        },
+      }
+      await wsManager.broadcastToCampaignMembers(campaignId, currencyEvent)
+    }
+  }
+
+  // ── Single consolidated chat message ────────────────────────────────────────
+  const itemParts = addedItems.map(
+    (i) => `${i.name}${i.quantity > 1 ? ` ×${i.quantity}` : ''}`
+  )
+  const coinPart = hasCurrency ? formatCurrencyAmounts(currencies) : null
+  const allParts = [...itemParts, ...(coinPart ? [coinPart] : [])]
+  const content = `[Loot] ${allParts.join(', ')} added to party inventory.`
+
   const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
-  const content = `[Loot] ${item.name}${item.quantity > 1 ? ` ×${item.quantity}` : ''} added to party inventory.`
   const chatMessage = await sendMessage({
     sessionId,
     roomId,
@@ -1295,11 +1353,14 @@ async function handleLootCommand({
   })
 
   if (wsManager) {
-    const msgEvent = buildMessageSentEvent(chatMessage, effective.userId, requesterRole)
-    wsManager.broadcastEventToSession(sessionId, msgEvent, chatMessage.visibleTo)
+    wsManager.broadcastEventToSession(
+      sessionId,
+      buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+      chatMessage.visibleTo
+    )
   }
 
-  return res.status(201).json({ item, message: chatMessage })
+  return res.status(201).json({ items: addedItems, currencies, message: chatMessage })
 }
 
 /**
