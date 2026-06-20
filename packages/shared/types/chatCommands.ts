@@ -45,7 +45,7 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     description: 'Roll dice. Results are resolved server-side and visible to everyone in the room.',
     example: '/roll 1d20+5',
     roles: [Role.DM, Role.PLAYER],
-    availableInStates: [SessionState.ACTIVE],
+    availableInStates: [SessionState.IDLE, SessionState.ACTIVE],
   },
   {
     name: 'me',
@@ -209,6 +209,7 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     example: '/loot 25gp, 3x daggers, Potion of Healing, 2x gems (25gp), dart x5',
     roles: [Role.DM],
     availableInStates: [
+      SessionState.IDLE,
       SessionState.ACTIVE,
       SessionState.PAUSED,
       SessionState.COOLDOWN,
@@ -224,6 +225,7 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     example: '/loot-split Potion of Healing 4',
     roles: [Role.DM],
     availableInStates: [
+      SessionState.IDLE,
       SessionState.ACTIVE,
       SessionState.PAUSED,
       SessionState.COOLDOWN,
@@ -239,6 +241,7 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     example: '/loot-random 8 rare hoard',
     roles: [Role.DM],
     availableInStates: [
+      SessionState.IDLE,
       SessionState.ACTIVE,
       SessionState.PAUSED,
       SessionState.COOLDOWN,
