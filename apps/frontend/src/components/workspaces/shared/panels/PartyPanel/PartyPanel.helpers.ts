@@ -194,13 +194,15 @@ export function buildSnapshotWithLivePresence(
   }
 
   if (livePresence.state) {
-    const nextStatus = livePresence.primaryRoomId
-      ? livePresence.state === PresenceState.IDLE
-        ? 'AWAY'
-        : 'HERE'
-      : mapPresenceStateToUiStatus(livePresence.state) === 'away'
-        ? 'AWAY'
-        : merged.status
+    // Derive status purely from presence state — primaryRoomId is preserved on
+    // disconnect, so using it here caused OFFLINE users (with a room still set)
+    // to appear as HERE, and ONLINE users without a room yet to stay stale OFFLINE.
+    const nextStatus: PartyPresenceStatus =
+      livePresence.state === PresenceState.OFFLINE
+        ? 'OFFLINE'
+        : livePresence.state === PresenceState.IDLE
+          ? 'AWAY'
+          : 'HERE'
 
     if (nextStatus !== merged.status) {
       usedLivePresence = true
