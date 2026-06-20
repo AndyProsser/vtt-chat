@@ -7,6 +7,7 @@
 
 import { randomUUID } from 'node:crypto'
 import type { UUID, CurrencyWallet } from '@shared'
+import { getPrismaClient } from '@/infra/db'
 import {
   createPendingExtensionSyncRecord,
   listPendingExtensionSyncs,
@@ -21,6 +22,8 @@ import {
   type InventoryItemDto,
   type CurrencyWalletDto,
 } from '@/services/inventory/inventory.service'
+
+const prisma = getPrismaClient()
 
 export interface PendingExtensionSyncDto {
   id: UUID
@@ -121,11 +124,19 @@ export async function approvePendingSync(params: {
   const row = await findPendingExtensionSyncById(params.pendingId, params.campaignId)
   if (!row) return { ok: false, code: 'NOT_FOUND' }
 
+  // ownerId for items/wallets must be the character's userId (same identifier the frontend
+  // and chat commands use), not character.id (the character's own PK UUID).
+  const character = await prisma.character.findUnique({
+    where: { id: row.characterId },
+    select: { userId: true },
+  })
+  const ownerId = (character?.userId ?? row.characterId) as UUID
+
   if (row.kind === 'ITEM') {
     const incoming = row.incomingPayload as ExternalInventoryItemInput
     const result = await syncExternalInventoryItems({
       campaignId: params.campaignId,
-      ownerId: row.characterId as UUID,
+      ownerId,
       externalSource: row.externalSource,
       items: [incoming],
       actorUserId: params.actorUserId,
@@ -138,7 +149,7 @@ export async function approvePendingSync(params: {
   const incomingWallet = row.incomingPayload as Partial<CurrencyWallet>
   const wallet = await setExternalCurrencyWallet({
     campaignId: params.campaignId,
-    ownerId: row.characterId as UUID,
+    ownerId,
     wallet: incomingWallet,
     actorUserId: params.actorUserId,
     sessionId: params.sessionId,

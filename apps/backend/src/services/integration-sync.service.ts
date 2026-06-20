@@ -282,7 +282,7 @@ export async function syncExternalIntegration(params: {
 
     const character = await prisma.character.findFirst({
       where: { campaignId: params.campaignId, externalId: externalCharacterId, externalSystem: params.externalSystem },
-      select: { id: true },
+      select: { id: true, userId: true },
     })
 
     if (character) {
@@ -290,7 +290,7 @@ export async function syncExternalIntegration(params: {
       if (validatedItems.length > 0) {
         const { upserted, pendingConflicts: queued } = await applyItemsSection({
           campaignId: params.campaignId as UUID,
-          ownerId: character.id as UUID,
+          ownerId: character.userId as UUID,
           ownerType: 'character',
           externalSource: params.externalSystem,
           items: validatedItems,
@@ -324,13 +324,13 @@ export async function syncExternalIntegration(params: {
 
     const character = await prisma.character.findFirst({
       where: { campaignId: params.campaignId, externalId: externalCharacterId, externalSystem: params.externalSystem },
-      select: { id: true },
+      select: { id: true, userId: true },
     })
 
     if (character && wallet && typeof wallet === 'object') {
       const { updated, pendingConflicts: queued } = await applyCurrencySection({
         campaignId: params.campaignId as UUID,
-        ownerId: character.id as UUID,
+        ownerId: character.userId as UUID,
         ownerType: 'character',
         externalSource: params.externalSystem,
         wallet: sanitizeExternalWallet(wallet),
