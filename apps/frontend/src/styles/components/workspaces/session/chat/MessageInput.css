@@ -542,4 +542,16 @@
   margin-left: auto;
 }
 
+.chat-command-palette__item--compact {
+  flex-wrap: nowrap;
+  padding: 0.28rem 0.65rem;
+}
+
+.chat-command-palette__item--compact .chat-command-palette__item-syntax {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 /* Light-mode readability pass: keep hue families, increase contrast on light surfaces. */

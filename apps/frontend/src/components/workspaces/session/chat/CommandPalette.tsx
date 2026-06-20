@@ -11,9 +11,11 @@ interface CommandPaletteProps {
   commands: ChatCommandDefinition[]
   onSelect: (command: ChatCommandDefinition) => void
   onDismiss: () => void
+  /** When true (all commands shown, just "/" typed), hides description text to keep the list compact. */
+  compact?: boolean
 }
 
-function CommandPaletteComponent({ commands, onSelect, onDismiss }: CommandPaletteProps) {
+function CommandPaletteComponent({ commands, onSelect, onDismiss, compact }: CommandPaletteProps) {
   const [activeIndex, setActiveIndex] = useState(0)
   const listRef = useRef<HTMLUListElement>(null)
 
@@ -52,7 +54,7 @@ function CommandPaletteComponent({ commands, onSelect, onDismiss }: CommandPalet
             key={cmd.name}
             role="option"
             aria-selected={index === activeIndex}
-            className={`chat-command-palette__item ${index === activeIndex ? 'chat-command-palette__item--active' : ''}`}
+            className={`chat-command-palette__item ${index === activeIndex ? 'chat-command-palette__item--active' : ''} ${compact ? 'chat-command-palette__item--compact' : ''}`}
             onMouseEnter={() => setActiveIndex(index)}
             onMouseDown={(e) => {
               e.preventDefault()
@@ -61,7 +63,9 @@ function CommandPaletteComponent({ commands, onSelect, onDismiss }: CommandPalet
           >
             <span className="chat-command-palette__item-slash">{cmd.slash}</span>
             <span className="chat-command-palette__item-syntax">{cmd.syntax.slice(cmd.slash.length).trim()}</span>
-            <span className="chat-command-palette__item-description">{cmd.description}</span>
+            {!compact && (
+              <span className="chat-command-palette__item-description">{cmd.description}</span>
+            )}
           </li>
         ))}
       </ul>

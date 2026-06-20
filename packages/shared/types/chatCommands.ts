@@ -10,17 +10,18 @@ import { Role, SessionState } from './index'
 export type ChatCommandName =
   | 'roll'
   | 'me'
-  | 'whisper'
+  | 'ic'
   | 'ooc'
+  | 'whisper'
   | 'dm'
-  | 'loot'
-  | 'loot-random'
   | 'take'
   | 'give'
   | 'drop'
   | 'spend'
   | 'earn'
+  | 'loot'
   | 'loot-split'
+  | 'loot-random'
 
 export interface ChatCommandDefinition {
   name: ChatCommandName
@@ -53,11 +54,11 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     availableInStates: [SessionState.ACTIVE],
   },
   {
-    name: 'whisper',
-    slash: '/whisper',
-    syntax: '/whisper @{player} [message]',
-    description: 'Whisper to a specific player. Same privacy rules as direct whisper.',
-    example: '/whisper @Aria You notice the lock is already broken.',
+    name: 'ic',
+    slash: '/ic',
+    syntax: '/ic [message]',
+    description: 'Send an in-character message regardless of the current IC/OOC mode toggle.',
+    example: '/ic I draw my sword and advance.',
     roles: [Role.DM, Role.PLAYER],
     availableInStates: [SessionState.ACTIVE],
   },
@@ -68,7 +69,16 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     description: 'Send an out-of-character message regardless of the current IC/OOC mode toggle.',
     example: '/OOC brb two minutes',
     roles: [Role.DM, Role.PLAYER],
-    availableInStates: [SessionState.ACTIVE, SessionState.PAUSED, SessionState.COOLDOWN],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'whisper',
+    slash: '/whisper',
+    syntax: '/whisper @{player} [message]',
+    description: 'Whisper to a specific player. Same privacy rules as direct whisper.',
+    example: '/whisper @Aria You notice the lock is already broken.',
+    roles: [Role.DM, Role.PLAYER],
+    availableInStates: [SessionState.ACTIVE],
   },
   {
     name: 'dm',
@@ -77,27 +87,7 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     description: 'Send a private message to the DM only. Other players cannot see it.',
     example: '/dm I want to pick the lock secretly',
     roles: [Role.PLAYER],
-    availableInStates: [SessionState.ACTIVE],
-  },
-  {
-    name: 'loot',
-    slash: '/loot',
-    syntax: '/loot [items] — comma-separated list',
-    description:
-      'Add items and/or currency to the party inventory in one command. Each comma-separated entry can be a currency amount (25gp, 3sp), an item with leading quantity (3x daggers), trailing quantity (dart x5), or a plain name (Shortsword). Values in parentheses are notes, not parsed as currency. SRD items are auto-matched.',
-    example: '/loot 25gp, 3x daggers, Potion of Healing, 2x gems (25gp), dart x5',
-    roles: [Role.DM],
-    availableInStates: [SessionState.ACTIVE],
-  },
-  {
-    name: 'take',
-    slash: '/take',
-    syntax: '/take [item name] [qty?]',
-    description:
-      'Take an item from the party inventory into your own. Quantity defaults to 1. Requires the /take campaign permission.',
-    example: '/take Potion of Healing',
-    roles: [Role.PLAYER],
-    availableInStates: [SessionState.ACTIVE],
+    availableInStates: [SessionState.ACTIVE, SessionState.PAUSED],
   },
   {
     name: 'give',
@@ -107,16 +97,45 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
       'Give an item from your inventory to the party or another player. Requires the /give campaign permission.',
     example: '/give @party Torch 5',
     roles: [Role.DM, Role.PLAYER],
-    availableInStates: [SessionState.ACTIVE],
+    availableInStates: [
+      SessionState.IDLE,
+      SessionState.ACTIVE,
+      SessionState.PAUSED,
+      SessionState.COOLDOWN,
+      SessionState.ENDED,
+    ],
+  },
+  {
+    name: 'take',
+    slash: '/take',
+    syntax: '/take [item name] [qty?]',
+    description:
+      'Take an item from the party inventory into your own. Quantity defaults to 1. Requires the /take campaign permission.',
+    example: '/take Potion of Healing',
+    roles: [Role.PLAYER],
+    availableInStates: [
+      SessionState.IDLE,
+      SessionState.ACTIVE,
+      SessionState.PAUSED,
+      SessionState.COOLDOWN,
+      SessionState.ENDED,
+    ],
   },
   {
     name: 'drop',
     slash: '/drop',
     syntax: '/drop [item name] [qty?]',
-    description: 'Remove an item from your inventory. Quantity defaults to all. Requires confirmation.',
+    description:
+      'Remove an item from your inventory. Quantity defaults to all. Requires confirmation.',
     example: '/drop Broken Arrow 3',
     roles: [Role.DM, Role.PLAYER],
-    availableInStates: [SessionState.ACTIVE],
+    availableInStates: [
+      SessionState.IDLE,
+      SessionState.ACTIVE,
+      SessionState.PAUSED,
+      SessionState.COOLDOWN,
+      SessionState.ENDED,
+    ],
   },
   {
     name: 'spend',
@@ -126,17 +145,42 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
       'Spend coins from your own wallet (character if player, party purse if DM). Cannot spend more than you have — attempting to do so produces a public dry-humor message.',
     example: '/spend 1gp 3sp 33cp',
     roles: [Role.DM, Role.PLAYER],
-    availableInStates: [SessionState.ACTIVE],
+    availableInStates: [
+      SessionState.ACTIVE,
+      SessionState.PAUSED,
+      SessionState.COOLDOWN,
+      SessionState.ENDED,
+    ],
   },
   {
     name: 'earn',
     slash: '/earn',
     syntax: '/earn [currency]',
     description:
-      'Credit coins to your own wallet (character if player, party purse if DM). Use for shop sales, individual rewards, or any inflow that isn\'t a shared loot drop.',
+      "Credit coins to your own wallet (character if player, party purse if DM). Use for shop sales, individual rewards, or any inflow that isn't a shared loot drop.",
     example: '/earn 10gp 35sp',
     roles: [Role.DM, Role.PLAYER],
-    availableInStates: [SessionState.ACTIVE],
+    availableInStates: [
+      SessionState.ACTIVE,
+      SessionState.PAUSED,
+      SessionState.COOLDOWN,
+      SessionState.ENDED,
+    ],
+  },
+  {
+    name: 'loot',
+    slash: '/loot',
+    syntax: '/loot [items] — comma-separated list',
+    description:
+      'Add items and/or currency to the party inventory in one command. Each comma-separated entry can be a currency amount (25gp, 3sp), an item with leading quantity (3x daggers), trailing quantity (dart x5), or a plain name (Shortsword). Values in parentheses are notes, not parsed as currency. SRD items are auto-matched.',
+    example: '/loot 25gp, 3x daggers, Potion of Healing, 2x gems (25gp), dart x5',
+    roles: [Role.DM],
+    availableInStates: [
+      SessionState.ACTIVE,
+      SessionState.PAUSED,
+      SessionState.COOLDOWN,
+      SessionState.ENDED,
+    ],
   },
   {
     name: 'loot-split',
@@ -146,7 +190,12 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
       'Propose an equal split of a party inventory item among all connected players. Each player receives a 60-second Accept prompt in chat. Unaccepted shares are not transferred.',
     example: '/loot-split Potion of Healing 4',
     roles: [Role.DM],
-    availableInStates: [SessionState.ACTIVE],
+    availableInStates: [
+      SessionState.ACTIVE,
+      SessionState.PAUSED,
+      SessionState.COOLDOWN,
+      SessionState.ENDED,
+    ],
   },
   {
     name: 'loot-random',
@@ -156,7 +205,12 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
       'Generate random loot for combat using DMG treasure tables. CR sets the challenge tier; Rarity caps the magic item tier (mundane/common/uncommon/rare/very-rare/legendary/artifact); hoard multiplies loot 150–300%. Items and coins are added to the party inventory.',
     example: '/loot-random 8 rare hoard',
     roles: [Role.DM],
-    availableInStates: [SessionState.ACTIVE],
+    availableInStates: [
+      SessionState.ACTIVE,
+      SessionState.PAUSED,
+      SessionState.COOLDOWN,
+      SessionState.ENDED,
+    ],
   },
 ]
 

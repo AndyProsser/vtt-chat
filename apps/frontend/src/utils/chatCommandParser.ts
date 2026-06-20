@@ -96,13 +96,19 @@ export function parseChatInput(
   }
 }
 
+/** Commands hidden when the composer is in whisper-group mode (PRIVATE room). */
+const WHISPER_GROUP_EXCLUDED: Set<string> = new Set(['ic', 'ooc', 'whisper'])
+
 /**
- * Return commands matching a partial slash prefix, filtered to the current role.
+ * Return commands matching a partial slash prefix, filtered by role, session state,
+ * and composer context (whisper-group mode hides IC/OOC/whisper commands).
  * Used by the autocomplete palette when the user types "/".
  */
 export function filterCommandsForAutocomplete(
   input: string,
-  role: Role | string
+  role: Role | string,
+  sessionState?: SessionState,
+  isWhisperGroup?: boolean
 ): ChatCommandDefinition[] {
   const trimmed = input.trimStart()
   if (!trimmed.startsWith('/')) return []
@@ -111,10 +117,18 @@ export function filterCommandsForAutocomplete(
   if (trimmed.includes(' ')) return []
 
   const partial = trimmed.slice(1).toLowerCase()
-  const roleCommands = commandsForRole(String(role) as Role)
+  let commands = commandsForRole(String(role) as Role)
 
-  if (!partial) return roleCommands
-  return roleCommands.filter((cmd) => cmd.name.startsWith(partial) || cmd.slash.toLowerCase().includes(partial))
+  if (sessionState) {
+    commands = commands.filter((cmd) => cmd.availableInStates.includes(sessionState))
+  }
+
+  if (isWhisperGroup) {
+    commands = commands.filter((cmd) => !WHISPER_GROUP_EXCLUDED.has(cmd.name))
+  }
+
+  if (!partial) return commands
+  return commands.filter((cmd) => cmd.name.startsWith(partial) || cmd.slash.toLowerCase().includes(partial))
 }
 
 /** True if the input begins with "/" (triggers autocomplete or help). */

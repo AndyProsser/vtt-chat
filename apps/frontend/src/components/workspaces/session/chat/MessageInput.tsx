@@ -260,7 +260,7 @@ function MessageInputComponent({
 
   const handleCommandInsert = (slash: string) => {
     setContent(slash)
-    setPaletteCommands(filterCommandsForAutocomplete(slash, role))
+    setPaletteCommands(filterCommandsForAutocomplete(slash, role, sessionState, isWhisperGroupMode))
     textareaRef.current?.focus()
   }
 
@@ -301,6 +301,13 @@ function MessageInputComponent({
           }
           const author = username ?? 'Someone'
           await onSend(`* ${author} ${command.args} *`, MessageType.IC)
+          setSelectedType(MessageType.IC)
+        } else if (command.name === 'ic') {
+          if (!command.args) {
+            onCommandError?.('Usage: /ic [message]')
+            return
+          }
+          await onSend(command.args, MessageType.IC)
           setSelectedType(MessageType.IC)
         } else if (command.name === 'ooc') {
           if (!command.args) {
@@ -445,6 +452,7 @@ function MessageInputComponent({
               commands={paletteCommands}
               onSelect={handleCommandSelect}
               onDismiss={() => setPaletteCommands([])}
+              compact={content.trimStart() === '/'}
             />
           ) : null}
           {isMentionPickerVisible ? (
@@ -460,7 +468,7 @@ function MessageInputComponent({
             onChange={(e) => {
               const nextValue = e.target.value
               setContent(nextValue)
-              setPaletteCommands(filterCommandsForAutocomplete(nextValue, role))
+              setPaletteCommands(filterCommandsForAutocomplete(nextValue, role, sessionState, isWhisperGroupMode))
               // Show @name autocomplete after "/whisper @<partial>" (no space after @partial yet)
               const mentionMatch = nextValue.match(/^\/whisper\s+@(\S*)$/i)
               if (mentionMatch) {
