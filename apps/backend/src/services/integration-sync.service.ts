@@ -178,6 +178,13 @@ export async function syncExternalIntegration(params: {
 
   // ─── Character sync ──────────────────────────────────────────────────────────
 
+  // Tracks whether a character was found by externalId and actually updated.
+  // Used to gate the PRESENCE:PROFILE_UPDATED broadcast — we must not fire it when
+  // no character was found, because getSessionParticipantProfiles may return null
+  // characterStats (e.g. if the active character differs from the externally-linked one),
+  // which would silently wipe the Zustand stats for all clients.
+  let characterUpdateApplied: boolean | undefined
+
   if (params.characterUpdate && typeof params.characterUpdate === 'object') {
     const externalCharacterId = params.characterUpdate.externalCharacterId
     const level = params.characterUpdate.level
@@ -191,14 +198,20 @@ export async function syncExternalIntegration(params: {
       }
     }
 
+    // Normalise externalSystem to lowercase — consistent with the extension auth flow
+    // (sanitizeExternalSystem). Prevents lookup failures from case mismatches.
+    const externalSystem = params.externalSystem.trim().toLowerCase()
+
     const character = await prisma.character.findFirst({
       where: {
         campaignId: params.campaignId,
         externalId: externalCharacterId,
-        externalSystem: params.externalSystem,
+        externalSystem,
       },
       select: { id: true, metadata: true },
     })
+
+    characterUpdateApplied = character !== null
 
     if (character) {
       const updateData: Record<string, unknown> = {}
@@ -281,7 +294,11 @@ export async function syncExternalIntegration(params: {
     }
 
     const character = await prisma.character.findFirst({
-      where: { campaignId: params.campaignId, externalId: externalCharacterId, externalSystem: params.externalSystem },
+      where: {
+        campaignId: params.campaignId,
+        externalId: externalCharacterId,
+        externalSystem: params.externalSystem.trim().toLowerCase(),
+      },
       select: { id: true, userId: true },
     })
 
@@ -323,7 +340,11 @@ export async function syncExternalIntegration(params: {
     }
 
     const character = await prisma.character.findFirst({
-      where: { campaignId: params.campaignId, externalId: externalCharacterId, externalSystem: params.externalSystem },
+      where: {
+        campaignId: params.campaignId,
+        externalId: externalCharacterId,
+        externalSystem: params.externalSystem.trim().toLowerCase(),
+      },
       select: { id: true, userId: true },
     })
 
@@ -419,8 +440,9 @@ export async function syncExternalIntegration(params: {
       metadata: {
         externalSystem: params.externalSystem,
         source: params.source,
-        characterUpdateApplied: Boolean(params.characterUpdate),
-        campaignUpdateApplied: Boolean(params.campaignUpdate),
+        hasCharacterUpdate: Boolean(params.characterUpdate),
+        characterUpdateApplied: characterUpdateApplied ?? false,
+        hasCampaignUpdate: Boolean(params.campaignUpdate),
         inventoryItemsUpserted,
         currencyUpdated,
         partyInventoryItemsUpserted,
@@ -437,6 +459,7 @@ export async function syncExternalIntegration(params: {
 
   const applied = {
     characterUpdate: Boolean(params.characterUpdate),
+    ...(characterUpdateApplied !== undefined ? { characterUpdateApplied } : {}),
     campaignUpdate: Boolean(params.campaignUpdate),
     ...(hasInventory ? { inventoryItemsUpserted } : {}),
     ...(hasCurrency ? { currencyUpdated } : {}),

@@ -154,7 +154,11 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
         })
       }
 
-      if (characterUpdate && typeof characterUpdate === 'object') {
+      // Only broadcast when the character was found by externalId and actually updated.
+      // If characterUpdateApplied is false the character wasn't in the DB (externalId
+      // mismatch), so nothing changed — broadcasting would send characterStats: null and
+      // silently wipe stats from every connected client's Zustand store.
+      if (characterUpdate && typeof characterUpdate === 'object' && result.applied.characterUpdateApplied !== false) {
         await broadcastPresenceProfileUpdate({
           wsManager,
           sessionIds: sessions.map((session) => session.id as UUID),
