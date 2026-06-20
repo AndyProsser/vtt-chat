@@ -224,6 +224,7 @@ export type {
   ConditionMessageMetadata,
   DeviceSessionEntity,
   MessageMetadataEntity,
+  LootSplitCardMetadata,
   UserEntity,
   SessionEntity,
   RoomEntity,

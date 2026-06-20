@@ -38,6 +38,7 @@ import {
 } from '@/services/inventory/inventory.service'
 import { findOrCreateCurrencyWallet } from '@/repositories/inventory.repository'
 import { parseLootRandomArgs, generateLoot, buildLootSummaryMessage, formatCoins } from '@/services/inventory/loot-random.service'
+import { createLootSplit } from '@/services/inventory/loot-split.service'
 import crypto from 'node:crypto'
 
 const router = Router()
@@ -245,6 +246,19 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
 
     if (normalizedCommand === 'loot') {
       return handleLootCommand({
+        req,
+        res,
+        args: typeof args === 'string' ? args.trim() : '',
+        sessionId: sessionId as UUID,
+        roomId: roomId as UUID,
+        session,
+        effective,
+        requesterRole,
+      })
+    }
+
+    if (normalizedCommand === 'loot-split') {
+      return handleLootSplitCommand({
         req,
         res,
         args: typeof args === 'string' ? args.trim() : '',
@@ -1286,6 +1300,144 @@ async function handleLootCommand({
   }
 
   return res.status(201).json({ item, message: chatMessage })
+}
+
+/**
+ * /loot-split [item name] [qty?]
+ * DM-only. Proposes a split of a party inventory item among all connected players.
+ * Each player receives an equal share (floor division; any remainder stays in party).
+ * A Loot Split Card appears in chat; players accept in one click within 60 seconds.
+ * Unaccepted shares revert to party automatically (no write needed — party item is
+ * only decremented as players accept).
+ */
+async function handleLootSplitCommand({
+  req,
+  res,
+  args,
+  sessionId,
+  roomId,
+  session,
+  effective,
+  requesterRole,
+}: CommandHandlerParams) {
+  if (requesterRole !== Role.DM) {
+    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/loot-split is only available to the DM.' })
+  }
+
+  const parsed = parseItemArgs(args)
+  if ('error' in parsed) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Usage: /loot-split [item name] [qty?] — ${parsed.error}`,
+    })
+  }
+
+  const rawSession = await findSessionById(sessionId)
+  if (!rawSession?.campaignId) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/loot-split requires a campaign-linked session.' })
+  }
+  const campaignId = rawSession.campaignId as UUID
+
+  // Resolve the party item
+  const item = await findItemByOwnerAndName({ campaignId, ownerType: 'party', ownerId: null, name: parsed.itemName })
+  if (!item) {
+    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: `No "${parsed.itemName}" found in party inventory.` })
+  }
+  const splitQty = Math.min(parsed.qty, item.quantity)
+
+  // Resolve connected players
+  const presence = await getSessionPresence(sessionId)
+  const connectedPlayerIds = new Set(presence.filter((p) => p.role === Role.PLAYER).map((p) => p.userId as UUID))
+  const playerIds = [...connectedPlayerIds]
+  if (playerIds.length === 0) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'No connected players to split with.' })
+  }
+
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+
+  const result = await createLootSplit({
+    campaignId,
+    sessionId,
+    item,
+    totalQuantity: splitQty,
+    playerIds,
+    proposedByUserId: effective.userId,
+    onExpire: async (split) => {
+      // Broadcast expiry — unaccepted shares stay in party (no extra write needed)
+      if (wsManager) {
+        await wsManager.broadcastToCampaignMembers(campaignId, {
+          id: crypto.randomUUID() as UUID,
+          type: 'INVENTORY:LOOT_SPLIT_EXPIRED' as const,
+          version: 1,
+          userId: effective.userId,
+          userRole: Role.DM as any,
+          sessionId,
+          roomId: null,
+          timestamp: Date.now(),
+          payload: {
+            campaignId,
+            splitId: split.splitId,
+            revertedQuantity: split.shares.filter((s) => !s.accepted).reduce((acc, s) => acc + s.quantity, 0),
+            expiredAt: Date.now(),
+          },
+        })
+      }
+    },
+  })
+
+  if (!result.ok) {
+    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: result.error })
+  }
+
+  const { split } = result
+  const shareQty = split.shares[0]?.quantity ?? 1
+
+  if (wsManager) {
+    await wsManager.broadcastToCampaignMembers(campaignId, {
+      id: crypto.randomUUID() as UUID,
+      type: 'INVENTORY:LOOT_SPLIT_PROPOSED' as const,
+      version: 1,
+      userId: effective.userId,
+      userRole: requesterRole as any,
+      sessionId,
+      roomId: null,
+      timestamp: split.proposedAt,
+      payload: {
+        campaignId,
+        splitId: split.splitId,
+        itemId: split.itemId,
+        itemName: split.itemName,
+        totalQuantity: splitQty,
+        shares: split.shares.map((s) => ({ userId: s.userId, quantity: s.quantity })),
+        proposedByUserId: effective.userId,
+        expiresAt: split.expiresAt,
+        proposedAt: split.proposedAt,
+      },
+    })
+  }
+
+  const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
+  const content = `[Loot Split] ${effective.username} proposes splitting ${split.itemName}${splitQty > 1 ? ` ×${splitQty}` : ''} — ${shareQty} each for ${playerIds.length} players. Accept within 60s.`
+  const chatMessage = await sendMessage({
+    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
+    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+    metadata: {
+      lootSplitCard: {
+        splitId: split.splitId,
+        itemName: split.itemName,
+        totalQuantity: splitQty,
+        shareQuantity: shareQty,
+        shares: split.shares.map((s) => ({ userId: s.userId, quantity: s.quantity })),
+        expiresAt: split.expiresAt,
+        proposedByUserId: effective.userId,
+      },
+    },
+  })
+  if (wsManager) {
+    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+  }
+
+  return res.status(201).json({ split, message: chatMessage })
 }
 
 /**

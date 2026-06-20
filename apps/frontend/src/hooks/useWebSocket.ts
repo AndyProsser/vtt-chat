@@ -302,6 +302,15 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('INVENTORY:CURRENCY_CHANGED', (event) => {
       useStore.getState().handleInventoryCurrencyChanged(event)
     })
+    dispatcher.register('INVENTORY:LOOT_SPLIT_PROPOSED', (event) => {
+      useStore.getState().handleLootSplitProposed(event)
+    })
+    dispatcher.register('INVENTORY:LOOT_SPLIT_ACCEPTED', (event) => {
+      useStore.getState().handleLootSplitAccepted(event)
+    })
+    dispatcher.register('INVENTORY:LOOT_SPLIT_EXPIRED', (event) => {
+      useStore.getState().handleLootSplitExpired(event)
+    })
 
     // Room events
     dispatcher.register('SESSION:MEMBER_JOINED', (event) => {

@@ -107,11 +107,22 @@ export interface RollResultMessageMetadata {
   advantage?: 'ADV' | 'DIS'
 }
 
+export interface LootSplitCardMetadata {
+  splitId: string
+  itemName: string
+  totalQuantity: number
+  shareQuantity: number
+  shares: Array<{ userId: string; quantity: number }>
+  expiresAt: number
+  proposedByUserId: string
+}
+
 export interface MessageMetadataEntity {
   noteShared?: NoteSharedMessageMetadata
   noteHandout?: NoteHandoutMessageMetadata
   conditionMessage?: ConditionMessageMetadata
   rollResult?: RollResultMessageMetadata
+  lootSplitCard?: LootSplitCardMetadata
 }
 
 export interface MessageEntity {

@@ -6,6 +6,21 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ---
 
+## [0.9.6] — 2026-06-20
+
+### Added
+
+- W-Inventory-System: `/loot-split [item name] [qty?]` — DM-only command to propose an equal split of a party inventory item among all currently connected players. Each player receives a timed Accept card in chat (60-second window). Acceptance is individual; unaccepted shares are not transferred. Expired proposals display a frozen "Expired" badge. Registered in shared `ChatCommandName` and `CHAT_COMMANDS`.
+- W-Inventory-System: `LootSplitCard` component — renders inline in the chat message stream via `MessageListSystemRow`. Shows per-player acceptance state in real time (Zustand `lootSplitSlice`), a live countdown timer (urgent styling ≤10s), an Accept button for the current user, and Complete/Expired status badges. Survives page refresh by re-hydrating from `msg.metadata.lootSplitCard` on mount.
+- `lootSplitSlice` — new Zustand slice tracking `activeLootSplits` keyed by `splitId`. Handlers: `handleLootSplitProposed`, `handleLootSplitAccepted`, `handleLootSplitExpired`. Wired into root store and `useWebSocket` dispatcher for `INVENTORY:LOOT_SPLIT_PROPOSED`, `INVENTORY:LOOT_SPLIT_ACCEPTED`, `INVENTORY:LOOT_SPLIT_EXPIRED`.
+- `loot-split.service.ts` (backend) — `createLootSplit` stores ephemeral split state in Redis (60s TTL) and schedules `setTimeout` expiry that broadcasts `INVENTORY:LOOT_SPLIT_EXPIRED`. `acceptLootSplit` validates, calls `partialTransferInventoryItem`, marks share accepted in Redis, broadcasts `INVENTORY:LOOT_SPLIT_ACCEPTED`.
+- `POST /api/inventory/:campaignId/loot-split/:splitId/accept` — player endpoint to accept their share. Gated to PLAYER role; validates split exists and is active; returns 404/403/410 as appropriate.
+- History panel filters — owner (Party / per-character) and date range (from/to) filters added to `InventoryPanel.History.tsx`. Owner filter triggers server-side re-fetch with `ownerId`/`ownerType` query params; action type filter applied client-side. Date inputs include a clear button.
+- `InventoryHistoryOverlay` now receives `ownerOptions` (Party + all player characters) from `InventoryPanel.tsx`.
+- Currency shorthand parsing now supported in `/give` and `/take`: if all argument tokens match `{num}{denom}` the command routes to `transferCurrency` instead of item transfer.
+- Balance display added to `InventoryPanel.CurrencyRow` edit form ("Balance: 10gp · 3sp").
+- `LootSplitCardMetadata` interface added to `packages/shared/types/entities.ts` and exported from `packages/shared/types/index.ts`.
+
 ## [0.9.5] — 2026-06-19
 
 ### Added

@@ -20,6 +20,7 @@ export type ChatCommandName =
   | 'drop'
   | 'spend'
   | 'earn'
+  | 'loot-split'
 
 export interface ChatCommandDefinition {
   name: ChatCommandName
@@ -135,6 +136,16 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
       'Credit coins to your own wallet (character if player, party purse if DM). Use for shop sales, individual rewards, or any inflow that isn\'t a shared loot drop.',
     example: '/earn 10gp 35sp',
     roles: [Role.DM, Role.PLAYER],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'loot-split',
+    slash: '/loot-split',
+    syntax: '/loot-split [item name] [qty?]',
+    description:
+      'Propose an equal split of a party inventory item among all connected players. Each player receives a 60-second Accept prompt in chat. Unaccepted shares are not transferred.',
+    example: '/loot-split Potion of Healing 4',
+    roles: [Role.DM],
     availableInStates: [SessionState.ACTIVE],
   },
   {

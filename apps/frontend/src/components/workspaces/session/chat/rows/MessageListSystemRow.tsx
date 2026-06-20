@@ -3,12 +3,21 @@ import type { PreparedMessage } from '../MessageList'
 import { BOOKEND_META } from '../MessageList.helpers'
 import { formatDuration } from '../MessageList.helpers'
 import { Icon } from '@/components/ui/Icon'
+import { LootSplitCard } from './LootSplitCard'
+import type { UUID } from '@shared'
+
+interface LootSplitContext {
+  campaignId: UUID
+  currentUserId: UUID
+  participantDirectory: Record<string, { displayName: string; avatarUrl?: string | null }>
+}
 
 interface MessageListSystemRowProps {
   prepared: PreparedMessage
+  lootSplitContext?: LootSplitContext
 }
 
-export function MessageListSystemRow({ prepared }: MessageListSystemRowProps) {
+export function MessageListSystemRow({ prepared, lootSplitContext }: MessageListSystemRowProps) {
   const {
     msg,
     isSessionBookend,
@@ -134,6 +143,18 @@ export function MessageListSystemRow({ prepared }: MessageListSystemRowProps) {
         timestampLabel={`${msg.editedAt ? 'edited · ' : ''}${relativeTime}`}
         timestampDateTime={new Date(msg.createdAt).toISOString()}
         isExcerpt={noteShared.excerptSource != null}
+      />
+    )
+  }
+
+  const lootSplitMeta = msg.metadata?.lootSplitCard
+  if (lootSplitMeta && lootSplitContext) {
+    return (
+      <LootSplitCard
+        metadata={lootSplitMeta}
+        campaignId={lootSplitContext.campaignId}
+        currentUserId={lootSplitContext.currentUserId}
+        participantDirectory={lootSplitContext.participantDirectory}
       />
     )
   }

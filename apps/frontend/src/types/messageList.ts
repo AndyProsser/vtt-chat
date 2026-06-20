@@ -1,7 +1,6 @@
 import type { UUID } from '@shared'
 import type { Message, SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import type { ParsedNoteSharedMessage } from '@/utils/noteSharedMessage'
-
 export interface ConditionMessageMetadata {
   kind: 'CONDITION'
   targetUserId: UUID
@@ -52,4 +51,7 @@ export interface VirtualizedListData {
   hideIntermissionMarkers: boolean
   /** Stable reference — extracted from DynamicRowHeight so rowProps doesn't invalidate on every measurement. */
   setRowHeight: (index: number, height: number) => void
+  /** Required for LootSplitCard rendering */
+  campaignId?: UUID
+  participantDirectory?: Record<string, { displayName: string; avatarUrl?: string | null }>
 }

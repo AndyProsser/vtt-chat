@@ -8,8 +8,12 @@ import { MessageListChatRow } from './rows/MessageListChatRow'
 import { MessageListRollRow } from './rows/MessageListRollRow'
 import { MessageType } from '@shared'
 
+import type { UUID } from '@shared'
+
 interface MessageListVirtualizedProps extends Omit<MessageListProps, 'messages'> {
   preparedMessages: PreparedMessage[]
+  campaignId?: UUID
+  participantDirectory?: Record<string, { displayName: string; avatarUrl?: string | null }>
 }
 
 function estimateMessageHeight(message: PreparedMessage): number {
@@ -35,14 +39,25 @@ function renderPreparedMessage(prepared: PreparedMessage, data: VirtualizedListD
     return null
   }
 
+  const isLootSplitCard = Boolean(prepared.msg.metadata?.lootSplitCard)
+
   if (
     prepared.isSessionSummary ||
     prepared.isSessionRecap ||
     prepared.isSessionBookend ||
     prepared.isSessionNote ||
-    prepared.noteShared
+    prepared.noteShared ||
+    isLootSplitCard
   ) {
-    return <MessageListSystemRow prepared={prepared} />
+    const lootSplitContext =
+      isLootSplitCard && data.campaignId
+        ? {
+            campaignId: data.campaignId,
+            currentUserId: data.currentUserId as UUID,
+            participantDirectory: data.participantDirectory ?? {},
+          }
+        : undefined
+    return <MessageListSystemRow prepared={prepared} lootSplitContext={lootSplitContext} />
   }
 
   if (prepared.msg.type === MessageType.ROLL) {
@@ -140,6 +155,8 @@ export function MessageListVirtualized({
   activeRoomId,
   hideIntermissionMarkers = false,
   emptyDayLabel,
+  campaignId,
+  participantDirectory,
 }: MessageListVirtualizedProps) {
   const [listApi, setListApi] = useListCallbackRef(null)
 
@@ -189,6 +206,8 @@ export function MessageListVirtualized({
       activeRoomId,
       hideIntermissionMarkers,
       setRowHeight: rowHeightCache.setRowHeight,
+      campaignId,
+      participantDirectory,
     }),
     [
       visibleMessages,
@@ -200,6 +219,8 @@ export function MessageListVirtualized({
       activeRoomId,
       hideIntermissionMarkers,
       rowHeightCache.setRowHeight,
+      campaignId,
+      participantDirectory,
     ]
   )
 

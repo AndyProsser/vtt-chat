@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto'
 import type { UUID } from '@shared'
 import { getRedisClient } from '@/infra/redis'
 import { partialTransferInventoryItem, findItemByOwnerAndName } from './inventory.service'
-import type { InventoryItemDto } from '@/types/inventory.service.types'
+import type { InventoryItemDto } from './inventory.service'
 
 const SPLIT_TTL_MS = 60_000
 const SPLIT_TTL_S = 60

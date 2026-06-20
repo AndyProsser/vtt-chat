@@ -55,6 +55,7 @@ export interface MessageListProps {
   activeRoomId?: string
   hideIntermissionMarkers?: boolean
   emptyDayLabel?: string
+  campaignId?: UUID
 }
 
 function areMessageListPropsEqual(previous: MessageListProps, next: MessageListProps): boolean {
@@ -91,6 +92,7 @@ function MessageListComponent({
   activeRoomId,
   hideIntermissionMarkers = false,
   emptyDayLabel,
+  campaignId,
 }: MessageListProps) {
   const participantDirectoryRef = useRef(EMPTY_PARTICIPANT_DIRECTORY)
   const sessionPresence = useStore(
@@ -301,6 +303,7 @@ function MessageListComponent({
       activeRoomId={activeRoomId}
       hideIntermissionMarkers={hideIntermissionMarkers}
       emptyDayLabel={emptyDayLabel}
+      campaignId={campaignId}
     />
   )
 }
