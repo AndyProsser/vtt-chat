@@ -303,6 +303,56 @@ function ChatWindowComponent({
     [apiUrl, token, sessionId, roomId]
   )
 
+  const handleVoiceCommand = useCallback(
+    async (preset: string | null) => {
+      const res = await fetch(`${apiUrl}/api/audio/voice-preset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sessionId, presetName: preset }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.message ?? `HTTP ${res.status}`)
+      }
+    },
+    [apiUrl, token, sessionId]
+  )
+
+  const handleConditionCommand = useCallback(
+    async (targetUserId: string, conditionName: string) => {
+      const res = await fetch(`${apiUrl}/api/audio/dm-override/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          sessionId,
+          targetUserId,
+          overrideType: 'CONDITION',
+          parameters: { presetCategory: 'CONDITION', presetName: conditionName, conditionName },
+        }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.message ?? `HTTP ${res.status}`)
+      }
+    },
+    [apiUrl, token, sessionId]
+  )
+
+  const handleEnvCommand = useCallback(
+    async (environmentName: string) => {
+      const res = await fetch(`${apiUrl}/api/audio/environments/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sessionId, roomId, environmentName }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.message ?? `HTTP ${res.status}`)
+      }
+    },
+    [apiUrl, token, sessionId, roomId]
+  )
+
   const handleCommandError = useCallback((message: string) => {
     showToast({ message, variant: 'error' })
   }, [])
@@ -468,6 +518,9 @@ function ChatWindowComponent({
         onSend={handleSend}
         onRollCommand={handleRollCommand}
         onLootRandomCommand={handleLootRandomCommand}
+        onVoiceCommand={handleVoiceCommand}
+        onConditionCommand={handleConditionCommand}
+        onEnvCommand={handleEnvCommand}
         onCommandError={handleCommandError}
         onTypingStarted={handleTypingStarted}
         onTypingStopped={handleTypingStopped}

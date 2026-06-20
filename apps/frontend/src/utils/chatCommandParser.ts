@@ -8,6 +8,8 @@ import {
   CHAT_COMMANDS,
   findChatCommand,
   commandsForRole,
+  VOICE_PRESETS,
+  ENVIRONMENT_PRESETS,
   type ChatCommandDefinition,
   type ChatCommandName,
   Role,
@@ -134,6 +136,71 @@ export function filterCommandsForAutocomplete(
 /** True if the input begins with "/" (triggers autocomplete or help). */
 export function isCommandInput(input: string): boolean {
   return input.trimStart().startsWith('/')
+}
+
+export interface ArgSuggestion {
+  id: string
+  label: string
+}
+
+export interface ArgSuggestionResult {
+  commandName: string
+  suggestions: ArgSuggestion[]
+}
+
+/** Static voice preset options including "off" and "default" to clear the effect. */
+const VOICE_ARG_OPTIONS: ArgSuggestion[] = [
+  ...VOICE_PRESETS.map((p) => ({ id: p.name, label: p.name })),
+  { id: 'off', label: 'off' },
+  { id: 'default', label: 'default' },
+]
+
+const ENV_ARG_OPTIONS: ArgSuggestion[] = ENVIRONMENT_PRESETS.map((p) => ({
+  id: p.name,
+  label: p.name,
+}))
+
+/**
+ * Returns arg-level autocomplete suggestions when the user has already typed a
+ * recognised command word and a space, and is now typing the argument.
+ * Covers /voice and /env. /condition player suggestions require dynamic session
+ * data and are handled upstream in MessageInput.
+ *
+ * Returns null if the arg is complete (trailing space) or the command has no
+ * static arg completions.
+ */
+export function getArgSuggestions(input: string): ArgSuggestionResult | null {
+  const trimmed = input.trimStart()
+  const spaceIdx = trimmed.indexOf(' ')
+  if (spaceIdx === -1) return null
+
+  const commandWord = trimmed.slice(1, spaceIdx).toLowerCase()
+  const argPart = trimmed.slice(spaceIdx + 1)
+
+  // Trailing space means the arg is complete — no more suggestions
+  if (argPart.endsWith(' ')) return null
+
+  const partial = argPart.toLowerCase()
+
+  if (commandWord === 'voice') {
+    return {
+      commandName: 'voice',
+      suggestions: partial
+        ? VOICE_ARG_OPTIONS.filter((o) => o.label.toLowerCase().startsWith(partial))
+        : VOICE_ARG_OPTIONS,
+    }
+  }
+
+  if (commandWord === 'env') {
+    return {
+      commandName: 'env',
+      suggestions: partial
+        ? ENV_ARG_OPTIONS.filter((o) => o.label.toLowerCase().startsWith(partial))
+        : ENV_ARG_OPTIONS,
+    }
+  }
+
+  return null
 }
 
 /** All available commands for a given role (for the help popup). */

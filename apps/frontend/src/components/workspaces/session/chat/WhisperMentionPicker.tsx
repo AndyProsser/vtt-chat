@@ -16,9 +16,11 @@ interface WhisperMentionPickerProps {
   options: MentionOption[]
   onSelect: (label: string) => void
   onDismiss: () => void
+  /** Prefix shown before each label. Defaults to "@" for whisper mentions; pass "" for plain suggestions. */
+  prefix?: string
 }
 
-function WhisperMentionPickerComponent({ options, onSelect, onDismiss }: WhisperMentionPickerProps) {
+function WhisperMentionPickerComponent({ options, onSelect, onDismiss, prefix = '@' }: WhisperMentionPickerProps) {
   const [activeIndex, setActiveIndex] = useState(0)
 
   useEffect(() => setActiveIndex(0), [options])
@@ -60,7 +62,7 @@ function WhisperMentionPickerComponent({ options, onSelect, onDismiss }: Whisper
               onSelect(opt.label)
             }}
           >
-            <span className="chat-command-palette__item-slash">@{opt.label}</span>
+            <span className="chat-command-palette__item-slash">{prefix}{opt.label}</span>
           </li>
         ))}
       </ul>

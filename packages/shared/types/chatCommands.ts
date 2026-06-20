@@ -14,6 +14,9 @@ export type ChatCommandName =
   | 'ooc'
   | 'whisper'
   | 'dm'
+  | 'voice'
+  | 'condition'
+  | 'env'
   | 'take'
   | 'give'
   | 'drop'
@@ -88,6 +91,36 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     example: '/dm I want to pick the lock secretly',
     roles: [Role.PLAYER],
     availableInStates: [SessionState.ACTIVE, SessionState.PAUSED],
+  },
+  {
+    name: 'voice',
+    slash: '/voice',
+    syntax: '/voice [preset|off]',
+    description:
+      'Switch your DM voice preset. Use "off" or "default" to remove the effect. Presets: Narrator, Voice of God, Demon, Dragon, Angel, Ghost, Robot, Ancient, Whisper.',
+    example: '/voice Dragon',
+    roles: [Role.DM],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'condition',
+    slash: '/condition',
+    syntax: '/condition {player} [condition]',
+    description:
+      'Apply a voice condition effect to a player. Conditions: Silenced, Underwater, Drunk, Confused, Poisoned, Exhausted, Invisible, Bleeding.',
+    example: '/condition Brom Poisoned',
+    roles: [Role.DM],
+    availableInStates: [SessionState.ACTIVE],
+  },
+  {
+    name: 'env',
+    slash: '/env',
+    syntax: '/env [environment]',
+    description:
+      'Set the audio environment for the current room. Environments: Default, Tavern, Cave, Forest, Cathedral, Dungeon, City, Underwater, Night, Storm.',
+    example: '/env Tavern',
+    roles: [Role.DM],
+    availableInStates: [SessionState.ACTIVE],
   },
   {
     name: 'give',
