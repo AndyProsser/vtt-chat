@@ -17,9 +17,15 @@ import { resolveRoomAudience } from '@/services/chat-visibility.service'
 import { resolveEffectiveSessionRole } from '@/services/session/authz.service'
 import { resolveEffectiveActor } from '@/services/dev-mock/takeover.service'
 import { rollDice } from '@/utils/dice'
-import { isValidUUID } from '@shared'
+import { isValidUUID, findChatCommand } from '@shared'
 import { ErrorCode } from '@shared'
-import { MessageType, SessionState, Role, InventoryItemSource, InventoryItemCategory } from '@shared'
+import {
+  MessageType,
+  SessionState,
+  Role,
+  InventoryItemSource,
+  InventoryItemCategory,
+} from '@shared'
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
 import type { WebSocketManager } from '@/ws'
@@ -37,7 +43,12 @@ import {
   type CurrencyDenomination,
 } from '@/services/inventory/inventory.service'
 import { findOrCreateCurrencyWallet } from '@/repositories/inventory.repository'
-import { parseLootRandomArgs, generateLoot, buildLootSummaryMessage, formatCoins } from '@/services/inventory/loot-random.service'
+import {
+  parseLootRandomArgs,
+  generateLoot,
+  buildLootSummaryMessage,
+  formatCoins,
+} from '@/services/inventory/loot-random.service'
 import { createLootSplit } from '@/services/inventory/loot-split.service'
 import { matchSrdItem } from '@/services/inventory/loot-tables'
 import crypto from 'node:crypto'
@@ -122,6 +133,14 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Session not found' })
     }
 
+    const definition = findChatCommand(command)
+    if (!definition) {
+      return res.status(400).json({
+        code: ErrorCode.NOT_FOUND,
+        message: `Unknown command /${command}.`,
+      })
+    }
+
     const effective = await resolveEffectiveActor({
       sessionId: sessionId as UUID,
       actorUserId: user.userId as UUID,
@@ -146,7 +165,7 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
     }
 
     // Commands require an ACTIVE session
-    if (session.state !== SessionState.ACTIVE) {
+    if (session.state && !definition.availableInStates.includes(session.state)) {
       return res.status(409).json({
         code: ErrorCode.INVALID_SESSION,
         message: `That action isn't available while the session is ${session.state.toLowerCase()}.`,
@@ -289,7 +308,9 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       message: `Unknown command /${normalizedCommand}. Type / to see available commands.`,
     })
   } catch {
-    return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
+    return res
+      .status(500)
+      .json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
   }
 })
 
@@ -463,7 +484,7 @@ const INSUFFICIENT_FUNDS_QUIPS = [
   'You rifle through your pockets and find: disappointment.',
   "That's a bold spend for someone with your net worth.",
   'The coins you need are theoretically reachable. Just not by you. Not right now.',
-  "Your wealth and your goals are not currently on speaking terms.",
+  'Your wealth and your goals are not currently on speaking terms.',
   "The shopkeeper's expression says it all.",
   'Try again after your next dragon.',
   'Rejected, politely, with a smile that does not reach the eyes.',
@@ -483,7 +504,7 @@ const INSUFFICIENT_FUNDS_QUIPS = [
   'A valiant financial attempt. Unsuccessful, but valiant.',
   "The dice have spoken. They said 'no'.",
   'Your balance sheet weeps quietly.',
-  "Insufficient funds — which is, incidentally, what the bank robbers said after your last heist.",
+  'Insufficient funds — which is, incidentally, what the bank robbers said after your last heist.',
   "The innkeeper doesn't take IOUs. He looked at your face and decided against it.",
   'Not today, adventurer. Not with that wallet.',
   'Your coin purse has the energy of a dragon hoarding air.',
@@ -525,17 +546,25 @@ async function handleSpendCommand({
   requesterRole,
 }: CommandHandlerParams) {
   if (requesterRole === Role.SPECTATOR) {
-    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/spend is not available to spectators.' })
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: '/spend is not available to spectators.' })
   }
 
   const parsed = parseCurrencyArgs(args)
   if ('error' in parsed) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Usage: /spend [currency] — ${parsed.error}` })
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Usage: /spend [currency] — ${parsed.error}`,
+    })
   }
 
   const rawSession = await findSessionById(sessionId)
   if (!rawSession?.campaignId) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/spend requires a campaign-linked session.' })
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: '/spend requires a campaign-linked session.',
+    })
   }
   const campaignId = rawSession.campaignId as UUID
 
@@ -560,11 +589,22 @@ async function handleSpendCommand({
     const quip = pickQuip()
     const content = `[Wallet] ${effective.username} tries to spend ${formatCurrencyAmounts(parsed)}. ${quip}`
     const chatMessage = await sendMessage({
-      sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
-      actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+      sessionId,
+      roomId,
+      authorId: effective.userId,
+      authorUsername: effective.username,
+      actorRole: requesterRole,
+      dmId: session.dmId,
+      content,
+      type: MessageType.SYSTEM,
+      visibleTo,
     })
     if (wsManager) {
-      wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+      wsManager.broadcastEventToSession(
+        sessionId,
+        buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+        chatMessage.visibleTo
+      )
     }
     return res.status(400).json({
       code: 'INSUFFICIENT_FUNDS',
@@ -577,10 +617,15 @@ async function handleSpendCommand({
   // Debit: negate each amount
   const delta: Partial<Record<CurrencyDenomination, number>> = {}
   for (const d of DENOMS) {
-    if ((parsed[d] ?? 0) > 0) delta[d] = -(parsed[d]!)
+    if ((parsed[d] ?? 0) > 0) delta[d] = -parsed[d]!
   }
   const updatedWallet = await adjustCurrency({
-    campaignId, ownerType, ownerId, delta, actorUserId: effective.userId, sessionId,
+    campaignId,
+    ownerType,
+    ownerId,
+    delta,
+    actorUserId: effective.userId,
+    sessionId,
   })
 
   if (wsManager) {
@@ -599,7 +644,13 @@ async function handleSpendCommand({
         ownerType: updatedWallet.ownerType,
         ownerId: updatedWallet.ownerId,
         delta,
-        newBalance: { cp: updatedWallet.cp, sp: updatedWallet.sp, ep: updatedWallet.ep, gp: updatedWallet.gp, pp: updatedWallet.pp },
+        newBalance: {
+          cp: updatedWallet.cp,
+          sp: updatedWallet.sp,
+          ep: updatedWallet.ep,
+          gp: updatedWallet.gp,
+          pp: updatedWallet.pp,
+        },
         changedByUserId: effective.userId,
         changedAt: updatedWallet.updatedAt,
       },
@@ -610,11 +661,22 @@ async function handleSpendCommand({
   const ownerLabel = ownerType === 'party' ? 'from the party purse' : 'from their wallet'
   const content = `[Wallet] ${effective.username} spent ${formatCurrencyAmounts(parsed)} ${ownerLabel}.`
   const chatMessage = await sendMessage({
-    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
-    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+    sessionId,
+    roomId,
+    authorId: effective.userId,
+    authorUsername: effective.username,
+    actorRole: requesterRole,
+    dmId: session.dmId,
+    content,
+    type: MessageType.SYSTEM,
+    visibleTo,
   })
   if (wsManager) {
-    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+    wsManager.broadcastEventToSession(
+      sessionId,
+      buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+      chatMessage.visibleTo
+    )
   }
 
   return res.status(200).json({ wallet: updatedWallet, message: chatMessage })
@@ -639,17 +701,23 @@ async function handleEarnCommand({
   requesterRole,
 }: CommandHandlerParams) {
   if (requesterRole === Role.SPECTATOR) {
-    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/earn is not available to spectators.' })
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: '/earn is not available to spectators.' })
   }
 
   const parsed = parseCurrencyArgs(args)
   if ('error' in parsed) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Usage: /earn [currency] — ${parsed.error}` })
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: `Usage: /earn [currency] — ${parsed.error}` })
   }
 
   const rawSession = await findSessionById(sessionId)
   if (!rawSession?.campaignId) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/earn requires a campaign-linked session.' })
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: '/earn requires a campaign-linked session.' })
   }
   const campaignId = rawSession.campaignId as UUID
 
@@ -657,7 +725,12 @@ async function handleEarnCommand({
   const ownerId: UUID | null = requesterRole === Role.DM ? null : effective.userId
 
   const updatedWallet = await adjustCurrency({
-    campaignId, ownerType, ownerId, delta: parsed, actorUserId: effective.userId, sessionId,
+    campaignId,
+    ownerType,
+    ownerId,
+    delta: parsed,
+    actorUserId: effective.userId,
+    sessionId,
   })
 
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -677,7 +750,13 @@ async function handleEarnCommand({
         ownerType: updatedWallet.ownerType,
         ownerId: updatedWallet.ownerId,
         delta: parsed,
-        newBalance: { cp: updatedWallet.cp, sp: updatedWallet.sp, ep: updatedWallet.ep, gp: updatedWallet.gp, pp: updatedWallet.pp },
+        newBalance: {
+          cp: updatedWallet.cp,
+          sp: updatedWallet.sp,
+          ep: updatedWallet.ep,
+          gp: updatedWallet.gp,
+          pp: updatedWallet.pp,
+        },
         changedByUserId: effective.userId,
         changedAt: updatedWallet.updatedAt,
       },
@@ -689,11 +768,22 @@ async function handleEarnCommand({
   const ownerLabel = ownerType === 'party' ? 'to the party purse' : 'to their wallet'
   const content = `[Wallet] ${effective.username} earned ${formatCurrencyAmounts(parsed)} ${ownerLabel}.`
   const chatMessage = await sendMessage({
-    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
-    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+    sessionId,
+    roomId,
+    authorId: effective.userId,
+    authorUsername: effective.username,
+    actorRole: requesterRole,
+    dmId: session.dmId,
+    content,
+    type: MessageType.SYSTEM,
+    visibleTo,
   })
   if (wsManager) {
-    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+    wsManager.broadcastEventToSession(
+      sessionId,
+      buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+      chatMessage.visibleTo
+    )
   }
 
   return res.status(200).json({ wallet: updatedWallet, message: chatMessage })
@@ -751,19 +841,26 @@ async function handleTakeCommand({
   requesterRole,
 }: CommandHandlerParams) {
   if (requesterRole === Role.SPECTATOR) {
-    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/take is not available to spectators.' })
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: '/take is not available to spectators.' })
   }
 
   const rawSession = await findSessionById(sessionId)
   if (!rawSession?.campaignId) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/take requires a campaign-linked session.' })
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: '/take requires a campaign-linked session.' })
   }
   const campaignId = rawSession.campaignId as UUID
 
   if (requesterRole === Role.PLAYER) {
     const policy = await getCampaignInventoryPolicy(campaignId)
     if (!policy.allowPlayerTake) {
-      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'The DM has disabled /take for players in this campaign.' })
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'The DM has disabled /take for players in this campaign.',
+      })
     }
   }
 
@@ -788,25 +885,107 @@ async function handleTakeCommand({
       const content = `[Wallet] ${effective.username} tries to take ${formatCurrencyAmounts(amounts)} from the party purse. ${quip}`
       const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
       const chatMessage = await sendMessage({
-        sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
-        actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+        sessionId,
+        roomId,
+        authorId: effective.userId,
+        authorUsername: effective.username,
+        actorRole: requesterRole,
+        dmId: session.dmId,
+        content,
+        type: MessageType.SYSTEM,
+        visibleTo,
       })
       const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-      if (wsManager) wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
-      return res.status(400).json({ code: 'INSUFFICIENT_FUNDS', shortfall: result.shortfall, chatMessage })
+      if (wsManager)
+        wsManager.broadcastEventToSession(
+          sessionId,
+          buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+          chatMessage.visibleTo
+        )
+      return res
+        .status(400)
+        .json({ code: 'INSUFFICIENT_FUNDS', shortfall: result.shortfall, chatMessage })
     }
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
     if (wsManager && 'fromWallet' in result) {
       const DENOMS: CurrencyDenomination[] = ['cp', 'sp', 'ep', 'gp', 'pp']
-      const baseEvent = { version: 1 as const, userId: effective.userId, userRole: requesterRole as any, sessionId, roomId: null }
-      await wsManager.broadcastToCampaignMembers(campaignId, { ...baseEvent, id: crypto.randomUUID() as UUID, type: 'INVENTORY:CURRENCY_CHANGED' as const, timestamp: result.fromWallet.updatedAt, payload: { campaignId, walletId: result.fromWallet.id, ownerType: result.fromWallet.ownerType, ownerId: result.fromWallet.ownerId, delta: Object.fromEntries(DENOMS.map((d) => [d, -(amounts[d] ?? 0)])), newBalance: { cp: result.fromWallet.cp, sp: result.fromWallet.sp, ep: result.fromWallet.ep, gp: result.fromWallet.gp, pp: result.fromWallet.pp }, changedByUserId: effective.userId, changedAt: result.fromWallet.updatedAt } })
-      await wsManager.broadcastToCampaignMembers(campaignId, { ...baseEvent, id: crypto.randomUUID() as UUID, type: 'INVENTORY:CURRENCY_CHANGED' as const, timestamp: result.toWallet.updatedAt, payload: { campaignId, walletId: result.toWallet.id, ownerType: result.toWallet.ownerType, ownerId: result.toWallet.ownerId, delta: amounts, newBalance: { cp: result.toWallet.cp, sp: result.toWallet.sp, ep: result.toWallet.ep, gp: result.toWallet.gp, pp: result.toWallet.pp }, changedByUserId: effective.userId, changedAt: result.toWallet.updatedAt } })
+      const baseEvent = {
+        version: 1 as const,
+        userId: effective.userId,
+        userRole: requesterRole as any,
+        sessionId,
+        roomId: null,
+      }
+      await wsManager.broadcastToCampaignMembers(campaignId, {
+        ...baseEvent,
+        id: crypto.randomUUID() as UUID,
+        type: 'INVENTORY:CURRENCY_CHANGED' as const,
+        timestamp: result.fromWallet.updatedAt,
+        payload: {
+          campaignId,
+          walletId: result.fromWallet.id,
+          ownerType: result.fromWallet.ownerType,
+          ownerId: result.fromWallet.ownerId,
+          delta: Object.fromEntries(DENOMS.map((d) => [d, -(amounts[d] ?? 0)])),
+          newBalance: {
+            cp: result.fromWallet.cp,
+            sp: result.fromWallet.sp,
+            ep: result.fromWallet.ep,
+            gp: result.fromWallet.gp,
+            pp: result.fromWallet.pp,
+          },
+          changedByUserId: effective.userId,
+          changedAt: result.fromWallet.updatedAt,
+        },
+      })
+      await wsManager.broadcastToCampaignMembers(campaignId, {
+        ...baseEvent,
+        id: crypto.randomUUID() as UUID,
+        type: 'INVENTORY:CURRENCY_CHANGED' as const,
+        timestamp: result.toWallet.updatedAt,
+        payload: {
+          campaignId,
+          walletId: result.toWallet.id,
+          ownerType: result.toWallet.ownerType,
+          ownerId: result.toWallet.ownerId,
+          delta: amounts,
+          newBalance: {
+            cp: result.toWallet.cp,
+            sp: result.toWallet.sp,
+            ep: result.toWallet.ep,
+            gp: result.toWallet.gp,
+            pp: result.toWallet.pp,
+          },
+          changedByUserId: effective.userId,
+          changedAt: result.toWallet.updatedAt,
+        },
+      })
     }
     const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
     const content = `[Wallet] ${effective.username} took ${formatCurrencyAmounts(amounts)} from the party purse.`
-    const chatMessage = await sendMessage({ sessionId, roomId, authorId: effective.userId, authorUsername: effective.username, actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo })
-    if (wsManager) wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
-    return res.status(200).json({ ...('fromWallet' in result ? { fromWallet: result.fromWallet, toWallet: result.toWallet } : {}), message: chatMessage })
+    const chatMessage = await sendMessage({
+      sessionId,
+      roomId,
+      authorId: effective.userId,
+      authorUsername: effective.username,
+      actorRole: requesterRole,
+      dmId: session.dmId,
+      content,
+      type: MessageType.SYSTEM,
+      visibleTo,
+    })
+    if (wsManager)
+      wsManager.broadcastEventToSession(
+        sessionId,
+        buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+        chatMessage.visibleTo
+      )
+    return res.status(200).json({
+      ...('fromWallet' in result
+        ? { fromWallet: result.fromWallet, toWallet: result.toWallet }
+        : {}),
+      message: chatMessage,
+    })
   }
 
   const parsed = parseItemArgs(args)
@@ -877,11 +1056,22 @@ async function handleTakeCommand({
   const qtyLabel = parsed.qty > 1 ? ` ×${parsed.qty}` : ''
   const content = `[Inventory] ${effective.username} took ${item.name}${qtyLabel} from party inventory.`
   const chatMessage = await sendMessage({
-    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
-    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+    sessionId,
+    roomId,
+    authorId: effective.userId,
+    authorUsername: effective.username,
+    actorRole: requesterRole,
+    dmId: session.dmId,
+    content,
+    type: MessageType.SYSTEM,
+    visibleTo,
   })
   if (wsManager) {
-    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+    wsManager.broadcastEventToSession(
+      sessionId,
+      buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+      chatMessage.visibleTo
+    )
   }
 
   return res.status(201).json({ item: transferred, message: chatMessage })
@@ -903,7 +1093,9 @@ async function handleGiveCommand({
   requesterRole,
 }: CommandHandlerParams) {
   if (requesterRole === Role.SPECTATOR) {
-    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/give is not available to spectators.' })
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: '/give is not available to spectators.' })
   }
 
   // Split @target from the rest
@@ -919,14 +1111,19 @@ async function handleGiveCommand({
 
   const rawSession = await findSessionById(sessionId)
   if (!rawSession?.campaignId) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/give requires a campaign-linked session.' })
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: '/give requires a campaign-linked session.' })
   }
   const campaignId = rawSession.campaignId as UUID
 
   if (requesterRole === Role.PLAYER) {
     const policy = await getCampaignInventoryPolicy(campaignId)
     if (!policy.allowPlayerGive) {
-      return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: 'The DM has disabled /give for players in this campaign.' })
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'The DM has disabled /give for players in this campaign.',
+      })
     }
   }
 
@@ -983,27 +1180,115 @@ async function handleGiveCommand({
       const quip = pickQuip()
       const sourceLabel = fromOwnerType === 'party' ? 'the party purse' : 'their wallet'
       const content = `[Wallet] ${effective.username} tries to give ${formatCurrencyAmounts(amounts)} from ${sourceLabel}. ${quip}`
-      const chatMessage = await sendMessage({ sessionId, roomId, authorId: effective.userId, authorUsername: effective.username, actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo })
-      if (wsManager) wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
-      return res.status(400).json({ code: 'INSUFFICIENT_FUNDS', shortfall: result.shortfall, chatMessage })
+      const chatMessage = await sendMessage({
+        sessionId,
+        roomId,
+        authorId: effective.userId,
+        authorUsername: effective.username,
+        actorRole: requesterRole,
+        dmId: session.dmId,
+        content,
+        type: MessageType.SYSTEM,
+        visibleTo,
+      })
+      if (wsManager)
+        wsManager.broadcastEventToSession(
+          sessionId,
+          buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+          chatMessage.visibleTo
+        )
+      return res
+        .status(400)
+        .json({ code: 'INSUFFICIENT_FUNDS', shortfall: result.shortfall, chatMessage })
     }
     if (wsManager && 'fromWallet' in result) {
       const DENOMS: CurrencyDenomination[] = ['cp', 'sp', 'ep', 'gp', 'pp']
-      const base = { version: 1 as const, userId: effective.userId, userRole: requesterRole as any, sessionId, roomId: null }
-      await wsManager.broadcastToCampaignMembers(campaignId, { ...base, id: crypto.randomUUID() as UUID, type: 'INVENTORY:CURRENCY_CHANGED' as const, timestamp: result.fromWallet.updatedAt, payload: { campaignId, walletId: result.fromWallet.id, ownerType: result.fromWallet.ownerType, ownerId: result.fromWallet.ownerId, delta: Object.fromEntries(DENOMS.map((d) => [d, -(amounts[d] ?? 0)])), newBalance: { cp: result.fromWallet.cp, sp: result.fromWallet.sp, ep: result.fromWallet.ep, gp: result.fromWallet.gp, pp: result.fromWallet.pp }, changedByUserId: effective.userId, changedAt: result.fromWallet.updatedAt } })
-      await wsManager.broadcastToCampaignMembers(campaignId, { ...base, id: crypto.randomUUID() as UUID, type: 'INVENTORY:CURRENCY_CHANGED' as const, timestamp: result.toWallet.updatedAt, payload: { campaignId, walletId: result.toWallet.id, ownerType: result.toWallet.ownerType, ownerId: result.toWallet.ownerId, delta: amounts, newBalance: { cp: result.toWallet.cp, sp: result.toWallet.sp, ep: result.toWallet.ep, gp: result.toWallet.gp, pp: result.toWallet.pp }, changedByUserId: effective.userId, changedAt: result.toWallet.updatedAt } })
+      const base = {
+        version: 1 as const,
+        userId: effective.userId,
+        userRole: requesterRole as any,
+        sessionId,
+        roomId: null,
+      }
+      await wsManager.broadcastToCampaignMembers(campaignId, {
+        ...base,
+        id: crypto.randomUUID() as UUID,
+        type: 'INVENTORY:CURRENCY_CHANGED' as const,
+        timestamp: result.fromWallet.updatedAt,
+        payload: {
+          campaignId,
+          walletId: result.fromWallet.id,
+          ownerType: result.fromWallet.ownerType,
+          ownerId: result.fromWallet.ownerId,
+          delta: Object.fromEntries(DENOMS.map((d) => [d, -(amounts[d] ?? 0)])),
+          newBalance: {
+            cp: result.fromWallet.cp,
+            sp: result.fromWallet.sp,
+            ep: result.fromWallet.ep,
+            gp: result.fromWallet.gp,
+            pp: result.fromWallet.pp,
+          },
+          changedByUserId: effective.userId,
+          changedAt: result.fromWallet.updatedAt,
+        },
+      })
+      await wsManager.broadcastToCampaignMembers(campaignId, {
+        ...base,
+        id: crypto.randomUUID() as UUID,
+        type: 'INVENTORY:CURRENCY_CHANGED' as const,
+        timestamp: result.toWallet.updatedAt,
+        payload: {
+          campaignId,
+          walletId: result.toWallet.id,
+          ownerType: result.toWallet.ownerType,
+          ownerId: result.toWallet.ownerId,
+          delta: amounts,
+          newBalance: {
+            cp: result.toWallet.cp,
+            sp: result.toWallet.sp,
+            ep: result.toWallet.ep,
+            gp: result.toWallet.gp,
+            pp: result.toWallet.pp,
+          },
+          changedByUserId: effective.userId,
+          changedAt: result.toWallet.updatedAt,
+        },
+      })
     }
     const destLabel = toOwnerType === 'party' ? 'party purse' : `${targetHandle}'s wallet`
     const content = `[Wallet] ${effective.username} gave ${formatCurrencyAmounts(amounts)} to ${destLabel}.`
-    const chatMessage = await sendMessage({ sessionId, roomId, authorId: effective.userId, authorUsername: effective.username, actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo })
-    if (wsManager) wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
-    return res.status(200).json({ ...('fromWallet' in result ? { fromWallet: result.fromWallet, toWallet: result.toWallet } : {}), message: chatMessage })
+    const chatMessage = await sendMessage({
+      sessionId,
+      roomId,
+      authorId: effective.userId,
+      authorUsername: effective.username,
+      actorRole: requesterRole,
+      dmId: session.dmId,
+      content,
+      type: MessageType.SYSTEM,
+      visibleTo,
+    })
+    if (wsManager)
+      wsManager.broadcastEventToSession(
+        sessionId,
+        buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+        chatMessage.visibleTo
+      )
+    return res.status(200).json({
+      ...('fromWallet' in result
+        ? { fromWallet: result.fromWallet, toWallet: result.toWallet }
+        : {}),
+      message: chatMessage,
+    })
   }
 
   // Item transfer path
   const parsed = parseItemArgs(itemArgs)
   if ('error' in parsed) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: `Usage: /give @target [item name] [qty?] or /give @target 10gp 3sp — ${parsed.error}` })
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Usage: /give @target [item name] [qty?] or /give @target 10gp 3sp — ${parsed.error}`,
+    })
   }
 
   const item = await findItemByOwnerAndName({
@@ -1066,11 +1351,22 @@ async function handleGiveCommand({
   const destLabel = toOwnerType === 'party' ? 'party inventory' : `${targetHandle}'s inventory`
   const content = `[Inventory] ${effective.username} gave ${item.name}${qtyLabel} to ${destLabel}.`
   const chatMessage = await sendMessage({
-    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
-    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+    sessionId,
+    roomId,
+    authorId: effective.userId,
+    authorUsername: effective.username,
+    actorRole: requesterRole,
+    dmId: session.dmId,
+    content,
+    type: MessageType.SYSTEM,
+    visibleTo,
   })
   if (wsManager) {
-    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+    wsManager.broadcastEventToSession(
+      sessionId,
+      buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+      chatMessage.visibleTo
+    )
   }
 
   return res.status(201).json({ item: transferred, message: chatMessage })
@@ -1093,7 +1389,9 @@ async function handleDropCommand({
   requesterRole,
 }: CommandHandlerParams) {
   if (requesterRole === Role.SPECTATOR) {
-    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/drop is not available to spectators.' })
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: '/drop is not available to spectators.' })
   }
 
   const parsed = parseItemArgs(args)
@@ -1106,14 +1404,21 @@ async function handleDropCommand({
 
   const rawSession = await findSessionById(sessionId)
   if (!rawSession?.campaignId) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/drop requires a campaign-linked session.' })
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: '/drop requires a campaign-linked session.' })
   }
   const campaignId = rawSession.campaignId as UUID
 
   const ownerType: 'party' | 'character' = requesterRole === Role.PLAYER ? 'character' : 'party'
   const ownerId: UUID | null = requesterRole === Role.PLAYER ? effective.userId : null
 
-  const item = await findItemByOwnerAndName({ campaignId, ownerType, ownerId, name: parsed.itemName })
+  const item = await findItemByOwnerAndName({
+    campaignId,
+    ownerType,
+    ownerId,
+    name: parsed.itemName,
+  })
   if (!item) {
     const label = ownerType === 'party' ? 'party inventory' : 'your inventory'
     return res.status(404).json({
@@ -1165,11 +1470,22 @@ async function handleDropCommand({
   const qtyLabel = parsed.qty > 1 ? ` ×${parsed.qty}` : ''
   const content = `[Inventory] ${effective.username} dropped ${item.name}${qtyLabel}.`
   const chatMessage = await sendMessage({
-    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
-    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+    sessionId,
+    roomId,
+    authorId: effective.userId,
+    authorUsername: effective.username,
+    actorRole: requesterRole,
+    dmId: session.dmId,
+    content,
+    type: MessageType.SYSTEM,
+    visibleTo,
   })
   if (wsManager) {
-    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+    wsManager.broadcastEventToSession(
+      sessionId,
+      buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+      chatMessage.visibleTo
+    )
   }
 
   return res.status(200).json({ item: removed, message: chatMessage })
@@ -1332,9 +1648,7 @@ async function handleLootCommand({
   }
 
   // ── Single consolidated chat message ────────────────────────────────────────
-  const itemParts = addedItems.map(
-    (i) => `${i.name}${i.quantity > 1 ? ` ×${i.quantity}` : ''}`
-  )
+  const itemParts = addedItems.map((i) => `${i.name}${i.quantity > 1 ? ` ×${i.quantity}` : ''}`)
   const coinPart = hasCurrency ? formatCurrencyAmounts(currencies) : null
   const allParts = [...itemParts, ...(coinPart ? [coinPart] : [])]
   const content = `[Loot] ${allParts.join(', ')} added to party inventory.`
@@ -1382,7 +1696,9 @@ async function handleLootSplitCommand({
   requesterRole,
 }: CommandHandlerParams) {
   if (requesterRole !== Role.DM) {
-    return res.status(403).json({ code: ErrorCode.FORBIDDEN, message: '/loot-split is only available to the DM.' })
+    return res
+      .status(403)
+      .json({ code: ErrorCode.FORBIDDEN, message: '/loot-split is only available to the DM.' })
   }
 
   const parsed = parseItemArgs(args)
@@ -1395,23 +1711,38 @@ async function handleLootSplitCommand({
 
   const rawSession = await findSessionById(sessionId)
   if (!rawSession?.campaignId) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: '/loot-split requires a campaign-linked session.' })
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: '/loot-split requires a campaign-linked session.',
+    })
   }
   const campaignId = rawSession.campaignId as UUID
 
   // Resolve the party item
-  const item = await findItemByOwnerAndName({ campaignId, ownerType: 'party', ownerId: null, name: parsed.itemName })
+  const item = await findItemByOwnerAndName({
+    campaignId,
+    ownerType: 'party',
+    ownerId: null,
+    name: parsed.itemName,
+  })
   if (!item) {
-    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: `No "${parsed.itemName}" found in party inventory.` })
+    return res.status(404).json({
+      code: ErrorCode.NOT_FOUND,
+      message: `No "${parsed.itemName}" found in party inventory.`,
+    })
   }
   const splitQty = Math.min(parsed.qty, item.quantity)
 
   // Resolve connected players
   const presence = await getSessionPresence(sessionId)
-  const connectedPlayerIds = new Set(presence.filter((p) => p.role === Role.PLAYER).map((p) => p.userId as UUID))
+  const connectedPlayerIds = new Set(
+    presence.filter((p) => p.role === Role.PLAYER).map((p) => p.userId as UUID)
+  )
   const playerIds = [...connectedPlayerIds]
   if (playerIds.length === 0) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: 'No connected players to split with.' })
+    return res
+      .status(400)
+      .json({ code: ErrorCode.INVALID_INPUT, message: 'No connected players to split with.' })
   }
 
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -1438,7 +1769,9 @@ async function handleLootSplitCommand({
           payload: {
             campaignId,
             splitId: split.splitId,
-            revertedQuantity: split.shares.filter((s) => !s.accepted).reduce((acc, s) => acc + s.quantity, 0),
+            revertedQuantity: split.shares
+              .filter((s) => !s.accepted)
+              .reduce((acc, s) => acc + s.quantity, 0),
             expiredAt: Date.now(),
           },
         })
@@ -1480,8 +1813,15 @@ async function handleLootSplitCommand({
   const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
   const content = `[Loot Split] ${effective.username} proposes splitting ${split.itemName}${splitQty > 1 ? ` ×${splitQty}` : ''} — ${shareQty} each for ${playerIds.length} players. Accept within 60s.`
   const chatMessage = await sendMessage({
-    sessionId, roomId, authorId: effective.userId, authorUsername: effective.username,
-    actorRole: requesterRole, dmId: session.dmId, content, type: MessageType.SYSTEM, visibleTo,
+    sessionId,
+    roomId,
+    authorId: effective.userId,
+    authorUsername: effective.username,
+    actorRole: requesterRole,
+    dmId: session.dmId,
+    content,
+    type: MessageType.SYSTEM,
+    visibleTo,
     metadata: {
       lootSplitCard: {
         splitId: split.splitId,
@@ -1495,7 +1835,11 @@ async function handleLootSplitCommand({
     },
   })
   if (wsManager) {
-    wsManager.broadcastEventToSession(sessionId, buildMessageSentEvent(chatMessage, effective.userId, requesterRole), chatMessage.visibleTo)
+    wsManager.broadcastEventToSession(
+      sessionId,
+      buildMessageSentEvent(chatMessage, effective.userId, requesterRole),
+      chatMessage.visibleTo
+    )
   }
 
   return res.status(201).json({ split, message: chatMessage })
@@ -1551,9 +1895,7 @@ async function handleLootRandomCommand({
   const playerCount = Math.max(1, connectedPlayers.length)
   const levels = connectedPlayers.filter((m) => m.level != null).map((m) => m.level!)
   const avgLevel =
-    levels.length > 0
-      ? Math.ceil(levels.reduce((a, b) => a + b, 0) / levels.length)
-      : parsed.cr // fallback: treat avg level = CR (fair fight)
+    levels.length > 0 ? Math.ceil(levels.reduce((a, b) => a + b, 0) / levels.length) : parsed.cr // fallback: treat avg level = CR (fair fight)
 
   const loot = generateLoot({
     cr: parsed.cr,
@@ -1577,7 +1919,9 @@ async function handleLootRandomCommand({
         source: InventoryItemSource.SRD,
         srdKey: item.srdKey,
         srdCategory:
-          item.rarity === 'mundane' ? InventoryItemCategory.EQUIPMENT : InventoryItemCategory.MAGIC_ITEM,
+          item.rarity === 'mundane'
+            ? InventoryItemCategory.EQUIPMENT
+            : InventoryItemCategory.MAGIC_ITEM,
         addedByUserId: effective.userId,
         sessionId,
       })

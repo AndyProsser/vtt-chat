@@ -6,6 +6,7 @@
  */
 
 export type LootRarity =
+  | 'none'
   | 'mundane'
   | 'common'
   | 'uncommon'
@@ -21,6 +22,7 @@ export interface LootTableItem {
 }
 
 export const RARITY_ORDER: LootRarity[] = [
+  'none',
   'mundane',
   'common',
   'uncommon',
@@ -75,9 +77,9 @@ export const MUNDANE_ITEMS: LootTableItem[] = [
   // Adventuring gear
   { name: 'Rope (50 ft., Hempen)', srdKey: 'rope-hempen-50-feet', rarity: 'mundane' },
   { name: 'Rope (50 ft., Silk)', srdKey: 'rope-silk-50-feet', rarity: 'mundane' },
-  { name: 'Thieves\' Tools', srdKey: 'thieves-tools', rarity: 'mundane' },
-  { name: 'Healer\'s Kit', srdKey: 'healers-kit', rarity: 'mundane' },
-  { name: 'Climber\'s Kit', srdKey: 'climbers-kit', rarity: 'mundane' },
+  { name: "Thieves' Tools", srdKey: 'thieves-tools', rarity: 'mundane' },
+  { name: "Healer's Kit", srdKey: 'healers-kit', rarity: 'mundane' },
+  { name: "Climber's Kit", srdKey: 'climbers-kit', rarity: 'mundane' },
   { name: 'Tinderbox', srdKey: 'tinderbox', rarity: 'mundane' },
   { name: 'Crowbar', srdKey: 'crowbar', rarity: 'mundane' },
   { name: 'Grappling Hook', srdKey: 'grappling-hook', rarity: 'mundane' },
@@ -108,7 +110,11 @@ export const UNCOMMON_ITEMS: LootTableItem[] = [
   { name: 'Alchemy Jug', srdKey: 'alchemy-jug', rarity: 'uncommon' },
   { name: 'Bag of Holding', srdKey: 'bag-of-holding', rarity: 'uncommon' },
   { name: 'Boots of Elvenkind', srdKey: 'boots-of-elvenkind', rarity: 'uncommon' },
-  { name: 'Boots of Striding and Springing', srdKey: 'boots-of-striding-and-springing', rarity: 'uncommon' },
+  {
+    name: 'Boots of Striding and Springing',
+    srdKey: 'boots-of-striding-and-springing',
+    rarity: 'uncommon',
+  },
   { name: 'Bracers of Archery', srdKey: 'bracers-of-archery', rarity: 'uncommon' },
   { name: 'Brooch of Shielding', srdKey: 'brooch-of-shielding', rarity: 'uncommon' },
   { name: 'Broom of Flying', srdKey: 'broom-of-flying', rarity: 'uncommon' },
@@ -116,7 +122,11 @@ export const UNCOMMON_ITEMS: LootTableItem[] = [
   { name: 'Cloak of Protection', srdKey: 'cloak-of-protection', rarity: 'uncommon' },
   { name: 'Eyes of Charming', srdKey: 'eyes-of-charming', rarity: 'uncommon' },
   { name: 'Gloves of Missile Snaring', srdKey: 'gloves-of-missile-snaring', rarity: 'uncommon' },
-  { name: 'Gloves of Swimming and Climbing', srdKey: 'gloves-of-swimming-and-climbing', rarity: 'uncommon' },
+  {
+    name: 'Gloves of Swimming and Climbing',
+    srdKey: 'gloves-of-swimming-and-climbing',
+    rarity: 'uncommon',
+  },
   { name: 'Gloves of Thievery', srdKey: 'gloves-of-thievery', rarity: 'uncommon' },
   { name: 'Hat of Disguise', srdKey: 'hat-of-disguise', rarity: 'uncommon' },
   { name: 'Headband of Intellect', srdKey: 'headband-of-intellect', rarity: 'uncommon' },
@@ -133,7 +143,11 @@ export const UNCOMMON_ITEMS: LootTableItem[] = [
   { name: 'Rope of Climbing', srdKey: 'rope-of-climbing', rarity: 'uncommon' },
   { name: 'Saddle of the Cavalier', srdKey: 'saddle-of-the-cavalier', rarity: 'uncommon' },
   { name: 'Sending Stones', srdKey: 'sending-stones', rarity: 'uncommon' },
-  { name: 'Slippers of Spider Climbing', srdKey: 'slippers-of-spider-climbing', rarity: 'uncommon' },
+  {
+    name: 'Slippers of Spider Climbing',
+    srdKey: 'slippers-of-spider-climbing',
+    rarity: 'uncommon',
+  },
   { name: 'Wand of Magic Detection', srdKey: 'wand-of-magic-detection', rarity: 'uncommon' },
   { name: 'Wand of Secrets', srdKey: 'wand-of-secrets', rarity: 'uncommon' },
   { name: 'Potion of Greater Healing', srdKey: 'potion-of-greater-healing', rarity: 'uncommon' },
@@ -168,7 +182,11 @@ export const RARE_ITEMS: LootTableItem[] = [
   { name: 'Mace of Smiting', srdKey: 'mace-of-smiting', rarity: 'rare' },
   { name: 'Necklace of Fireballs', srdKey: 'necklace-of-fireballs', rarity: 'rare' },
   { name: 'Necklace of Prayer Beads', srdKey: 'necklace-of-prayer-beads', rarity: 'rare' },
-  { name: 'Periapt of Proof against Poison', srdKey: 'periapt-of-proof-against-poison', rarity: 'rare' },
+  {
+    name: 'Periapt of Proof against Poison',
+    srdKey: 'periapt-of-proof-against-poison',
+    rarity: 'rare',
+  },
   { name: 'Ring of Animal Influence', srdKey: 'ring-of-animal-influence', rarity: 'rare' },
   { name: 'Ring of Evasion', srdKey: 'ring-of-evasion', rarity: 'rare' },
   { name: 'Ring of Feather Falling', srdKey: 'ring-of-feather-falling', rarity: 'rare' },
@@ -191,7 +209,11 @@ export const RARE_ITEMS: LootTableItem[] = [
   { name: 'Wand of Lightning Bolts', srdKey: 'wand-of-lightning-bolts', rarity: 'rare' },
   { name: 'Wings of Flying', srdKey: 'wings-of-flying', rarity: 'rare' },
   { name: 'Potion of Superior Healing', srdKey: 'potion-of-superior-healing', rarity: 'rare' },
-  { name: 'Potion of Giant Strength (Hill)', srdKey: 'potion-of-hill-giant-strength', rarity: 'rare' },
+  {
+    name: 'Potion of Giant Strength (Hill)',
+    srdKey: 'potion-of-hill-giant-strength',
+    rarity: 'rare',
+  },
   { name: 'Spell Scroll (4th Level)', srdKey: 'spell-scroll-4', rarity: 'rare' },
   { name: 'Spell Scroll (5th Level)', srdKey: 'spell-scroll-5', rarity: 'rare' },
   { name: 'Weapon +2', srdKey: 'weapon-2', rarity: 'rare' },
@@ -205,8 +227,16 @@ export const VERY_RARE_ITEMS: LootTableItem[] = [
   { name: 'Amulet of the Planes', srdKey: 'amulet-of-the-planes', rarity: 'very-rare' },
   { name: 'Animated Shield', srdKey: 'animated-shield', rarity: 'very-rare' },
   { name: 'Arrow of Slaying', srdKey: 'arrow-of-slaying', rarity: 'very-rare' },
-  { name: 'Belt of Giant Strength (Stone)', srdKey: 'belt-of-stone-giant-strength', rarity: 'very-rare' },
-  { name: 'Belt of Giant Strength (Frost)', srdKey: 'belt-of-frost-giant-strength', rarity: 'very-rare' },
+  {
+    name: 'Belt of Giant Strength (Stone)',
+    srdKey: 'belt-of-stone-giant-strength',
+    rarity: 'very-rare',
+  },
+  {
+    name: 'Belt of Giant Strength (Frost)',
+    srdKey: 'belt-of-frost-giant-strength',
+    rarity: 'very-rare',
+  },
   { name: 'Cloak of Arachnida', srdKey: 'cloak-of-arachnida', rarity: 'very-rare' },
   { name: 'Crystal Ball', srdKey: 'crystal-ball', rarity: 'very-rare' },
   { name: 'Dancing Sword', srdKey: 'dancing-sword', rarity: 'very-rare' },
@@ -224,17 +254,29 @@ export const VERY_RARE_ITEMS: LootTableItem[] = [
   { name: 'Ring of Regeneration', srdKey: 'ring-of-regeneration', rarity: 'very-rare' },
   { name: 'Ring of Shooting Stars', srdKey: 'ring-of-shooting-stars', rarity: 'very-rare' },
   { name: 'Ring of Telekinesis', srdKey: 'ring-of-telekinesis', rarity: 'very-rare' },
-  { name: 'Robe of Scintillating Colors', srdKey: 'robe-of-scintillating-colors', rarity: 'very-rare' },
+  {
+    name: 'Robe of Scintillating Colors',
+    srdKey: 'robe-of-scintillating-colors',
+    rarity: 'very-rare',
+  },
   { name: 'Robe of Stars', srdKey: 'robe-of-stars', rarity: 'very-rare' },
   { name: 'Rod of Absorption', srdKey: 'rod-of-absorption', rarity: 'very-rare' },
   { name: 'Rod of Alertness', srdKey: 'rod-of-alertness', rarity: 'very-rare' },
   { name: 'Staff of Fire', srdKey: 'staff-of-fire', rarity: 'very-rare' },
   { name: 'Staff of Frost', srdKey: 'staff-of-frost', rarity: 'very-rare' },
   { name: 'Staff of Power', srdKey: 'staff-of-power', rarity: 'very-rare' },
-  { name: 'Staff of Thunder and Lightning', srdKey: 'staff-of-thunder-and-lightning', rarity: 'very-rare' },
+  {
+    name: 'Staff of Thunder and Lightning',
+    srdKey: 'staff-of-thunder-and-lightning',
+    rarity: 'very-rare',
+  },
   { name: 'Sword of Sharpness', srdKey: 'sword-of-sharpness', rarity: 'very-rare' },
   { name: 'Tome of Clear Thought', srdKey: 'tome-of-clear-thought', rarity: 'very-rare' },
-  { name: 'Tome of Leadership and Influence', srdKey: 'tome-of-leadership-and-influence', rarity: 'very-rare' },
+  {
+    name: 'Tome of Leadership and Influence',
+    srdKey: 'tome-of-leadership-and-influence',
+    rarity: 'very-rare',
+  },
   { name: 'Tome of Understanding', srdKey: 'tome-of-understanding', rarity: 'very-rare' },
   { name: 'Potion of Supreme Healing', srdKey: 'potion-of-supreme-healing', rarity: 'very-rare' },
   { name: 'Spell Scroll (6th Level)', srdKey: 'spell-scroll-6', rarity: 'very-rare' },
@@ -248,14 +290,26 @@ export const VERY_RARE_ITEMS: LootTableItem[] = [
 
 export const LEGENDARY_ITEMS: LootTableItem[] = [
   { name: 'Armor of Invulnerability', srdKey: 'armor-of-invulnerability', rarity: 'legendary' },
-  { name: 'Belt of Giant Strength (Cloud)', srdKey: 'belt-of-cloud-giant-strength', rarity: 'legendary' },
-  { name: 'Belt of Giant Strength (Storm)', srdKey: 'belt-of-storm-giant-strength', rarity: 'legendary' },
+  {
+    name: 'Belt of Giant Strength (Cloud)',
+    srdKey: 'belt-of-cloud-giant-strength',
+    rarity: 'legendary',
+  },
+  {
+    name: 'Belt of Giant Strength (Storm)',
+    srdKey: 'belt-of-storm-giant-strength',
+    rarity: 'legendary',
+  },
   { name: 'Cloak of Invisibility', srdKey: 'cloak-of-invisibility', rarity: 'legendary' },
   { name: 'Cubic Gate', srdKey: 'cubic-gate', rarity: 'legendary' },
   { name: 'Deck of Many Things', srdKey: 'deck-of-many-things', rarity: 'legendary' },
   { name: 'Defender', srdKey: 'defender', rarity: 'legendary' },
   { name: 'Holy Avenger', srdKey: 'holy-avenger', rarity: 'legendary' },
-  { name: 'Plate Armor of Etherealness', srdKey: 'plate-armor-of-etherealness', rarity: 'legendary' },
+  {
+    name: 'Plate Armor of Etherealness',
+    srdKey: 'plate-armor-of-etherealness',
+    rarity: 'legendary',
+  },
   { name: 'Ring of Djinni Summoning', srdKey: 'ring-of-djinni-summoning', rarity: 'legendary' },
   { name: 'Ring of Elemental Command', srdKey: 'ring-of-elemental-command', rarity: 'legendary' },
   { name: 'Ring of Invisibility', srdKey: 'ring-of-invisibility', rarity: 'legendary' },
@@ -284,10 +338,15 @@ export const ARTIFACT_ITEMS: LootTableItem[] = [
   { name: 'Axe of the Dwarvish Lords', srdKey: 'axe-of-the-dwarvish-lords', rarity: 'artifact' },
   { name: 'Book of Exalted Deeds', srdKey: 'book-of-exalted-deeds', rarity: 'artifact' },
   { name: 'Book of Vile Darkness', srdKey: 'book-of-vile-darkness', rarity: 'artifact' },
-  { name: 'Crystal Ball of True Clairvoyance', srdKey: 'crystal-ball-true-clairvoyance', rarity: 'artifact' },
+  {
+    name: 'Crystal Ball of True Clairvoyance',
+    srdKey: 'crystal-ball-true-clairvoyance',
+    rarity: 'artifact',
+  },
 ]
 
 export const ALL_ITEMS_BY_RARITY: Record<LootRarity, LootTableItem[]> = {
+  none: [],
   mundane: MUNDANE_ITEMS,
   common: COMMON_ITEMS,
   uncommon: UNCOMMON_ITEMS,
@@ -345,11 +404,17 @@ export function matchSrdItem(name: string): LootTableItem | null {
   }
 
   // 4. Prefix: input starts with SRD item name (e.g. "Shortsword +1" → "Shortsword")
-  hit = ALL_SRD_ITEMS.find((i) => strippedLower.startsWith(i.name.toLowerCase() + ' ') || strippedLower === i.name.toLowerCase())
+  hit = ALL_SRD_ITEMS.find(
+    (i) =>
+      strippedLower.startsWith(i.name.toLowerCase() + ' ') || strippedLower === i.name.toLowerCase()
+  )
   if (hit) return hit
 
   // 5. Prefix: SRD name starts with input (e.g. "Potion of Healing" matches "potion of healing")
-  hit = ALL_SRD_ITEMS.find((i) => i.name.toLowerCase().startsWith(strippedLower + ' ') || i.name.toLowerCase() === strippedLower)
+  hit = ALL_SRD_ITEMS.find(
+    (i) =>
+      i.name.toLowerCase().startsWith(strippedLower + ' ') || i.name.toLowerCase() === strippedLower
+  )
   if (hit) return hit
 
   return null
@@ -359,10 +424,21 @@ export function matchSrdItem(name: string): LootTableItem | null {
 // Each row: { roll: [min, max], cp, sp, ep, gp, pp }
 // All multiplied per roll — roll d100 to select the row.
 
-export type DmgCoinRow = { roll: [number, number]; cp: number; sp: number; ep: number; gp: number; pp: number }
+export type DmgCoinRow = {
+  roll: [number, number]
+  cp: number
+  sp: number
+  ep: number
+  gp: number
+  pp: number
+}
 
 /** Returns the DMG individual treasure coin result for a given CR and d100 roll. */
-export function resolveIndividualTreasureCoin(cr: number, d100: number, rollFn: (sides: number) => number): { cp: number; sp: number; ep: number; gp: number; pp: number } {
+export function resolveIndividualTreasureCoin(
+  cr: number,
+  d100: number,
+  rollFn: (sides: number) => number
+): { cp: number; sp: number; ep: number; gp: number; pp: number } {
   if (cr <= 4) {
     if (d100 <= 30) return { cp: roll(6, 5, rollFn), sp: 0, ep: 0, gp: 0, pp: 0 }
     if (d100 <= 60) return { cp: 0, sp: roll(6, 4, rollFn), ep: 0, gp: 0, pp: 0 }
@@ -371,34 +447,63 @@ export function resolveIndividualTreasureCoin(cr: number, d100: number, rollFn: 
     return { cp: 0, sp: 0, ep: 0, gp: 0, pp: roll(6, 1, rollFn) }
   }
   if (cr <= 10) {
-    if (d100 <= 30) return { cp: roll(6, 4, rollFn) * 100, sp: 0, ep: roll(6, 1, rollFn) * 10, gp: 0, pp: 0 }
-    if (d100 <= 60) return { cp: 0, sp: roll(6, 6, rollFn) * 10, ep: 0, gp: roll(6, 2, rollFn) * 10, pp: 0 }
-    if (d100 <= 70) return { cp: 0, sp: 0, ep: roll(6, 3, rollFn) * 10, gp: roll(6, 2, rollFn) * 10, pp: 0 }
+    if (d100 <= 30)
+      return { cp: roll(6, 4, rollFn) * 100, sp: 0, ep: roll(6, 1, rollFn) * 10, gp: 0, pp: 0 }
+    if (d100 <= 60)
+      return { cp: 0, sp: roll(6, 6, rollFn) * 10, ep: 0, gp: roll(6, 2, rollFn) * 10, pp: 0 }
+    if (d100 <= 70)
+      return { cp: 0, sp: 0, ep: roll(6, 3, rollFn) * 10, gp: roll(6, 2, rollFn) * 10, pp: 0 }
     if (d100 <= 95) return { cp: 0, sp: 0, ep: 0, gp: roll(6, 4, rollFn) * 10, pp: 0 }
     return { cp: 0, sp: 0, ep: 0, gp: roll(6, 2, rollFn) * 10, pp: roll(6, 3, rollFn) }
   }
   if (cr <= 16) {
-    if (d100 <= 20) return { cp: 0, sp: roll(6, 4, rollFn) * 100, ep: roll(6, 1, rollFn) * 100, gp: 0, pp: 0 }
-    if (d100 <= 35) return { cp: 0, sp: 0, ep: roll(6, 1, rollFn) * 100, gp: roll(6, 1, rollFn) * 100, pp: 0 }
-    if (d100 <= 75) return { cp: 0, sp: 0, ep: 0, gp: roll(6, 2, rollFn) * 100, pp: roll(6, 1, rollFn) * 10 }
+    if (d100 <= 20)
+      return { cp: 0, sp: roll(6, 4, rollFn) * 100, ep: roll(6, 1, rollFn) * 100, gp: 0, pp: 0 }
+    if (d100 <= 35)
+      return { cp: 0, sp: 0, ep: roll(6, 1, rollFn) * 100, gp: roll(6, 1, rollFn) * 100, pp: 0 }
+    if (d100 <= 75)
+      return { cp: 0, sp: 0, ep: 0, gp: roll(6, 2, rollFn) * 100, pp: roll(6, 1, rollFn) * 10 }
     return { cp: 0, sp: 0, ep: 0, gp: roll(6, 2, rollFn) * 100, pp: roll(6, 2, rollFn) * 10 }
   }
   // CR 17+
-  if (d100 <= 15) return { cp: 0, sp: 0, ep: roll(6, 2, rollFn) * 1000, gp: roll(6, 8, rollFn) * 100, pp: 0 }
-  if (d100 <= 55) return { cp: 0, sp: 0, ep: 0, gp: roll(6, 1, rollFn) * 1000, pp: roll(6, 1, rollFn) * 100 }
+  if (d100 <= 15)
+    return { cp: 0, sp: 0, ep: roll(6, 2, rollFn) * 1000, gp: roll(6, 8, rollFn) * 100, pp: 0 }
+  if (d100 <= 55)
+    return { cp: 0, sp: 0, ep: 0, gp: roll(6, 1, rollFn) * 1000, pp: roll(6, 1, rollFn) * 100 }
   return { cp: 0, sp: 0, ep: 0, gp: roll(6, 1, rollFn) * 1000, pp: roll(6, 2, rollFn) * 100 }
 }
 
 /** DMG Treasure Hoard coins for a CR band (single combined roll). */
-export function resolveHoardTreasureCoin(cr: number, rollFn: (sides: number) => number): { cp: number; sp: number; ep: number; gp: number; pp: number } {
+export function resolveHoardTreasureCoin(
+  cr: number,
+  rollFn: (sides: number) => number
+): { cp: number; sp: number; ep: number; gp: number; pp: number } {
   if (cr <= 4) {
-    return { cp: roll(6, 6, rollFn) * 100, sp: roll(6, 3, rollFn) * 100, ep: 0, gp: roll(6, 2, rollFn) * 10, pp: 0 }
+    return {
+      cp: roll(6, 6, rollFn) * 100,
+      sp: roll(6, 3, rollFn) * 100,
+      ep: 0,
+      gp: roll(6, 2, rollFn) * 10,
+      pp: 0,
+    }
   }
   if (cr <= 10) {
-    return { cp: roll(6, 2, rollFn) * 100, sp: roll(6, 2, rollFn) * 1000, ep: 0, gp: roll(6, 6, rollFn) * 100, pp: roll(6, 3, rollFn) * 10 }
+    return {
+      cp: roll(6, 2, rollFn) * 100,
+      sp: roll(6, 2, rollFn) * 1000,
+      ep: 0,
+      gp: roll(6, 6, rollFn) * 100,
+      pp: roll(6, 3, rollFn) * 10,
+    }
   }
   if (cr <= 16) {
-    return { cp: 0, sp: 0, ep: roll(6, 4, rollFn) * 1000, gp: roll(6, 4, rollFn) * 1000, pp: roll(6, 3, rollFn) * 100 }
+    return {
+      cp: 0,
+      sp: 0,
+      ep: roll(6, 4, rollFn) * 1000,
+      gp: roll(6, 4, rollFn) * 1000,
+      pp: roll(6, 3, rollFn) * 100,
+    }
   }
   // CR 17+
   return { cp: 0, sp: 0, ep: 0, gp: roll(6, 12, rollFn) * 1000, pp: roll(6, 8, rollFn) * 1000 }

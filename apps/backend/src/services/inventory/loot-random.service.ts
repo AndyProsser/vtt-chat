@@ -42,6 +42,7 @@ export interface GeneratedLoot {
 // ─── Args parser ──────────────────────────────────────────────────────────────
 
 const RARITY_ALIASES: Record<string, LootRarity> = {
+  none: 'none',
   mundane: 'mundane',
   common: 'common',
   uncommon: 'uncommon',
@@ -65,12 +66,16 @@ export interface ParseError {
 export function parseLootRandomArgs(raw: string): ParsedLootArgs | ParseError {
   const tokens = raw.trim().toLowerCase().split(/\s+/).filter(Boolean)
   if (tokens.length === 0) {
-    return { message: 'Usage: /loot-random [CR] [Rarity?] [hoard?] — e.g. /loot-random 8 rare hoard' }
+    return {
+      message: 'Usage: /loot-random [CR] [Rarity?] [hoard?] — e.g. /loot-random 8 rare hoard',
+    }
   }
 
   const crRaw = parseInt(tokens[0], 10)
   if (isNaN(crRaw) || crRaw < 0 || crRaw > 30) {
-    return { message: 'CR must be a number between 0 and 30. Usage: /loot-random [CR] [Rarity?] [hoard?]' }
+    return {
+      message: 'CR must be a number between 0 and 30. Usage: /loot-random [CR] [Rarity?] [hoard?]',
+    }
   }
 
   let maxRarity: LootRarity | null = null
@@ -84,7 +89,7 @@ export function parseLootRandomArgs(raw: string): ParsedLootArgs | ParseError {
       maxRarity = RARITY_ALIASES[token]
     } else {
       return {
-        message: `Unknown argument "${token}". Valid rarities: mundane, common, uncommon, rare, very-rare, legendary, artifact. Use "hoard" to flag a hoard.`,
+        message: `Unknown argument "${token}". Valid rarities: none, mundane, common, uncommon, rare, very-rare, legendary, artifact. Use "hoard" to flag a hoard.`,
       }
     }
   }
@@ -101,6 +106,8 @@ function rollDie(sides: number): number {
 // ─── Default rarity cap by CR ─────────────────────────────────────────────────
 
 function defaultMaxRarityForCR(cr: number): LootRarity {
+  if (cr <= 0) return 'none'
+  if (cr <= 2) return 'mundane'
   if (cr <= 4) return 'common'
   if (cr <= 10) return 'uncommon'
   if (cr <= 16) return 'rare'
@@ -172,7 +179,12 @@ function generateItems(cr: number, maxRarity: LootRarity, itemCount: number): Lo
 
 // ─── Item count formula ───────────────────────────────────────────────────────
 
-function generateItemCount(playerCount: number, cr: number, avgLevel: number, hoard: boolean): number {
+function generateItemCount(
+  playerCount: number,
+  cr: number,
+  avgLevel: number,
+  hoard: boolean
+): number {
   const crRatio = Math.min(2.0, Math.max(0.5, cr / Math.max(1, avgLevel)))
 
   if (hoard) {
@@ -283,5 +295,8 @@ export function buildLootSummaryMessage(cr: number, loot: GeneratedLoot): string
     .join(', ')
 
   const itemStr = itemLines || 'no items'
+  if (loot.items.length === 0) {
+    return `[Loot] CR ${cr}${hoardLabel} — Coins: ${coinStr} → added to party inventory.`
+  }
   return `[Loot] CR ${cr}${hoardLabel} — Coins: ${coinStr} | Items: ${itemStr} → added to party inventory.`
 }
