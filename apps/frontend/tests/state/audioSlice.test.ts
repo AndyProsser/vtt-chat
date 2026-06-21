@@ -182,19 +182,54 @@ describe('audioSlice', () => {
       expect(useStore.getState().roomEnvironmentNames[ROOM_ID]).toBe('Tavern')
     })
 
-    it('does not set currentEnvironment when parameters are absent', () => {
+    // currentEnvironment is gated on the event room being the local user's
+    // connected (primary) room, and its DSP is resolved from the shared
+    // environment catalog — the WS payload `parameters` are intentionally NOT
+    // trusted for projection (see handleEnvironmentSet in audioPresetsSlice).
+    function connectUserToRoom(roomId: UUID) {
+      useStore.getState().setCurrentUser({ id: DM_ID, username: 'dm', role: 'DM' as any })
+      useStore.getState().upsertSessionPresenceOnJoin({
+        sessionId: SESSION_ID,
+        userId: DM_ID,
+        username: 'dm',
+        roomId,
+        joinedAt: NOW,
+      })
+    }
+
+    it('does not set currentEnvironment when the event room is not the connected room', () => {
+      const OTHER_ROOM = '11111111-1111-4111-8111-111111111111' as UUID
+      connectUserToRoom(OTHER_ROOM)
+
+      // Even with parameters present, a non-connected room must not project.
+      useStore
+        .getState()
+        .handleEnvironmentSet(makeEnvEvent(ROOM_ID, { reverbSend: 0.5, lowpassFreq: 5000 }))
+
+      expect(useStore.getState().currentEnvironment).toBeUndefined()
+    })
+
+    it('does not set currentEnvironment when there is no connected user', () => {
       useStore.getState().handleEnvironmentSet(makeEnvEvent(ROOM_ID))
       expect(useStore.getState().currentEnvironment).toBeUndefined()
     })
 
-    it('sets currentEnvironment when parameters are present', () => {
-      const event = makeEnvEvent(ROOM_ID, { reverbSend: 0.5, lowpassFreq: 5000, roomGain: 1 })
-      useStore.getState().handleEnvironmentSet(event)
+    it('sets currentEnvironment from the catalog when the event room is the connected room', () => {
+      connectUserToRoom(ROOM_ID)
+
+      // Payload parameters are deliberately bogus to prove they are ignored in
+      // favour of the catalog Tavern DSP.
+      useStore
+        .getState()
+        .handleEnvironmentSet(makeEnvEvent(ROOM_ID, { reverbSend: 0.99, lowpassFreq: 100 }))
+
       const env = useStore.getState().currentEnvironment
       expect(env).toBeDefined()
       expect(env?.name).toBe('Tavern')
-      expect(env?.reverbSend).toBe(0.5)
-      expect(env?.lowpassFreq).toBe(5000)
+      // Catalog Tavern DSP — not the payload values.
+      expect(env?.reverbSend).toBe(0.18)
+      expect(env?.lowpassFreq).toBe(6500)
+      expect(env?.roomGain).toBe(0)
     })
 
     it('updates roomEnvironmentNames even when parameters are present', () => {
