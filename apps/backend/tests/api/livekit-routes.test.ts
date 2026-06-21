@@ -167,8 +167,9 @@ describe('livekit routes', () => {
   it('disables publish grant when backend mute enforcement is active', async () => {
     const app = buildApp()
     mocks.getServerMuteEnforcementState.mockResolvedValue({
-      userMuted: true,
-      dmMuted: false,
+      userMuted: false,
+      dmMuted: true,
+      silenced: false,
       enforcedMuted: true,
     })
 

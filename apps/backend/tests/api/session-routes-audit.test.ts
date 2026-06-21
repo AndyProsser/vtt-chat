@@ -33,7 +33,11 @@ const mocks = vi.hoisted(() => ({
   mockListSessionLogsForRequester: vi.fn(),
   mockListSessionUsersForRequester: vi.fn(),
   mockBroadcastSessionStatsSnapshot: vi.fn(),
-  mockGetPrismaClient: vi.fn(),
+  mockGetPrismaClient: vi.fn().mockReturnValue({
+    session: {
+      findUnique: vi.fn().mockResolvedValue({ campaign: { postSessionChatDurationMs: 60000 } }),
+    },
+  }),
   mockApplySessionStateRoomTransition: vi.fn(),
   mockDeletePrivateRoomsForEndedSession: vi.fn(),
   mockResolveCooldownControlAuthorization: vi.fn(),
