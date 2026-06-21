@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   mockAppendSessionAuditEvent: vi.fn(),
   mockBroadcastToSession: vi.fn(),
   mockLoggerInfo: vi.fn(),
+  mockGetRoom: vi.fn(),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -39,6 +40,11 @@ vi.mock('@/ws/event-broadcaster', () => ({
 
 vi.mock('@/services/runtime/runtime-streams.service', () => ({
   appendSessionAuditEvent: (...args: unknown[]) => mocks.mockAppendSessionAuditEvent(...args),
+}))
+
+vi.mock('@/services/room.service', () => ({
+  getRoom: (...args: unknown[]) => mocks.mockGetRoom(...args),
+  getSessionPresence: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock('@/utils', () => ({
@@ -107,6 +113,7 @@ describe('audio routes', () => {
       environments: [],
       dmOverrides: [],
     })
+    mocks.mockGetRoom.mockResolvedValue(null)
   })
 
   it('returns audio presets for authenticated users', async () => {

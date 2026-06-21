@@ -70,6 +70,23 @@ vi.mock('@/services/runtime/runtime-streams.service', () => ({
   appendSessionAuditEvent: mocks.mockAppendSessionAuditEvent,
 }))
 
+vi.mock('@/repositories/audio.repository', () => ({
+  listAudioDMOverridesBySession: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('@/services/audio/audio-state', () => ({
+  removeDMOverrideState: vi.fn().mockResolvedValue(undefined),
+  clearRoomEnvironmentState: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/services/system-messages.service', () => ({
+  emitConditionSystemMessage: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/services/chat.service', () => ({
+  clearRoomMessages: vi.fn().mockResolvedValue(undefined),
+}))
+
 import presenceRoutes from '@/api/presence.routes'
 import roomsRoutes from '@/api/rooms.routes'
 

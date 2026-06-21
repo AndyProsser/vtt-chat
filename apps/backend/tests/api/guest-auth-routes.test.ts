@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   mockUserUpdate: vi.fn(),
   mockCampaignCount: vi.fn(),
   mockCampaignFindFirst: vi.fn(),
+  mockCampaignFindUnique: vi.fn(),
   mockCampaignUpdate: vi.fn(),
   mockSessionCount: vi.fn(),
   mockExternalIdentityFindUnique: vi.fn(),
@@ -67,6 +68,7 @@ vi.mock('@/infra/db', () => ({
     campaign: {
       count: mocks.mockCampaignCount,
       findFirst: mocks.mockCampaignFindFirst,
+      findUnique: (...args: unknown[]) => mocks.mockCampaignFindUnique(...args),
       findMany: mocks.mockCampaignFindMany,
       update: mocks.mockCampaignUpdate,
     },
@@ -237,6 +239,8 @@ describe('guest auth routes', () => {
       authType: 'GUEST',
     })
     mocks.mockDeviceCredentialUpsert.mockResolvedValue({ id: 'device-credential-1' })
+    // Platform gate: default to allowing all platforms in tests
+    mocks.mockCampaignFindUnique.mockResolvedValue({ supportedPlatforms: ['ANY'] })
   })
 
   afterEach(() => {
@@ -333,6 +337,7 @@ describe('guest auth routes', () => {
       id: 'campaign-1',
       currentDmId: 'old-dm',
       externalLinks: [],
+      supportedPlatforms: ['ANY'],
     })
     mocks.mockUserFindFirst.mockResolvedValueOnce(null)
     mocks.mockUserFindUnique.mockResolvedValueOnce(null)
@@ -395,6 +400,7 @@ describe('guest auth routes', () => {
       id: 'campaign-1',
       currentDmId: 'old-dm',
       externalLinks: [],
+      supportedPlatforms: ['ANY'],
     })
     mocks.mockUserFindFirst.mockResolvedValueOnce(null)
     mocks.mockUserFindUnique.mockResolvedValueOnce(null)
@@ -434,6 +440,7 @@ describe('guest auth routes', () => {
       id: 'campaign-1',
       currentDmId: 'old-dm',
       externalLinks: [],
+      supportedPlatforms: ['ANY'],
     })
     mocks.mockUserFindFirst.mockResolvedValueOnce(null)
     mocks.mockUserFindUnique.mockResolvedValueOnce(null)
@@ -486,6 +493,7 @@ describe('guest auth routes', () => {
       id: 'campaign-1',
       currentDmId: 'old-dm',
       externalLinks: [{ id: 'link-1', externalId: 'ddb-campaign-1' }],
+      supportedPlatforms: ['ANY'],
     })
     mocks.mockUserFindFirst.mockResolvedValueOnce({
       id: 'full-user',
@@ -513,6 +521,7 @@ describe('guest auth routes', () => {
       id: 'campaign-1',
       currentDmId: 'old-dm',
       externalLinks: [],
+      supportedPlatforms: ['ANY'],
     })
 
     const response = await request(app).post('/api/auth/extension/guest-login').send({
@@ -532,6 +541,7 @@ describe('guest auth routes', () => {
       id: 'campaign-1',
       currentDmId: 'old-dm',
       externalLinks: [{ id: 'link-1', externalId: 'ddb-campaign-1' }],
+      supportedPlatforms: ['ANY'],
     })
 
     const response = await request(app)
@@ -557,6 +567,7 @@ describe('guest auth routes', () => {
       id: 'campaign-1',
       currentDmId: 'old-dm',
       externalLinks: [{ id: 'link-1', externalId: 'ddb-campaign-1' }],
+      supportedPlatforms: ['ANY'],
     })
     mocks.mockUserFindFirst.mockResolvedValueOnce({
       id: 'guest-existing',
@@ -607,6 +618,7 @@ describe('guest auth routes', () => {
       id: 'campaign-1',
       currentDmId: 'old-dm',
       externalLinks: [],
+      supportedPlatforms: ['ANY'],
     })
     mocks.mockUserFindFirst.mockResolvedValueOnce(null)
     mocks.mockUserFindUnique.mockResolvedValueOnce(null)

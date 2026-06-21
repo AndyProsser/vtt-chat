@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   getSessionUsers: vi.fn(),
   broadcastSessionStatsSnapshot: vi.fn(),
   logSessionStateChange: vi.fn(),
+  setUserMuteState: vi.fn(),
 }))
 
 vi.mock('@/services/chat.service', () => ({
@@ -54,6 +55,10 @@ vi.mock('@/services/session/stats.service', () => ({
 
 vi.mock('@/services/session/logs.service', () => ({
   logSessionStateChange: mocks.logSessionStateChange,
+}))
+
+vi.mock('@/services/audio/effects.service', () => ({
+  setUserMuteState: (...args: unknown[]) => mocks.setUserMuteState(...args),
 }))
 
 import { Role } from '@shared'
@@ -149,6 +154,7 @@ describe('session disconnect cascade service', () => {
     })
 
     mocks.getRooms.mockResolvedValue([{ id: ROOM_ID, name: 'Green Room', type: 'GROUP' }])
+    mocks.setUserMuteState.mockResolvedValue(undefined)
   })
 
   afterEach(() => {

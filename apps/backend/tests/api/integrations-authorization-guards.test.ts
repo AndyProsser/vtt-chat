@@ -49,6 +49,7 @@ describe('external systems authorization guardrails', () => {
 
   it('rejects guest-login for blocked systems', async () => {
     const app = buildApp()
+    updateExternalSystem('dndbeyond', { authorizationState: 'BLOCKED' })
 
     const response = await request(app).post('/api/auth/extension/guest-login').send({
       externalSystem: 'dndbeyond',

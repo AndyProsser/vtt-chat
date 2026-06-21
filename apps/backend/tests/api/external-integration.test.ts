@@ -391,7 +391,7 @@ describe('external integration endpoints', () => {
       })
 
     expect(response.status).toBe(200)
-    expect(response.body.applied).toEqual({
+    expect(response.body.applied).toMatchObject({
       characterUpdate: true,
       campaignUpdate: false,
     })

@@ -356,8 +356,25 @@ describe('admin campaign operations', () => {
         },
       ],
       characters: [],
+      notes: [],
+      greenroomMessages: [],
       sessions: [],
       recordings: [],
+      discoverable: false,
+      spectatorPolicy: 'DISABLED',
+      spectatorMax: 0,
+      spectatorWaitlistEnabled: false,
+      spectatorReconnectGraceSecs: 30,
+      extensionSyncPolicy: 'DISABLED',
+      lateJoinPolicy: 'OPEN',
+      lateJoinGraceMinutes: 0,
+      postSessionChatEnabled: false,
+      postSessionChatDurationMs: 0,
+      dmAutoTargetOnFirstPlayerJoin: false,
+      defaultSessionDurationMins: 240,
+      supportedPlatforms: [],
+      sessionScheduleType: null,
+      posterUrl: null,
     })
 
     const response = await request(app)
@@ -386,6 +403,8 @@ describe('admin campaign operations', () => {
           characters: [],
           sessions: [],
           recordings: [],
+          campaignNotes: [],
+          greenroomMessages: [],
         },
       })
 

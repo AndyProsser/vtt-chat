@@ -63,6 +63,7 @@ export function consumeHandoffToken(
   }
 
   if (record.target !== expectedTarget) {
+    handoffStore.delete(handoffToken)
     return null
   }
 

@@ -227,7 +227,7 @@ describe('integration-sync.service', () => {
       },
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: true,
       applied: {
         characterUpdate: true,

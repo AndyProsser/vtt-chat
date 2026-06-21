@@ -97,6 +97,7 @@ vi.mock('@/services/audio/audio-state', () => ({
 
 vi.mock('@/services/chat.service', () => ({
   clearRoomMessages: vi.fn(),
+  openMainRoomMessageHistory: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/services/system-messages.service', () => ({

@@ -61,6 +61,10 @@ vi.mock('@/services/dev-mock/simulation.service', () => ({
   purgeMockSimulationSessionState: vi.fn(),
 }))
 
+vi.mock('@/services/campaign-schedule.service', () => ({
+  advanceSessionScheduleOnEnded: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock('@/utils', () => ({
   logger: {
     info: mocks.loggerInfo,
