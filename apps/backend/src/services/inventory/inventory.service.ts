@@ -439,6 +439,46 @@ export async function findItemByOwnerAndName(params: {
 }
 
 /**
+ * Add qty to party/character inventory, stacking onto an existing item with the
+ * same name (case-insensitive) if one already exists for the same owner.
+ * Returns the resulting item and a flag indicating whether it was a stack increment.
+ */
+export async function addOrStackInventoryItem(params: {
+  campaignId: UUID
+  ownerType: 'party' | 'character'
+  ownerId: UUID | null
+  name: string
+  quantity: number
+  source?: InventoryItemSource
+  srdKey?: string
+  srdCategory?: InventoryItemCategory
+  notes?: string
+  addedByUserId: UUID
+  sessionId?: UUID
+}): Promise<{ item: InventoryItemDto; wasStacked: boolean }> {
+  const existing = await findItemByOwnerAndName({
+    campaignId: params.campaignId,
+    ownerType: params.ownerType,
+    ownerId: params.ownerId,
+    name: params.name,
+  })
+
+  if (existing) {
+    const updated = await editInventoryItem({
+      itemId: existing.id,
+      campaignId: params.campaignId,
+      quantity: existing.quantity + params.quantity,
+      actorUserId: params.addedByUserId,
+      sessionId: params.sessionId,
+    })
+    return { item: updated, wasStacked: true }
+  }
+
+  const item = await addInventoryItem(params)
+  return { item, wasStacked: false }
+}
+
+/**
  * Transfer `qty` of an item to a new owner.
  * If qty equals the item's full quantity, the item is moved whole.
  * If qty is less, the source item is decremented and a new item is created for the target.

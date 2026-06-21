@@ -35,6 +35,7 @@ import { listCampaignMembersForPresence } from '@/repositories/campaign.reposito
 import { getPrismaClient } from '@/infra/db'
 import {
   addInventoryItem,
+  addOrStackInventoryItem,
   adjustCurrency,
   findItemByOwnerAndName,
   partialTransferInventoryItem,
@@ -1562,10 +1563,10 @@ async function handleLootCommand({
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
   const addedItems: Awaited<ReturnType<typeof addInventoryItem>>[] = []
 
-  // ── Add each item ───────────────────────────────────────────────────────────
+  // ── Add each item (stacks onto existing items with the same name) ───────────
   for (const parsed of items) {
     const srdMatch = matchSrdItem(parsed.rawName)
-    const item = await addInventoryItem({
+    const { item, wasStacked } = await addOrStackInventoryItem({
       campaignId,
       ownerType: 'party',
       ownerId: null,
@@ -1585,30 +1586,49 @@ async function handleLootCommand({
     addedItems.push(item)
 
     if (wsManager) {
-      const event: EventEnvelope = {
-        id: crypto.randomUUID() as UUID,
-        type: 'INVENTORY:ITEM_ADDED',
-        version: 1,
-        userId: effective.userId,
-        userRole: requesterRole as any,
-        sessionId,
-        roomId: null,
-        timestamp: item.createdAt,
-        payload: {
-          campaignId: item.campaignId,
-          itemId: item.id,
-          ownerType: item.ownerType,
-          ownerId: item.ownerId,
-          name: item.name,
-          quantity: item.quantity,
-          source: item.source,
-          srdKey: item.srdKey,
-          srdCategory: item.srdCategory,
-          notes: item.notes,
-          addedByUserId: item.addedByUserId,
-          addedAt: item.createdAt,
-        },
-      }
+      const event: EventEnvelope = wasStacked
+        ? {
+            id: crypto.randomUUID() as UUID,
+            type: 'INVENTORY:ITEM_EDITED',
+            version: 1,
+            userId: effective.userId,
+            userRole: requesterRole as any,
+            sessionId,
+            roomId: null,
+            timestamp: item.updatedAt,
+            payload: {
+              campaignId: item.campaignId,
+              itemId: item.id,
+              name: item.name,
+              quantity: item.quantity,
+              notes: item.notes,
+              editedAt: item.updatedAt,
+            },
+          }
+        : {
+            id: crypto.randomUUID() as UUID,
+            type: 'INVENTORY:ITEM_ADDED',
+            version: 1,
+            userId: effective.userId,
+            userRole: requesterRole as any,
+            sessionId,
+            roomId: null,
+            timestamp: item.createdAt,
+            payload: {
+              campaignId: item.campaignId,
+              itemId: item.id,
+              ownerType: item.ownerType,
+              ownerId: item.ownerId,
+              name: item.name,
+              quantity: item.quantity,
+              source: item.source,
+              srdKey: item.srdKey,
+              srdCategory: item.srdCategory,
+              notes: item.notes,
+              addedByUserId: item.addedByUserId,
+              addedAt: item.createdAt,
+            },
+          }
       await wsManager.broadcastToCampaignMembers(campaignId, event)
     }
   }
@@ -1907,53 +1927,70 @@ async function handleLootRandomCommand({
 
   const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
 
-  // Persist + broadcast each item
-  const addedItems = await Promise.all(
-    loot.items.map((item) =>
-      addInventoryItem({
-        campaignId,
-        ownerType: 'party',
-        ownerId: null,
-        name: item.name,
-        quantity: 1,
-        source: InventoryItemSource.SRD,
-        srdKey: item.srdKey,
-        srdCategory:
-          item.rarity === 'mundane'
-            ? InventoryItemCategory.EQUIPMENT
-            : InventoryItemCategory.MAGIC_ITEM,
-        addedByUserId: effective.userId,
-        sessionId,
-      })
-    )
-  )
+  // Persist + broadcast each item (sequential to allow stacking duplicates)
+  const addedItems: Awaited<ReturnType<typeof addInventoryItem>>[] = []
+  for (const lootItem of loot.items) {
+    const { item, wasStacked } = await addOrStackInventoryItem({
+      campaignId,
+      ownerType: 'party',
+      ownerId: null,
+      name: lootItem.name,
+      quantity: 1,
+      source: InventoryItemSource.SRD,
+      srdKey: lootItem.srdKey,
+      srdCategory:
+        lootItem.rarity === 'mundane'
+          ? InventoryItemCategory.EQUIPMENT
+          : InventoryItemCategory.MAGIC_ITEM,
+      addedByUserId: effective.userId,
+      sessionId,
+    })
+    addedItems.push(item)
 
-  if (wsManager) {
-    for (const item of addedItems) {
-      const event: EventEnvelope = {
-        id: crypto.randomUUID() as UUID,
-        type: 'INVENTORY:ITEM_ADDED',
-        version: 1,
-        userId: effective.userId,
-        userRole: requesterRole as any,
-        sessionId,
-        roomId: null,
-        timestamp: item.createdAt,
-        payload: {
-          campaignId: item.campaignId,
-          itemId: item.id,
-          ownerType: item.ownerType,
-          ownerId: item.ownerId,
-          name: item.name,
-          quantity: item.quantity,
-          source: item.source,
-          srdKey: item.srdKey,
-          srdCategory: item.srdCategory,
-          notes: item.notes,
-          addedByUserId: item.addedByUserId,
-          addedAt: item.createdAt,
-        },
-      }
+    if (wsManager) {
+      const event: EventEnvelope = wasStacked
+        ? {
+            id: crypto.randomUUID() as UUID,
+            type: 'INVENTORY:ITEM_EDITED',
+            version: 1,
+            userId: effective.userId,
+            userRole: requesterRole as any,
+            sessionId,
+            roomId: null,
+            timestamp: item.updatedAt,
+            payload: {
+              campaignId: item.campaignId,
+              itemId: item.id,
+              name: item.name,
+              quantity: item.quantity,
+              notes: item.notes,
+              editedAt: item.updatedAt,
+            },
+          }
+        : {
+            id: crypto.randomUUID() as UUID,
+            type: 'INVENTORY:ITEM_ADDED',
+            version: 1,
+            userId: effective.userId,
+            userRole: requesterRole as any,
+            sessionId,
+            roomId: null,
+            timestamp: item.createdAt,
+            payload: {
+              campaignId: item.campaignId,
+              itemId: item.id,
+              ownerType: item.ownerType,
+              ownerId: item.ownerId,
+              name: item.name,
+              quantity: item.quantity,
+              source: item.source,
+              srdKey: item.srdKey,
+              srdCategory: item.srdCategory,
+              notes: item.notes,
+              addedByUserId: item.addedByUserId,
+              addedAt: item.createdAt,
+            },
+          }
       await wsManager.broadcastToCampaignMembers(campaignId, event)
     }
   }

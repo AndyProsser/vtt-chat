@@ -1,6 +1,6 @@
 # VTT-Chat Product Roadmap
 
-**Last Updated**: 2026-06-16
+**Last Updated**: 2026-06-21
 **Purpose**: Track work items prioritized by importance and urgency. Acceptance criteria drive completion; detailed implementation notes and designs live in supporting docs.
 **Archive**: Historical delivery notes and detailed phase descriptions → [docs/DEVELOPMENT-ROADMAP-2026-05.md](docs/DEVELOPMENT-ROADMAP-2026-05.md)
 
@@ -2042,12 +2042,12 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [ ] Inventory history filter by character and date range
 - [x] Campaign settings for player permissions: Allow players /give and /take (ON default); Allow players /loot (OFF default) — `allowPlayerGive`, `allowPlayerTake`, `allowPlayerLoot` on Campaign; Inventory Permissions section in Campaign Settings panel.
 - [x] `/loot [item] [qty?]` — DM adds item to party inventory; chat system message in ACTIVE session
-- [ ] `/loot-split [item] [qty?]` — DM proposes split; Loot Split Card appears in chat; players accept in one click; unaccepted shares revert to party after 60s
+- [x] `/loot-split [item] [qty?]` — DM proposes split; Loot Split Card appears in chat; players accept in one click; unaccepted shares revert to party after 60s
 - [x] `/loot-random [CR] [Rarity?] [hoard?]` — DM generates post-combat loot using DMG Individual / Hoard Treasure tables; coins and items land directly in party inventory; CR/avg-level ratio scales quantity; optional rarity cap limits magic item tier; `hoard` keyword switches to hoard table + 150–300% item multiplier; system chat message summarises the drop. Implementation: `loot-tables.ts` (SRD CC-BY 4.0 static data), `loot-random.service.ts` (generation logic), handler in `chat-command.routes.ts`.
 - [x] `/take [item] [qty?]` — player takes from party inventory (campaign setting gated); partial qty supported; broadcasts `INVENTORY:ITEM_TRANSFERRED` + system chat message
 - [x] `/give @{player|party} [item] [qty?]` — player (needs `allowPlayerGive`) or DM gives item to named player or party; partial qty supported; player gives from own character inventory, DM gives from party
 - [x] `/drop [item] [qty?]` — player drops from own character inventory, DM drops from party; partial qty decrements quantity rather than deleting
-- [ ] Currency shorthand: `/give @party 10gp`, `/take 5sp` etc.
+- [x] Currency shorthand: `/give @party 10gp`, `/take 5sp` etc.
 - [ ] Currency transfer form always shows current balance of both source and destination before confirming
 - [x] Transfer and Remove amounts capped at available balance per denomination — validated at API layer (returns `400` with denomination breakdown on insufficient funds)
 - [x] Take from Party (player): atomically credits character wallet and debits party purse; only available when player has `/take` campaign permission
@@ -2063,7 +2063,7 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 - [x] `InventoryItem`, `CurrencyWallet`, `InventoryHistoryEntry` Prisma models added and migrated
 - [x] REST endpoints: party inventory CRUD, character inventory CRUD, transfer, SRD proxy, history
 - [x] Zustand `inventorySlice` rehydrates from REST on panel mount; no Redis (not presence/audio data)
-- [ ] Unit tests for inventory mutations and WS handlers
+- [x] Unit tests for inventory mutations and WS handlers
 - [ ] Integration tests for loot-split flow and permission gating
 
 **Related Docs**:

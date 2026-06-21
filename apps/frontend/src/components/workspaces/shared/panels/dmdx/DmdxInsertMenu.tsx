@@ -221,31 +221,33 @@ export function DmdxInsertMenu({ onInsert }: DmdxInsertMenuProps) {
 
       {open ? (
         <div className="dmdx-insert-menu__dropdown" role="listbox" aria-label="DMDX block types">
-          {DMDX_BLOCK_OPTIONS.map((option) => (
-            <button
-              key={option.type}
-              type="button"
-              role="option"
-              aria-selected={false}
-              className="dmdx-insert-menu__option"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                handleSelect(option.template)
-              }}
-            >
-              <span
-                className="material-symbols-outlined dmdx-insert-menu__option-icon"
-                aria-hidden="true"
-              >
-                {option.icon}
-              </span>
-              <span className="dmdx-insert-menu__option-text">
-                <span className="dmdx-insert-menu__option-label" title={option.description}>
-                  {option.label}
-                </span>
-              </span>
-            </button>
-          ))}
+          <TooltipProvider delayDuration={300}>
+            {DMDX_BLOCK_OPTIONS.map((option) => (
+              <Tooltip key={option.type}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    className="dmdx-insert-menu__option"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleSelect(option.template)
+                    }}
+                  >
+                    <span
+                      className="material-symbols-outlined dmdx-insert-menu__option-icon"
+                      aria-hidden="true"
+                    >
+                      {option.icon}
+                    </span>
+                    <span className="dmdx-insert-menu__option-label">{option.label}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{option.description}</TooltipContent>
+              </Tooltip>
+            ))}
+          </TooltipProvider>
         </div>
       ) : null}
     </div>
