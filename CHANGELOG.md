@@ -6,6 +6,12 @@ Entries are maintained manually. Add a bullet under `## Unreleased` for every me
 
 ---
 
+## Unreleased
+
+### Fixed
+
+- Long-session memory leak driven by speaking indicators. `handlePresenceStateChanged` routed speaking-START events to the lightweight `presenceSpeakingBySession` tracker (correct), but speaking-STOP arrives as a `PRESENCE:STATE_CHANGED` → `ONLINE` event that still called `applySessionPresenceStateChange`. Because speaking-start never writes `sessionPresence`, the user was already `ONLINE` there, so the stop write only bumped `lastSeenAt` while rebuilding `sessionPresence[sessionId]` into a new object reference. `SessionWorkspaceChromeConnector` subscribes to that map, so every speaker going silent re-rendered the entire `SessionWorkspace` chrome (including all Radix Tooltip/Popover/Popper subtrees) — verified in a React profiler trace as ~912-fiber commits firing ~1×/second and tearing down/rebuilding floating-ui popper portals. Over a multi-hour session this pushed Firefox memory past 8GB. Fix: the fast path now skips the `sessionPresence` write when the stored state already equals the incoming state, keeping pure voice-activity flips entirely out of the heavy presence map. Regression tests added in `apps/frontend/tests/state/roomSlice.test.ts`.
+
 ## [0.9.6] — 2026-06-20
 
 ### Added

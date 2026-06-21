@@ -593,10 +593,56 @@ describe('roomSlice', () => {
 
       expect(useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]).toBeUndefined()
       expect(useStore.getState().roomMembers[ROOM_ID_1]).toBe(roomMembersBeforeStop)
-      expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]).not.toBe(
+      // A speaking-stop must NOT rebuild the sessionPresence entry: the user is
+      // already ONLINE there (SPEAKING never wrote it), so re-persisting the
+      // same state would only bump lastSeenAt and hand a new object reference to
+      // top-level subscribers (SessionWorkspaceChromeConnector), re-rendering the
+      // entire workspace chrome once per silence. Reference must be preserved.
+      expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]).toBe(
         sessionPresenceBeforeStop
       )
       expect(useStore.getState().sessionPresence[SESSION_A]?.[USER_ID_1]?.state).toBe('ONLINE')
+    })
+
+    it('never rebuilds the sessionPresence map across repeated speak/silence cycles', () => {
+      useStore.getState().createRoom(SESSION_A, SAMPLE_ROOM)
+      useStore.getState().handleUserJoined(
+        makeEvent('ROOM:USER_JOINED', SESSION_A, {
+          roomId: ROOM_ID_1,
+          userId: USER_ID_1,
+          username: 'alice',
+        })
+      )
+
+      // The reference top-level subscribers (SessionWorkspaceChromeConnector)
+      // read. It must remain stable across pure voice-activity churn — otherwise
+      // every speaker re-renders the whole workspace chrome, which is the
+      // verified long-session memory leak.
+      const sessionMapBefore = useStore.getState().sessionPresence[SESSION_A]
+
+      for (let cycle = 0; cycle < 10; cycle += 1) {
+        useStore.getState().handlePresenceStateChanged(
+          makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+            roomId: ROOM_ID_1,
+            userId: USER_ID_1,
+            username: 'alice',
+            newState: 'SPEAKING',
+            changedAt: NOW + cycle * 100 + 10,
+          })
+        )
+        useStore.getState().handlePresenceStateChanged(
+          makeEvent('PRESENCE:STATE_CHANGED', SESSION_A, {
+            roomId: ROOM_ID_1,
+            userId: USER_ID_1,
+            username: 'alice',
+            newState: 'ONLINE',
+            changedAt: NOW + cycle * 100 + 50,
+          })
+        )
+      }
+
+      expect(useStore.getState().sessionPresence[SESSION_A]).toBe(sessionMapBefore)
+      expect(useStore.getState().presenceSpeakingBySession[SESSION_A]?.[USER_ID_1]).toBeUndefined()
     })
 
     it('keeps speaking and online indicators in sync through IDLE -> ENDED -> CLEANUP sequences', () => {

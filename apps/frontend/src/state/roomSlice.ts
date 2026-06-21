@@ -580,7 +580,20 @@ export const createRoomSlice: StateCreator<
       // Keep pure SPEAKING flips out of sessionPresence so transient voice
       // activity stays in presenceSpeakingBySession and does not fan out
       // re-renders to top-level workspace subscribers.
-      if (nextPresence !== PresenceState.SPEAKING) {
+      //
+      // CRITICAL (memory leak): speaking START never writes sessionPresence
+      // (it only flips presenceSpeakingBySession), so when speaking STOPS the
+      // user is still ONLINE in sessionPresence. Calling
+      // applySessionPresenceStateChange with the SAME state would rebuild
+      // sessionPresence[sessionId] into a new reference purely to bump
+      // lastSeenAt — which re-renders every top-level subscriber
+      // (SessionWorkspaceChromeConnector → the entire SessionWorkspace chrome,
+      // including all Radix Tooltip/Popover/Popper subtrees). That whole-chrome
+      // re-render fires once per speaker per silence and is the verified source
+      // of the multi-GB long-session memory growth. So only persist when the
+      // stored presence state actually differs from the incoming one (e.g. a
+      // genuine ONLINE→IDLE/AWAY transition); skip pure same-state refreshes.
+      if (nextPresence !== PresenceState.SPEAKING && existingPresence?.state !== nextPresence) {
         // Preserve ONLINE/IDLE transitions in sessionPresence so non-speaking
         // presence affordances (online/offline dots, away state) remain correct.
         get().applySessionPresenceStateChange({
