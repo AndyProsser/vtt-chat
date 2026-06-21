@@ -428,6 +428,8 @@ describe('admin campaign operations', () => {
           characters: [],
           sessions: [],
           recordings: [],
+          campaignNotes: [],
+          greenroomMessages: [],
         },
         memberEmailMap: {
           'player@old-instance.com': '44444444-4444-4444-8444-444444444444',
@@ -454,6 +456,8 @@ describe('admin campaign operations', () => {
           characters: [],
           sessions: [],
           recordings: [],
+          campaignNotes: [],
+          greenroomMessages: [],
         },
         // Array is not a valid memberEmailMap — should be silently ignored, not crash.
         memberEmailMap: ['bad'],
