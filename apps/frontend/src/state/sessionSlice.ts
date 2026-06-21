@@ -24,6 +24,54 @@ const hasSessionChanges = (session: Session, updates: Partial<Session>): boolean
   return false
 }
 
+/** Shallow per-field equality for two session records (all session fields are primitives). */
+const sessionRecordShallowEqual = (a: Session, b: Session): boolean => {
+  if (a === b) return true
+  const aKeys = Object.keys(a) as Array<keyof Session>
+  if (aKeys.length !== Object.keys(b).length) return false
+  for (const key of aKeys) {
+    if (!Object.is(a[key], b[key])) return false
+  }
+  return true
+}
+
+/** True iff two session maps hold the same ids and shallow-equal records. */
+const sessionsMapShallowEqual = (
+  a: Record<UUID, Session>,
+  b: Record<UUID, Session>
+): boolean => {
+  if (a === b) return true
+  const aIds = Object.keys(a)
+  if (aIds.length !== Object.keys(b).length) return false
+  for (const id of aIds) {
+    const right = (b as Record<string, Session>)[id]
+    if (!right || !sessionRecordShallowEqual((a as Record<string, Session>)[id], right)) {
+      return false
+    }
+  }
+  return true
+}
+
+const pauseStatsEqual = (a: SessionPauseStats, b: SessionPauseStats): boolean =>
+  Object.is(a.cumulativePauseMs, b.cumulativePauseMs) &&
+  Object.is(a.pauseCount, b.pauseCount) &&
+  Object.is(a.pauseStartedAt, b.pauseStartedAt)
+
+/** Shallow equality for a keyed record using the supplied value comparator. */
+const recordShallowEqual = <T>(
+  a: Record<string, T>,
+  b: Record<string, T>,
+  isEqual: (x: T, y: T) => boolean
+): boolean => {
+  if (a === b) return true
+  const aKeys = Object.keys(a)
+  if (aKeys.length !== Object.keys(b).length) return false
+  for (const key of aKeys) {
+    if (!(key in b) || !isEqual(a[key], b[key])) return false
+  }
+  return true
+}
+
 export type { Session } from '@/types/session'
 
 export interface SessionPauseStats {
@@ -134,10 +182,28 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         }
       }
 
+      const nextIsGreenroom = isGreenroomSessionState(currentSession?.state)
+
+      // No-op guard: the lobby/campaign-entry orchestration refetches the session
+      // list on entry and after transitions. When the payload is identical to what
+      // we already hold, replacing the maps would hand fresh object references to
+      // every `sessions`/`currentSession` subscriber (notably the session-workspace
+      // chrome via `baseProps`), re-rendering them for nothing. Skip the write when
+      // nothing actually changed.
+      if (
+        nextCurrentSessionId === state.currentSessionId &&
+        nextIsGreenroom === state.isGreenroom &&
+        sessionsMapShallowEqual(nextSessions, state.sessions) &&
+        recordShallowEqual(nextPauseStats, state.pauseStats, pauseStatsEqual) &&
+        recordShallowEqual(nextCooldownExtensionCounts, state.cooldownExtensionCounts, Object.is)
+      ) {
+        return state
+      }
+
       return {
         sessions: nextSessions,
         currentSessionId: nextCurrentSessionId,
-        isGreenroom: isGreenroomSessionState(currentSession?.state),
+        isGreenroom: nextIsGreenroom,
         pauseStats: nextPauseStats,
         cooldownExtensionCounts: nextCooldownExtensionCounts,
       }
@@ -210,9 +276,19 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
   setCurrentSession: (sessionId) =>
     set((state) => {
       const currentSession = sessionId ? sessionById(state.sessions, sessionId) : null
+      const nextIsGreenroom = isGreenroomSessionState(currentSession?.state)
+
+      // No-op guard: rebind paths (e.g. SESSION:STATE_CHANGED auto-rebind, hydration)
+      // frequently re-set the already-current session. `currentSessionId` is one of the
+      // most widely-subscribed store fields, so an identity-only change would re-render a
+      // large part of the tree for no state change.
+      if (sessionId === state.currentSessionId && nextIsGreenroom === state.isGreenroom) {
+        return state
+      }
+
       return {
         currentSessionId: sessionId,
-        isGreenroom: isGreenroomSessionState(currentSession?.state),
+        isGreenroom: nextIsGreenroom,
       }
     }),
 
@@ -379,17 +455,25 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         },
       }
 
-      const nextCooldownExtensionCounts = { ...state.cooldownExtensionCounts }
+      // Reuse the existing map reference when the count is unchanged. Otherwise a
+      // PAUSED/RESUMED transition (which never touches the count) would still hand a
+      // fresh `cooldownExtensionCounts` object to its subscribers (the session chrome
+      // reads it as a standalone prop), re-rendering them for nothing.
+      const prevCooldownCount = state.cooldownExtensionCounts[event.sessionId]
+      let nextCooldownCount = prevCooldownCount
       if (payload.state === 'COOLDOWN') {
-        nextCooldownExtensionCounts[event.sessionId] =
-          nextCooldownExtensionCounts[event.sessionId] ?? 0
+        nextCooldownCount = prevCooldownCount ?? 0
       } else if (
         payload.state === 'ACTIVE' ||
         payload.state === 'IDLE' ||
         payload.state === 'ENDED'
       ) {
-        nextCooldownExtensionCounts[event.sessionId] = 0
+        nextCooldownCount = 0
       }
+      const nextCooldownExtensionCounts =
+        nextCooldownCount === prevCooldownCount
+          ? state.cooldownExtensionCounts
+          : { ...state.cooldownExtensionCounts, [event.sessionId]: nextCooldownCount }
 
       // AUTO-REBIND: If a fresh session starts and currentSessionId is different,
       // force-bind to the new session. This occurs when:
@@ -403,11 +487,20 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
         ? sessionById(nextSessions, nextCurrentSessionId)
         : null
 
+      // Reuse the pauseStats map reference when this session's stats are unchanged
+      // (e.g. COOLDOWN/ENDED with no prior pause), so pause-stat subscribers don't
+      // re-render purely from a new container object.
+      const prevStoredStats = state.pauseStats[event.sessionId]
+      const nextPauseStatsMap =
+        prevStoredStats && pauseStatsEqual(prevStoredStats, nextStats)
+          ? state.pauseStats
+          : { ...state.pauseStats, [event.sessionId]: nextStats }
+
       return {
         sessions: nextSessions,
         currentSessionId: nextCurrentSessionId,
         isGreenroom: isGreenroomSessionState(currentSession?.state),
-        pauseStats: { ...state.pauseStats, [event.sessionId]: nextStats },
+        pauseStats: nextPauseStatsMap,
         cooldownExtensionCounts: nextCooldownExtensionCounts,
       }
     })

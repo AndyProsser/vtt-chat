@@ -89,6 +89,60 @@ describe('sessionSlice', () => {
       const canExtendCooldown = Boolean(canManageCooldown) && (hydratedCount ?? 0) < 3
       expect(canExtendCooldown).toBe(false)
     })
+
+    it('is a no-op (preserves references) when the payload is identical', () => {
+      // Prime via replaceSessions so pauseStats/cooldown are already hydrated —
+      // mirrors steady state after the first lobby load.
+      useStore.getState().replaceSessions([SAMPLE_SESSION])
+      useStore.getState().setCurrentSession(SESSION_ID_1)
+
+      const sessionsBefore = useStore.getState().sessions
+      const pauseStatsBefore = useStore.getState().pauseStats
+      const cooldownBefore = useStore.getState().cooldownExtensionCounts
+
+      // Re-applying the same session list (as the lobby refetch does) must not
+      // hand out fresh references that would churn baseProps subscribers.
+      useStore.getState().replaceSessions([{ ...SAMPLE_SESSION }])
+
+      expect(useStore.getState().sessions).toBe(sessionsBefore)
+      expect(useStore.getState().pauseStats).toBe(pauseStatsBefore)
+      expect(useStore.getState().cooldownExtensionCounts).toBe(cooldownBefore)
+    })
+
+    it('still replaces when a session field actually changes', () => {
+      useStore.getState().createSession(SAMPLE_SESSION)
+      const sessionsBefore = useStore.getState().sessions
+
+      useStore.getState().replaceSessions([{ ...SAMPLE_SESSION, name: 'Renamed' }])
+
+      expect(useStore.getState().sessions).not.toBe(sessionsBefore)
+      expect(useStore.getState().sessions[SESSION_ID_1]!.name).toBe('Renamed')
+    })
+  })
+
+  describe('setCurrentSession', () => {
+    it('is a no-op (preserves state) when the session is already current', () => {
+      useStore.getState().createSession(SAMPLE_SESSION)
+      useStore.getState().setCurrentSession(SESSION_ID_1)
+
+      const stateBefore = useStore.getState()
+      useStore.getState().setCurrentSession(SESSION_ID_1)
+
+      // currentSessionId is widely subscribed; a redundant rebind must not churn it.
+      expect(useStore.getState().currentSessionId).toBe(stateBefore.currentSessionId)
+      expect(useStore.getState().isGreenroom).toBe(stateBefore.isGreenroom)
+    })
+
+    it('updates when switching to a different session', () => {
+      const second: Session = { ...SAMPLE_SESSION, id: SESSION_ID_2, state: 'ACTIVE' as any }
+      useStore.getState().createSession(SAMPLE_SESSION)
+      useStore.getState().createSession(second)
+      useStore.getState().setCurrentSession(SESSION_ID_1)
+
+      useStore.getState().setCurrentSession(SESSION_ID_2)
+      expect(useStore.getState().currentSessionId).toBe(SESSION_ID_2)
+      expect(useStore.getState().isGreenroom).toBe(false)
+    })
   })
 
   describe('updateSession', () => {
