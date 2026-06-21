@@ -22,7 +22,6 @@ import type { UUID } from '@shared'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/hooks/useStore'
 import type { TypingIndicator as TypingIndicatorData } from '@/types/chat'
-import type { SessionPresence } from '@/types/room'
 
 interface TypingIndicatorProps {
   sessionId: UUID
@@ -31,7 +30,7 @@ interface TypingIndicatorProps {
 }
 
 const EMPTY_TYPING_INDICATORS: TypingIndicatorData[] = []
-const EMPTY_SESSION_PRESENCE: Record<UUID, SessionPresence> = {}
+const EMPTY_NAME_LOOKUP: Record<UUID, string> = {}
 
 export const TypingIndicator = memo(function TypingIndicator({
   sessionId,
@@ -61,8 +60,27 @@ export const TypingIndicator = memo(function TypingIndicator({
     })
   )
 
-  const sessionPresence = useStore(
-    (state) => state.sessionPresence[sessionId] ?? EMPTY_SESSION_PRESENCE
+  // Resolve typer display names via a shallow-compared {userId: name} lookup
+  // rather than subscribing to the whole presence map. Subscribing to the map
+  // re-rendered this leaf on EVERY presence change (room moves, ghost/disconnect
+  // flips, online/offline) even though none of those alter a name. useShallow on
+  // a flat name map means we only re-render when a display name actually changes,
+  // keeping typing fully isolated from unrelated presence churn.
+  const typerNames = useStore(
+    useShallow((state) => {
+      const presence = state.sessionPresence[sessionId]
+      if (!presence) return EMPTY_NAME_LOOKUP
+      let lookup: Record<UUID, string> | null = null
+      for (const userId in presence) {
+        const participant = presence[userId as UUID]
+        const name = participant.characterName?.trim() || participant.playerName?.trim()
+        if (name) {
+          if (!lookup) lookup = {}
+          lookup[userId as UUID] = name
+        }
+      }
+      return lookup ?? EMPTY_NAME_LOOKUP
+    })
   )
 
   // Local clock advances only when an indicator is about to expire — never on
@@ -101,9 +119,7 @@ export const TypingIndicator = memo(function TypingIndicator({
       if (indicator.until <= typingClock) continue
       if (indicator.userId === currentUserId) continue
 
-      const participant = sessionPresence[indicator.userId]
-      const displayName =
-        participant?.characterName?.trim() || participant?.playerName?.trim() || indicator.username
+      const displayName = typerNames[indicator.userId] || indicator.username
 
       inRoomNames.push(displayName)
       inRoomCount += 1
@@ -115,9 +131,7 @@ export const TypingIndicator = memo(function TypingIndicator({
     for (const indicator of elsewhereIndicators) {
       if (indicator.until <= typingClock) continue
 
-      const participant = sessionPresence[indicator.userId]
-      const displayName =
-        participant?.characterName?.trim() || participant?.playerName?.trim() || indicator.username
+      const displayName = typerNames[indicator.userId] || indicator.username
 
       elsewhereNames.push(displayName)
       elsewhereCount += 1
@@ -142,7 +156,7 @@ export const TypingIndicator = memo(function TypingIndicator({
       summary: summaryText,
       elsewhereSummary: elsewhereText,
     }
-  }, [inRoomIndicators, elsewhereIndicators, typingClock, currentUserId, sessionPresence])
+  }, [inRoomIndicators, elsewhereIndicators, typingClock, currentUserId, typerNames])
 
   const typingOverlayClassName = [
     'session-chat-window__typing-overlay',
