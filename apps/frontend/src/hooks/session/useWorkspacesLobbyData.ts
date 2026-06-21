@@ -55,6 +55,19 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
   const [partyPresenceRefreshVersion, setPartyPresenceRefreshVersion] = useState(0)
   const lobbyCampaignReloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastLobbyCampaignLoadAtRef = useRef<number>(0)
+  // CAMPAIGN:LIST_INVALIDATED is a lobby-scoped signal, but the backend also
+  // broadcasts it on session state changes. While in a live session we defer the
+  // reload (see handleCampaignListInvalidated) and flush it once the user is back
+  // in a lobby context, so PAUSE/RESUME no longer refetch /api/campaigns mid-session.
+  //
+  // "Lobby context" = the session officially ended/idle (isGreenroom) OR the user
+  // left the session before it ended (currentSessionId cleared by exit/leave).
+  // Both must flush so a player who exits a still-ACTIVE session sees an up-to-date
+  // campaign list.
+  const currentSessionId = useStore((state) => state.currentSessionId)
+  const isGreenroom = useStore((state) => state.isGreenroom)
+  const inLobbyContext = currentSessionId === null || isGreenroom
+  const pendingCampaignReloadRef = useRef(false)
 
   const applyLobbyStatsSnapshot = useCallback((snapshot: CampaignLobbyStatsUpdatedPayload) => {
     setLobbyStats({
@@ -268,6 +281,16 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
   }, [apiUrl, applyLobbyStatsSnapshot, fetchWithAuthGuard, token])
 
   const handleCampaignListInvalidated = useCallback(() => {
+    // In a live session the lobby campaign list isn't visible, and the backend
+    // emits this on session-state changes — so reloading here would refetch
+    // /api/campaigns on every PAUSE/RESUME and churn `campaigns` → `selectedCampaign`
+    // → the session chrome. Defer until the user is back in a lobby context.
+    const { currentSessionId: liveSessionId, isGreenroom: greenroomNow } = useStore.getState()
+    if (liveSessionId !== null && !greenroomNow) {
+      pendingCampaignReloadRef.current = true
+      return
+    }
+
     if (
       Date.now() - lastLobbyCampaignLoadAtRef.current <
       CAMPAIGN_INVALIDATION_SUPPRESS_AFTER_LOAD_MS
@@ -315,6 +338,17 @@ export function useWorkspacesLobbyData(params: UseWorkspacesLobbyDataParams) {
       }
     }
   }, [])
+
+  // Flush a campaign-list reload deferred during a live session once the user is
+  // back in a lobby context — whether the session ended (isGreenroom) or the user
+  // left it early (currentSessionId cleared) — so the list reflects any
+  // invalidations that arrived mid-session without churning the chrome while in play.
+  useEffect(() => {
+    if (inLobbyContext && pendingCampaignReloadRef.current) {
+      pendingCampaignReloadRef.current = false
+      void loadLobbyCampaignData({ showLoading: false, surfaceError: false })
+    }
+  }, [inLobbyContext, loadLobbyCampaignData])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
