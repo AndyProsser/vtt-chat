@@ -1,0 +1,949 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+Entries are maintained manually. Add a bullet under `## Unreleased` for every meaningful feature, fix, or contract change. Entries move to a versioned section on release.
+
+---
+
+## Unreleased
+
+### Fixed
+
+- Long-session memory leak driven by speaking indicators. `handlePresenceStateChanged` routed speaking-START events to the lightweight `presenceSpeakingBySession` tracker (correct), but speaking-STOP arrives as a `PRESENCE:STATE_CHANGED` → `ONLINE` event that still called `applySessionPresenceStateChange`. Because speaking-start never writes `sessionPresence`, the user was already `ONLINE` there, so the stop write only bumped `lastSeenAt` while rebuilding `sessionPresence[sessionId]` into a new object reference. `SessionWorkspaceChromeConnector` subscribes to that map, so every speaker going silent re-rendered the entire `SessionWorkspace` chrome (including all Radix Tooltip/Popover/Popper subtrees) — verified in a React profiler trace as ~912-fiber commits firing ~1×/second and tearing down/rebuilding floating-ui popper portals. Over a multi-hour session this pushed Firefox memory past 8GB. Fix: the fast path now skips the `sessionPresence` write when the stored state already equals the incoming state, keeping pure voice-activity flips entirely out of the heavy presence map. Regression tests added in `apps/frontend/tests/state/roomSlice.test.ts`.
+
+### Performance
+
+- In-session campaign-list refetch. The backend broadcasts `CAMPAIGN:LIST_INVALIDATED` on session-state changes (to refresh lobby campaign-card indicators), but the **in-session** client also handled it — refetching `/api/campaigns` and calling `setCampaigns` on every PAUSE/RESUME. Because campaigns come back as fresh JSON objects, `selectedCampaign` got a new reference and re-rendered the session chrome (and logged a stray `Lobby: loaded campaigns` mid-session). `useWorkspacesLobbyData` now **defers** the reload while in a live session and flushes it once the user is back in a lobby context — whether the session officially ended (`isGreenroom`) **or** the user left it early (`currentSessionId` cleared) — so a player who exits a still-`ACTIVE` session still gets an up-to-date list, without churning the chrome during play.
+
+- TypingIndicator presence over-subscription. The typing overlay subscribed to the entire `sessionPresence[sessionId]` map purely to resolve typer display names, so it re-rendered on **every** presence change in the session (room moves, ghost/disconnect flips, online/offline) even when no name changed and no one was typing. Replaced with a `useShallow` `{userId → displayName}` lookup so the leaf only re-renders when a display name actually changes, keeping typing isolated from unrelated presence churn. Audit confirmed the other per-user leaves (`PresenceIndicator`, `GhostIndicator`, `AwayIndicator`, `SpeakingIndicator`, `ConditionBadge`, `DistanceBadge`) already subscribe to per-user primitive selectors and are correctly isolated; the `SessionWorkspace` chrome already value-compares connected-player counts and bails on unchanged stats.
+
+- Session-transition re-render cascade. A React profiler trace showed `WorkspaceInitialization` re-rendering ~63× in a session, with 53 of those in 5 per-transition "waterfalls" that each re-rendered the heavy `SessionWorkspaceComponent` ~9–11× (~3–4k fibers/transition). Root cause: `currentSession`/`sessionList` (derived from `state.sessions`) were handed fresh object references on writes that didn't actually change anything — the lobby/campaign-entry session-list refetch (`replaceSessions`), redundant rebinds (`setCurrentSession`), and `cooldownExtensionCounts`/`pauseStats` containers rebuilt on every `SESSION:STATE_CHANGED` even for PAUSED/RESUMED — which churned `baseProps` and defeated the chrome connector's memo. Fix: `sessionSlice` now no-op-guards these writes (reuses existing references when the resulting value is unchanged): `replaceSessions`, `setCurrentSession`, and the `cooldownExtensionCounts`/`pauseStats` maps in `handleSessionStateChanged`. Behavior-preserving (a skipped write is unobservable except for reference identity). Tests added in `apps/frontend/tests/state/sessionSlice.test.ts`.
+
+## [0.9.6] — 2026-06-20
+
+### Added
+
+- W-Inventory-System: `/loot-split [item name] [qty?]` — DM-only command to propose an equal split of a party inventory item among all currently connected players. Each player receives a timed Accept card in chat (60-second window). Acceptance is individual; unaccepted shares are not transferred. Expired proposals display a frozen "Expired" badge. Registered in shared `ChatCommandName` and `CHAT_COMMANDS`.
+- W-Inventory-System: `LootSplitCard` component — renders inline in the chat message stream via `MessageListSystemRow`. Shows per-player acceptance state in real time (Zustand `lootSplitSlice`), a live countdown timer (urgent styling ≤10s), an Accept button for the current user, and Complete/Expired status badges. Survives page refresh by re-hydrating from `msg.metadata.lootSplitCard` on mount.
+- `lootSplitSlice` — new Zustand slice tracking `activeLootSplits` keyed by `splitId`. Handlers: `handleLootSplitProposed`, `handleLootSplitAccepted`, `handleLootSplitExpired`. Wired into root store and `useWebSocket` dispatcher for `INVENTORY:LOOT_SPLIT_PROPOSED`, `INVENTORY:LOOT_SPLIT_ACCEPTED`, `INVENTORY:LOOT_SPLIT_EXPIRED`.
+- `loot-split.service.ts` (backend) — `createLootSplit` stores ephemeral split state in Redis (60s TTL) and schedules `setTimeout` expiry that broadcasts `INVENTORY:LOOT_SPLIT_EXPIRED`. `acceptLootSplit` validates, calls `partialTransferInventoryItem`, marks share accepted in Redis, broadcasts `INVENTORY:LOOT_SPLIT_ACCEPTED`.
+- `POST /api/inventory/:campaignId/loot-split/:splitId/accept` — player endpoint to accept their share. Gated to PLAYER role; validates split exists and is active; returns 404/403/410 as appropriate.
+- History panel filters — owner (Party / per-character) and date range (from/to) filters added to `InventoryPanel.History.tsx`. Owner filter triggers server-side re-fetch with `ownerId`/`ownerType` query params; action type filter applied client-side. Date inputs include a clear button.
+- `InventoryHistoryOverlay` now receives `ownerOptions` (Party + all player characters) from `InventoryPanel.tsx`.
+- Currency shorthand parsing now supported in `/give` and `/take`: if all argument tokens match `{num}{denom}` the command routes to `transferCurrency` instead of item transfer.
+- Balance display added to `InventoryPanel.CurrencyRow` edit form ("Balance: 10gp · 3sp").
+- `LootSplitCardMetadata` interface added to `packages/shared/types/entities.ts` and exported from `packages/shared/types/index.ts`.
+
+## [0.9.5] — 2026-06-19
+
+### Added
+
+- W-Inventory-System: `/earn [currency]` — chat command crediting the caller's own wallet (character if player, party purse if DM). Supports any combination of denominations (`1gp 3sp 33cp`, `10gp 35sp`, etc.) in any order. No cap. Broadcasts `INVENTORY:CURRENCY_CHANGED` per-campaign and a `[Wallet]` system chat message visible to all. Available to DM and PLAYER in ACTIVE sessions.
+- W-Inventory-System: `/spend [currency]` — chat command debiting the caller's own wallet. Balance is checked before any write; on shortfall a randomly-chosen dry-humor system message (50 options) is broadcast to all in the room and the command returns `400 INSUFFICIENT_FUNDS`. On success broadcasts `INVENTORY:CURRENCY_CHANGED` + `[Wallet]` system chat message. Available to DM and PLAYER.
+- Currency shorthand parser (`parseCurrencyArgs`) and formatter (`formatCurrencyAmounts`) added to `chat-command.routes.ts` — reusable for future currency-shorthand work in `/give`, `/take`, etc.
+
+## [0.9.4] — 2026-06-19
+
+### Added
+
+- W-Inventory-System: `/loot [item name] [qty?]` — DM-only slash command to add a named item directly to party inventory. Last token treated as quantity if it's a positive integer. Produces `INVENTORY:ITEM_ADDED` WS event and a `[Loot]` system chat message. Registered in `packages/shared/types/chatCommands.ts`; handler in `apps/backend/src/api/chat-command.routes.ts`. When `allowPlayerLoot` is enabled on the campaign, players may also use `/loot`.
+- W-Inventory-System: Campaign player inventory permissions — `allowPlayerGive` (default ON), `allowPlayerTake` (default ON), `allowPlayerLoot` (default OFF) fields added to Campaign model (Prisma migration `20260619000000_add_campaign_player_inventory_permissions`). All three fields are surfaced in a new "Inventory Permissions" section in the Campaign Settings panel. Settings flow through `useCampaignSettings` → `sessionSettings.ts` → GET/PATCH `/api/campaigns/:id/settings`.
+- W-Inventory-System: `/take [item] [qty?]` — player chat command to take items from party inventory into their character inventory. Gated by `allowPlayerTake`. Supports partial quantities (source item decremented; new item created for recipient). Broadcasts `INVENTORY:ITEM_TRANSFERRED` per-campaign + system chat message.
+- W-Inventory-System: `/give @{party|player} [item] [qty?]` — DM or player (gated by `allowPlayerGive`) transfers an item to party or a named player. Players give from their character inventory; DM gives from party. Partial quantities supported. Target resolved by username or playerName. Broadcasts `INVENTORY:ITEM_TRANSFERRED` + system chat message.
+- W-Inventory-System: `/drop [item] [qty?]` — DM or player removes an item from their own inventory. Players drop from their character; DM drops from party. Partial quantity decrements the source item; full quantity deletes it. Broadcasts `INVENTORY:ITEM_REMOVED` + system chat message.
+- W-Inventory-System: `POST /api/inventory/:campaignId/transfer/currency` — atomic two-sided currency transfer. Validates source balance per denomination before applying; returns `400 INSUFFICIENT_FUNDS` with per-denomination shortfall on failure. All writes run in a single Prisma `$transaction`. Emits `INVENTORY:CURRENCY_CHANGED` for both source and destination owners. Players may only transfer from their own character wallet.
+- W-Inventory-System: `partialTransferInventoryItem`, `partialRemoveInventoryItem`, `findItemByOwnerAndName`, `transferCurrency` service helpers added to `apps/backend/src/services/inventory/inventory.service.ts`.
+
+## [0.9.3] — 2026-06-19
+
+### Added
+
+- W-Inventory-System: `/loot-random [CR] [Rarity?] [hoard?]` — DM-only slash command that generates randomised post-combat loot using D&D 5e DMG Individual Treasure / Treasure Hoard tables and adds everything directly to the party inventory. CR (0–30) sets the tier; optional rarity cap limits magic item quality (mundane / common / uncommon / rare / very-rare / legendary / artifact); `hoard` keyword switches to the DMG hoard coin table and multiplies item count 150–300%. Coin amounts scale against the CR/average-character-level ratio; non-hoard item count is 50–75% of connected-player count so someone may miss out; hoard item count is 150–300% of connected-player count for a full pile. Connected-player count and average level are resolved live from session presence crossed with campaign member profiles. All mutations go through the standard 4-layer contract (PostgreSQL → WS broadcast `INVENTORY:ITEM_ADDED` + `INVENTORY:CURRENCY_CHANGED` per-campaign → Zustand via existing handlers) and produce a single `[Loot]` system chat message. Static SRD item lists (D&D 5.1 CC-BY 4.0) live in `apps/backend/src/services/inventory/loot-tables.ts`; generation logic in `apps/backend/src/services/inventory/loot-random.service.ts`. Command registered in `packages/shared/types/chatCommands.ts` and appears in the command-palette autocomplete for DM role. Backend handler in `apps/backend/src/api/chat-command.routes.ts`.
+
+## [0.9.2] — 2026-06-19
+
+### Added
+
+- W-Session-Schedule / W-DM-Campaign-Portability: Campaign export payload now includes schedule fields (`sessionScheduleType`, `sessionScheduleDay`, `sessionScheduleNth`, `sessionScheduleHour`, `sessionScheduleMinute`, `sessionScheduleTz`, `nextSessionDate`, `nextSessionIsManual`) under `campaign.schedule` in `CampaignTransferBundle`. Both admin and DM self-service exports populate this field; import restores all schedule fields to the new campaign so the recurrence rule does not need to be manually reconfigured after migration.
+
+- W-Extension-MVP: Specified extension session launch flow (`docs/extension/EXTENSION-INTEGRATION.md` §10, §12; `docs/extension/GUEST-AUTH.md` §3.1, §4.10; `docs/CONTRACTS.md` "Extension Device Credential Contract"). Key decisions: returning users bypass the `/join/:code` page entirely via device credential exchange; a new `/ext-launch` route handles auth confirmation (password-only for full accounts, auto-login for guests); any campaign member (including guests) may call the new `POST /api/campaigns/:campaignId/session/ensure` endpoint to create an IDLE (greenroom) session without DM involvement; `GET /api/campaigns/:campaignId/session-status` exposes campaign display state and connected-member count with no auth requirement (campaignId acts as access gate).
+
+- W-Extension-MVP: Added device credential persistence per `docs/CONTRACTS.md` "Extension Device Credential Contract": new `DeviceCredential` Prisma model (salted-hash storage, 90-day rolling expiry from `lastUsedAt`); `apps/backend/src/services/auth/device-credential.service.ts` (`issueDeviceCredential`, `exchangeDeviceCredential`, `listDeviceCredentials`, `revokeDeviceCredential`); new endpoints `POST /api/auth/extension/credential/exchange` (rotates the credential and returns a fresh JWT, rate-limited to 10/min per `deviceId`), `GET /api/auth/extension/credentials`, `DELETE /api/auth/extension/credentials/:credentialId` (self or admin). `POST /api/auth/extension/guest-login` now returns a `deviceCredential` field when the request includes a `deviceId`. Device credentials are preserved automatically across guest→full upgrade (same `userId`).
+- W-Extension-MVP **bugfix**: `apps/backend/src/api/auth.routes.ts` (containing `/extension/guest-login` and `/extension/preflight`) was never mounted by `apps/backend/src/api/index.ts` — these endpoints 404'd on the real deployed backend despite passing tests (the test suite mounted the file directly, bypassing the real router registry). Moved both routes into a new, actually-mounted `apps/backend/src/api/auth-extension.routes.ts`; deleted the dead file along with its other routes, which were already-superseded duplicates of routes live in `auth-join.routes.ts` (`/join/guest/player`, `/join/guest/spectator`, `/join/full/player`, `/validate/player`).
+- W-Extension-MVP: Implemented the remaining extension sync surface per `docs/CONTRACTS.md` "Extension Inventory Sync Policy Contract" — character/inventory/currency sync and the campaign-scoped two-layer policy that governs it. `Campaign` gains four new fields: `extensionInventorySyncEnabled`, `extensionCurrencySyncEnabled` (booleans, default `true`), `extensionPartyInventorySyncAccess` (`DISABLED | DM_ONLY | ALL_PLAYERS`, default `DM_ONLY`), `extensionSyncConflictResolution` (`OVERWRITE | IGNORE | PROMPT`, default `OVERWRITE`) — managed via the existing `GET`/`PATCH /api/campaigns/:campaignId/settings` and locked while a session is `ACTIVE`/`PAUSED`. New `PendingExtensionSync` Prisma model (campaign+characterId-scoped, 24h TTL checked on read, no sweep job — same convention as `DeviceCredential`).
+- W-Extension-MVP: `POST /api/integrations/external/sync` now accepts `partyInventoryUpdate`/`partyCurrencyUpdate` (new top-level keys, no `externalCharacterId`, mirroring `inventoryUpdate`/`currencyUpdate`) for party-targeted sync, gated by `extensionPartyInventorySyncAccess` and the master toggles. `apps/backend/src/services/integration-sync.service.ts` enforces Layer 2 policy and builds a partial-application response (`applied.skippedReasons`, new `403 SYNC_POLICY_DISABLED`/`SYNC_POLICY_PARTY_ACCESS_DENIED` codes); conflict-resolution and party-owned item/currency upsert logic extracted to new `apps/backend/src/services/integration-sync-policy.service.ts`. `inventory.service.ts`'s `syncExternalInventoryItems`/`setExternalCurrencyWallet` now accept an optional `ownerType: 'character' | 'party'` (and nullable `ownerId`) to support party targets.
+- W-Extension-MVP: PROMPT-mode conflicts queue to `PendingExtensionSync` via new `apps/backend/src/services/inventory/pending-extension-sync.service.ts` and broadcast `INVENTORY:EXTENSION_SYNC_PENDING` to the DM only (`eventBroadcaster.sendToUser`); party-owned conflicts under `PROMPT` fall back to `OVERWRITE` since the pending-sync schema is locked to a single `characterId` (no DM-review queue shape for party records). New DM-only review endpoints in `apps/backend/src/api/inventory-sync.routes.ts`: `GET /api/inventory/:campaignId/sync/pending`, `POST .../sync/pending/:pendingId/approve` (applies via the standard 4-layer contract, broadcasts the normal `INVENTORY:ITEM_ADDED`/`ITEM_EDITED`/`CURRENCY_CHANGED` event), `POST .../sync/pending/:pendingId/reject`.
+- W-Extension-MVP **bugfix**: `syncExternalIntegration`'s `applied` response always included `inventoryItemsUpserted`/`currencyUpdated` even when neither section was in the request, which already failed the locked unit test for character-only sync. Fixed so every section key (`inventoryItemsUpserted`, `currencyUpdated`, `partyInventoryItemsUpserted`, `partyCurrencyUpdated`, `pendingConflicts`, `skippedReasons`) is present only when its corresponding request section was present; `characterUpdate`/`campaignUpdate` remain always-present.
+
+- W-Queues Phase 3: `vttchat:recording` queue added (`packages/shared/jobs/names.ts`); `recording` worker feature-gated on `RECORDING_PROCESSOR_URL` (graceful skip when unset). `summary` worker feature-gated on `LLM_SUMMARY_URL` (same pattern). Admin queue inspection routed via `GET|POST|DELETE /api/admin/queues/*` in the backend (`apps/backend/src/api/admin-queues.routes.ts`) — protected by `adminAuthMiddleware`, proxied to queues service with `INTERNAL_JOB_SECRET`; admin app never touches `QUEUE_ADMIN_SECRET`. `docs/architecture/QUEUE-JOB-MANAGER.md` rewritten from blueprint to implemented state with ASCII architecture diagram. New `docs/operations/QUEUES.md` covers env vars, queue reference, admin API endpoints, DLQ investigation workflow, optional-service deployment steps, and troubleshooting.
+
+- W-Queues Phase 2: Session lifecycle and cleanup workers are now fully functional — on each BullMQ job fire, the `session-lifecycle` worker calls `POST /api/internal/jobs/trigger/lifecycle-sweep` on the backend (runs `SessionCleanupJobService.runLifecycleWorkerOnce()`) and the `cleanup` worker calls `/api/internal/jobs/trigger/archive-verify` (runs `runArchiveWorkerOnce()`). Both calls are protected by a shared `INTERNAL_JOB_SECRET`. The email worker now sends via SMTP using the queues service's own nodemailer config. Backend `enqueuePasswordResetEmail()` enqueues to BullMQ via `POST /queues/email/enqueue` when `QUEUES_URL` is set, falling back to direct send otherwise. An enqueue API (`POST /queues/:queue/enqueue`) lets the backend push arbitrary jobs. Backend gains `DISABLE_INTERNAL_CLEANUP_SCHEDULER` flag (default off; enables removing the in-process scheduler once BullMQ is proven stable). Both compose files wired with `INTERNAL_JOB_SECRET`, `QUEUES_URL`, `BACKEND_INTERNAL_URL`, and SMTP env vars.
+- W-Queues Phase 1: Added `apps/queues` — a standalone BullMQ worker container running alongside the backend. Includes four workers (`session-lifecycle`, `cleanup`, `email`, `summary`) each with exponential-backoff retry and terminal-failure DLQ (`vttchat:dlq`). A BullMQ scheduler registers a repeatable `cleanup-old-sessions` job (default: every 5 minutes, configurable via `QUEUE_CLEANUP_CRON`). An admin HTTP API (port 3001, Bearer-token auth via `QUEUE_ADMIN_SECRET`) exposes `GET /queues`, job listing, retry, delete, and obliterate endpoints for operator tooling. Job payload types and queue name constants live in `packages/shared/jobs/`. Both `docker-compose.yml` and `docker-compose.dev.yml` include the new `queues` service (with hot-reload volume mounts in dev).
+
+- W-Notes-Visibility: Added `NOTES:HANDOUT_SURFACED` WS event to `shared/events/notes.ts` with `excerpt`, `excerptSource` (`AUTO | MANUAL`), `scope` (`PARTY | SELECTED`), and `recipientIds` fields.
+- W-Notes-Visibility: Added `NoteHandoutMessageMetadata` to `shared/types/entities.ts` and added `noteHandout?` field to `MessageMetadataEntity` for excerpt-based handout chat cards.
+- W-Notes-Visibility: Added `backend/src/services/notes/excerpt.service.ts` implementing the deterministic excerpt algorithm (§3.7 of the checklist): strips markdown, prefers first complete sentence ≤ 180 chars, cuts at word boundary, hard cap 220, fallback to note title then "Shared handout".
+- W-Notes-Visibility: Added `POST /api/notes/:noteId/surface` endpoint. Accepts `scope` (`PARTY` | `SELECTED`), `selectedUserIds`, and optional `manualExcerpt`. Resolves recipients, updates note visibility, generates excerpt, persists a system chat message with `noteHandout` metadata, broadcasts `NOTES:HANDOUT_SURFACED` and `CHAT:MESSAGE_SENT` to recipients only, and broadcasts `NOTES:UPDATED` to note-visible audience.
+- W-Notes-Visibility: Registered `NOTES:HANDOUT_SURFACED` handler in `useWebSocket.ts` and added `handleNoteHandoutSurfaced` to `notesSlice.ts` — marks the note as published on all connected clients.
+- W-Notes-Visibility: Updated `parseNoteSharedMessage` in `noteSharedMessage.ts` to parse `noteHandout` metadata (new path) before falling back to legacy `noteShared` and text parsing.
+- W-Notes-Visibility: `NoteSharedCard` now accepts an `isExcerpt` prop; when true, renders an "excerpt" badge on the card header so recipients know to check the Notes tab for the full handout.
+- W-Notes-Visibility: `NoteSharePopover` mode labels updated to match contract: None→Private, Everyone→Party, Limited→Selected.
+- W-Notes-Visibility: Added `NoteSurfaceDialog` component — scope picker (All Players / Choose Players) with player checklist for SELECTED mode and an optional collapsible custom-excerpt field. Replaces `NotePublishDialog` (room picker) in `NoteCard`. `NoteCard.onPublish`/`publishRooms` props replaced by `onSurface: (noteId, NotesSurfaceTarget) => Promise<void>`. `NotesPanel.handlePublish` replaced by `handleSurface` calling `POST /api/notes/:noteId/surface`.
+- W-Journal-and-Popouts: Added pop-out window support for Notes and Journal. `openNotePopout()` and `openJournalPopout()` helpers in `route-view.ts` store the auth token in `sessionStorage` and call `window.open` with a named target (reuses an existing window if already open). New `PopoutRouteView` component renders a minimal note or journal view from `/popout/note/:noteId` and `/popout/journal/:sessionId` routes. Backend `GET /api/notes/by-id/:noteId` endpoint added (with `canViewNote` visibility check). Pop-out buttons (`open_in_new`) added to `NoteCard` header and `JournalEditor` header.
+- W-System-Messages: Added tooltip to condition/distance system message card icons. Wraps the icon with Radix `Tooltip`; body shows `conditionPreset.description` when available. Closes the last remaining item for W-System-Messages.
+- W-DM-Notes-to-Chat: `ParsedNoteSharedMessage` now carries `noteId` (populated from both `noteHandout` and legacy `noteShared` metadata). `NoteSharedCard` excerpt cards show a "Full note available in the Notes tab" hint below the excerpt body. Phase 3 — Notes & Journal Foundation complete.
+
+### Changed
+
+- RS-Monorepo: Restructured repository from flat layout into `apps/` + `packages/` monorepo. Moved `frontend/` → `apps/frontend/`, `backend/` → `apps/backend/`, `admin/` → `apps/admin/`, `shared/` → `packages/shared/`, docker-compose files → `infra/`. Adopted npm workspaces (`apps/*`, `packages/*`). Updated all Dockerfiles, tsconfigs, vitest configs, vite configs, eslint config, QA scripts, CI workflows, and `.code-workspace` folder paths. All source paths in `CLAUDE.md`, `.github/copilot-instructions.md`, `DEVELOPING.md`, and `docs/architecture/` updated to reflect the new layout. Build and test verified green post-restructure.
+
+- W4-Conversation-Authority: Fixed frontend `ROOM:SESSION_TRANSITION_APPLIED` WS handler to only call `resetSessionAudioState()` and `clearActiveEffects()` for teardown transitions (`IDLE`, `ENDED`, `CLEANUP`). `ACTIVE`, `PAUSED`, and `COOLDOWN` transitions are policy remaps — audio transport identity (LiveKit connections, effect/environment state) is now preserved across pause/resume and cooldown cycles as specified in the W4 contract.
+- W4-Conversation-Authority: Documented session-transition audio continuity policy in `docs/architecture/SESSION-LIFECYCLE.md` section 1.7: transport connections are not reset on state transitions; `roomEnvironmentNames` is always campaign-persistent; Whisper/spectator isolation remains a hard room-routing boundary.
+- W4-Conversation-Authority: Added 11 focused tests in `frontend/tests/state/sessionTransition.audio.test.ts` covering non-teardown audio preservation, teardown audio clearing, pause/resume cycle, and the campaign-persistence invariant for `roomEnvironmentNames`.
+- W4-UX-Polish: Tokenized all hard-coded dark-only colors in chat message bubble CSS (`MessageList.messages.css`) — bubble backgrounds, borders, avatar fills, type-icon fills, and self-message bubbles now use CSS custom properties (`--color-surface`, `--color-surface-raised`, `--color-surface-subtle`, `--color-border-soft`, `--color-text-primary`, `--color-brand`, `--color-warn`) so light and dark themes both render correctly.
+- W4-UX-Polish: Fixed workspace shell mobile breakpoint in `Workspaces.responsive.css`: workspace column stack now collapses at the canonical `680px` instead of the pre-spec `768px`.
+- W4-UX-Polish: Extended axe smoke coverage in `Accessibility.smoke.test.tsx` to include `WorkspaceToolbar` (icon-only button label correctness) and `ReconnectBanner` in reconnecting and hydrating states (status banner semantics). Smoke surface count: 5 tests across 4 component types.
+- W0-Lobby-Admin: Added `email` field to `CampaignTransferBundle.members[]` in `portability.types.ts` and to the Prisma user select in `buildCampaignExport` so member emails appear in every export bundle for cross-instance account re-linking.
+- W0-Lobby-Admin: Import endpoint (`POST /api/admin/campaigns/import`) now accepts an optional `memberEmailMap: { "source-email": "target-user-id" }` body field. Resolution order during import: email-map match → source-ID match → stub creation. Stubs are created for any unresolved user so content authorship is never dropped.
+- W0-Lobby-Admin: Admin campaign management UI gains a "Member Email Map" textarea (optional, with hint label) below the Import Bundle field. State hook validates it as a JSON object before submission; array or invalid JSON surfaces a descriptive error. API client sends `memberEmailMap` only when non-empty.
+- W0-Lobby-Admin: Backend tests updated and expanded in `admin-campaign-operations.test.ts` (10 tests total): export test now asserts email presence in the bundle; two new import tests cover email-map acceptance and graceful handling of a malformed map value.
+
+- Session RESET flow now suppresses transient websocket reconnect UX during the intentional session handoff window: when resetting an ENDED session into a fresh session, the top reconnect banner and websocket retry countdown/toast are temporarily hidden for a short grace period so players are not shown a misleading "connection lost/reconnecting" warning during expected workspace rebind.
+- LiveKit audio publish now waits for a fully connected room before attempting local track publish, deduplicates concurrent publish requests, invalidates stale in-flight publish operations during room handoff/disconnect, and avoids re-publishing when a local audio publication already exists. This hardens START/PAUSE/RESUME/COOLDOWN/ENDED transitions and suppresses repeated offer/trickle errors caused by publish attempts during reconnect windows.
+- Audio panel mic controls now use intent-first synchronization during room transitions: mic toggle intent applies immediately (without waiting for publish success), control connected styling is held for a short reconnect grace window, and publish/unpublish reconciliation happens once transport reconnects. This keeps mic icon/pill behavior stable during room handoff while still reflecting failures after the grace window.
+- Added a feature-flagged guarded dual-room LiveKit handoff prototype (`VITE_LIVEKIT_DUAL_ROOM_HANDOFF=1`) that attempts overlap connect before dropping the previous room, enforces a strict overlap timeout (`VITE_LIVEKIT_DUAL_ROOM_HANDOFF_MAX_MS`, default 2500ms), rolls back to the previous room on overlap failure, and then falls back to the legacy disconnect/connect path.
+- Added optional per-room publication mirroring for dual-room handoff (`VITE_LIVEKIT_DUAL_ROOM_MIRROR_PUBLISH=1`): when continuity policy conditions are met (mic intent on, PTT gate open, and old room currently published), the client temporarily publishes to the target room during overlap with a hard timeout (`VITE_LIVEKIT_DUAL_ROOM_MIRROR_MAX_MS`, default 900ms). Mirror timeout/failure triggers rollback to the previous room and legacy fallback.
+- Explicit session leave now triggers an immediate lifecycle cleanup check for ENDED sessions: if the last connected table member exits via toolbar leave and no DM/PLAYER presence remains, the cleanup scheduler is kicked immediately and bypasses the ENDED disconnect grace for that session so ENDED can transition to CLEANUP without waiting for the periodic grace window.
+- Session settings in ENDED state now allow editing only the session name (all duration/policy/spectator controls remain disabled), and the session toolbar start action is now explicit RESET in ENDED. RESET performs ENDED → CLEANUP first, then creates a new IDLE campaign session without auto-starting ACTIVE.
+- Fixed RESET transition flow: frontend no longer sends unsupported `state=CLEANUP` to `PUT /api/session/:id/state` (which correctly rejects CLEANUP as invalid input). RESET now calls `POST /api/session/:id/reset`, which performs ENDED → CLEANUP server-side and then allows creation of the next IDLE session.
+- Session audio hot controls now generate less UI event churn: live mic meters in the device/settings panels no longer animate via CSS transitions while values update every frame, and the effects quick panel in the audio device footer no longer toggles React hover state on mouse enter/leave (visibility is now CSS hover/focus-driven). This reduces `transitionrun`/`transitionstart`/`transitioncancel` marker noise and trims idle pointer-event work in long session captures.
+- Migrated frontend off React 19-deprecated type/runtime APIs: `React.MutableRefObject<T>` → `RefObject<T>` (now mutable by design) across the audio leaf and `useSessionLifecycle` / `useWorkspaces*Lifecycle` hooks, and `React.ElementRef` migration in UI primitives now uses `React.ComponentPropsWithRef` (`Tabs`, `Tooltip`, `Dialog`, `Slider`, `Separator`). `UserSettingsPanel` intentionally remains `forwardRef`-based for its `useImperativeHandle` path after a React DEV runtime edge case (`fiber.displayName` during layout-effect error reporting) surfaced with ref-as-prop.
+- Local mic transmit level no longer flows through React state. A new `MicLevelMeter` leaf reads the level from a stable ref and writes the meter CSS variable inside its own `requestAnimationFrame`, and self-speaking detection now polls that ref on an interval. This stops `AudioPanel`/`AudioDevicePanel` (and their Radix tooltip subtrees) from re-rendering at audio frame rate, which was the root cause of the CPU+memory spike triggered by self-unmute that did not subside on re-mute.
+- Room-list mute churn is now leaf-isolated: member context-menu mute labels and profile muted-status pills subscribe locally instead of at the member-row/profile-card level, and the audio device panel no longer carries a redundant combined-mute subscription now that `ModeStatusPill` owns that state.
+- Session toolbar timer now continues ticking in `ENDED` and `CLEANUP` states instead of freezing at the moment the session ended, keeping the toolbar clock consistent until the next server state refresh.
+- Session join runtime now enforces campaign late-join policy and grace-period settings for brand-new player joins, while keeping DM access and existing-member reconnects uninterrupted; added focused backend route coverage and a frontend hook test for the direct spectator watch orchestration path.
+- Right-rail handouts now persist structured image attachments end to end through the shared note contract, Prisma notes storage, notes API create/update routes, websocket note payloads, and the Notes panel create/edit UI with thumbnail preview and removal.
+- Lobby discovery/watch flow now renders dimmed private non-member cards when no live spectator path exists, prefers WATCH for any live spectator-enabled public/private campaign without requiring an invite code, and enters full-account spectators through `POST /api/campaigns/:id/watch` instead of invite-link redirects.
+- DM lobby campaign cards now open an inline join-request review panel from the pending badge, backed by a new DM-only pending-request read endpoint and lobby websocket refresh on join-request campaign events so badge counts and approval actions stay current without a manual reload.
+- Pause/resume room orchestration now preserves each participant's pre-pause non-greenroom room, restores them there on resume, and carries per-user room targets in `ROOM:SESSION_TRANSITION_APPLIED` so clients do not flatten resumed groups back into Main.
+- The frontend memory-pressure safeguard now emits lightweight client telemetry (`UI_MEMORY_PRESSURE_WARNING_SHOWN`, `UI_MEMORY_PRESSURE_REFRESH_TRIGGERED`), supports beta tuning through `VITE_MEMORY_PRESSURE_*` env values, includes a dev-only simulator toggle (`window.__VTT_DEBUG_MEMORY_PRESSURE__ = 'warn' | 'reload'`), and rotates through a pool of dry fantasy recovery messages while warning users before a guarded refresh.
+- Frontend workspaces now include a beta-stage memory-pressure safeguard: when the browser reports sustained tab memory near 1 GB, the client shows a persistent recovery toast with a manual refresh action and, after a short grace window, performs one guarded auto-refresh per cooldown period so the app can rehydrate instead of crashing the browser tab.
+- Added an opt-in frontend HTTP client debug flag (`VITE_DEBUG_HTTP`, `window.__VTT_DEBUG_HTTP__`, or `?debugHttp=1|0|toggle`) so request/response logging can be enabled for specific browser sessions without shipping noisy console output by default.
+- Backend request logs now include per-request Prisma query counts, cumulative DB time, and slow-query counts, and Prisma query-event instrumentation now warns on slow queries with request id, method, path, and a sanitized SQL preview for faster rehydrate/perf triage.
+- Shared handout system messages in live chat and campaign history now render as dedicated markdown handout cards instead of opaque system bubbles, so shared note content and embedded images display correctly.
+- Dev Caddy HTTPS now issues host-aware local certificates for `localhost` plus the configured `LIVEKIT_NODE_IP`, and developer docs now include a helper script to export/trust Caddy's Smallstep-backed local CA root from Docker for clean browser HTTPS on port `8443`.
+- Party presence snapshot derivation is now server-authoritative for all clients: runtime `IDLE` maps to `AWAY` only for live sessions (`ACTIVE`/`PAUSED`/`COOLDOWN`), runtime `OFFLINE` is no longer treated as `HERE`, and session lifecycle/join hydration now keeps connected users `ONLINE` in non-ended greenroom states so party/group surfaces align with backend truth without client-side self overrides.
+
+- Root ESLint flat config now applies React linting only to `frontend/` and `admin/`, keeping repo-wide TypeScript/Prettier linting intact while avoiding React-rule churn in backend/shared paths.
+- React linting migrated from `eslint-plugin-react` and `eslint-plugin-react-hooks` to native `@eslint-react/eslint-plugin` presets, and the root plus package-local ESLint entrypoints now use ESM flat config files so ESLint 10 resolves the same rule set from both repo-root and package-folder commands.
+- Removed the temporary `@eslint/compat` bridge, the root `.npmrc` `legacy-peer-deps=true` workaround, and the `qa:eslint-react-peer-check` script now that the React lint stack is ESLint 10-native.
+- Safe repo-level CommonJS cleanup: converted the root `scripts/qa/` Node entrypoints from `.cjs` to `.mjs` and updated npm scripts accordingly, while leaving the backend/package runtime module format unchanged until a separate build/runtime ESM migration is planned.
+- Converted release automation config from CommonJS to ESM (`release.config.js` -> `release.config.mjs`) for consistency with the new ESM-first tooling entrypoints.
+- Added `npm run qa:esm-audit` to enforce that `.cjs` files do not reappear and that remaining `.js` files stay limited to the `shared/` build artifacts until runtime package migrations are planned.
+- Backend package now emits and runs native ESM (`backend/package.json` `type: module`, ESM TypeScript emit, and `tsc-alias` full-path rewrite to `.js` specifiers) with `vitest.config.ts` updated to ESM-safe `import.meta.url` path resolution.
+- Removed legacy committed CommonJS artifacts from `shared/**/*.js` and tightened `qa:esm-audit` to fail on any committed `.js`/`.cjs` files, keeping source contracts in TypeScript and runtime outputs in build `dist/` only.
+- Removed legacy committed `shared/**/*.js.map` artifacts and tightened `qa:esm-audit` to fail on committed `.js.map` files as well, preventing generated runtime artifacts from drifting back into source control.
+- Hardened `@vtt-chat/shared` package metadata for ESM consumers by setting `type: module`, explicit typed exports (`types` + `default`), and wildcard subpath exports while keeping current TS-path alias behavior intact.
+- Added `shared/tsconfig.json` and updated `shared` lint script to run `tsc -p tsconfig.json --noEmit` so package-level lint checks are deterministic and no longer depend on implicit compiler defaults.
+- Frontend strict type-check compatibility was hardened by making store churn diagnostics iterate typed record keys in `store.ts` (avoiding implicit `any` index access under TS 6 strict mode) and restoring a `SessionLogEntry` compatibility alias in `types/history.ts`.
+- Frontend runtime preference handling now safely tolerates environments where `window.localStorage` is unavailable (for example Node/WSL test runs), preventing session workspace bootstrap crashes in integration tests.
+- Frontend integration/unit tests were refreshed for current workspace contracts: right-rail handouts tab labeling, history panel sort controls/data source, websocket typing handler names, and relocated room/session module paths (`workspaces/session/rooms/*` and `utils/session/sessionController`).
+- Added package-local ESLint flat-config entrypoints (`backend/eslint.config.mjs`, `frontend/eslint.config.mjs`, `admin/eslint.config.mjs`) so ESLint 10 monorepo lookup resolves the nearest config when linting from package folders.
+- Updated developer setup docs with explicit WSL-first lint/install commands and the current ESM flat-config ESLint workflow.
+- Added first-class lint scripts in root and each package (`lint:backend`, `lint:frontend`, `lint:admin`, `lint:packages`) so package-scoped lint runs no longer depend on ad-hoc `npm exec` invocation syntax.
+- Added a local CI-style lint gate command (`npm run ci:lint:linux`) backed by `scripts/qa/lint-linux-gate.mjs`; it runs `lint:packages` directly on Linux/macOS and via WSL bash on Windows so lint enforcement always follows Linux semantics.
+- Promoted `npm run ci:lint` as the canonical local lint gate command (with `ci:lint:linux` as compatibility alias). On Windows it auto-runs through WSL; on Linux/macOS it runs natively. If WSL is missing on Windows, the gate now prints `WSL not installed` and exits cleanly.
+- `ci:lint:strict` now aliases `ci:lint` because the peer-compatibility preflight is no longer needed after the ESLint React migration.
+- Character settings now ship D&D 5.5e SRD race/class autocomplete suggestions and a reusable avatar upload flow with circular preview plus zoom/crop before save.
+- User profile settings now reuse the same avatar upload/crop flow as character settings, so both surfaces save the same `avatarUrl` payload shape after client-side crop.
+- Handout publish is now explicitly manual: the picker offers `Everyone` and occupied MAIN/GROUP rooms only, excludes whisper/greenroom/empty rooms, auto-shares room-targeted handouts to current room players, and skips the picker when MAIN is the only occupied room.
+- Handouts toolbar now supports search across note title, markdown content, and hashtags; structured attachment fields remain the outstanding Notes gap.
+- Party now exposes a player-only Edit action that jumps straight to right-rail character settings and auto-focuses the first editable field.
+- Journal note creation now upserts the reserved per-session `_journal` entry instead of inserting duplicates, and recap selection now prefers the most recently updated session journal.
+- Session journals in the live workspace now expose older entries through the compact journal browser, with the latest session still selected by default.
+- Generated campaign session names now normalize to the campaign base plus session number and a human-readable date, preventing repeated date suffixes from accumulating.
+- Handouts now use explicit save actions, normalize hashtags on save, expose color-coded share-state icons, and filter with `ALL | SHARED | UNSHARED` instead of a published-only checkbox.
+- Journal browser status loading now keys off stable session metadata instead of render-time array identity, preventing repeated `/api/notes/:sessionId` refetch storms when the panel is open.
+- Added journal browser regression coverage to verify rerenders with unchanged session values do not trigger extra `/api/notes/:sessionId` requests.
+- Journal note creation now includes required `campaignId` from workspace context, preventing `POST /api/notes` `400 Invalid campaignId` failures in the journal panel.
+- Fixed a journal regression where `GET /api/journals/:sessionId` could return `null` despite existing session-scoped journal data: journal writes now resolve `campaignId` from the session repository record (instead of mapped session DTO), and journal reads/status now fall back to the latest session-scoped note when legacy rows are missing the canonical `_journal` tag/title markers.
+- Journal browser status hydration now returns and consumes campaign-wide per-session header metadata from `POST /api/journals/status` (`journalTitle`, `journalUpdatedAt`, `hashtags`, `hasContent`, `needsRecap`) so the panel can list one journal header per session on load and mark recap-needed sessions without fetching full markdown bodies.
+- Notes panel creation now omits session anchoring in `POST /api/notes` to avoid campaign/session mismatch errors (`Session does not belong to campaign`) when workspace session context drifts.
+- Handouts panel now uses a compact two-line side picker with hashtag filter chips, icon-only header actions (share/edit-save/publish/delete-in-edit), share-on-close persistence, and session-aware publish gating that disables publish in greenroom while preserving repeat publish during active sessions.
+- Handout authoring now enforces a save-first flow: create/edit surfaces remove the legacy Attachments/Add image control and keep sharing/publish actions hidden during edit; publish now defaults to the current populated room when available (or opens room selection when multiple rooms are populated), while MAIN-only defaults still publish to Everyone.
+- Notes publish now enforces room-scoped targeting whenever more than one MAIN/GROUP room currently contains players: frontend always prompts for room selection in that case, backend rejects `audience: 'EVERYONE'` with a conflict, and publish/update/delete websocket payloads now carry `campaignId` (plus `publishedAt` on note updates) so campaign-scoped note stores converge without refresh.
+- Shared handout chat cards are now compact by default: the `Shared with` line is removed from the card body, markdown chrome/min-height are reduced to avoid empty vertical space, and hashtags render as a small bottom-right summary (up to 3 visible tags plus `+N more`).
+- Notes picker titles now use native tooltips instead of per-item Radix tooltip providers to reduce portal/context churn and lower frontend memory retention during large list updates.
+- LiveKit speaking state updates now dedupe unchanged speaker sets and drop empty per-session speaking maps, reducing high-frequency WS churn allocations and preventing stale transient keys from accumulating after speaking stops.
+- Mock/transient WS paths now apply the same churn controls: typing indicators are TTL-pruned and empty session keys are removed, and duplicate/stale presence-state events (including speaking churn) are ignored when they do not materially change presence fields.
+- High-frequency runtime updates now avoid no-op writes in audio and room presence reducers (`setDevice`, `initializeAudio`, and presence room-member synchronization), reducing CPU load during heavy speaking-notification and transient WS event bursts.
+- Room presence reducers now avoid whole-topology rewrites for single-user ghost/profile changes, dedupe `ROOM:SESSION_TRANSITION_APPLIED` target-room inserts, and replace nested user scans with set-based filtering to reduce allocation churn during WS-heavy sessions.
+- Session and greenroom chat reducers now short-circuit duplicate/no-op message and queue writes, typing reducers persist TTL pruning even during duplicate start/stop events, and LiveKit connection snapshots skip unchanged updates, reducing high-churn allocation spikes and preventing stale transient entries from lingering.
+- Session chat cache pruning now uses lower-allocation id-partition + merge compaction and additional clear-path no-op guards, reducing temporary object churn when cache retention thresholds are hit.
+- Presence typing and speaking transient reducers now avoid extra per-event allocations when no entries expire or no speakers remain, and greenroom cache pruning now uses id-based compaction instead of entry-tuple pipelines.
+- Frontend store diagnostics now support opt-in churn snapshots (`VITE_DEBUG_CHURN_METRICS=1` or `window.__VTT_DEBUG_CHURN__ = true`) logging totals and deltas for session messages, outgoing queue, typing/speaking sets, room members, and LiveKit connections to speed up freeze regression triage.
+- Speaking and typing transient UI updates now run at a lower cadence (120ms local speaking evaluation, 1s typing-indicator refresh, and longer typing idle timeout), trading slight status-lag for reduced sustained frontend CPU usage.
+- Mock simulation transient paths now use the same cadence/coalescing rules as live paths (typing renew coalescing and speaking/idle presence refresh coalescing), and duplicated mock/chat timing constants + mock simulation types were moved into centralized `frontend/src/constants` and `frontend/src/types` modules.
+- Mock status pollers now consistently reference the centralized `MOCK_STATUS_POLL_*` constants in both mock panels, fixing an open-panel runtime `ReferenceError` caused by stale constant names.
+- Session chat cache now applies bounded in-memory retention with hysteresis pruning to prevent unbounded frontend message growth during long-running sessions while preserving paged history recovery.
+- WebSocket runtime now tracks and clears the heartbeat interval on shutdown, clears in-memory recovery buffers when sessions have no active sockets, and explicitly clears durable recovery streams on ENDED/CLEANUP lifecycle transitions.
+- Dev mock simulation runtime registry now prunes inactive session runtimes with a TTL to prevent stale runtime accumulation in long-lived development servers.
+- Session workspace now purges session-scoped chat memory on ENDED transitions (`SESSION:ENDED` / `ROOM:SESSION_TRANSITION_APPLIED`) so ACTIVE/PAUSED runtime chat objects do not linger after exit.
+- ChatWindow history hydration now batches message insertion into a single store update and uses a chronological fast-path to avoid unnecessary full-array sorting when session messages are already ordered.
+- Session MessageList now memoizes per-message render metadata (bookend parsing, whisper route expansion, day labels, and relative-time strings) to reduce repeated work during high-volume chat rerenders.
+- ChatWindow now derives visible messages and visible-room counts in a single memoized pass with precomputed greenroom/session checks, reducing repeated boundary parsing and multi-pass filtering work on large message lists.
+- ChatWindow typing indicator updates now use an adaptive next-expiry timeout (instead of fixed polling) and a unified memoized typing projection, reducing idle tick wakeups and per-tick allocation churn.
+- ChatWindow typing indicator expiry scanning and active-typing projection now run as single-pass loops (instead of chained filter/map/reduce), reducing transient allocation pressure during sustained typing churn.
+- ChatWindow now restores bottom-anchored auto-follow on hydrate and uses a near-bottom viewport check before following new messages, keeping the latest message visible unless the user has intentionally scrolled back.
+- ChatWindow auto-follow now tracks latest message identity (`id:createdAt`) instead of timestamp-only detection, preventing missed scroll-to-latest updates when multiple messages share the same millisecond timestamp.
+- ChatWindow auto-follow effect ordering now avoids pre-marking latest messages as seen while pinned, restoring automatic scroll-to-latest behavior when the jump indicator is hidden.
+- ChatWindow auto-follow now runs in a layout-timed effect and clears pending-count synchronously in the auto-follow branch, suppressing brief jump-indicator flashes when new messages arrive while pinned.
+- ChatWindow automatic follow now uses immediate bottom alignment (manual jump remains smooth), preventing transient non-pinned states during animated auto-scroll that could surface the jump button.
+- ChatWindow now tracks `isAutoFollowInProgress` during smooth programmatic follow and suppresses the jump indicator while that state is active, so the icon appears only for user-driven scroll-back.
+- Create Group popover width in the session Groups header is now narrowed to remain within left-panel bounds and avoid edge overflow in constrained layouts.
+- Create Group panel now removes redundant close/cancel controls and uses tighter single-action spacing between the group-name input and submit button for a cleaner left-panel fit.
+- Session MessageList render loop now destructures `isSystem` from prepared message metadata, fixing a runtime crash (`ReferenceError: isSystem is not defined`) when rendering incoming chat events.
+- Campaign entry orchestration now skips membership join calls for sessions already in `CLEANUP`, preventing noisy `POST /api/session/:id/members/join` `409 Invalid transition` conflicts when stale archived session ids are restored.
+- Contract direction is now documented to separate campaign conversation authority from session lifecycle routing: campaign membership/role determines whether a user can participate in conversation, while session state controls room assignment and recording/policy boundaries.
+
+## [0.8.5] - 2026-05-28
+
+### Changed
+
+- High-frequency per-user UI state (speaking, presence online/offline, ghost mode, mic mute) is now rendered via memoized **leaf indicator components** that each subscribe to a single primitive Zustand selector. Speaking/presence/ghost/mute flips no longer invalidate parent participant projections or rebuild surrounding Radix Tooltip/Popover subtrees — a major contributor to long-session memory growth.
+- New leaf components under `frontend/src/components/workspaces/session/rooms/`: `SpeakingIndicator`, `PresenceIndicator`, `GhostIndicator`, `MicMutedIndicator`. New shared hook `frontend/src/hooks/useIsUserMuted.ts` folds own-mute + DM `MUTE` override + (for self) device PTT/mic into a single boolean per user.
+- `AvatarOverlay` API simplified to a single `presence?: {sessionId, userId, isSelf?, roomType?}` prop; callers no longer thread `presenceState` / `ghost` / `isMuted` / `speaking` through participant data.
+- `GroupParticipantStatus` (`frontend/src/types/groupPanel.ts`) no longer models `presenceState` / `ghost` / `isMuted` — by design. Cascading visual styles (ghost dimming, dashed avatar border) now use CSS `:has()` selectors driven by leaf mount/unmount instead of parent classNames.
+- `PartyPanel` `PartyMemberCard` is now wrapped in `React.memo`; combined with the existing reference-preserving merge (`mergeMembersPreservingReferences`), a single member's status flip re-renders only that card instead of the full party list.
+- Removed dead presence-resolution callbacks (`getResolvedPresenceState`, `getPresenceDotState`) and unused selectors from `RoomSelector` and `LeftRailPanel` projections.
+- Documented the leaf-isolation pattern in `copilot-instructions.md` (Architectural Mandates) and `docs/subsystems/STATE-STORES.md` so future high-frequency UI bits follow the same recipe.
+- Repo-wide ESLint pass: `npx eslint . --fix` clean across 722 files (0 errors, 0 warnings).
+- Version bumped to 0.8.5 across root, backend, frontend, admin, and shared packages.
+
+## [0.8.0] - 2026-05-23
+
+### Changed
+
+- Lint hardening pass: resolved React hooks/state-effect violations and formatting drift across workspace, panels, and bootstrap hooks; full lint suite now passes cleanly.
+- Settings unification: consolidated settings under shared panels with a single role-aware entrypoint (`WorkspaceSettingsPanel`), DM campaign/session composition, and extracted player-character settings (`PlayerSettingsPanel`).
+- Route cleanup: removed standalone route-level campaign settings flow (`/campaigns/:id/settings`) and deleted parallel route/page implementations to keep one canonical in-app settings path.
+
+## [0.7.0] - 2026-05-14
+
+### Changed
+
+- Frontend refactor and centralization pass:
+  - Moved component-local helper/type/style artifacts into centralized locations under:
+    - `frontend/src/types/*`
+    - `frontend/src/utils/*`
+    - `frontend/src/styles/components/*`
+  - Room/group domain contracts were consolidated into shared frontend type modules (`groupPanel`, `dmAudioControls`) and imported across room/session components.
+  - Invite/join and history flows were normalized to centralized constants/types/helpers (`inviteJoin.constants`, `types/invite`, `types/history`, `utils/inviteJoin`, `utils/history`).
+- Backend service decomposition and route hardening continued:
+  - Session logic split toward `session/core.service.ts` with route/service wiring cleanup.
+  - Guest-auth/audio/session import and index organization streamlined for clearer module boundaries.
+  - Access-control/session-logging pathways were expanded across API routes and middleware touchpoints.
+
+### Fixed (Runtime)
+
+- Frontend stabilization slices reduced prior suite failures in auth/app-shell/knowledge-panel areas.
+- Session boundary and audio/livekit test slices were hardened for current lifecycle behavior.
+- Frontend full suite is green at release cut (`45` files / `392` tests).
+
+### Notes
+
+- Backend suite still has active known failures at release cut (`69` files / `545` tests, `6` failing) concentrated in:
+  - `tests/infra/telemetry-store.test.ts`
+  - `tests/api/rooms-routes.test.ts`
+
+---
+
+## [Unreleased]
+
+### Changed
+
+- Greenroom chat now boots from today-only history so older campaign chatter stays hidden until the user intentionally scrolls upward; the initial empty-today state keeps a Today divider visible instead of dropping straight into prior days.
+- Frontend toolbar architecture was tightened so the common toolbar container now serves workspace-specific variants cleanly:
+  - Consolidated the toolbar surface into `frontend/src/components/workspaces/shared/toolbar` so the shared toolbar shell, workspace-specific toolbar variants, and toolbar visual subcomponents live together.
+  - Moved toolbar types into `frontend/src/types`, toolbar constants into `frontend/src/constants`, and toolbar hooks into `frontend/src/hooks/workspaces`.
+  - Lobby keeps create/join actions and uses a prompted logout exit.
+  - Editor moves the invite popover into the toolbar and returns to the lobby without a prompt.
+  - Session keeps timer and session control actions while using the shared exit container.
+- Frontend centralization follow-up moved remaining non-rendering workspace support files out of component trees:
+  - Session room movement and whisper orchestration hooks now live in `frontend/src/hooks/session`.
+  - Campaign settings panel props and party mock-data types now live in `frontend/src/types`.
+  - Party mock-data generators now live in `frontend/src/utils`.
+  - Deprecated React submit typings were updated from `FormEventHandler` to `SubmitEventHandler` across frontend form submit flows.
+- Session right-rail groups panel was rebuilt as its own runtime component path, separate from the left voice-groups panel:
+  - `frontend/src/components/workspaces/session/GroupsPanel.session.tsx` now drives a dedicated right-side room overview with live room filtering, greenroom-only group creation, and DM-only management controls.
+  - `frontend/src/components/workspaces/session/GroupCard.session.tsx` now renders compact Party-style member cards and top-right icon actions for environment changes and drain/delete flows.
+
+### Added
+
+- Editor workspace journal flow now mounts the real per-session journal panel instead of a scaffold:
+  - DMs can pick a campaign session from the editor journal tab and write the recap without entering a live session.
+  - Each session journal now persists with the reserved `_journal` tag plus a single normalized searchable hashtag stored alongside the markdown recap.
+
+- Frontend screenshot diagnostics mode for component layout normalization (2026-05-22):
+  - Added global `debugUi` diagnostics toggle with URL support (`?debugUi=1`, `?debugUi=0`, `?debugUi=toggle`) and persisted local preference.
+  - Added debug-only UI overlays that label component boundaries and render state tags for major app/lobby/editor/session workspace shells.
+  - Enables deterministic screenshot capture for naming, refactor mapping, and component ownership verification.
+
+- Frontend workspace panel normalization (2026-05-22):
+  - Session right-rail tabs now include `party` and align DM ordering with editor: `information`, `party`, `rooms`, `journal`, `notes`, `history`, `audio`, `settings`.
+  - Session right-rail now renders `CampaignPartyPanel` using live campaign presence snapshot data during active session workflows.
+
+- Frontend workspace structure consolidation (2026-05-22):
+  - Added a shared panel policy (`workspacePanelPolicy`) as the single source of truth for canonical panel order, role-based tab visibility, and explicit role exceptions.
+  - Merged `shared/rightbar`, `shared/notes`, and `shared/settings` component ownership into `shared/panels`.
+  - Kept `shared/common` focused on the invite widget flow (`InvitePopoverWidget`) as the only non-panel common surface currently in use.
+  - Added `WorkspaceTopbar` base component and refactored lobby, editor, and session topbars to consume the shared brand/utilities/status layout while preserving workspace-specific action buttons.
+  - Moved `SessionRightRailContent` into the `session/` workspace domain and updated imports to keep session-specific orchestration out of shared panels.
+  - Ran a thin naming normalization pass to align workspace-facing "Information" vocabulary in panel headings/labels for screenshot diagnostics consistency.
+  - Collapsed `frontend/src/components/app` into `frontend/src/components/workspaces` and moved the workspace domain up one level.
+  - Renamed `AppInit.tsx` to `index.tsx` and renamed the initialization shell symbol to `WorkspaceInitialization`.
+  - Removed redundant filename prefixes in workspace folders:
+    - `lobby/SessionLobbyView*` -> `lobby/LobbyView*`
+    - `editor/EditorCampaignWorkspaceView*` -> `editor/WorkspaceView*`
+    - `session/Session*` orchestration filenames -> concise `session/*` equivalents (`LeftRailPanel`, `RightRailContent`, `RoomsStatusPanel`).
+  - Split the large workspace modal orchestrator into focused modules under `frontend/src/components/workspaces/shared/modals` (create, join, campaign settings, user settings, exit, stop-session, and reissue-invite), with `Modals.tsx` reduced to a thin composition layer.
+  - Moved modal prop contracts into a central workspace type module at `frontend/src/components/workspaces/shared/types/modals.ts`.
+  - Replaced blanket modal composition with workspace-linked groups: lobby modal group (`lobby/modals/LobbyModals.tsx`), session modal group (`session/modals/SessionModals.tsx`), and shared cross-workspace modal group (`shared/modals/SharedModals.tsx`).
+  - Removed the extra workspace-level `frontend/src/components/workspaces/Modals.tsx` wrapper and mounted modal groups directly in `frontend/src/components/workspaces/index.tsx`.
+  - Moved workspace modal prop types from `frontend/src/components/workspaces/shared/types/modals.ts` to `frontend/src/types/modals.ts` and rewired modal imports to use the central `src/types` path.
+  - Extracted lobby toolbar into `frontend/src/components/workspaces/lobby/toolbar/LobbyToolbar.tsx`.
+  - Duplicated lobby toolbar behavior into editor-specific files (`frontend/src/components/workspaces/editor/toolbar/EditorWorkspaceToolbar.tsx` and `useEditorWorkspaceToolbarActions.tsx`) and rewired editor workspace to use the duplicate toolbar path.
+  - Pulled additional `WorkspaceInitialization` concerns into central folders: `frontend/src/types/session/lobby.ts` (lobby stats/connection types), `frontend/src/constants/sessionWarnings.constants.ts` (session-exit warning strings), and `frontend/src/hooks/session/useSessionLeaveWarning.ts` (leave-warning hook).
+  - Split session workspace frame ownership from shared toolbar concerns by moving `SessionWorkspaceFrame` into the session domain at `frontend/src/components/workspaces/session/WorkspaceFrame.tsx`.
+  - Extracted session toolbar action model types into `frontend/src/components/workspaces/session/toolbar/sessionToolbar.types.ts` and rewired `SessionToolbar` to consume the dedicated types file.
+  - Updated session consumers to import `RightRailTab` from the central `frontend/src/types/ui.ts` rather than via frame component re-exports.
+
+- Frontend settings panel consolidation (2026-05-23):
+  - Kept `CampaignSettingsPanel` as the only campaign settings panel under `frontend/src/components/workspaces/shared/panels`.
+  - Added shared `WorkspaceSettingsPanel` role switcher in `frontend/src/components/workspaces/shared/panels/WorkspaceSettingsPanel.tsx`.
+  - Extracted player character controls into `frontend/src/components/workspaces/shared/panels/PlayerSettingsPanel.tsx`.
+  - Extracted DM session-only controls into `frontend/src/components/workspaces/shared/panels/CampaignSessionSettingsPanel.tsx` and mounted them as optional extras in `CampaignSettingsPanel`.
+  - Removed workspace-specific settings components (`editor/EditorSettingsPanel.tsx`, `session/SessionSettingsPanel.tsx`) in favor of shared panels.
+  - Removed the standalone route-level campaign settings flow (`/campaigns/:id/settings`) and deleted its route/page components.
+  - Renamed `CampaignPartyPanel` to `PartyPanel` for canonical panel naming consistency.
+
+- Campaign PARTY authoritative presence snapshot + status model (2026-05-21):
+  - Added `GET /api/campaigns/:campaignId/party-presence` for campaign-scoped roster status projection.
+  - Snapshot derives canonical PARTY labels (`HERE`, `AWAY`, `LOBBY`, `NOT HERE`, `OFFLINE`) from existing runtime presence/session data and active WS connection context.
+  - Lobby PARTY panel now renders the snapshot instead of DEV-only mock data in normal operation.
+  - Added campaign-scoped WS refresh signal `CAMPAIGN:PARTY_PRESENCE_UPDATED` so PARTY panel can refetch immediately on presence/session changes.
+  - Added manual `AWAY` toggle and lightweight inactivity auto-away in PARTY panel using existing `PUT /api/presence/:sessionId/state` (`IDLE`/`ONLINE`) with no new persistence fields.
+
+- Campaign visibility model design locked (2026-05-21):
+  - PUBLIC campaigns (discoverable=true) show full lobby cards to non-members with a REQUEST TO JOIN action.
+  - PRIVATE campaigns (discoverable=false) show a locked, greyed card with an "Invite only" badge to non-members; no join action is available without an invite link.
+  - DM lobby card shows a pending-join-request badge (count) when requests exist; inline approval panel surfaces requester username, avatar, timestamp, and optional message with approve/reject buttons.
+  - Full non-guest users may enter active PUBLIC campaigns as spectators via a WATCH button without an invite link (campaign must have spectators enabled).
+  - `CAMPAIGN:JOIN_REQUEST_RECEIVED` and `CAMPAIGN:JOIN_REQUEST_RESOLVED` WS events locked into contracts.
+  - New endpoints designed: `POST /api/campaigns/:id/join-request`, `POST /api/campaigns/:id/join-request/:requestId/approve|reject`, `POST /api/campaigns/:id/watch`.
+
+- Campaign RETIRE/RESUME lifecycle design locked (2026-05-21):
+  - DMs can retire a campaign (removes from default lobby list). Campaign retains all data and can be resumed.
+  - Schema addition: `retiredAt DateTime?` on `Campaign`.
+  - RETIRE button in offline workspace header; confirmation dialog required.
+  - RESUME from dedicated "Retired campaigns" lobby drawer; no confirmation dialog.
+  - DMs cannot delete campaigns. Admin-only hard delete via `DELETE /api/admin/campaigns/:id`.
+  - Active session blocks retire (`409` response until session is ended).
+
+- Guest upgrade flow design locked (2026-05-21):
+  - Guests routed to upgrade-only screen on session exit (no campaign discovery list shown).
+  - `POST /api/auth/upgrade` (email + password): email matching another guest account → merge memberships; email matching a full account → block with clear login suggestion.
+
+- Admin campaign export/import design locked (2026-05-21):
+  - `GET /api/admin/campaigns/:id/export` — JSON export of metadata, groups/environments, session history/chat, notes/journal, member list (no passwords).
+  - `POST /api/admin/campaigns/import` — creates new campaign with fresh IDs; admin can optionally map member emails to existing accounts.
+  - DMs cannot self-export; admin-only.
+
+### Added
+
+- Frontend Phase 0 reliability coverage expansion:
+  - Added focused test suites for session controllers, presence handlers, greenroom state, websocket client/hook routing, loop diagnostics, notes fetch, invite/join helpers, history helpers, and telemetry/logging utilities.
+  - Frontend coverage gate now clears the global 60% branch threshold in local verification.
+
+### Changed (Recovery)
+
+- Frontend `Workspaces` decomposition continued (2026-05-22):
+  - Extracted `frontend/src/components/session/workspaces.types.ts` for local API/context types.
+  - Extracted `frontend/src/components/session/workspaces.utils.ts` for pure session/lobby helpers.
+  - Extracted `frontend/src/components/session/workspaces.settings.ts` for campaign/character settings normalization helpers.
+  - `frontend/src/components/session/Workspaces.tsx` now consumes the co-located modules instead of owning those helper blocks inline.
+
+- Frontend screen-first component normalization (2026-05-22):
+  - Re-homed lobby surfaces from `frontend/src/components/session/*` into `frontend/src/components/lobby/*`.
+  - Re-homed campaign editor surfaces into `frontend/src/components/campaign-editor/*`.
+  - Re-homed shared campaign panels used by editor/runtime into `frontend/src/components/campaign-shared/*`.
+  - Re-homed runtime/session shell into `frontend/src/components/campaign-runtime/*` and updated imports.
+  - Added `docs/ui/FRONTEND-SCREEN-STRUCTURE.md` to document screen-to-folder ownership and placement rules.
+
+- Frontend layout normalization pass (2026-05-22):
+  - Renamed component domains to concise names: `components/editor`, `components/session`, `components/shared`.
+  - Centralized Workspaces orchestration hooks under `frontend/src/hooks/session/*`.
+  - Centralized session/campaign types under `frontend/src/types/session/*`.
+  - Centralized session utility/controller modules under `frontend/src/utils/session/*`.
+  - Merged legacy `frontend/src/core-ui/*` primitives into `frontend/src/components/ui/primitives/*` and switched imports to `@/components/ui`.
+  - Normalized moved CSS assets into centralized style ownership folders (`styles/components/ui`, `styles/components/shared`, `styles/components/editor`).
+
+- Frontend route/workspace component map normalization (2026-05-22):
+  - Renamed `Workspaces` orchestration shell to `AppInit` (`frontend/src/components/app/AppInit.tsx`) and updated route wiring.
+  - Reorganized top-level route surfaces into `frontend/src/components/auth`, `frontend/src/components/guest`, `frontend/src/components/watch`, and `frontend/src/components/app`.
+  - Reorganized main app workspaces under `frontend/src/components/app/workspaces/{lobby,editor,session}`.
+  - Moved shared editor/session rightbar panels into `frontend/src/components/app/shared/rightbar`.
+  - Re-homed editor-used runtime domains (`audio`, `chat`, `metadata`, `rooms`, `dev`, `notes`) under `frontend/src/components/app/workspaces/editor`.
+
+- Frontend editor/session ownership refinement (2026-05-22):
+  - `editor` workspace is now edit-flow focused (`frontend/src/components/app/workspaces/editor/CampaignSettingsPage.tsx`).
+  - Launch/runtime domains were moved under `frontend/src/components/app/workspaces/session/*` (`audio`, `chat`, `metadata`, `rooms`, `notes`, `dev`).
+  - Shared rightbar and toolbar surfaces used across editor/session were moved to `frontend/src/components/app/workspaces/shared/{rightbar,toolbar}`.
+
+- Installer/runtime workflow alignment for admin and developer operations:
+  - `infra/scripts/install.sh` now supports repo-local mode when run from a cloned repository (uses current repo path instead of `/opt/vtt-chat`), while preserving `/opt/vtt-chat` behavior for remote/server bootstrap usage.
+  - Local repo setup avoids destructive self-sync and uses in-place launcher commands.
+  - README quick start now uses `./server` lifecycle commands (`doctor`, `build`, `start`, `status`, `restart`, `stop`, `update`, `clean`) instead of raw `docker compose` commands for admin management.
+  - Developer quick start now documents `./install --dev` and `./server --dev` workflow from a cloned repo.
+  - Added explicit platform support notes for PROD and DEV in README and installer help, including recommendation of Ubuntu LTS 24.x/26.x and VS Code.
+  - Clarified README networking model: Caddy is the single web entrypoint (HTTP in DEV, HTTPS in PROD), backend/frontend/admin ports are internal container ports, and PostgreSQL host-port exposure is DEV-only.
+  - Installer now detects WSL and warns users that Linux Docker Engine install in WSL can fail/conflict; it validates Docker availability using `docker` or `docker.exe` (Docker Desktop integration) before deciding whether Docker install actions are needed.
+  - Firewall setup in both `infra/scripts/install.sh` and `infra/scripts/server` is now mode-aware: DEV adds/persists rules without auto-enabling firewalls that are currently disabled, while PROD still auto-enables firewall services.
+  - SSH firewall rule handling now skips rule creation when OpenSSH/ssh service profiles are absent (no automatic fallback to `22/tcp`).
+  - Installer output was polished for readability: quieter stage execution with compact `OK/FAIL` step lines, colorized preflight/check report, and noisy package/firewall command output redirected to install logs.
+  - `server status` now omits `Access URL` when the selected stack is not running.
+
+- Lobby UX redesign for campaign discovery and prep:
+  - Create Campaign dialog now uses a single-field form (name only), top-offset placement, and right-aligned `CANCEL | EDIT | LAUNCH` actions.
+  - `EDIT` now saves and opens an in-page offline campaign edit/review workspace; `LAUNCH` saves and enters runtime directly.
+  - Join dialog now matches dialog alignment/placement conventions (`CANCEL | JOIN`, right-aligned actions, top-offset).
+
+### Fixed (Lobby)
+
+- Campaign discovery routing and lobby refresh hardening:
+  - `/api/campaigns/discover` now mounts before generic campaign-id routes so `discover` is not misparsed as a campaign UUID.
+  - Guest users no longer call the discover endpoint from the lobby, matching the contract that guest accounts do not see campaign discovery.
+- Campaign state/presence projection alignment:
+  - DM `ONLINE`/`OFFLINE` campaign-card status is now session-scoped to realtime table connectivity; DM presence in lobby/offline workspace renders as `OFFLINE`.
+  - Lobby player/spectator rollups now reflect real connected users (including guests), exclude DEV/mock users, and apply a short anti-flap buffer for heartbeat churn.
+  - Explicit `Exit Session` / leave actions now trigger immediate lobby status projection updates instead of waiting for disconnect heartbeat expiry.
+  - Lobby campaign list refresh is websocket-driven via `CAMPAIGN:LIST_INVALIDATED` on lifecycle/membership mutations so card state converges without manual refresh.
+- Lobby campaign card status treatment:
+  - DM runtime presence now renders as a compact `ONLINE`/`OFFLINE` pill with colored tooltip text instead of a small dot.
+  - Campaign header status indicators now use lobby-facing states: grey `OFFLINE` when no DM/player is connected, blue `READY` for connected `IDLE`, green `ACTIVE` for connected `ACTIVE`/`PAUSED`, orange `FINISHING` for connected `COOLDOWN`, and red `ENDED` for connected `ENDED`.
+- Post-session lifecycle alignment:
+  - `ENDED -> CLEANUP` now relies on the existing 60 second DM/player disconnect grace and ignores spectator presence.
+  - Cleanup no longer pre-provisions a new `IDLE` session; the next DM/player reconnect creates the fresh draft session on demand.
+  - The lifecycle cleanup scheduler is now on-demand instead of always polling: it wakes when sessions enter `COOLDOWN` or `ENDED`, sweeps every 60 seconds while work remains, and stops itself once no `COOLDOWN` or `ENDED` sessions remain.
+  - Lobby now runs as a fixed-height shell where only the campaign card list scrolls.
+  - Added a compact lobby stats strip (active sessions, connected personas, total played, and rollup context).
+  - Campaign card actions are role-specific: DM `EDIT`, Player `REVIEW`, Spectator `LAUNCH`.
+  - Added non-modal offline campaign workspace with right-side icon switching and `INFO` open by default.
+  - Lobby platform telemetry strip now shows true `Peak Concurrent Users (24h)` sourced from backend telemetry events (not a derived average placeholder).
+  - Offline campaign workspace now exposes a role-routed `SETTINGS` panel: DM campaign settings, player character settings, spectator read-only notice.
+  - Offline campaign info panel is compacted for second-screen use and supports in-place save/reset icon actions with DM editability enabled by default.
+  - Lobby campaign list is now grouped into `Member or DM Of` and `Discoverable` sections, with sticky section headers, denser card spacing, and intentional sparse-list filler treatment.
+
+- Frontend endpoint bootstrap diagnostics now log resolved API/WS/Admin/LiveKit targets and runtime context flags (`secureContext`, `randomUUID` availability) at startup in `frontend/src/App.tsx` to speed up LAN/proxy troubleshooting.
+- Deployment documentation now includes explicit external reverse-proxy guidance (Cloudflare/443 -> internal 8443) and LiveKit public-IP/UDP reachability requirements in `docs/operations/DEVELOPER-DEPLOYMENT.md`.
+
+- W3 Operatisation closure for runbooks and telemetry validation:
+  - Added restart-survival validation record in `docs/operations/RESTART-SURVIVAL-VALIDATION-2026-05-19.md` with reproducible command set and pass evidence.
+  - Added backup/restore drill record in `docs/operations/BACKUP-RESTORE-DRILL-2026-05-19.md` with reproducible command set and pass evidence.
+  - Updated `docs/operations/RUNBOOK.md` links to include both new W3 validation artifacts.
+  - Expanded `docs/operations/TELEMETRY-MATRIX.md` with an explicit restart-survival validation section and expected pass signals.
+  - Updated `ROADMAP.md` W3 status to done and checked both remaining acceptance criteria with dated evidence snapshot.
+
+- W1 Redis-first runtime convergence for audio mutation paths:
+  - Added Redis write-through mirrors for room environments and DM overrides/broadcast state in `backend/src/services/audio/presets.service.ts` and `backend/src/services/audio/effects.service.ts`.
+  - Session audio hydration now prefers Redis runtime projection and falls back to Postgres when Redis is empty/unavailable.
+  - Expanded focused service coverage in `backend/tests/services/audio-state.service.test.ts` for Redis mirror writes and Redis-first read behavior.
+  - Added recovery-soak coverage in `backend/tests/integration/audio-state-recovery.integration.test.ts` for environment rehydration, condition-like override payloads, distance-like override payloads, and mute enforcement recovery (DM mute + user mute).
+- W1 runtime route classification baseline:
+  - Added a typed registry for WS-visible mutation routes in `backend/src/services/runtime/runtime-route-classification.service.ts`.
+  - Expanded registry coverage to `chat`, `notes`, and `integrations` mutation surfaces in addition to `presence`, `rooms`, `audio`, and `session`.
+  - Added focused coverage in `backend/tests/services/runtime-route-classification.service.test.ts` to validate representative Class A/B/C mappings and alias consistency.
+- W1 audit envelope standardization progress:
+  - `appendSessionAuditEvent` now normalizes a consistent audit envelope in `backend/src/services/runtime/runtime-streams.service.ts`.
+  - Notes mutation routes now append standardized audit events for create/update/publish/delete flows in `backend/src/api/notes.routes.ts`.
+  - Added focused coverage in `backend/tests/services/runtime-streams.service.unit.test.ts` and `backend/tests/api/notes-routes.test.ts`.
+- W2 release-gate enforcement is now automated in CI:
+  - Added active GitHub workflow `.github/workflows/qa-gates.yml` to enforce lint/build/coverage/flaky gates on PRs and main.
+  - Gate reports are persisted as artifacts (`coverage-gate-report.json`, coverage summaries, flaky test report).
+  - Added frontend reconnect-hydration integration assertions in `frontend/tests/components/Workspaces.integration.test.tsx` to verify recovered audio state is applied end-to-end (environment map, DM overrides, broadcast state).
+- W1-Runtime-Recovery closed: all five acceptance criteria met.
+  - Session audit trail now covers all WS-visible mutation families: audio (6), rooms (8), session (7), presence (2), notes (4), chat (3 via service), integrations (1).
+  - Multi-client reconnect soak evidence confirmed in `backend/tests/integration/multi-client-reconnect.integration.test.ts` (4 scenarios) and `backend/tests/integration/ws-disconnect-reconnect-sequencing.integration.test.ts`.
+  - W1 work item renamed from "W1-Redis-First" to "W1-Runtime-Recovery" to reflect problem domain: runtime state persistence, audit, and reconnect recovery.
+  - Runtime Recovery audit doc renamed to `docs/changes/RUNTIME-RECOVERY-AUDIT-2026-05-18.md`.
+
+- State-machine documentation was reconciled with the implemented lifecycle:
+  - `COOLDOWN` is now documented as a canonical session state in `docs/changes/STATE-MACHINE.md`.
+  - Invalid transition behavior is documented to match the current API implementation (`409 Conflict`).
+  - `ROADMAP.md` Phase 0 acceptance criteria were updated to reference the live state set and current invalid-transition response behavior.
+  - Added Phase 0 operations artifacts: `docs/operations/RUNBOOK.md` and `docs/operations/TELEMETRY-MATRIX.md`.
+  - Added runtime recovery convergence snapshot: `docs/changes/RUNTIME-RECOVERY-AUDIT-2026-05-18.md`.
+
+### Fixed
+
+- Backend spectator voice lifecycle gating is now enforced in LiveKit token issuance (`POST /api/livekit/token`):
+  - `ACTIVE`: spectator tokens are observe-only (`canPublish=false`)
+  - `COOLDOWN`: spectator voice publish allowed only when campaign `postSessionChatEnabled` is true
+  - `IDLE`/`PAUSED`/`ENDED`/`CLEANUP`: spectator voice token requests are rejected
+- Added route-level coverage for spectator voice lifecycle gates in `backend/tests/api/livekit-routes.test.ts`.
+
+- `frontend/src/utils/notesFetch.ts` no longer leaks unhandled promise rejections from the in-flight cleanup path when a deduplicated request fails.
+
+- Backend coverage-closure test slices for low-coverage and branch-heavy paths:
+  - `backend/tests/services/session-core.service.test.ts` branch expansion for requester/session guards and cooldown/session transition paths.
+  - `backend/tests/services/session-authz.service.test.ts` covering role normalization, effective-role resolution, and session-join role guards.
+  - `backend/tests/services/handoff.service.test.ts` covering one-time token, target mismatch, and expiry edge cases.
+  - `backend/tests/ws/event-broadcaster.unit.test.ts` covering broadcaster readiness and initialization guard/forwarding behavior.
+  - Expanded auth route branch suites in `backend/tests/api/auth-join-routes.test.ts` and `backend/tests/api/guest-auth-routes.test.ts`.
+  - Added repository coverage suites in `backend/tests/repositories/session.repository.test.ts` and `backend/tests/repositories/campaign.repository.test.ts`.
+- Deferred next-cycle planning note for W0/W11 contract-linked scope in `docs/changes/W0-W11-NEXT-CYCLE-DEFER-2026-05-18.md`, linked from `ROADMAP.md`.
+
+- Chat composer type controls now support a connected IC/OOC/WHISPER/DM bar, a whisper-recipient picker with avatars, and private whisper-group handling that routes whispers to the current private-room audience.
+
+- Multi-device WS transport contract baseline:
+  - Added shared `DeviceClass` enum (`DESKTOP`, `MOBILE`, `TABLET`) in `shared/types/index.ts`.
+  - Synced checked-in shared JS runtime artifacts with the TypeScript source so enum imports cannot drift in Vitest/browser runtime resolution.
+  - Added shared session event contracts for device/mic arbitration in `shared/events/session.ts`.
+  - Extended frontend WS auth payload to include `deviceSessionId` + `deviceClass` and normalize these fields from `WS:CONNECTED`.
+  - Extended backend WS auth/connected handshake to accept and echo `deviceSessionId` + `deviceClass`.
+  - Registered new session device event names in backend server-event registry.
+  - Presence hydration now includes per-user `deviceSessions` snapshots from active WS connections.
+  - Room-selector avatar poppers now show compact per-device `Active`/`Muted` rows when a user has more than one connected device.
+  - Updated frontend WS client auth test assertions for the new payload shape.
+
+- Backend runtime stream primitives for contract convergence:
+  - Added `backend/src/services/runtime/runtime-streams.service.ts`.
+  - Added Redis session-audit stream append helper (`audit:session:{sessionId}:stream`) with normalized event fields.
+  - Added Redis chat runtime stream append helper (`chat:session:{sessionId}:stream`) for message send/edit/delete projection.
+  - Added focused unit coverage in `backend/tests/services/runtime-streams.service.unit.test.ts`.
+  - Added focused backend API coverage for audit appends in:
+    - `backend/tests/api/rooms-routes.test.ts` (room create/join/leave/delete action audit assertions)
+    - `backend/tests/api/session-routes-audit.test.ts` (session create/member join/member leave/state-change/cooldown extend/cooldown end/delete audit assertions)
+    - Added explicit call-order verification in `backend/tests/api/session-routes-audit.test.ts` to assert session state transition audit append occurs before the first WS transition broadcast.
+- Durable websocket replay baseline for reconnect/restart recovery:
+  - Added Redis-backed replay helpers in `backend/src/ws/state-recovery.ts` using `ws:session:{sessionId}:events`.
+  - WS auth payload now accepts reconnect cursor (`lastEventId`) and replays retained events during reconnect.
+  - Frontend WS client now tracks last received event ID and sends it during WS auth.
+  - Added coverage in `backend/tests/ws/state-recovery-durable.unit.test.ts`.
+
+- Durable async processing architecture docs:
+  - Added `docs/architecture/QUEUE-JOB-MANAGER.md` with a restart-safe queue/worker blueprint for scheduled and long-running backend jobs.
+  - Added `docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md` with recording/transcription/summarization pipeline and privacy/off-the-record policy integration.
+  - Added roadmap linkage in `ROADMAP.md` under a new Future Enhancements section plus W13 planning track.
+
+- Canonical live-session chat contract in `docs/architecture/CHAT-CONTRACT.md`:
+  - Consolidates remembered session timeline rules, send-time audience capture, typing indicator behavior, off-the-record handling, and boundary marker requirements into one implementation-ready document.
+- Live-session chat plumbing pass:
+  - Backend room-scoped chat now snapshots the send-time visible audience so players retain messages they witnessed after moving groups.
+  - Chat history fetch now supports a visible session timeline view instead of only current-room reads.
+  - Shared chat payloads now include off-the-record state, whisper target IDs, and room-scoped typing metadata.
+  - Frontend chat now loads the unified visible session timeline, shows room labels inline, and renders typing indicators from incoming WS events.
+
+- DEV mock players (W9) were upgraded from a fixed roster to a randomized realistic simulation surface:
+  - 20 D&D-style archetype variations (player name + character name + race + class/subclass).
+  - Auto-select 3–5 mock players per session in DEV, with level spread constrained to a tight band (within 2 levels).
+  - Auto-create/update campaign membership + active character metadata so DM UI shows race/class/level as if real players joined.
+  - Auto-enroll mock players when the DM joins a session in DEV; private/incognito real players can still join alongside mocks.
+  - Continued DEV-only route surface: `GET /api/dev/mock-players`, `POST /api/dev/mock-players/join`, `POST /api/dev/mock-players/remove`.
+  - Added DEV reroll route: `POST /api/dev/mock-players/reset` to instantly rebuild the active 3-5 mock roster without restarting services.
+  - Mock players now use a dedicated avatar marker (`/branding/mock-player-avatar.svg`) to be visually obvious in participant lists.
+  - DEV roster lifecycle is now campaign-stable across session stop/start cycles and only rerolled on page refresh (or explicit `/reset`).
+- DEV mock chat simulator now supports all selectable chat types (`IC`, `OOC`, `WHISPER`, `DM`) with:
+  - DM-message audience parity (sender + DM only),
+  - whisper recipient targeting constrained to one same-room user,
+  - normalized template pools with at least 50 messages per selectable type.
+- Expanded audio WS event handler test coverage in `frontend/src/tests/state/audioSlice.test.ts`:
+  - `handleEnvironmentSet` — with and without `parameters` in payload (both branches covered); verifies `roomEnvironmentNames` is always updated.
+  - `handleDMOverrideApplied` — sets override for target user, stores parameters, overwrites existing override.
+  - `handleDMOverrideRemoved` — removes override; is a no-op when none exists.
+  - `handleBroadcastStateChanged` — enables/disables broadcast mode; records `broadcastRoomId`, `broadcastDmId`, `broadcastChangedAt`; falls back to event timestamp when `changedAt` absent.
+  - `resetSessionAudioState` — clears all per-session audio presets while preserving `roomEnvironmentNames`.
+  - `replaceDMOverrides` — bulk-replaces the DM override map atomically.
+- New WS event dispatcher test suite at `frontend/src/tests/ws/dispatcher.test.ts` (14 tests):
+  - Exact-match handler dispatch and non-match isolation.
+  - Multi-handler fanout for the same event type.
+  - Namespace wildcard (`CHAT:*`) matching with boundary enforcement.
+  - Global wildcard (`*`) catching all events.
+  - Combined exact + wildcard dispatch for the same event.
+  - Unregister removes the handler; unregister of unknown handler is a no-op.
+  - Envelope validation: drops events with invalid version, missing `userId`, missing `payload`, zero timestamp.
+  - Handler error isolation: a throwing handler does not prevent subsequent handlers from running.
+- Greenroom cross-session timeline continuity:
+  - Backend chat history endpoint now supports a campaign-level Greenroom merge path via `includeCampaignGreenroom=1` (with `roomId`) to return visible Greenroom messages across session boundaries.
+  - Frontend Greenroom chat panel now requests this merged history so pre-session and post-session Greenroom talk appears as one continuous thread with session boundary bookends in between.
+  - Chat history hydration now supports paged loading (`limit`, `before`) so initial load can stay at the most recent messages and older messages stream in continuously when scrolling upward.
+
+### Fixed (Runtime)
+
+- Backend spectator lifecycle chat enforcement in `POST /api/chat/message`:
+  - spectators are now observe-only during `ACTIVE` and cannot post chat,
+  - spectator chat is restricted to `COOLDOWN`,
+  - spectator cooldown chat now requires campaign `postSessionChatEnabled`.
+- Added backend route coverage for spectator lifecycle/cooldown policy branches in `backend/tests/api/chat-routes.test.ts`.
+
+- Backend DEV mock simulation auto-start now short-circuits in test mode to prevent background tick DB leakage/noise during coverage and regression runs.
+
+- Restore remembered DEV mock rosters automatically when a new campaign session is started after the previous session ended, so mock players remain visible without requiring a manual rejoin.
+
+- Core runtime mutation paths now append structured session-audit events in mutation flow (non-fatal fallback when Redis is unavailable):
+  - Chat send/edit/delete paths in `backend/src/services/chat.service.ts`.
+  - Presence state updates/recovery trigger in `backend/src/api/presence.routes.ts`.
+  - Audio environment/override/mute/broadcast/voice-mode mutations in `backend/src/api/audio.routes.ts`.
+  - Room lifecycle/membership mutations in `backend/src/api/rooms.routes.ts` (create/join/leave/move/end-whisper/delete).
+  - Session lifecycle/membership mutations in `backend/src/api/session.routes.ts` (create/join/leave/state-change/cooldown extend/end/delete).
+- Session chat service now appends Redis chat runtime projection events for send/edit/delete, improving low-latency runtime observability and recovery diagnostics.
+
+- Architecture contract documentation now explicitly distinguishes shipped runtime behavior from target-state design for Redis runtime authority and recovery:
+  - Updated `docs/architecture/RUNTIME-STATE-AND-AUDIT-CONTRACT.md` with a current reality snapshot and verified-coverage notes.
+  - Updated `docs/architecture/STATE-RECOVERY.md` to clarify backend-restart recovery behavior and non-durable WS replay status.
+  - Updated `docs/ARCHITECTURE-MAP.txt` recovery section to remove the implied shipped `system.state.hydrate` path.
+  - Added approved multi-device state-machine policy and recovery requirements (one visible player entity, one active mic device per user including DM, hard-unpublish arbitration, transfer semantics, spectator single-device rule, and webhook + runtime reconciliation guidance).
+
+- Cooldown extend-limit UI now remains accurate after refresh/hydration:
+  - Campaign session hydration now returns `cooldownExtensionCount` for each session.
+  - Frontend session hydration applies this value into local cooldown extension state on load.
+  - If extend is attempted while already capped, frontend hard-sets local count to 3 from server limit responses so the Extend button disables immediately.
+- Cooldown end now applies full room transition orchestration (`COOLDOWN -> ENDED`) and broadcasts `ROOM:SESSION_TRANSITION_APPLIED`, so DM/players reliably appear in Greenroom without requiring manual recovery.
+- Session toolbar state pill now renders the canonical lifecycle state directly (no Greenroom alias override), so `ENDED` displays as `ENDED`.
+- Greenroom chat messages now render correctly for both live updates and refresh hydration:
+  - Greenroom chat UI now uses campaign-scoped chat endpoints for history/send.
+  - Frontend bridges campaign-scoped `CHAT:MESSAGE_SENT` events (which may omit `sessionId`/`roomId`) into the active session Greenroom stream so message delivery and rendering converge with typing indicators.
+
+- Live-session chat follow-up hardening:
+  - Client-originated typing events are now broadcast only to the sender's active room audience plus DM, instead of leaking session-wide and relying only on client-side room filtering.
+  - Added backend coverage for room-scoped typing delivery and whisper audience visibility.
+  - Greenroom chat now suppresses `[Session Paused]` and `[Session Resumed]` intermission bookends while preserving the rest of the remembered unified session timeline.
+  - Unified timeline chat UI now presents room shifts, focus badges, and whisper target context so cross-room history reads as an intentional timeline instead of a flat message dump.
+  - Disabling DEV mock speaking simulation now immediately clears active speaking users and broadcasts `PRESENCE:STATE_CHANGED` updates so clients stop rendering speaking state without waiting for another tick.
+  - Greenroom chat pane now renders only Greenroom messages (no cross-room entries), while ACTIVE/PAUSED timeline room separators remain intact.
+  - Whisper composer now uses a participant picker instead of raw recipient IDs, scoped to allowed recipients for the active room context.
+  - Timeline rendering now includes day separators for clearer editorial grouping across longer sessions.
+
+- Self-unmute now clears DM `MUTE` override state and broadcasts `AUDIO:DM_OVERRIDE_REMOVED` before `AUDIO:USER_UNMUTED`, so players (including DEV mock players) can unmute themselves after a DM mute using real production event/state paths.
+- Whisper route/footer UI received timeline polish:
+  - incoming/outgoing whisper metadata now use intentionally distinct layouts,
+  - incoming route/timestamp alignment and spacing were refined for readability,
+  - stacked whisper targets now preserve consistent arrow/name alignment behavior.
+- Session Info Panel connected-player count and copy alignment:
+  - greenroom connected-player stat now resolves from live greenroom roster membership (excluding spectators/system),
+  - tooltip/copy now uses "Connected Players" wording (no "+ DM" phrasing).
+
+- DEV mock disconnect simulation now models flaky real-client behavior: disconnected mocks remain in their room as ghost/offline participants for a randomized interval, then clear ghost mode and return online via presence events (instead of disappearing from room membership).
+
+- DEV mock disconnect simulation now supports realism presets and per-session tuning knobs (`disconnectChancePerTick`, `ghostMinDurationMs`, `ghostMaxDurationMs`) and exposes profile presets via status API; disconnect/reconnect handlers are additionally guarded to only operate on `dev_mock_*` users so no real player can be affected.
+
+- Live session participant cards now refresh character/profile fields in place when a `PRESENCE:PROFILE_UPDATED` event arrives, so rerolled or externally updated mock players no longer need a browser refresh to show the new name/class/race/level.
+
+- Frontend session WebSocket handshake now includes the active `sessionId`, which is required for session-scoped broadcasts such as mock-player rerolls and presence updates to reach the client.
+
+- Frontend member-list crash fix for repeated `Maximum update depth exceeded` errors caused by nested Radix `asChild` trigger/ref composition on participant buttons:
+  - `RoomMemberList` and `GroupMemberList` now avoid stacking Tooltip and ContextMenu trigger composition on the same button path.
+  - Player-target rows use context menu trigger flow directly; tooltip trigger flow is limited to non-context rows.
+  - Prevents runaway ref cleanup/set cycles (`composeRefs` / `setRef`) observed in dev runtime.
+
+- Greenroom/session boundary separation hardening:
+  - Pause/resume/start/end boundary markers are now strictly session-runtime markers and remain MAIN-room only.
+  - Frontend fallback and history restoration no longer replicate boundary bookends into Greenroom.
+  - ChatWindow suppresses session boundary bookends in Greenroom rendering/hydration so Greenroom never surfaces session bookends.
+- Room membership failback hardening:
+  - If a target room is missing/closed, movement now fails back to `MAIN` instead of allowing homeless presence.
+  - Whisper end always restores participants to a valid prior room or `MAIN` fallback.
+  - Session room list/move/end-whisper/delete flows now reconcile invalid or missing `primaryRoomId` values back to `MAIN`.
+
+- Backend session membership lifecycle integration tests were returning 500 for ACTIVE-session join/leave scenarios. Fixed by adding missing service mocks to `backend/tests/integration/session-membership-role-lifecycle.integration.test.ts`:
+  - `ensureSessionWhisperRoomForSession` (called by `ensureJoinedMemberPresence` for ACTIVE/PAUSED sessions).
+  - `deletePrivateRoomsForEndedSession` (called by leave handler on session end).
+  - `resolveEffectiveSessionRole` with `ok: true` (called by `chat.routes.ts` authz guard, hit during the chat-send step of the lifecycle test).
+
+When a new session starts for the same campaign, non-private groups and their environments are carried forward from the previous session (`restoreCampaignRoomsForSession`).
+
+- **Private room lifecycle**: `PRIVATE` rooms are now automatically deleted when a session transitions to `ENDED` (`deletePrivateRoomsForEndedSession`). Private groups cannot be created in greenroom.
+- **DM greenroom group management**: DMs can now create, delete, and configure groups (including setting environments) from the greenroom (`IDLE` state). Group creation in IDLE is allowed for `GROUP` type; only `PRIVATE` type is blocked.
+- **Group visibility**: Players see groups only when at least one player is a member. DMs always see all groups. In greenroom, the DM sees all groups for management; players see only the Greenroom.
+- **Empty group collapse**: DM view collapses empty groups to a single line. The DM voice button is replaced by a red inline X (delete) button. The footer close button is hidden for empty groups.
+- **Environment state canonical source**: `RoomSelector.handleApplyEnvironment` now writes to Zustand (`setRoomEnvironmentName`) as the canonical source of truth, eliminating the need for local `environmentOverrides` state to drive the UI.
+- **`handleEnvironmentSet` fix**: The Zustand `handleEnvironmentSet` action now always updates `roomEnvironmentNames` even when `parameters` is absent in the WS event payload. Previously, events without parameters were silently ignored.
+- **Session state transitions**: `clearRoomEnvironmentState` on state transition now only clears the greenroom or main room's environment, not non-main groups. This preserves environment settings during state transitions.
+
+### Changed
+
+- Session recovery hydration now restores both environment presets and DM overrides from audio state snapshots in `Workspaces`, and triggers a non-blocking presence snapshot recovery call after hydration.
+- Frontend session user typing now carries campaign-scoped role context through `campaignMembershipRole` while preserving JWT global role semantics.
+- Canonical API path cleanup completed: removed remaining versioned naming in route wiring/tests, renamed auth route artifacts away from versioned labels, and finalized non-versioned mount usage across runtime/admin callsites.
+- Planned release version alignment updated to `0.7.0` across workspace packages and backend runtime app-version constant.
+- Session CLEANUP can now be cleared back to INACTIVE when the DM reconnects, keeping the cleanup sweep from firing on an active recovery path.
+
+### Added (Recovery)
+
+- Frontend integration coverage for session recovery behavior:
+  - Session-enter hydration of rooms, presence, environment, and DM overrides.
+  - Rehydration replay on WebSocket reconnect transitions.
+- Zustand audio overrides bulk replacement action (`replaceDMOverrides`) to support atomic recovery rehydration.
+
+### Fixed (Harness)
+
+- Backend Phase 6 test harness regressions after auth-state middleware tightening:
+  - Restored session-access service behavior used by session access tests/routes.
+  - Updated backend API test mocks to include auth-state validation/context dependencies.
+
+### Documentation
+
+- Updated W1 planning/status in [ROADMAP.md](ROADMAP.md) to include backend Zod env-validation migration and backend Pino logging migration, with explicit current-state notes.
+- Updated [docs/DEVELOPMENT-ROADMAP.md](docs/DEVELOPMENT-ROADMAP.md) delivery-log pointers to reflect the new W1 planning additions in the active roadmap.
+- Updated endpoint/path documentation from versioned API examples to canonical non-versioned API families across architecture, guides, extension, and UI docs.
+- Replaced the operations API deprecation map with [docs/operations/API-PATH-CUTOVER-MAP.md](docs/operations/API-PATH-CUTOVER-MAP.md) to reflect the current route contract.
+
+---
+
+## [0.6.0] - 2026-05
+
+### Added
+
+- Shared canonical cross-system entity contracts in `shared/types/entities.ts`:
+  - `UserEntity`, `SessionEntity`, `RoomEntity`, `MessageEntity`, `NoteEntity`, `PresenceEntity`
+- Shared cross-system utility modules in `shared/utils/`:
+  - `format.ts` (`formatTimestamp`, `formatDuration`, `truncateText`, `pluralize`)
+  - `ws-events.ts` (`isEventForSession`, `getEventType`, `sortEventsByTimestamp`, `isEventType`)
+  - `session-state.ts` (`prettySessionState`, `sessionStatusClass`)
+  - `index.ts` export barrel
+- New validation tests to enforce cross-system contract alignment:
+  - `frontend/src/tests/utils/shared-type-alignment.test.ts`
+  - `backend/tests/contracts/shared-type-alignment.test.ts`
+  - `admin/src/tests/SharedAlignment.test.ts`
+
+### Changed
+
+- Frontend domain models now normalize to shared canonical contracts:
+  - `frontend/src/types/session.ts` now aliases `SessionEntity`
+  - `frontend/src/types/room.ts` now aliases `RoomEntity` and `PresenceEntity`
+  - `frontend/src/types/chat.ts` now aliases `MessageEntity`
+  - `frontend/src/types/notes.ts` now aliases `NoteEntity`
+  - `frontend/src/types/user.ts` now aliases `UserEntity`
+- Frontend utility functions are consolidated to shared sources via re-exports:
+  - `frontend/src/utils/format.ts` now re-exports from `@shared/utils/format`
+  - `frontend/src/utils/ws-events.ts` now re-exports from `@shared/utils/ws-events`
+- Backend stored contracts now align to shared canonical entities via extension:
+  - `backend/src/types/chat.types.ts` (`StoredMessage extends MessageEntity`)
+  - `backend/src/types/notes.types.ts` (`StoredNote extends NoteEntity`)
+  - `backend/src/types/room.types.ts` (`StoredRoom extends RoomEntity`, `RealtimePresence extends PresenceEntity`)
+- Backend auth/context/API/metadata types further normalized toward shared composition:
+  - `backend/src/types/auth.types.ts` now derives role unions from shared role values
+  - `backend/src/types/auth-user-context.types.ts` now derives role/admin-role contracts from shared/backend canonical role types
+  - `backend/src/types/api.types.ts` now derives role/room/visibility enums from shared contracts
+  - `backend/src/types/metadata.types.ts` now composes metadata-access session shape from shared session contract fields
+- Backend WS/service DTO modules normalized toward shared composition:
+  - `backend/src/types/ws.types.ts` now composes from shared `EventEnvelope` with compatibility aliases for legacy event names
+  - `backend/src/types/service.types.ts` now derives session/note request field contracts from shared session and visibility types
+- Final backend strictness pass (internal-only contracts):
+  - UUID branding applied to internal ID fields in `backend/src/types/service.types.ts`
+  - UUID branding applied to internal log entries in `backend/src/types/session-log.types.ts`
+  - UUID branding applied to persisted audio state contracts in `backend/src/types/audio.types.ts`
+  - UUID branding applied to auth-user-context identities in `backend/src/types/auth-user-context.types.ts`
+  - Internal service-level UUID mapping/casts added in `session-logs.service.ts`, `audio-state.service.ts`, and `auth-user-context.service.ts` to preserve runtime behavior
+  - Final backend coverage snapshot after this pass: statements `60.99`, branches `51.69`, functions `60.17`, lines `61.35` (`47` files / `308` tests passing)
+- Admin type/runtime alignment:
+  - `admin/src/types/campaigns.ts` now uses shared `SessionState` and shared session-state helpers
+  - `admin/src/types/users.ts` role model now derives from shared `Role`
+  - `admin/tsconfig.json`, `admin/vite.config.ts`, and `admin/vitest.config.ts` now include `@shared` alias resolution
+
+## [0.5.4] - 2026-05
+
+### Added
+
+- Admin types directory `admin/src/types/` consolidating all domain types into a single canonical location:
+  - `auth.ts` — `AdminUser`, `AuthState`, `AdminRole`
+  - `nav.ts` — `AdminPage`, `NavItem`
+  - `integrations.ts` — `AuthorizationState`, `IntegrationScope`, `IntegrationSystem`, `IntegrationMetrics`
+  - `common.ts` — `PaginationMeta`, `ApiMessageResponse`
+  - `campaigns.ts` — all campaign/session/recording types + `prettyState`/`statusClass` helpers
+  - `logs.ts` — `LogSeverity`, `LogSortBy`, `LogSortDir`, `LogTimeRange`, `AdminLogRow`, `LogsListResponse`, `LogDetailResponse`
+  - `monitoring.ts` — `TimelinePoint`, `DashboardTelemetry`, `StatusTelemetry`, `MonitoringSnapshot`
+  - `settings.ts` — `RuntimeSettings`
+  - `users.ts` — all user/invite types + `roleLabel` helper; `AdminRole` imported from `./auth` (single source of truth)
+  - `index.ts` — barrel re-export for all domain types
+- `@/` path alias for `admin/src/` configured in `tsconfig.json`, `vite.config.ts`, and `vitest.config.ts`. All admin imports now use `@/types/*` instead of relative paths.
+- Route-level admin integration tests for all four key admin areas:
+  - `backend/tests/api/admin-users-routes.test.ts` — `GET /users`, export (JSON/CSV), import preview; authz gates; conflict detection (18 tests).
+  - `backend/tests/api/admin-logs-routes.test.ts` — telemetry/diagnostic/audit log list with merged sources, filter/sort, pagination, per-prefix drill-down (12 tests).
+  - `backend/tests/api/admin-campaigns-routes.test.ts` — campaign list/filter, rooms endpoint, session force-end, archive/restore, idempotency, NOT_FOUND branches (19 tests).
+  - `backend/tests/api/admin-settings-routes.test.ts` — settings read/write, retention update, backup trigger, ops-export bundle (15 tests).
+
+### Changed
+
+- Backend test suite expanded from `42` files / `233` tests to `46` files / `297` tests.
+- Admin `features/*/types.ts` shim files removed; five feature-local type files deleted after all consumers updated to `@/types/*` aliases.
+- `AdminRole` consolidated as single canonical definition in `admin/src/types/auth.ts`.
+
+---
+
+## [0.5.3] - 2026-05
+
+- Stage 8 admin backend redesigned to a unified user-admin model by merging admin credentials/authorization into `User` (`password`, `isActive`, `adminRole`) and introducing `AdminRole` (`SUPER_ADMIN`, `ADMIN`, `CAMPAIGN_DM`, `READ_ONLY`).
+- Admin JWT payload now carries `userId`, `username`, and `adminRole` claims, and admin authentication now resolves effective admin access from explicit `adminRole` or DM auto-access.
+- Admin service refactored to use `User` records for setup/login/password updates and first-super-admin bootstrap logic.
+- Campaign/domain user write paths now auto-assign `CAMPAIGN_DM` to DM users without overwriting elevated admin roles.
+- Frontend and admin apps now support cross-launch authentication via one-time handoff tokens, enabling no-relogin app switching for full-account users with admin access.
+- Guest-DM admin launch behavior now fails closed with `GUEST_UPGRADE_REQUIRED` until account upgrade.
+- Admin and user authentication middleware now enforce account activity and token invalidation (`tokenInvalidBefore`) so forced logout and suspension take effect immediately for both app and admin tokens.
+- Admin logs UX replaced placeholder alert expansion with an inline detail panel, and users page now operates on live backend data instead of static placeholder rows.
+- Stage 10.3 telemetry durability expanded with persisted diagnostic stream ingestion so runtime/admin-audit/telemetry sources now share durable drill-down semantics.
+- Admin settings now include telemetry/diagnostic sink retention and rotation policy controls for durability hardening.
+- Admin logs page detail expansion now routes through source-backed drill-down IDs across persisted log sources.
+- Frontend styles have begun Stage 11 consolidation under `frontend/src/styles/components/**`, with Workspaces campaign/session/session-list inline styles extracted into stylesheet classes.
+- Stage 10 admin UI completion increment: analytics is now telemetry-backed, dashboard scaffold messaging replaced by explicit data-provenance notes, and platform status chart placeholders replaced with rendered telemetry trend charts.
+- Stage 10 admin extraction pass split CampaignManagement, Settings, UserManagement, and Logs into smaller feature hooks/components with shared pagination and preserved behavior.
+- Stage 10 closure delivered: roadmap/status markers now reflect Stage 10 completion and Stage 11-13 as remaining planned scope.
+
+### Added
+
+- Admin API endpoint `GET /api/admin/me` for authenticated admin profile retrieval.
+- Admin API endpoint `POST /api/admin/users/:userId/promote` for `SUPER_ADMIN` role grants.
+- Prisma migration `20260420033808_merge_admin_user_into_user` to add `User.adminRole`, `User.password`, and `User.isActive`.
+- Auth handoff endpoint `POST /api/auth/handoff/admin` (frontend -> admin token issuance).
+- Admin handoff exchange endpoint `POST /api/admin/auth/handoff/exchange` (frontend -> admin exchange).
+- Admin handoff endpoint `POST /api/admin/handoff/app` (admin -> frontend token issuance).
+- Auth handoff exchange endpoint `POST /api/auth/handoff/exchange` (admin -> frontend exchange).
+- Moderation endpoints with audit trail:
+  - `PATCH /api/admin/users/:userId/suspend`
+  - `PATCH /api/admin/users/:userId/restore`
+  - `POST /api/admin/users/:userId/force-logout`
+- Admin invite onboarding endpoints:
+  - `POST /api/admin/invites`
+  - `GET /api/admin/invites/validate`
+  - `POST /api/admin/invites/redeem`
+- Prisma migration `20260420040230_stage8_moderation_audit_persistence` for `AdminAuditLog` and `User.tokenInvalidBefore`.
+- Prisma migration `20260420040838_stage8_admin_invite_onboarding` for persistent `AdminInvite` records.
+- Admin logs UI interaction coverage for filter, sort, pagination, and drill-down detail rendering (`admin/src/tests/Logs.test.ts`).
+- Backend coverage for diagnostic drill-down and settings policy propagation (`backend/tests/api/admin-telemetry-diagnostic-retention.test.ts`).
+- Workspaces integration coverage for left-rail room switching and participant status rendering (`frontend/src/tests/components/Workspaces.integration.test.tsx`).
+- Reusable admin telemetry UI primitives for Stage 10 pages: `admin/src/components/TelemetryMetricCard.tsx` and `admin/src/components/SparklineChart.tsx`.
+- Reusable admin extraction primitives and feature modules for Stage 10 pages, including `admin/src/components/AdminPagination.tsx` plus page-specific feature modules under `admin/src/features/**`.
+- External system authorization controls and guardrails for Stage 10.4:
+  - Admin routes: `GET /api/admin/integrations/systems`, `POST /api/admin/integrations/systems/:system/authorize`, `POST /api/admin/integrations/systems/:system/block`, `PATCH /api/admin/integrations/systems/:system`.
+  - Guest-auth gate: `POST /api/auth/extension/guest-login` now rejects blocked/unrecognized systems with `INTEGRATION_NOT_AUTHORIZED`.
+  - External log-ingestion gate: `POST /api/telemetry/external/logs` now enforces integration authorization state.
+  - Admin UI `Integrations` page with authorize/log-only/block actions and notes updates.
+  - Backend/admin test coverage for authorization state transitions, endpoint guardrails, and Integrations UI interactions.
+
+### Documentation
+
+- Updated Stage 8 roadmap status and progress records in [ROADMAP.md](ROADMAP.md).
+- Updated Stage 10/11 roadmap tasks to include Stage 10.3 durability hardening increments and explicit Stage 11 frontend command-center parity scope (AvatarOverlay, RoomSelector, left-rail participant status, frontend CSS externalization).
+- Updated roadmap snapshots to record Stage 11 CSS consolidation and Workspaces inline-style extraction progress.
+
+---
+
+## [0.5.2] - 2026-04-20
+
+### Changed
+
+- Stage 13 planning and architecture documentation expanded from placeholder scope into concrete sub-milestones (13.1-13.5).
+- Guest and extension auth model documentation finalized across architecture and extension docs, including player/DM unified invite flow, spectator access policy matrix, waitlist/reconnect behavior, and campaign bootstrap semantics.
+- API and data model documentation aligned to include guest auth, external identity linking, campaign external linking, spectator flows, and campaign browse/watch validation endpoints.
+- Permissions and UX documentation updated to clarify extension roles (DM/player), spectator web-only access model, and upgrade/linking paths.
+- Root project README rewritten from docs-index format into project introduction format with purpose, audience, stack overview, self-host quick start, developer onboarding, and contribution guidance.
+
+### Documentation
+
+- Updated: `README.md`, `ROADMAP.md`, `docs/architecture/API-SPEC.md`, `docs/architecture/DATA-MODEL.md`, `docs/architecture/PERMISSIONS-MATRIX.md`, `docs/extension/GUEST-AUTH.md`, `docs/extension/EXTENSION-UX.md`.
+
+---
+
+## [0.5.1] - 2026-04
+
+### Added
+
+- Stage 8 admin telemetry baseline endpoints (`/api/admin/telemetry/dashboard`, `/status`, `/logs`) with server-side logs filtering, pagination, and sorting.
+- Frontend and backend test suite expansion and normalization (frontend shell/ws/audio/livekit coverage; backend `api`, `integration`, `core`, `ws`, `contracts` structure updates).
+
+### Changed
+
+- Admin SPA shell and primary navigation/pages matured to support dashboard/status/logs workflows.
+- Infrastructure refactor reduced backend service coupling using dependency injection for session/room/presence pathways.
+
+---
+
+## [0.5.0] - 2026-04
+
+### Added
+
+- Stage 7 baseline audio and LiveKit integration:
+  - LiveKit token issuance route and token service.
+  - Frontend LiveKit lifecycle hook and mounted audio panel runtime integration.
+  - Backend audio control routes and websocket dispatcher event handling.
+
+### Verified
+
+- Role-gated API tests and websocket envelope coverage for audio/livekit integration baseline.
+
+---
+
+## [0.4.0] - 2026-04
+
+### Added
+
+- Stage 6 presence and rooms vertical slice completion:
+  - Redis-first presence/room state.
+  - Prisma-backed snapshot persistence and DB recovery path.
+  - Session transition room orchestration and typed transition events.
+  - Frontend room/presence hydration and reconnect topology restoration.
+
+### Security
+
+- Presence/rooms APIs hardened with session-member authorization checks.
+
+---
+
+## [0.3.0] - 2026-04
+
+### Added
+
+- Stage 5 notes vertical slice completion:
+  - Persisted notes CRUD with visibility model (`DM_ONLY`, `PLAYERS_VISIBLE`, `CUSTOM`).
+  - Publish-to-chat flow and websocket propagation behavior.
+  - Frontend notes panel/card UX integration and custom-share selector UX.
+
+### Changed
+
+- Added publish audit hooks for admin telemetry/audit workflows.
+
+---
+
+## [0.2.0] - 2026-04
+
+### Added
+
+- Stage 4 chat vertical slice completion:
+  - Prisma-backed chat persistence with edit/soft-delete support.
+  - Whisper visibility filtering and recipient-targeted flows.
+  - Session boundary system messages (immutable by design).
+  - Frontend websocket wrapper compatibility with backend event envelopes.
+
+### Changed
+
+- Session/chat lifecycle behaviors aligned with deterministic role and visibility rules.
+
+---
+
+## [0.1.0] - Initial Project Setup
+
+### Added
+
+- Initial repository structure (backend, frontend, docs, scripts)
+- Backend TypeScript skeleton with Express, WebSocket, Prisma, Redis, and LiveKit integration points
+- Frontend React + Vite skeleton with Zustand state management
+- Full documentation set (Architecture, Roadmap, Deployment, Install Script Guide)
+- GitHub Actions CI workflows for backend and frontend
+- Docker build workflows for backend and frontend
+- Release workflow using semantic‑release
+- Repository scaffolding scripts for backend and frontend
+
+---
+
+Future releases will be automatically appended below this line.
