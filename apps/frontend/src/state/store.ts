@@ -25,7 +25,6 @@ import type { MockSimulationSlice } from './mockSimulationSlice'
 import type { DmTransferSlice } from './dmTransferSlice'
 import type { CampaignScheduleSlice } from './campaignScheduleSlice'
 import type { InventorySlice } from './inventorySlice'
-import type { LootSplitSlice } from './lootSplitSlice'
 
 import { createSessionSlice } from './sessionSlice'
 import { createChatSlice } from './chatSlice'
@@ -45,8 +44,6 @@ import { createMockSimulationSlice } from './mockSimulationSlice'
 import { createDmTransferSlice } from './dmTransferSlice'
 import { createCampaignScheduleSlice } from './campaignScheduleSlice'
 import { createInventorySlice } from './inventorySlice'
-import { createLootSplitSlice } from './lootSplitSlice'
-
 declare global {
   interface Window {
     __VTT_DEBUG_STORE__?: boolean
@@ -158,8 +155,7 @@ export type Store = SessionSlice &
   MockSimulationSlice &
   DmTransferSlice &
   CampaignScheduleSlice &
-  InventorySlice &
-  LootSplitSlice
+  InventorySlice
 
 /**
  * Root Zustand store.
@@ -184,7 +180,6 @@ export const useStore = create<Store>()((...args) => ({
   ...createDmTransferSlice(...args),
   ...createCampaignScheduleSlice(...args),
   ...createInventorySlice(...args),
-  ...createLootSplitSlice(...args),
 }))
 
 if (typeof window !== 'undefined') {

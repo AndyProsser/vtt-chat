@@ -152,8 +152,6 @@ export function MessageListSystemRow({ prepared, lootSplitContext }: MessageList
     return (
       <LootSplitCard
         metadata={lootSplitMeta}
-        campaignId={lootSplitContext.campaignId}
-        currentUserId={lootSplitContext.currentUserId}
         participantDirectory={lootSplitContext.participantDirectory}
       />
     )

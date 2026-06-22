@@ -39,19 +39,6 @@
   font-weight: 600;
 }
 
-.loot-split-card__timer {
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
-  min-width: 2.8ch;
-  text-align: right;
-}
-
-.loot-split-card__timer--urgent {
-  color: #f87171;
-  font-weight: 600;
-}
-
 .loot-split-card__status {
   font-size: 0.75rem;
   font-weight: 600;
@@ -116,47 +103,12 @@
   flex: 0 0 auto;
 }
 
-.loot-split-card__share-pending {
-  display: inline-block;
-  width: 0.85rem;
-  height: 0.85rem;
-  border: 1.5px solid color-mix(in srgb, var(--color-text-muted) 50%, transparent);
-  border-radius: 999px;
-  flex: 0 0 auto;
+.loot-split-card__share--remainder {
+  opacity: 0.65;
+  font-style: italic;
 }
 
-.loot-split-card__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding-top: 0.25rem;
-}
-
-.loot-split-card__accept-btn {
-  align-self: flex-start;
-  padding: 0.35rem 0.9rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 5px;
-  border: 1px solid color-mix(in srgb, #f59e0b 55%, transparent);
-  background: color-mix(in srgb, #f59e0b 15%, transparent);
-  color: #fcd34d;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-
-.loot-split-card__accept-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, #f59e0b 25%, transparent);
-  border-color: color-mix(in srgb, #f59e0b 70%, transparent);
-}
-
-.loot-split-card__accept-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.loot-split-card__error {
-  font-size: 0.75rem;
-  color: #f87171;
-  margin: 0;
+.loot-split-card__share-remainder-label {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
 }

@@ -73,6 +73,13 @@
   grid-template-columns: minmax(264px, 296px) minmax(0, 1fr) 2.15rem;
 }
 
+@media (max-width: 900px) {
+  .session-workspace-frame__rails {
+    height: calc(var(--session-workspace-frame__rails-height) + 1.4rem);
+    max-height: calc(var(--session-workspace-frame__rails-height) + 1.4rem);
+  }
+}
+
 .session-workspace-frame__center-pane {
   position: relative;
   display: flex;
@@ -440,8 +447,8 @@
     grid-template-columns: minmax(0, 1fr) 2.15rem;
     grid-template-rows: minmax(0, 1fr);
     min-height: 0;
-    height: calc(100dvh - 6.4rem);
-    max-height: calc(100dvh - 6.4rem);
+    height: calc(var(--session-workspace-frame__rails-height) + 1.5rem);
+    max-height: calc(var(--session-workspace-frame__rails-height) + 1.5rem);
     gap: 0.2rem;
   }
 

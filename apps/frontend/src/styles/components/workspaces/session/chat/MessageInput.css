@@ -368,7 +368,16 @@
   padding: 0.75rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   max-width: min(560px, 90vw);
+  max-height: calc(100dvh - 180px);
+  display: flex;
+  flex-direction: column;
   z-index: 200;
+  margin-right: 0.5rem;
+}
+
+.chat-command-help__body {
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .chat-command-help__header {
@@ -476,6 +485,12 @@
 
 .chat-command-help__arrow {
   fill: var(--color-surface-elevated, #1e2638);
+}
+
+@media (max-width: 680px) {
+  .chat-command-help__popover {
+    max-height: calc(100dvh - 220px);
+  }
 }
 
 /* ── Command Palette (autocomplete) ──────────────────────────────────────── */

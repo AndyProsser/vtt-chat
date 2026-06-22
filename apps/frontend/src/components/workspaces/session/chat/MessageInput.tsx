@@ -30,6 +30,8 @@ interface MessageInputProps {
   onVoiceCommand?: (preset: string | null) => Promise<void>
   onConditionCommand?: (targetUserId: string, conditionName: string) => Promise<void>
   onEnvCommand?: (environmentName: string) => Promise<void>
+  /** Catch-all for server-side commands not handled locally (loot, loot-split, spend, earn, take, give, drop, etc.) */
+  onServerCommand?: (command: string, args: string) => Promise<void>
   onCommandError?: (message: string) => void
   onTypingStarted?: () => void
   onTypingStopped?: () => void
@@ -51,6 +53,7 @@ function MessageInputComponent({
   onVoiceCommand,
   onConditionCommand,
   onEnvCommand,
+  onServerCommand,
   onCommandError,
   onTypingStarted,
   onTypingStopped,
@@ -390,6 +393,9 @@ function MessageInputComponent({
           await onSend(messageText, MessageType.WHISPER, recipient.id)
           setSelectedType(MessageType.WHISPER)
           setRecipientId(recipient.id)
+        } else if (onServerCommand) {
+          // Generic catch-all: forward to backend (/loot, /loot-split, /spend, /earn, /take, /give, /drop, etc.)
+          await onServerCommand(command.name, command.args ?? '')
         }
 
         setContent('')

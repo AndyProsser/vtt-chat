@@ -81,25 +81,27 @@ function CommandHelpPopoverComponent({ role, onInsert }: CommandHelpPopoverProps
             </Popover.Close>
           </div>
 
-          {commands.length === 0 ? (
-            <p className="chat-command-help__empty">No commands available in your current role.</p>
-          ) : (
-            <table className="chat-command-help__table">
-              <thead>
-                <tr>
-                  <th className="chat-command-help__th">Command</th>
-                  <th className="chat-command-help__th">Syntax</th>
-                  <th className="chat-command-help__th">Description</th>
-                  <th className="chat-command-help__th">Example</th>
-                </tr>
-              </thead>
-              <tbody>
-                {commands.map((cmd) => (
-                  <CommandTableRow key={cmd.name} cmd={cmd} onInsert={onInsert} />
-                ))}
-              </tbody>
-            </table>
-          )}
+          <div className="chat-command-help__body">
+            {commands.length === 0 ? (
+              <p className="chat-command-help__empty">No commands available in your current role.</p>
+            ) : (
+              <table className="chat-command-help__table">
+                <thead>
+                  <tr>
+                    <th className="chat-command-help__th">Command</th>
+                    <th className="chat-command-help__th">Syntax</th>
+                    <th className="chat-command-help__th">Description</th>
+                    <th className="chat-command-help__th">Example</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {commands.map((cmd) => (
+                    <CommandTableRow key={cmd.name} cmd={cmd} onInsert={onInsert} />
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
 
           <Popover.Arrow className="chat-command-help__arrow" />
         </Popover.Content>

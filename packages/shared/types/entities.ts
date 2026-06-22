@@ -113,7 +113,9 @@ export interface LootSplitCardMetadata {
   totalQuantity: number
   shareQuantity: number
   shares: Array<{ userId: string; quantity: number }>
-  expiresAt: number
+  /** Items left in party after floor-division split. */
+  remainder: number
+  appliedAt: number
   proposedByUserId: string
 }
 

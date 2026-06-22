@@ -50,7 +50,6 @@ import {
   buildLootSummaryMessage,
   formatCoins,
 } from '@/services/inventory/loot-random.service'
-import { createLootSplit } from '@/services/inventory/loot-split.service'
 import { matchSrdItem } from '@/services/inventory/loot-tables'
 import crypto from 'node:crypto'
 
@@ -1699,11 +1698,9 @@ async function handleLootCommand({
 
 /**
  * /loot-split [item name] [qty?]
- * DM-only. Proposes a split of a party inventory item among all connected players.
- * Each player receives an equal share (floor division; any remainder stays in party).
- * A Loot Split Card appears in chat; players accept in one click within 60 seconds.
- * Unaccepted shares revert to party automatically (no write needed — party item is
- * only decremented as players accept).
+ * DM-only. Instantly splits a party inventory item among all connected players.
+ * Each player receives an equal share (floor division); any remainder stays in party.
+ * Shares are transferred immediately — no player action required.
  */
 async function handleLootSplitCommand({
   req,
@@ -1738,7 +1735,6 @@ async function handleLootSplitCommand({
   }
   const campaignId = rawSession.campaignId as UUID
 
-  // Resolve the party item
   const item = await findItemByOwnerAndName({
     campaignId,
     ownerType: 'party',
@@ -1751,87 +1747,90 @@ async function handleLootSplitCommand({
       message: `No "${parsed.itemName}" found in party inventory.`,
     })
   }
+
   const splitQty = Math.min(parsed.qty, item.quantity)
 
-  // Resolve connected players
   const presence = await getSessionPresence(sessionId)
-  const connectedPlayerIds = new Set(
-    presence.filter((p) => p.role === Role.PLAYER).map((p) => p.userId as UUID)
-  )
-  const playerIds = [...connectedPlayerIds]
+  const playerIds = [
+    ...new Set(
+      presence.filter((p) => p.role === Role.PLAYER).map((p) => p.userId as UUID)
+    ),
+  ]
+
   if (playerIds.length === 0) {
     return res
       .status(400)
       .json({ code: ErrorCode.INVALID_INPUT, message: 'No connected players to split with.' })
   }
 
-  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-
-  const result = await createLootSplit({
-    campaignId,
-    sessionId,
-    item,
-    totalQuantity: splitQty,
-    playerIds,
-    proposedByUserId: effective.userId,
-    onExpire: async (split) => {
-      // Broadcast expiry — unaccepted shares stay in party (no extra write needed)
-      if (wsManager) {
-        await wsManager.broadcastToCampaignMembers(campaignId, {
-          id: crypto.randomUUID() as UUID,
-          type: 'INVENTORY:LOOT_SPLIT_EXPIRED' as const,
-          version: 1,
-          userId: effective.userId,
-          userRole: Role.DM as any,
-          sessionId,
-          roomId: null,
-          timestamp: Date.now(),
-          payload: {
-            campaignId,
-            splitId: split.splitId,
-            revertedQuantity: split.shares
-              .filter((s) => !s.accepted)
-              .reduce((acc, s) => acc + s.quantity, 0),
-            expiredAt: Date.now(),
-          },
-        })
-      }
-    },
-  })
-
-  if (!result.ok) {
-    return res.status(400).json({ code: ErrorCode.INVALID_INPUT, message: result.error })
-  }
-
-  const { split } = result
-  const shareQty = split.shares[0]?.quantity ?? 1
-
-  if (wsManager) {
-    await wsManager.broadcastToCampaignMembers(campaignId, {
-      id: crypto.randomUUID() as UUID,
-      type: 'INVENTORY:LOOT_SPLIT_PROPOSED' as const,
-      version: 1,
-      userId: effective.userId,
-      userRole: requesterRole as any,
-      sessionId,
-      roomId: null,
-      timestamp: split.proposedAt,
-      payload: {
-        campaignId,
-        splitId: split.splitId,
-        itemId: split.itemId,
-        itemName: split.itemName,
-        totalQuantity: splitQty,
-        shares: split.shares.map((s) => ({ userId: s.userId, quantity: s.quantity })),
-        proposedByUserId: effective.userId,
-        expiresAt: split.expiresAt,
-        proposedAt: split.proposedAt,
-      },
+  const shareQty = Math.floor(splitQty / playerIds.length)
+  if (shareQty === 0) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: `Not enough ${item.name} (${splitQty}) to give one to each of the ${playerIds.length} players.`,
     })
   }
 
+  const remainder = splitQty % playerIds.length
+  const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+  const now = Date.now()
+
+  // Transfer each player's share from party → character immediately
+  const transfers: Array<{ userId: UUID; quantity: number }> = []
+  let currentItem = item
+  for (const userId of playerIds) {
+    const transferred = await partialTransferInventoryItem({
+      item: currentItem,
+      qty: shareQty,
+      campaignId,
+      toOwnerType: 'character',
+      toOwnerId: userId,
+      actorUserId: effective.userId,
+      sessionId,
+    })
+    transfers.push({ userId, quantity: shareQty })
+
+    if (wsManager) {
+      await wsManager.broadcastToCampaignMembers(campaignId, {
+        id: crypto.randomUUID() as UUID,
+        type: 'INVENTORY:ITEM_TRANSFERRED' as const,
+        version: 1,
+        userId: effective.userId,
+        userRole: requesterRole as any,
+        sessionId,
+        roomId: null,
+        timestamp: transferred.updatedAt,
+        payload: {
+          campaignId,
+          itemId: transferred.id,
+          name: transferred.name,
+          quantity: shareQty,
+          fromOwnerType: 'party',
+          fromOwnerId: null,
+          toOwnerType: 'character',
+          toOwnerId: userId,
+          transferredByUserId: effective.userId,
+          transferredAt: transferred.updatedAt,
+        },
+      })
+    }
+
+    // Re-fetch the party item so the next iteration sees the updated quantity
+    const refreshed = await findItemByOwnerAndName({
+      campaignId,
+      ownerType: 'party',
+      ownerId: null,
+      name: item.name,
+    })
+    if (refreshed) currentItem = refreshed
+  }
+
   const visibleTo = await resolveRoomAudience({ sessionId, roomId, dmId: session.dmId })
-  const content = `[Loot Split] ${effective.username} proposes splitting ${split.itemName}${splitQty > 1 ? ` ×${splitQty}` : ''} — ${shareQty} each for ${playerIds.length} players. Accept within 60s.`
+  const splitId = crypto.randomUUID()
+  const shareLabel = `${shareQty} each`
+  const remainderLabel = remainder > 0 ? ` — ${remainder} remaining in party` : ''
+  const content = `[Loot Split] ${effective.username} split ${item.name}${splitQty > 1 ? ` ×${splitQty}` : ''} among ${playerIds.length} players (${shareLabel})${remainderLabel}.`
+
   const chatMessage = await sendMessage({
     sessionId,
     roomId,
@@ -1844,16 +1843,18 @@ async function handleLootSplitCommand({
     visibleTo,
     metadata: {
       lootSplitCard: {
-        splitId: split.splitId,
-        itemName: split.itemName,
+        splitId,
+        itemName: item.name,
         totalQuantity: splitQty,
         shareQuantity: shareQty,
-        shares: split.shares.map((s) => ({ userId: s.userId, quantity: s.quantity })),
-        expiresAt: split.expiresAt,
+        shares: transfers,
+        remainder,
+        appliedAt: now,
         proposedByUserId: effective.userId,
       },
     },
   })
+
   if (wsManager) {
     wsManager.broadcastEventToSession(
       sessionId,
@@ -1862,7 +1863,7 @@ async function handleLootSplitCommand({
     )
   }
 
-  return res.status(201).json({ split, message: chatMessage })
+  return res.status(201).json({ transfers, remainder, message: chatMessage })
 }
 
 /**
