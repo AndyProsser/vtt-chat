@@ -1,4 +1,4 @@
-import type { UUID } from '@shared'
+import type { CharacterClassEntry, UUID } from '@shared'
 import { PresenceState } from '@shared'
 import type { EventEnvelope } from '@shared'
 import {
@@ -135,7 +135,8 @@ export interface PresenceSlice {
     avatarUrl?: string
     characterName?: string
     characterClass?: string
-    characterSubclass?: string | null
+    characterClasses?: CharacterClassEntry[] | null
+    multiclass?: boolean | null
     characterRace?: string
     level?: number
     characterStats?: Record<string, unknown> | null
@@ -154,7 +155,8 @@ export interface PresenceSlice {
     avatarUrl?: string | null
     characterName?: string | null
     characterClass?: string | null
-    characterSubclass?: string | null
+    characterClasses?: CharacterClassEntry[] | null
+    multiclass?: boolean | null
     characterRace?: string | null
     level?: number | null
     characterStats?: Record<string, unknown> | null
@@ -170,7 +172,8 @@ export interface PresenceSlice {
     avatarUrl?: string | null
     characterName?: string | null
     characterClass?: string | null
-    characterSubclass?: string | null
+    characterClasses?: CharacterClassEntry[] | null
+    multiclass?: boolean | null
     characterRace?: string | null
     level?: number | null
     characterStats?: Record<string, unknown> | null
@@ -313,7 +316,8 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
     avatarUrl,
     characterName,
     characterClass,
-    characterSubclass,
+    characterClasses,
+    multiclass,
     characterRace,
     level,
     characterStats,
@@ -334,7 +338,8 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
               avatarUrl: avatarUrl ?? existingPresence?.avatarUrl,
               characterName: characterName ?? existingPresence?.characterName,
               characterClass: characterClass ?? existingPresence?.characterClass,
-              characterSubclass: characterSubclass ?? existingPresence?.characterSubclass,
+              characterClasses: characterClasses ?? existingPresence?.characterClasses,
+              multiclass: multiclass ?? existingPresence?.multiclass,
               characterRace: characterRace ?? existingPresence?.characterRace,
               level: level ?? existingPresence?.level,
               characterStats: characterStats ?? existingPresence?.characterStats,
@@ -401,7 +406,8 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
       avatarUrl: string | null
       characterName: string | null
       characterClass: string | null
-      characterSubclass: string | null
+      characterClasses: CharacterClassEntry[] | null
+      multiclass: boolean
       characterRace: string | null
       level: number | null
       characterStats: Record<string, unknown> | null
@@ -428,7 +434,8 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
               avatarUrl: payload.avatarUrl ?? existing?.avatarUrl ?? null,
               characterName: payload.characterName ?? existing?.characterName ?? null,
               characterClass: payload.characterClass ?? existing?.characterClass ?? null,
-              characterSubclass: payload.characterSubclass ?? existing?.characterSubclass ?? null,
+              characterClasses: payload.characterClasses ?? existing?.characterClasses ?? null,
+              multiclass: payload.multiclass ?? existing?.multiclass ?? false,
               characterRace: payload.characterRace ?? existing?.characterRace ?? null,
               level: payload.level ?? existing?.level ?? null,
               characterStats: payload.characterStats ?? existing?.characterStats ?? null,
@@ -460,7 +467,8 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
     avatarUrl,
     characterName,
     characterClass,
-    characterSubclass,
+    characterClasses,
+    multiclass,
     characterRace,
     level,
     characterStats,
@@ -481,7 +489,8 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
         avatarUrl !== undefined ||
         characterName !== undefined ||
         characterClass !== undefined ||
-        characterSubclass !== undefined ||
+        characterClasses !== undefined ||
+        multiclass !== undefined ||
         characterRace !== undefined ||
         level !== undefined ||
         characterStats !== undefined
@@ -513,10 +522,11 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
             characterName !== undefined ? (characterName ?? undefined) : existing?.characterName,
           characterClass:
             characterClass !== undefined ? (characterClass ?? undefined) : existing?.characterClass,
-          characterSubclass:
-            characterSubclass !== undefined
-              ? (characterSubclass ?? undefined)
-              : existing?.characterSubclass,
+          characterClasses:
+            characterClasses !== undefined
+              ? (characterClasses ?? undefined)
+              : existing?.characterClasses,
+          multiclass: multiclass !== undefined ? (multiclass ?? undefined) : existing?.multiclass,
           characterRace:
             characterRace !== undefined ? (characterRace ?? undefined) : existing?.characterRace,
           level: level !== undefined ? (level ?? undefined) : existing?.level,
@@ -550,7 +560,8 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
     avatarUrl,
     characterName,
     characterClass,
-    characterSubclass,
+    characterClasses,
+    multiclass,
     characterRace,
     level,
     characterStats,
@@ -580,10 +591,12 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
                 characterClass !== undefined
                   ? (characterClass ?? undefined)
                   : existing?.characterClass,
-              characterSubclass:
-                characterSubclass !== undefined
-                  ? (characterSubclass ?? undefined)
-                  : existing?.characterSubclass,
+              characterClasses:
+                characterClasses !== undefined
+                  ? (characterClasses ?? undefined)
+                  : existing?.characterClasses,
+              multiclass:
+                multiclass !== undefined ? (multiclass ?? undefined) : existing?.multiclass,
               characterRace:
                 characterRace !== undefined
                   ? (characterRace ?? undefined)

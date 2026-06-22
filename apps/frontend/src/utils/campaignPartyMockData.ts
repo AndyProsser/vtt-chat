@@ -1,3 +1,4 @@
+import type { CharacterClassEntry } from '@shared'
 import type { MockPartyMember, MockPlayerStatus } from '@/types/campaignParty'
 
 const PLAYER_NAMES = [
@@ -63,47 +64,37 @@ const RACES = [
   'Aasimar',
 ]
 
-const CLASSES = [
-  'Fighter',
-  'Wizard',
-  'Rogue',
-  'Cleric',
-  'Ranger',
-  'Bard',
-  'Paladin',
-  'Druid',
-  'Warlock',
-  'Sorcerer',
-  'Monk',
-  'Barbarian',
+/** Class entries available for mock characters (class + optional subclass). */
+const CLASS_POOL: Array<{ name: string; subclass?: string }> = [
+  { name: 'Fighter', subclass: 'Battle Master' },
+  { name: 'Fighter', subclass: 'Champion' },
+  { name: 'Wizard', subclass: 'Abjurer' },
+  { name: 'Wizard', subclass: 'Diviner' },
+  { name: 'Rogue', subclass: 'Thief' },
+  { name: 'Rogue', subclass: 'Assassin' },
+  { name: 'Cleric', subclass: 'Life' },
+  { name: 'Cleric', subclass: 'Light' },
+  { name: 'Ranger', subclass: 'Hunter' },
+  { name: 'Ranger', subclass: 'Beast Master' },
+  { name: 'Bard', subclass: 'Lore' },
+  { name: 'Bard', subclass: 'Valor' },
+  { name: 'Paladin', subclass: 'Devotion' },
+  { name: 'Paladin', subclass: 'Vengeance' },
+  { name: 'Druid', subclass: 'Land' },
+  { name: 'Druid', subclass: 'Moon' },
+  { name: 'Warlock', subclass: 'Fiend' },
+  { name: 'Warlock', subclass: 'Great Old One' },
+  { name: 'Sorcerer', subclass: 'Wild Magic' },
+  { name: 'Sorcerer', subclass: 'Storm Sorcery' },
+  { name: 'Monk', subclass: 'Open Hand' },
+  { name: 'Monk', subclass: 'Shadow' },
+  { name: 'Barbarian', subclass: 'Berserker' },
+  { name: 'Barbarian', subclass: 'Totem Warrior' },
 ]
 
-const SUBCLASSES = [
-  'Battle Master',
-  'Champion',
-  'Abjurer',
-  'Diviner',
-  'Thief',
-  'Assassin',
-  'Life',
-  'Light',
-  'Hunter',
-  'Beast Master',
-  'Lore',
-  'Valor',
-  'Devotion',
-  'Vengeance',
-  'Land',
-  'Moon',
-  'Fiend',
-  'Great Old One',
-  'Wild Magic',
-  'Storm Sorcery',
-  'Open Hand',
-  'Shadow',
-  'Berserker',
-  'Totem Warrior',
-]
+function buildClassEntry(entry: { name: string; subclass?: string }, level: number): CharacterClassEntry {
+  return { name: entry.subclass ? `${entry.name} / ${entry.subclass}` : entry.name, level }
+}
 
 const STATUS_POOL: MockPlayerStatus[] = ['here', 'here', 'away', 'lobby', 'not-here', 'offline']
 
@@ -163,6 +154,24 @@ export function generateMockParty(): MockPartyMember[] {
   return players.map((playerName, index) => {
     const characterName = characters[index] ?? `Character ${index + 1}`
     const status = pick(STATUS_POOL)
+
+    // ~1-in-6 chance of multiclass; max 2 classes per character.
+    const isMulticlass = Math.random() < 1 / 6
+    const totalLevel = rnd(1, 20)
+    let classes: CharacterClassEntry[]
+
+    if (isMulticlass) {
+      const [primary, secondary] = pickUnique(CLASS_POOL, 2)
+      const primaryLevel = Math.max(1, Math.floor(totalLevel / 2))
+      const secondaryLevel = Math.max(1, totalLevel - primaryLevel)
+      classes = [
+        buildClassEntry(primary, primaryLevel),
+        buildClassEntry(secondary, secondaryLevel),
+      ]
+    } else {
+      classes = [buildClassEntry(pick(CLASS_POOL), totalLevel)]
+    }
+
     return {
       id: `mock-${index}-${Math.random().toString(36).slice(2, 7)}`,
       role: 'PLAYER' as const,
@@ -171,9 +180,10 @@ export function generateMockParty(): MockPartyMember[] {
       avatarUrl: mockAvatarDataUrl(characterName),
       avatarInitials: initials(characterName),
       race: pick(RACES),
-      characterClass: pick(CLASSES),
-      subClass: pick(SUBCLASSES),
-      level: rnd(1, 20),
+      characterClass: classes[0].name,
+      classes,
+      multiclass: isMulticlass,
+      level: totalLevel,
       stats: {
         str: randomStat(),
         dex: randomStat(),

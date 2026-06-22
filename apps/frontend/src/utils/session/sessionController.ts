@@ -4,7 +4,7 @@
  * Decouples API logic from component state management.
  */
 
-import type { UUID } from '@shared'
+import type { CharacterClassEntry, UUID } from '@shared'
 import type { CampaignSettingsPayload, CampaignSettingsHomeTab } from '@/types/session/campaign'
 import type { Session as SessionRecord } from '@/types/session'
 import type { UserCharacterRecord } from '@/hooks/useCharacterSettings'
@@ -107,13 +107,31 @@ export function buildCharacterDraft(character: UserCharacterRecord | null) {
 
   const metadata = character.metadata || {}
 
+  const characterClasses: CharacterClassEntry[] =
+    Array.isArray(character.classes) && character.classes.length > 0
+      ? (character.classes as CharacterClassEntry[])
+      : character.class
+        ? [
+            {
+              name: [character.class, character.subclass].filter(Boolean).join(' / '),
+              level: Math.max(1, Math.min(20, Number(metadata.level) || 1)),
+            },
+          ]
+        : [{ name: 'Fighter', level: 1 }]
+
+  const primaryClassName = characterClasses[0]?.name ?? character.class ?? 'Fighter'
+  const totalLevel =
+    characterClasses.length > 1
+      ? characterClasses.reduce((sum, c) => sum + c.level, 0)
+      : Math.max(1, Math.min(20, Number(metadata.level) || 1))
+
   return {
     name: character.name || '',
     race: character.race || 'Human',
-    className: character.class || 'Fighter',
-    subclass: character.subclass || '',
+    className: primaryClassName,
+    classes: characterClasses,
     avatarUrl: character.avatarUrl || '',
-    level: Math.max(1, Math.min(20, Number(metadata.level) || 1)),
+    level: totalLevel,
     strength: toValidStat(metadata.strength),
     dexterity: toValidStat(metadata.dexterity),
     constitution: toValidStat(metadata.constitution),
@@ -336,8 +354,9 @@ export const createCharacterSettingsController = (ctx: SessionControllerContext)
         body: JSON.stringify({
           name: characterDraft.name.trim() || 'Adventurer',
           race: characterDraft.race.trim() || 'Human',
-          class: characterDraft.className.trim() || 'Fighter',
-          subclass: characterDraft.subclass.trim() || null,
+          class:
+            (characterDraft.classes?.[0]?.name ?? characterDraft.className.trim()) || 'Fighter',
+          classes: characterDraft.classes ?? null,
           avatarUrl: characterDraft.avatarUrl.trim() || null,
           metadata,
           isActive: true,

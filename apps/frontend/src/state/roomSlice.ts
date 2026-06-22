@@ -57,7 +57,8 @@ function presenceToRoomMember(entry: SessionPresence): RoomUser {
     avatarUrl: entry.avatarUrl,
     characterName: entry.characterName,
     characterClass: entry.characterClass,
-    characterSubclass: entry.characterSubclass,
+    characterClasses: entry.characterClasses,
+    multiclass: entry.multiclass,
     characterRace: entry.characterRace,
     level: entry.level,
     characterStats: entry.characterStats,
@@ -411,7 +412,8 @@ export const createRoomSlice: StateCreator<
       avatarUrl?: string
       characterName?: string
       characterClass?: string
-      characterSubclass?: string | null
+      characterClasses?: import('@shared').CharacterClassEntry[] | null
+      multiclass?: boolean | null
       characterRace?: string
       level?: number
       characterStats?: Record<string, unknown> | null
@@ -427,7 +429,8 @@ export const createRoomSlice: StateCreator<
       avatarUrl: payload.avatarUrl ?? existingPresence?.avatarUrl,
       characterName: payload.characterName ?? existingPresence?.characterName,
       characterClass: payload.characterClass ?? existingPresence?.characterClass,
-      characterSubclass: payload.characterSubclass ?? existingPresence?.characterSubclass,
+      characterClasses: payload.characterClasses ?? existingPresence?.characterClasses,
+      multiclass: payload.multiclass ?? existingPresence?.multiclass,
       characterRace: payload.characterRace ?? existingPresence?.characterRace,
       level: payload.level ?? existingPresence?.level,
       characterStats: payload.characterStats ?? existingPresence?.characterStats,
@@ -457,7 +460,8 @@ export const createRoomSlice: StateCreator<
       avatarUrl: payload.avatarUrl,
       characterName: payload.characterName,
       characterClass: payload.characterClass,
-      characterSubclass: payload.characterSubclass,
+      characterClasses: payload.characterClasses,
+      multiclass: payload.multiclass,
       characterRace: payload.characterRace,
       level: payload.level,
       characterStats: payload.characterStats,
@@ -658,8 +662,8 @@ export const createRoomSlice: StateCreator<
           avatarUrl: existingMember?.avatarUrl ?? existingPresence?.avatarUrl,
           characterName: existingMember?.characterName ?? existingPresence?.characterName,
           characterClass: existingMember?.characterClass ?? existingPresence?.characterClass,
-          characterSubclass:
-            existingMember?.characterSubclass ?? existingPresence?.characterSubclass,
+          characterClasses: existingMember?.characterClasses ?? existingPresence?.characterClasses,
+          multiclass: existingMember?.multiclass ?? existingPresence?.multiclass,
           characterRace: existingMember?.characterRace ?? existingPresence?.characterRace,
           level: existingMember?.level ?? existingPresence?.level,
           characterStats: existingMember?.characterStats ?? existingPresence?.characterStats,
@@ -734,7 +738,8 @@ export const createRoomSlice: StateCreator<
       avatarUrl?: string | null
       characterName?: string | null
       characterClass?: string | null
-      characterSubclass?: string | null
+      characterClasses?: import('@shared').CharacterClassEntry[] | null
+      multiclass?: boolean | null
       characterRace?: string | null
       level?: number | null
       characterStats?: Record<string, unknown> | null
@@ -763,10 +768,12 @@ export const createRoomSlice: StateCreator<
             payload.characterClass !== undefined
               ? (payload.characterClass ?? null)
               : member.characterClass,
-          characterSubclass:
-            payload.characterSubclass !== undefined
-              ? (payload.characterSubclass ?? null)
-              : member.characterSubclass,
+          characterClasses:
+            payload.characterClasses !== undefined
+              ? (payload.characterClasses ?? null)
+              : member.characterClasses,
+          multiclass:
+            payload.multiclass !== undefined ? (payload.multiclass ?? null) : member.multiclass,
           characterRace:
             payload.characterRace !== undefined
               ? (payload.characterRace ?? null)
@@ -836,7 +843,8 @@ export const createRoomSlice: StateCreator<
       avatarUrl: payload.avatarUrl,
       characterName: payload.characterName,
       characterClass: payload.characterClass,
-      characterSubclass: payload.characterSubclass,
+      characterClasses: payload.characterClasses,
+      multiclass: payload.multiclass,
       characterRace: payload.characterRace,
       level: payload.level,
       characterStats: payload.characterStats,
@@ -929,8 +937,8 @@ export const createRoomSlice: StateCreator<
             avatarUrl: previousMember?.avatarUrl ?? existingPresence?.avatarUrl,
             characterName: previousMember?.characterName ?? existingPresence?.characterName,
             characterClass: previousMember?.characterClass ?? existingPresence?.characterClass,
-            characterSubclass:
-              previousMember?.characterSubclass ?? existingPresence?.characterSubclass,
+            characterClasses: previousMember?.characterClasses ?? existingPresence?.characterClasses,
+            multiclass: previousMember?.multiclass ?? existingPresence?.multiclass,
             characterRace: previousMember?.characterRace ?? existingPresence?.characterRace,
             level: previousMember?.level ?? existingPresence?.level,
             characterStats: previousMember?.characterStats ?? existingPresence?.characterStats,

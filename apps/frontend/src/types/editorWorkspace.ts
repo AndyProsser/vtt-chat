@@ -100,6 +100,7 @@ export type EditorWorkspaceProps = {
   onReissueInvite: (inviteType: 'PLAYER' | 'SPECTATOR') => void
   onSaveCampaignSettings: () => void
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
+  onClassesChange?: (classes: import('@shared').CharacterClassEntry[]) => void
   onSaveCharacterSettings: () => void
   onSettingsReferenceSessionChange: (sessionId: UUID) => void
   onBackToLobby: () => void

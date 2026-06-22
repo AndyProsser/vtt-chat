@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import type { UUID } from '@shared'
+import type { CharacterClassEntry, UUID } from '@shared'
 import type { UseCharacterSettingsActions } from '../../hooks/useCharacterSettings'
 import {
   applyLoadedCharacters,
@@ -215,10 +215,29 @@ export function useWorkspacesCharacterSettingsOrchestration(
     }
   }, [isCharacterSettingsLoading, isCharacterSettingsSaving])
 
+  /**
+   * Updates the classes array on the draft, keeping className and level in sync.
+   * total level is recomputed from per-class levels so callers need not do it themselves.
+   */
+  const handleClassesChange = useCallback(
+    (classes: CharacterClassEntry[]) => {
+      const totalLevel = classes.reduce((sum, c) => sum + c.level, 0)
+      characterSettingsActions.setCharacterSettingsDraft({
+        ...characterSettingsPanel,
+        classes,
+        className: classes[0]?.name ?? characterSettingsPanel.className,
+        level: totalLevel,
+      })
+      isDirtyRef.current = true
+    },
+    [characterSettingsActions, characterSettingsPanel]
+  )
+
   return {
     loadUserCharacters,
     saveCharacterSettings,
     handleCharacterFieldChange,
+    handleClassesChange,
     handleSrdFieldFocus,
     handleSrdFieldBlur,
   }

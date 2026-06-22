@@ -172,6 +172,12 @@ export interface NoteAttachmentEntity {
   createdAt: number
 }
 
+/** A single class entry for a character; name is the merged "ClassName / SubclassName" string. */
+export interface CharacterClassEntry {
+  name: string
+  level: number
+}
+
 export interface PresenceEntity {
   userId: UUID
   username: string
@@ -180,10 +186,14 @@ export interface PresenceEntity {
   avatarUrl?: string | null
   characterName?: string | null
   characterClass?: string | null
+  /** @deprecated Merged into characterClass and characterClasses. Kept for legacy WS payloads only. */
   characterSubclass?: string | null
   characterRace?: string | null
   level?: number | null
   characterStats?: Record<string, unknown> | null
+  /** Full class array. Single-element for non-multiclassed characters. */
+  characterClasses?: CharacterClassEntry[] | null
+  multiclass?: boolean | null
   state: PresenceState
   ghost?: boolean
   userMuted?: boolean

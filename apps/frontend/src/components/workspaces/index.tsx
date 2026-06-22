@@ -404,6 +404,7 @@ export function WorkspaceInitialization({
 
   const {
     handleCharacterFieldChange,
+    handleClassesChange,
     saveCharacterSettings,
     loadUserCharacters,
     handleSrdFieldFocus,
@@ -905,6 +906,7 @@ export function WorkspaceInitialization({
     onReissueInvite: handleReissueInviteModal,
     onSaveCampaignSettings: handleSaveCampaignSettingsWrapper,
     onCharacterFieldChange: handleCharacterFieldChange,
+    onClassesChange: handleClassesChange,
     onSaveCharacterSettings: handleSaveCharacterSettingsWrapper,
     onSettingsReferenceSessionChange: campaignSettingsActions.setSettingsReferenceSessionId,
     onBackToLobby: handleBackToLobbyWorkspace,
@@ -1063,6 +1065,7 @@ export function WorkspaceInitialization({
         sessionCampaignPolicy: sessionWorkspaceCampaignPolicy,
         characterDraft: characterSettingsPanel,
         onCharacterFieldChange: handleCharacterFieldChange,
+        onClassesChange: handleClassesChange,
         onSaveCharacterSettings: handleSessionWorkspaceSaveCharacterSettings,
         isCharacterSettingsLoading,
         isCharacterSettingsSaving,
@@ -1083,6 +1086,7 @@ export function WorkspaceInitialization({
       fetchWithAuthGuard,
       handleCancelCooldown,
       handleCharacterFieldChange,
+      handleClassesChange,
       handleSrdFieldFocus,
       handleSrdFieldBlur,
       handleOpenUserSettingsModal,

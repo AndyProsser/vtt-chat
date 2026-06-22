@@ -88,6 +88,7 @@ export type SessionWorkspaceProps = {
   sessionCampaignPolicy?: CampaignSessionPolicyBindings
   characterDraft: PlayerSettingsPanel
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
+  onClassesChange?: (classes: import('@shared').CharacterClassEntry[]) => void
   onSaveCharacterSettings: () => void
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean

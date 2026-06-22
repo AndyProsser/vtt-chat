@@ -46,7 +46,7 @@ function getMetaLine(member: RoomUser): string {
     return 'Dungeon Master'
   }
 
-  const values = [member.characterClass, member.characterSubclass, member.characterRace].filter(
+  const values = [member.characterClass, member.characterRace].filter(
     (value): value is string => Boolean(value)
   )
 

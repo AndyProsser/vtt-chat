@@ -278,6 +278,7 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
           campaignIdForSettings={props.campaignIdForSettings}
           characterDraft={props.characterDraft}
           onCharacterFieldChange={props.onCharacterFieldChange}
+          onClassesChange={props.onClassesChange}
           onSaveCharacterSettings={props.onSaveCharacterSettings}
           isCharacterSettingsLoading={props.isCharacterSettingsLoading}
           isCharacterSettingsSaving={props.isCharacterSettingsSaving}
@@ -307,6 +308,7 @@ function SessionWorkspaceComponent(props: SessionWorkspaceProps) {
       props.isCharacterSettingsSaving,
       props.isSessionSettingsSaving,
       props.onCharacterFieldChange,
+      props.onClassesChange,
       props.onPlannedDurationMinutesChange,
       props.onSaveCampaignInfo,
       props.onSaveCharacterSettings,

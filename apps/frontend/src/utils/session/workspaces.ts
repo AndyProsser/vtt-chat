@@ -1,5 +1,5 @@
 import { RoomType, SessionState, buildCampaignSessionName, isGreenroomSessionState } from '@shared'
-import type { UUID } from '@shared'
+import type { CharacterClassEntry, UUID } from '@shared'
 import { isGreenRoomName } from '../../constants/roomPresence.constants'
 import {
   DEFAULT_GREENROOM_CACHE_TTL_MS,
@@ -67,7 +67,7 @@ export const DEFAULT_CHARACTER_SETTINGS: PlayerSettingsPanel = {
   name: '',
   race: 'Human',
   className: 'Fighter',
-  subclass: '',
+  classes: [{ name: 'Fighter', level: 1 }],
   avatarUrl: '',
   level: 1,
   strength: 8,
@@ -119,13 +119,25 @@ export function buildCharacterDraft(character: UserCharacterRecord | null): Play
     return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n))) : fallback
   }
 
+  // Build classes array: prefer new classes column, fall back to legacy class/subclass.
+  const characterClasses: CharacterClassEntry[] = Array.isArray(character.classes) && character.classes.length > 0
+    ? (character.classes as CharacterClassEntry[])
+    : character.class
+      ? [{ name: [character.class, character.subclass].filter(Boolean).join(' / '), level: Math.max(1, Math.min(20, Number(metadata.level) || 1)) }]
+      : [{ name: 'Fighter', level: 1 }]
+
+  const primaryClassName = characterClasses[0]?.name ?? character.class ?? 'Fighter'
+  const totalLevel = characterClasses.length > 1
+    ? characterClasses.reduce((sum, c) => sum + c.level, 0)
+    : Math.max(1, Math.min(20, Number(metadata.level) || 1))
+
   return {
     name: character.name || '',
     race: character.race || 'Human',
-    className: character.class || 'Fighter',
-    subclass: character.subclass || '',
+    className: primaryClassName,
+    classes: characterClasses,
     avatarUrl: character.avatarUrl || '',
-    level: Math.max(1, Math.min(20, Number(metadata.level) || 1)),
+    level: totalLevel,
     strength: resolveNum(syncedAbility?.str, metadata.strength, 8, 1, 30),
     dexterity: resolveNum(syncedAbility?.dex, metadata.dexterity, 8, 1, 30),
     constitution: resolveNum(syncedAbility?.con, metadata.constitution, 8, 1, 30),

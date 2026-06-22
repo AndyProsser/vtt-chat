@@ -150,7 +150,6 @@ export const GroupsPanelSession: React.FC<GroupsPanelSessionProps> = ({
       characterName: currentUser.displayName || currentUser.username,
       avatarUrl: selfPresence?.avatarUrl ?? null,
       characterClass: selfPresence?.characterClass ?? null,
-      characterSubclass: selfPresence?.characterSubclass ?? null,
       characterRace: selfPresence?.characterRace ?? null,
       level: selfPresence?.level ?? null,
       characterStats: selfPresence?.characterStats ?? null,

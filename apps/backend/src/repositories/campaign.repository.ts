@@ -522,6 +522,7 @@ export async function createCharacterForCampaign(params: {
   race?: string
   class?: string
   subclass?: string
+  classes?: Array<{ name: string; level: number }>
   avatarUrl?: string
   metadata?: Record<string, unknown>
   isActive?: boolean
@@ -560,6 +561,7 @@ export async function createCharacterForCampaign(params: {
         race: params.race,
         class: params.class,
         subclass: params.subclass,
+        classes: params.classes ? (params.classes as Prisma.InputJsonValue) : undefined,
         avatarUrl: params.avatarUrl,
         metadata: (params.metadata as Prisma.InputJsonValue) || undefined,
         isActive: params.isActive || false,
@@ -631,6 +633,7 @@ export async function updateCharacterForCampaignMember(params: {
   race?: string | null
   class?: string | null
   subclass?: string | null
+  classes?: Array<{ name: string; level: number }> | null
   avatarUrl?: string | null
   metadata?: Record<string, unknown> | null
   isActive?: boolean
@@ -680,6 +683,9 @@ export async function updateCharacterForCampaignMember(params: {
         ...(params.race !== undefined ? { race: params.race } : {}),
         ...(params.class !== undefined ? { class: params.class } : {}),
         ...(params.subclass !== undefined ? { subclass: params.subclass } : {}),
+        ...(params.classes !== undefined
+          ? { classes: params.classes === null ? Prisma.JsonNull : (params.classes as Prisma.InputJsonValue) }
+          : {}),
         ...(params.avatarUrl !== undefined ? { avatarUrl: params.avatarUrl } : {}),
         ...(params.metadata !== undefined
           ? {

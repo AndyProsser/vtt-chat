@@ -5,14 +5,14 @@
  */
 
 import { useMemo, useState } from 'react'
-import type { UUID } from '@shared'
+import type { CharacterClassEntry, UUID } from '@shared'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 
 export const DEFAULT_CHARACTER_SETTINGS: PlayerSettingsPanel = {
   name: '',
   race: 'Human',
   className: 'Fighter',
-  subclass: '',
+  classes: [{ name: 'Fighter', level: 1 }],
   avatarUrl: '',
   level: 1,
   strength: 8,
@@ -36,7 +36,9 @@ export interface UserCharacterRecord {
   name: string
   race: string | null
   class: string | null
+  /** @deprecated Use `classes` instead. Kept for backward-compat with legacy DB rows. */
   subclass: string | null
+  classes: CharacterClassEntry[] | null
   avatarUrl: string | null
   metadata: Record<string, unknown> | null
   isActive: boolean

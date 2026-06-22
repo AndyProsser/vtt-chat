@@ -184,7 +184,6 @@ export function useWorkspacesHydrationLifecycle(
           avatarUrl: entry.avatarUrl,
           characterName: entry.characterName,
           characterClass: entry.characterClass,
-          characterSubclass: entry.characterSubclass,
           characterRace: entry.characterRace,
           level: entry.level,
           characterStats: entry.characterStats,

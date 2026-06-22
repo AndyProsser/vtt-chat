@@ -34,7 +34,6 @@ function isSameParticipantProjection(
     previous.characterName === next.characterName &&
     previous.playerName === next.playerName &&
     previous.characterClass === next.characterClass &&
-    previous.characterSubclass === next.characterSubclass &&
     previous.characterRace === next.characterRace &&
     previous.level === next.level &&
     isSameStats(previous.characterStats, next.characterStats) &&
@@ -277,7 +276,6 @@ export function LeftRailPanel({
             characterName: member.characterName,
             playerName: member.playerName,
             characterClass: member.characterClass,
-            characterSubclass: member.characterSubclass,
             characterRace: member.characterRace,
             level: member.level,
             characterStats: member.characterStats,

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { getPrismaClient } from '@/infra/db'
+import type { CharacterClassEntry } from '@shared'
 
 const prisma = getPrismaClient()
 
@@ -10,10 +11,11 @@ export interface SessionParticipantProfile {
   avatarUrl: string | null
   characterName: string | null
   characterClass: string | null
-  characterSubclass: string | null
   characterRace: string | null
   level: number | null
   characterStats: Record<string, unknown> | null
+  characterClasses: CharacterClassEntry[] | null
+  multiclass: boolean
 }
 
 export async function createSessionRecord(params: {
@@ -532,6 +534,7 @@ export async function getSessionParticipantProfiles(
           race: true,
           class: true,
           subclass: true,
+          classes: true,
           avatarUrl: true,
           metadata: true,
         },
@@ -552,17 +555,27 @@ export async function getSessionParticipantProfiles(
       const metadata = toRecord(character?.metadata ?? null)
       const levelValue = metadata?.level
 
+      // Prefer the new classes column; fall back to legacy class/subclass columns.
+      const rawClasses = character?.classes
+      const characterClasses = Array.isArray(rawClasses) && rawClasses.length > 0
+        ? (rawClasses as unknown as CharacterClassEntry[])
+        : character?.class
+          ? [{ name: [character.class, character.subclass].filter(Boolean).join(' / '), level: typeof levelValue === 'number' ? levelValue : 1 }]
+          : null
+      const multiclass = (characterClasses?.length ?? 0) > 1
+
       acc[member.userId] = {
         userId: member.userId,
         username: member.username,
         playerName: user?.displayName || user?.username || member.username,
         avatarUrl: character?.avatarUrl || user?.avatarUrl || null,
         characterName: character?.name || null,
-        characterClass: character?.class || null,
-        characterSubclass: character?.subclass || null,
+        characterClass: characterClasses?.[0]?.name ?? character?.class ?? null,
         characterRace: character?.race || null,
         level: typeof levelValue === 'number' ? levelValue : null,
         characterStats: metadata,
+        characterClasses,
+        multiclass,
       }
 
       return acc

@@ -62,6 +62,7 @@ type SessionWorkspaceRightRailTabProps = {
   campaignIdForSettings: UUID | ''
   characterDraft: PlayerSettingsPanel
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
+  onClassesChange?: (classes: import('@shared').CharacterClassEntry[]) => void
   onSaveCharacterSettings: () => void
   isCharacterSettingsLoading: boolean
   isCharacterSettingsSaving: boolean
@@ -112,6 +113,7 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
   campaignIdForSettings,
   characterDraft,
   onCharacterFieldChange,
+  onClassesChange,
   onSaveCharacterSettings,
   isCharacterSettingsLoading,
   isCharacterSettingsSaving,
@@ -360,6 +362,7 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
           campaignId: campaignIdForSettings || null,
           characterDraft: characterDraft,
           onCharacterFieldChange: onCharacterFieldChange,
+          onClassesChange: onClassesChange,
           onSaveCharacterSettings: onSaveCharacterSettings,
           isCharacterLoading: isCharacterSettingsLoading,
           isCharacterSaving: isCharacterSettingsSaving,

@@ -187,7 +187,7 @@ export async function syncExternalIntegration(params: {
 
   if (params.characterUpdate && typeof params.characterUpdate === 'object') {
     const externalCharacterId = params.characterUpdate.externalCharacterId
-    const level = params.characterUpdate.level
+    let level = params.characterUpdate.level
 
     if (!externalCharacterId || typeof externalCharacterId !== 'string') {
       return {
@@ -223,12 +223,37 @@ export async function syncExternalIntegration(params: {
       if (typeof params.characterUpdate.race === 'string') {
         updateData.race = params.characterUpdate.race.trim()
       }
-      if (typeof params.characterUpdate.class === 'string') {
-        updateData.class = params.characterUpdate.class.trim()
+
+      // New multiclass format takes precedence over legacy class/subclass/level flat fields.
+      const incomingClasses = params.characterUpdate.classes
+      if (Array.isArray(incomingClasses) && incomingClasses.length > 0) {
+        const builtClasses = (incomingClasses as Array<{
+          classExternalID?: string
+          className: string
+          classLevel: number
+          subclassName?: string
+        }>).map((entry) => ({
+          name: entry.subclassName?.trim()
+            ? `${entry.className.trim()} / ${entry.subclassName.trim()}`
+            : entry.className.trim(),
+          level: Math.max(1, Math.round(Number(entry.classLevel) || 1)),
+        }))
+
+        updateData.classes = builtClasses
+        // Keep legacy class column in sync with primary class for backward-compat reads.
+        updateData.class = builtClasses[0]?.name ?? null
+        const totalLevel = builtClasses.reduce((sum, c) => sum + c.level, 0)
+        level = totalLevel
+      } else {
+        // Legacy flat fields
+        if (typeof params.characterUpdate.class === 'string') {
+          updateData.class = params.characterUpdate.class.trim()
+        }
+        if (typeof params.characterUpdate.subclass === 'string') {
+          updateData.subclass = params.characterUpdate.subclass.trim()
+        }
       }
-      if (typeof params.characterUpdate.subclass === 'string') {
-        updateData.subclass = params.characterUpdate.subclass.trim()
-      }
+
       if (typeof params.characterUpdate.avatarUrl === 'string') {
         updateData.avatarUrl = params.characterUpdate.avatarUrl.trim()
       }

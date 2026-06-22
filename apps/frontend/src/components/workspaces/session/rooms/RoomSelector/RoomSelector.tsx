@@ -460,7 +460,6 @@ export function RoomSelector({
       characterName: currentUser.displayName || currentUser.username,
       playerName: currentUser.username,
       characterClass: dmSelfPresence?.characterClass || null,
-      characterSubclass: dmSelfPresence?.characterSubclass || null,
       characterRace: dmSelfPresence?.characterRace || null,
       level: dmSelfPresence?.level || null,
       characterStats: dmSelfPresence?.characterStats || null,

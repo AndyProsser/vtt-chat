@@ -2662,6 +2662,7 @@ router.post('/:campaignId/characters', requireAuth, async (req: Request, res: Re
     race,
     class: characterClass,
     subclass,
+    classes,
     avatarUrl,
     metadata,
     isActive,
@@ -2709,6 +2710,7 @@ router.post('/:campaignId/characters', requireAuth, async (req: Request, res: Re
     race: typeof race === 'string' ? race.trim() : undefined,
     class: typeof characterClass === 'string' ? characterClass.trim() : undefined,
     subclass: typeof subclass === 'string' ? subclass.trim() : undefined,
+    classes: Array.isArray(classes) ? classes : undefined,
     avatarUrl: typeof avatarUrl === 'string' ? avatarUrl.trim() : undefined,
     metadata: metadata && typeof metadata === 'object' ? metadata : undefined,
     isActive: Boolean(isActive),
@@ -2741,6 +2743,7 @@ router.patch(
       race,
       class: characterClass,
       subclass,
+      classes,
       avatarUrl,
       metadata,
       isActive,
@@ -2813,6 +2816,7 @@ router.patch(
           : typeof subclass === 'string'
             ? subclass.trim() || null
             : undefined,
+      classes: classes === null ? null : Array.isArray(classes) ? classes : undefined,
       avatarUrl:
         avatarUrl === null
           ? null

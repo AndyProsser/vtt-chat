@@ -104,7 +104,6 @@ function areGroupMemberItemPropsEqual(
     left.characterName === right.characterName &&
     left.playerName === right.playerName &&
     left.characterClass === right.characterClass &&
-    left.characterSubclass === right.characterSubclass &&
     left.characterRace === right.characterRace &&
     left.level === right.level &&
     left.characterStats === right.characterStats &&

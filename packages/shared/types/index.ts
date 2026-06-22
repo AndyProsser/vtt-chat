@@ -234,4 +234,5 @@ export type {
   NoteSharedMessageMetadata,
   PresenceEntity,
   RollResultMessageMetadata,
+  CharacterClassEntry,
 } from './entities'

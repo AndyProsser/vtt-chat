@@ -16,7 +16,6 @@ export function areSameParticipant(
     previous.characterName === next.characterName &&
     previous.playerName === next.playerName &&
     previous.characterClass === next.characterClass &&
-    previous.characterSubclass === next.characterSubclass &&
     previous.characterRace === next.characterRace &&
     previous.level === next.level &&
     previous.characterStats === next.characterStats &&

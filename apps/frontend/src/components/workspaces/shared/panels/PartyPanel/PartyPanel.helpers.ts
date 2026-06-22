@@ -1,3 +1,4 @@
+import type { CharacterClassEntry } from '@shared'
 import { PresenceState, type UUID } from '@shared'
 import type { SessionPresence } from '@/types/room'
 import type { MockPartyMember, MockPlayerStatus } from '@/types/campaignParty'
@@ -15,7 +16,7 @@ export interface PartyPresenceMemberSnapshot {
   avatarUrl?: string | null
   characterName?: string | null
   characterClass?: string | null
-  characterSubclass?: string | null
+  characterClasses?: CharacterClassEntry[] | null
   characterRace?: string | null
   level?: number | null
   characterStats?: Record<string, unknown> | null
@@ -104,7 +105,8 @@ export function toMockMember(member: PartyPresenceMemberSnapshot): MockPartyMemb
     avatarInitials: initialsFromName(characterName || playerName),
     race: member.characterRace || 'Unknown',
     characterClass: member.characterClass || 'Unknown',
-    subClass: member.characterSubclass || undefined,
+    classes: member.characterClasses ?? [],
+    multiclass: (member.characterClasses?.length ?? 0) > 1,
     level: Math.max(1, Math.min(20, Math.round(member.level || 1))),
     stats: {
       str: toStatValue(stats.strength, 10),
@@ -170,11 +172,6 @@ export function buildSnapshotWithLivePresence(
           usedLivePresence || livePresence.characterClass !== snapshot.characterClass),
         livePresence.characterClass)
       : snapshot.characterClass,
-    characterSubclass: hasString(livePresence.characterSubclass)
-      ? ((usedLivePresence =
-          usedLivePresence || livePresence.characterSubclass !== snapshot.characterSubclass),
-        livePresence.characterSubclass)
-      : snapshot.characterSubclass,
     characterRace: hasString(livePresence.characterRace)
       ? ((usedLivePresence =
           usedLivePresence || livePresence.characterRace !== snapshot.characterRace),
@@ -225,7 +222,7 @@ export function membersEqual(left: MockPartyMember, right: MockPartyMember): boo
     left.activeCondition === right.activeCondition &&
     left.race === right.race &&
     left.characterClass === right.characterClass &&
-    left.subClass === right.subClass &&
+    left.multiclass === right.multiclass &&
     left.level === right.level &&
     left.status === right.status &&
     left.lastSeenMs === right.lastSeenMs &&

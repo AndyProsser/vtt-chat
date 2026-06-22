@@ -1,4 +1,4 @@
-import type { UUID, SessionState } from '@shared'
+import type { UUID, SessionState, CharacterClassEntry } from '@shared'
 import { RoomType } from '@shared'
 
 export interface GroupPanelGroup {
@@ -26,7 +26,8 @@ export interface GroupParticipantStatus {
   characterName?: string | null
   playerName?: string | null
   characterClass?: string | null
-  characterSubclass?: string | null
+  characterClasses?: CharacterClassEntry[] | null
+  multiclass?: boolean | null
   characterRace?: string | null
   level?: number | null
   characterStats?: Record<string, unknown> | null

@@ -215,6 +215,7 @@ model Character {
   race           String?
   class          String?
   subclass       String?
+  classes        Json?
   avatarUrl      String?
   externalSystem String?
   externalId     String?

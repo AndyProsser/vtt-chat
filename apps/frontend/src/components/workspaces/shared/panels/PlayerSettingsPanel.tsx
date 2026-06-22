@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import type { CharacterClassEntry } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import { CharacterAvatarUploadField } from './CharacterAvatarUploadField'
 import { VerticalSliderInput } from './VerticalSliderInput'
@@ -8,9 +9,12 @@ import '@/styles/components/workspaces/shared/panels/WorkspaceSettingsPanel.css'
 export interface PlayerSettingsPanel {
   name: string
   race: string
+  /** Primary class name in merged format, e.g. "Fighter / Battle Master". Mirrors classes[0].name. */
   className: string
-  subclass: string
+  /** All class entries. classes[0] is always the primary class; never removable. */
+  classes: CharacterClassEntry[]
   avatarUrl: string
+  /** Total level. For multiclass characters this equals sum of classes[n].level. */
   level: number
   strength: number
   dexterity: number
@@ -31,6 +35,7 @@ export interface PlayerSettingsPanelProps {
   campaignId: string | null
   characterDraft: PlayerSettingsPanel
   onCharacterFieldChange: (field: keyof PlayerSettingsPanel, value: string | number) => void
+  onClassesChange?: (classes: CharacterClassEntry[]) => void
   onSaveCharacterSettings: () => void
   isCharacterLoading: boolean
   isCharacterSaving: boolean
@@ -45,6 +50,8 @@ export interface PlayerSettingsPanelProps {
   onSrdFieldBlur?: () => void
 }
 
+const EMPTY_CLASSES: CharacterClassEntry[] = [{ name: 'Fighter', level: 1 }]
+
 export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
   const nameInputRef = useRef<HTMLInputElement | null>(null)
   const disabled = props.isCharacterLoading || props.isCharacterSaving
@@ -58,12 +65,49 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
     nameInputRef.current?.select()
   }, [props.focusRequestKey])
 
-  const { raceOptions, classOptions, subclassOptions } = useSrdOptions({
+  const classes = props.characterDraft.classes?.length ? props.characterDraft.classes : EMPTY_CLASSES
+  const isMulticlass = classes.length > 1
+  const primaryClass = classes[0]
+
+  const { raceOptions, classOptions } = useSrdOptions({
     apiUrl: props.apiUrl ?? '',
     token: props.token ?? '',
     ruleset: props.dndRuleset ?? '2024',
-    selectedClass: props.characterDraft.className,
+    selectedClass: primaryClass?.name ?? '',
   })
+
+  function handlePrimaryClassChange(name: string) {
+    const next: CharacterClassEntry[] = [{ ...primaryClass, name }, ...classes.slice(1)]
+    props.onClassesChange?.(next)
+    props.onCharacterFieldChange('className', name)
+  }
+
+  function handleClassLevelChange(index: number, level: number) {
+    const next = classes.map((c, i) => (i === index ? { ...c, level } : c))
+    const totalLevel = next.reduce((sum, c) => sum + c.level, 0)
+    props.onClassesChange?.(next)
+    props.onCharacterFieldChange('level', totalLevel)
+  }
+
+  function handleAddClass() {
+    const next: CharacterClassEntry[] = [...classes, { name: 'Fighter', level: 1 }]
+    const totalLevel = next.reduce((sum, c) => sum + c.level, 0)
+    props.onClassesChange?.(next)
+    props.onCharacterFieldChange('level', totalLevel)
+  }
+
+  function handleRemoveClass(index: number) {
+    if (index === 0) return
+    const next = classes.filter((_, i) => i !== index)
+    const totalLevel = next.reduce((sum, c) => sum + c.level, 0)
+    props.onClassesChange?.(next)
+    props.onCharacterFieldChange('level', totalLevel)
+  }
+
+  function handleSecondaryClassChange(index: number, name: string) {
+    const next = classes.map((c, i) => (i === index ? { ...c, name } : c))
+    props.onClassesChange?.(next)
+  }
 
   return (
     <div className="crbs-panel" aria-label="Player settings">
@@ -123,14 +167,15 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
               </datalist>
             </label>
             <label className="crbs-field" htmlFor="crbs-character-class">
-              <span className="crbs-field-label">Class</span>
+              <span className="crbs-field-label">Class / Subclass</span>
               <input
                 id="crbs-character-class"
                 type="text"
                 className="crbs-input"
                 list="crbs-character-class-suggestions"
-                value={props.characterDraft.className}
-                onChange={(event) => props.onCharacterFieldChange('className', event.target.value)}
+                placeholder="e.g. Fighter / Battle Master"
+                value={primaryClass?.name ?? ''}
+                onChange={(event) => handlePrimaryClassChange(event.target.value)}
                 onFocus={props.onSrdFieldFocus}
                 onBlur={props.onSrdFieldBlur}
                 disabled={disabled}
@@ -141,42 +186,76 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                 ))}
               </datalist>
             </label>
-            <label className="crbs-field" htmlFor="crbs-character-subclass">
-              <span className="crbs-field-label">Subclass</span>
-              <input
-                id="crbs-character-subclass"
-                type="text"
-                className="crbs-input"
-                list="crbs-character-subclass-suggestions"
-                value={props.characterDraft.subclass}
-                onChange={(event) => props.onCharacterFieldChange('subclass', event.target.value)}
-                onFocus={props.onSrdFieldFocus}
-                onBlur={props.onSrdFieldBlur}
-                disabled={disabled}
-              />
-              {subclassOptions.length > 0 && (
-                <datalist id="crbs-character-subclass-suggestions">
-                  {subclassOptions.map((subclass) => (
-                    <option key={subclass} value={subclass} />
-                  ))}
-                </datalist>
-              )}
-            </label>
           </div>
+
+          {/* Multiclass secondary entries */}
+          {isMulticlass && (
+            <div className="crbs-multiclass-list">
+              {classes.slice(1).map((entry, sliceIndex) => {
+                const index = sliceIndex + 1
+                return (
+                  <div key={index} className="crbs-multiclass-row">
+                    <input
+                      type="text"
+                      className="crbs-input crbs-multiclass-input"
+                      placeholder="e.g. Warlock / Great Old One"
+                      value={entry.name}
+                      onChange={(e) => handleSecondaryClassChange(index, e.target.value)}
+                      disabled={disabled}
+                      aria-label={`Secondary class ${index}`}
+                    />
+                    <VerticalSliderInput
+                      label={`Class ${index + 1} level (1–20)`}
+                      min={1}
+                      max={20}
+                      value={entry.level}
+                      onChange={(v) => handleClassLevelChange(index, v)}
+                      disabled={disabled}
+                      triggerMode="click"
+                    />
+                    <button
+                      type="button"
+                      className="session-icon-action session-icon-action--icon crbs-multiclass-remove"
+                      aria-label={`Remove ${entry.name || 'secondary class'}`}
+                      disabled={disabled}
+                      onClick={() => handleRemoveClass(index)}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">remove_circle</span>
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
           <div className="crbs-attributes-row">
             <label className="crbs-field crbs-field--level" htmlFor="crbs-character-level">
-              <span className="crbs-field-label">Level</span>
-              <VerticalSliderInput
-                id="crbs-character-level"
-                label="Level (1–20)"
-                min={1}
-                max={20}
-                value={props.characterDraft.level}
-                onChange={(v) => props.onCharacterFieldChange('level', v)}
-                disabled={disabled}
-                triggerMode="click"
-              />
+              <span className="crbs-field-label">
+                {isMulticlass ? 'Primary Lvl' : 'Level'}
+              </span>
+              {isMulticlass ? (
+                <VerticalSliderInput
+                  id="crbs-character-level"
+                  label="Primary class level (1–20)"
+                  min={1}
+                  max={20}
+                  value={primaryClass?.level ?? 1}
+                  onChange={(v) => handleClassLevelChange(0, v)}
+                  disabled={disabled}
+                  triggerMode="click"
+                />
+              ) : (
+                <VerticalSliderInput
+                  id="crbs-character-level"
+                  label="Level (1–20)"
+                  min={1}
+                  max={20}
+                  value={props.characterDraft.level}
+                  onChange={(v) => props.onCharacterFieldChange('level', v)}
+                  disabled={disabled}
+                  triggerMode="click"
+                />
+              )}
             </label>
 
             <div className="crbs-stats-strip" role="group" aria-label="Ability scores">
@@ -205,6 +284,16 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
               ))}
             </div>
           </div>
+
+          <button
+            type="button"
+            className="crbs-add-class-btn"
+            disabled={disabled || classes.length >= 2}
+            onClick={handleAddClass}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">add_circle</span>
+            Add secondary class
+          </button>
         </div>
 
         <span className="crbs-field-label">Combat Stats</span>

@@ -47,11 +47,16 @@ export const PartyMemberCard = memo(function PartyMemberCard({
     ['WIS', member.stats.wis],
     ['CHA', member.stats.cha],
   ]
+  // Build class+level segment: "Fighter 8" for single, "Fighter 5 / Warlock 3" for multiclass.
+  const classLevelPart = member.multiclass && Array.isArray(member.classes) && member.classes.length > 1
+    ? member.classes.map((c) => `${c.name} ${c.level}`).join(' / ')
+    : member.characterClass
+      ? `${member.characterClass} ${member.level}`
+      : `Lv ${member.level}`
+
   const metaParts = [
-    member.characterClass,
-    member.subClass,
     member.race,
-    `Lv ${member.level}`,
+    classLevelPart,
   ].filter(Boolean) as string[]
 
   return (

@@ -1,4 +1,4 @@
-import type { CampaignLobbyStatsUpdatedPayload, UUID } from '@shared'
+import type { CampaignLobbyStatsUpdatedPayload, CharacterClassEntry, UUID } from '@shared'
 import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { CampaignSummary } from '@/types/session/campaign'
 
@@ -29,7 +29,8 @@ export interface ApiPresence {
   avatarUrl?: string | null
   characterName?: string | null
   characterClass?: string | null
-  characterSubclass?: string | null
+  characterClasses?: CharacterClassEntry[] | null
+  multiclass?: boolean | null
   characterRace?: string | null
   level?: number | null
   characterStats?: Record<string, unknown> | null
@@ -94,7 +95,10 @@ export type UserCharacterRecord = {
   name: string
   race: string | null
   class: string | null
+  /** @deprecated Merged into class field or classes array. */
   subclass: string | null
+  /** Per-class entries; null means legacy single-class character (fall back to class/subclass). */
+  classes: CharacterClassEntry[] | null
   avatarUrl: string | null
   metadata: Record<string, unknown> | null
   isActive: boolean

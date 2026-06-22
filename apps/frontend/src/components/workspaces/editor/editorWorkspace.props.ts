@@ -125,6 +125,7 @@ type BuildEditorWorkspacePropsParams = {
   onReissueInvite: ComponentProps<typeof EditorWorkspace>['onReissueInvite']
   onSaveCampaignSettings: ComponentProps<typeof EditorWorkspace>['onSaveCampaignSettings']
   onCharacterFieldChange: ComponentProps<typeof EditorWorkspace>['onCharacterFieldChange']
+  onClassesChange?: ComponentProps<typeof EditorWorkspace>['onClassesChange']
   onSaveCharacterSettings: ComponentProps<typeof EditorWorkspace>['onSaveCharacterSettings']
   onSettingsReferenceSessionChange: ComponentProps<
     typeof EditorWorkspace
@@ -229,6 +230,7 @@ export function buildEditorWorkspaceProps(
     onReissueInvite: params.onReissueInvite,
     onSaveCampaignSettings: params.onSaveCampaignSettings,
     onCharacterFieldChange: params.onCharacterFieldChange,
+    onClassesChange: params.onClassesChange,
     onSaveCharacterSettings: params.onSaveCharacterSettings,
     onSettingsReferenceSessionChange: params.onSettingsReferenceSessionChange,
     onBackToLobby: params.onBackToLobby,

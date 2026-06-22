@@ -1,4 +1,5 @@
 import type {
+  CharacterClassEntry,
   PresenceEntity,
   PresenceState,
   Role,
@@ -17,7 +18,8 @@ export interface RoomUser {
   avatarUrl?: string | null
   characterName?: string | null
   characterClass?: string | null
-  characterSubclass?: string | null
+  characterClasses?: CharacterClassEntry[] | null
+  multiclass?: boolean | null
   characterRace?: string | null
   level?: number | null
   characterStats?: Record<string, unknown> | null
