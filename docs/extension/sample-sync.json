@@ -6,9 +6,21 @@
     "externalCharacterId": "151855498",
     "name": "Silk",
     "race": "Elf",
-    "class": "Warlock/Archfey Patron",
-    "subclass": "Archfey Patron",
-    "level": 4,
+    "multiclass": true,
+    "classes": [
+      {
+        "classExternalID": "warlock-1",
+        "className": "Warlock",
+        "classLevel": 4,
+        "subclassName": "Archfey Patron"
+      },
+      {
+        "classExternalID": "fighter-2",
+        "className": "Fighter",
+        "classLevel": 3,
+        "subclassName": "Battle Master"
+      }
+    ],
     "avatarUrl": "https://www.dndbeyond.com/avatars/51334/207/1581111423-151855498.jpeg?width=60&height=60&fit=bounds&quality=95&auto=webp",
     "characterUrl": "https://www.dndbeyond.com/characters/151855498",
     "stats": {
@@ -43,7 +55,10 @@
       "Circle Spell: Supplant",
       "Agonizing Blast (Eldritch Blast)",
       "Mask of Many Faces",
-      "Pact of the Tome"
+      "Pact of the Tome",
+      "Action Surge",
+      "Second Wind",
+      "Maneuvers: Trip Attack, Disarming Attack"
     ]
   }
 }

@@ -222,7 +222,11 @@ See [GUEST-AUTH.md](GUEST-AUTH.md) for the full authentication flow specificatio
 
 Character data is pushed via `POST /api/integrations/external/sync`. The sync policy on the campaign controls whether updates are accepted.
 
-#### Request
+Two `characterUpdate` formats are accepted. When `classes` is present, it takes precedence over the legacy flat fields.
+
+#### Request — multiclass format (preferred)
+
+Use this format for multiclassed characters, or for any new extension work. The backend merges `className + " / " + subclassName` per entry and derives `level` from the sum of `classLevel` values.
 
 ```json
 {
@@ -233,9 +237,11 @@ Character data is pushed via `POST /api/integrations/external/sync`. The sync po
     "externalCharacterId": "string (required — DDB character ID)",
     "name": "string",
     "race": "string",
-    "class": "string",
-    "subclass": "string",
-    "level": 5,
+    "multiclass": true,
+    "classes": [
+      { "classExternalID": "1", "className": "Warlock", "classLevel": 4, "subclassName": "Archfey Patron" },
+      { "classExternalID": "2", "className": "Fighter", "classLevel": 3, "subclassName": "Battle Master" }
+    ],
     "avatarUrl": "string (URL returned from avatar-upload, or existing URL)",
     "characterUrl": "string (link back to DDB character sheet)",
     "stats": {
@@ -264,12 +270,40 @@ Character data is pushed via `POST /api/integrations/external/sync`. The sync po
 }
 ```
 
+For a single-class character using this format, send a `classes` array with one entry and `"multiclass": false`.
+
+#### Request — legacy flat format (backward compat)
+
+Use this only for existing extension clients that have not yet adopted the `classes` array. When `classes` is absent, the backend reads `class`, `subclass`, and `level` directly.
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "DDB",
+  "source": "player",
+  "characterUpdate": {
+    "externalCharacterId": "string (required)",
+    "name": "string",
+    "race": "string",
+    "class": "string",
+    "subclass": "string",
+    "level": 5,
+    "avatarUrl": "string",
+    "characterUrl": "string",
+    "stats": { "..." : "..." },
+    "conditions": [],
+    "features": []
+  }
+}
+```
+
 #### Field Rules
 
 - `externalCharacterId` is **required**; the backend looks up the character by `(campaignId, externalSystem, externalId)`.
 - All other fields are **optional** — omit a field to leave it unchanged.
-- `name`, `race`, `class`, `subclass`, `avatarUrl` write to top-level `Character` columns.
-- `level`, `characterUrl`, `stats`, `conditions`, and `features` are merged into `Character.metadata`.
+- When `classes` is present: backend merges each entry's `className + " / " + subclassName`, stores the full array in `Character.classes`, sets `Character.class` to the first entry's merged name, and sets `level` to the sum of all `classLevel` values. The legacy `class`, `subclass`, and `level` flat fields are ignored.
+- When `classes` is absent: `name`, `race`, `class`, `subclass`, `avatarUrl` write to top-level `Character` columns; `level` is written to `Character.metadata`.
+- `characterUrl`, `stats`, `conditions`, and `features` are always merged into `Character.metadata`.
 - The backend merges metadata shallowly: sending `{ stats: { hp: ... } }` replaces the entire `stats` object, not individual sub-keys. Always send the full stats object.
 
 #### Response (200)

@@ -15,11 +15,11 @@
 | Phase 1: UI/UX Foundation              |      4 |       4 |              0 |              0 | 🟢 Done        |
 | Phase 2: Audio Experiences             |      5 |       5 |              0 |              0 | 🟢 Done        |
 | Phase 3: Notes & Journal Foundation    |      5 |       5 |              0 |              0 | 🟢 Done        |
-| Phase 4: Platform Integration          |      8 |       6 |              2 |              0 | 🟡 In Progress |
+| Phase 4: Platform Integration          |      9 |       6 |              2 |              1 | 🟡 In Progress |
 | Phase 5: AI & Recording Enhancements   |      2 |       0 |              0 |              2 | ⚪ Not Started |
 | Phase 6: Optional / Far Future         |      4 |       0 |              0 |              4 | ⚪ Not Started |
 | Monorepo Restructure                   |      6 |       6 |              0 |              0 | 🟢 Done        |
-| **Total**                              | **64** |  **56** |          **2** |          **6** |                |
+| **Total**                              | **65** |  **56** |          **2** |          **7** |                |
 
 **MVP foundation complete** (Phases 0–3). Active work: Phase 4 extensions (2 in progress). Performance Tuning 25/25 done; PERF-24 (lobby modal cascade) and PERF-25 (EditorWorkspace callback churn + memo wrap) both resolved. Follow-up trace needed to confirm ≤50 and ≤2 component-count criteria. **Next up**: Phase 4 extensions and Monorepo Restructure (prerequisite for Recording, Transcription, BullMQ, and Desktop apps).
 
@@ -2070,6 +2070,43 @@ This is the DM-facing counterpart to the admin-only W0-Lobby-Admin export/import
 
 - [docs/subsystems/INVENTORY-SYSTEM.md](docs/subsystems/INVENTORY-SYSTEM.md)
 - [docs/subsystems/CHAT-SYSTEM.md](docs/subsystems/CHAT-SYSTEM.md) — §9 Chat Commands
+
+---
+
+### W-Character-Multiclass: Multiclass Character Support
+
+**Status**: ⚪ Not Started
+**Priority**: 🟡 Medium
+**Depends on**: W-Extension-MVP
+
+**Scope**: Extend the character data model, player settings UI, and extension sync protocol to support multiclassed characters. A multiclassed character holds levels in two or more classes simultaneously (e.g. Fighter 5 / Warlock 3 = total level 8). Single-class characters are unaffected in display and behavior.
+
+**Design**:
+
+- **Data model**: New `classes` JSONB column on `Character` — array of `{ name: string, level: number }` where `name` is the merged `"ClassName / SubclassName"` string. `classes[0]` is always the primary class. The existing `class` column is kept for backward compat and updated to `classes[0].name`. The `subclass` column is deprecated (ignored on new writes).
+- **Class input**: Single free-text field combining class and subclass (e.g. `"Warlock / Archfey Patron"`). No longer two separate fields.
+- **Primary class**: The first class in the array, set at character creation. Players can never remove it.
+- **Level computation**: For multiclassed characters, the total `level` is derived from the sum of per-class levels. Players edit per-class levels only; the total is read-only. For single-class characters, the total level slider works as today.
+- **Extension sync**: New `multiclass` flag and `classes` array in `characterUpdate`. Backend merges `className + " / " + subclassName` per entry. Legacy `class`/`subclass`/`level` flat fields remain supported (new format takes precedence). See Character Multiclass Contract in `docs/CONTRACTS.md`.
+
+**Acceptance Criteria**:
+
+- [ ] Prisma migration: `classes Json?` column added to `Character`; `subclass` column retained but deprecated
+- [ ] Backend: `POST /api/integrations/external/sync` accepts new `classes` array format; derives `level` from sum; merges class+subclass names; falls back to legacy flat fields when `classes` absent
+- [ ] Backend: character update endpoints (create, profile update) accept merged `class` string and `classes` array
+- [ ] `PRESENCE:PROFILE_UPDATED` payload updated: `class` carries merged primary class string, `classes` array added, `multiclass` boolean added, `subclass` removed
+- [ ] PlayerSettingsPanel: class input is a single merged text field; subclass input removed
+- [ ] PlayerSettingsPanel: per-class level rows shown only when `classes.length > 1`; total level is auto-computed and read-only when multiclassed
+- [ ] PlayerSettingsPanel: player can add a secondary class (free-text + level); primary class row has no remove button
+- [ ] PartyMemberCard, GroupMemberItem: display merged class string; multiclass characters show abbreviated breakdown (e.g. `Fighter 5 / Warlock 3`)
+- [ ] `docs/extension/sample-sync.json` updated to show multiclass format
+- [ ] Unit tests: class merge logic, level sum derivation, new/legacy format handling in `integration-sync.service`
+- [ ] Unit test: `PRESENCE:PROFILE_UPDATED` Zustand handler with `classes` payload
+
+**Related Docs**:
+
+- [docs/CONTRACTS.md](docs/CONTRACTS.md) — Character Multiclass Contract
+- [docs/extension/EXTENSION-INTEGRATION.md](docs/extension/EXTENSION-INTEGRATION.md) — §5b Character Sync Protocol
 
 ---
 

@@ -217,7 +217,8 @@ Multi-device addendum (May 2026):
 ### Presence Profile Updates
 
 - `PRESENCE:PROFILE_UPDATED` is the session-scoped event for character sheet / player card metadata changes while the user remains in-session.
-- The payload carries the latest profile fields needed to refresh live room cards in place: player name, avatar, character name, class, subclass, race, level, and character stats.
+- The payload carries the latest profile fields needed to refresh live room cards in place: player name, avatar, character name, class (merged primary class string, e.g. `"Warlock / Archfey Patron"`), classes (full array for multiclassed characters — see Character Multiclass Contract), multiclass flag, race, level, and character stats.
+- `subclass` is deprecated from this payload; class+subclass are merged into the `class` field and the full array is in `classes`.
 - New profile data should be broadcast after persistence succeeds and before the acting user relies on a refresh to see the change.
 
 Presence hydration addendum:
@@ -1443,6 +1444,88 @@ DM-only controls: pencil icon to open an inline override date/time picker; "Reve
 
 ---
 
+## Character Multiclass Contract (W-Character-Multiclass)
+
+This section defines the data model, UI rules, and extension sync contract for multiclassed characters.
+
+### DB Schema — `classes` column
+
+A new `classes` JSONB column is added to the `Character` table. Each element represents one class the character has taken levels in:
+
+```json
+[
+  { "name": "Warlock / Archfey Patron", "level": 4 },
+  { "name": "Fighter / Battle Master", "level": 3 }
+]
+```
+
+- `classes[0]` is the **primary class** — it cannot be removed by the player.
+- The `name` field stores the merged `className / subclassName` string. The `" / subclassName"` suffix is omitted if `subclassName` is absent or empty.
+- The sum of all per-class `level` values **must equal** the character's top-level `level` field. The backend enforces this — it derives `level` from the `classes` array when the new format is received.
+- The existing `class` top-level column is kept for backward compat reads and is always updated to `classes[0].name`. The existing `subclass` column is deprecated; new writes ignore it.
+
+### UI rules
+
+| Character type | Class/level display | Per-class editor |
+| --- | --- | --- |
+| Single-class (1 entry in `classes`) | Merged class string + total level, same as today | Hidden |
+| Multiclassed (2+ entries in `classes`) | Per-class breakdown visible | Shown per class; total level is auto-computed (read-only) |
+
+- The class input in PlayerSettingsPanel is a **single free-text field** combining class and subclass (e.g. `"Fighter / Battle Master"`), not two separate fields.
+- Players can add secondary classes; they can never remove the primary class (`classes[0]`).
+- A character must always have at least one class entry.
+
+### Extension sync format
+
+`POST /api/integrations/external/sync` → `characterUpdate` accepts two formats. When `classes` is present, it takes precedence over the legacy flat fields.
+
+**New multiclass format (preferred):**
+
+```json
+{
+  "characterUpdate": {
+    "externalCharacterId": "...",
+    "multiclass": true,
+    "classes": [
+      { "classExternalID": "1", "className": "Warlock", "classLevel": 4, "subclassName": "Archfey Patron" },
+      { "classExternalID": "2", "className": "Fighter", "classLevel": 3, "subclassName": "Battle Master" }
+    ]
+  }
+}
+```
+
+**Legacy single-class format (backward compat — used when `classes` is absent):**
+
+```json
+{
+  "characterUpdate": {
+    "externalCharacterId": "...",
+    "class": "Warlock",
+    "subclass": "Archfey Patron",
+    "level": 4
+  }
+}
+```
+
+Backend processing of the new format:
+
+1. For each `classes` entry: merge `className + " / " + subclassName` (drop the `" / subclassName"` suffix if absent/empty).
+2. Persist the full array to the `classes` JSONB column; `classes[0]` is the primary class.
+3. Set the `class` column to `classes[0].name`.
+4. Derive and persist `level` as the sum of all `classLevel` values.
+5. Ignore legacy `class`, `subclass`, and `level` top-level fields when `classes` is present.
+
+### `PRESENCE:PROFILE_UPDATED` payload additions
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `class` | `string \| null` | Merged primary class string (e.g. `"Warlock / Archfey Patron"`) |
+| `classes` | `Array<{ name: string, level: number }>` | Full class array; single-element for non-multiclassed characters |
+| `multiclass` | `boolean` | `true` when `classes.length > 1` |
+| `subclass` | — | **Deprecated — removed from payload** |
+
+---
+
 **Document Version**: 1.1
 **Locked By**: Stage 0 Build Agent
 **Lock Date**: April 17, 2026
@@ -1450,3 +1533,4 @@ DM-only controls: pencil icon to open an inline override date/time picker; "Reve
 **Amendment Date**: 2026-06-04 — Groups panel contracts added: reserved names, group close, group delete, environment apply, DM audio override (GAIN/FILTER/GATE).
 **Amendment Date**: 2026-06-08 — Extension Device Credential Contract added: per-browser persistent credential, 90-day rolling expiry, credential exchange endpoint, expiry behaviour by account type, revocation.
 **Amendment Date**: 2026-06-12 — Session Schedule Contract added: structured recurrence picker, next session date auto-advance, DM manual override, CAMPAIGN:SCHEDULE_UPDATED event.
+**Amendment Date**: 2026-06-22 — Character Multiclass Contract added: classes JSONB column, merged class/subclass field, per-class level model, multiclass extension sync format (backward-compat with legacy flat fields), PRESENCE:PROFILE_UPDATED payload update (subclass deprecated).
