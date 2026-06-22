@@ -4,6 +4,30 @@ All notable changes to this project are documented here. One entry per version c
 
 ---
 
+## [0.9.6] — 2026-06-22
+
+### Fixed
+
+- **Slash commands broken** (`/loot`, `/loot-split`, `/spend`, `/earn`, `/take`, `/give`, `/drop`): `MessageInput` had no catch-all for server-side commands — they fell through the if-else chain silently. Added a generic `onServerCommand` prop that forwards any unrecognised slash command to `POST /api/chat/command`. `ChatWindow` wires it up.
+
+### Changed — W-Inventory-System
+
+- **`/loot-split` auto-split**: Removed the 60-second accept flow. Loot is now distributed immediately when the DM runs `/loot-split` — each connected player's share is transferred party→character in the same request. Non-even remainders stay in the party inventory. The `LootSplitCard` in chat shows the completed split with named recipients; no accept button or countdown.
+- **Currency transfer UI**: Transfer mode added to `InventoryCurrencyRow`. DM can transfer from party wallet to any connected player; players can take from party to themselves or give from their own wallet to party or other connected players. Transfer form shows source and destination balances before confirming; INSUFFICIENT_FUNDS shows denomination-level shortfall.
+- **Denomination-coloured borders**: Coin boxes in view mode and all edit/transfer inputs now carry per-denomination border colours (PP = platinum-blue, GP = amber, EP = teal, SP = violet-grey, CP = copper-brown).
+- **Browser spin-button suppression**: Number inputs in the inventory panel no longer show native up/down arrows.
+- **Inventory history filters**: Transfer log filterable by owner (character / party) and date range.
+
+### Removed
+
+- `INVENTORY:LOOT_SPLIT_PROPOSED`, `INVENTORY:LOOT_SPLIT_ACCEPTED`, `INVENTORY:LOOT_SPLIT_EXPIRED` WS events — replaced by immediate `INVENTORY:ITEM_TRANSFERRED` broadcasts per recipient.
+- `lootSplitSlice` Zustand slice and its three WS handlers (`handleLootSplitProposed`, `handleLootSplitAccepted`, `handleLootSplitExpired`).
+- `POST /api/inventory/:campaignId/loot-split/:splitId/accept` endpoint.
+- `loot-split.service.ts` Redis-backed accept/expire lifecycle.
+- `expiresAt` field from `LootSplitCardMetadata`; replaced with `appliedAt` and `remainder`.
+
+---
+
 ## [0.9.5] — 2026-06-22
 
 ### Performance & Reliability

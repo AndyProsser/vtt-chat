@@ -1,6 +1,6 @@
 # VTT-Chat Roadmap
 
-**Last Updated**: 2026-06-22
+**Last Updated**: 2026-06-22 (v0.9.6)
 **Purpose**: Track upcoming feature enhancements. Each item is an independent unit of work; detailed design and acceptance criteria live in `docs/`. Bugs and operational issues are tracked separately.
 **Archive**: Completed phases and detailed delivery notes → [docs/DEVELOPMENT-ROADMAP-2026-06.md](docs/DEVELOPMENT-ROADMAP-2026-06.md)
 
@@ -10,23 +10,6 @@
 
 🟢 Done · 🟡 In Progress · 🔴 Blocked · ⚪ Not Started
 **Priority**: 🔴 Critical · 🟡 High · 🟡 Medium · 🔵 Low
-
----
-
-## In Progress
-
-### W-Inventory-System: Finish Remaining Items
-
-**Status**: 🟡 In Progress
-**Priority**: 🟡 Medium
-
-Core inventory system shipped in v0.9.5. Remaining items before closure:
-
-- Inventory history filter by owner (character / party) and date range
-- Currency transfer form shows balance of both source and destination before confirming
-- Integration tests for loot-split flow and permission gating
-
-**Docs**: [docs/subsystems/INVENTORY-SYSTEM.md](docs/subsystems/INVENTORY-SYSTEM.md)
 
 ---
 
@@ -107,6 +90,21 @@ Full WCAG AAA compliance, enhanced screen reader coverage, voice control, and ad
 **Priority**: 🔵 Low
 
 i18n translation framework, string extraction tooling, and multi-language support for the frontend and admin apps.
+
+---
+
+## Recently Completed
+
+### W-Inventory-System — v0.9.5 / v0.9.6
+
+🟢 Done — Core inventory shipped in v0.9.5; remaining items closed in v0.9.6:
+
+- Inventory history filter by owner (character / party) and date range
+- Currency transfer UI with dual-balance preview, denomination-coloured inputs, and role-gated give/take flows
+- `/loot-split` redesigned as an immediate auto-split (no accept flow); non-even remainders go to party
+- Broken slash commands fixed (`/loot`, `/loot-split`, `/spend`, `/earn`, `/take`, `/give`, `/drop`)
+
+**Docs**: [docs/subsystems/INVENTORY-SYSTEM.md](docs/subsystems/INVENTORY-SYSTEM.md)
 
 ---
 
