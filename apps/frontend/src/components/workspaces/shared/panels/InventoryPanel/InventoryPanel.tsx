@@ -21,6 +21,7 @@ import '@/styles/components/workspaces/shared/panels/InventoryPanel.css'
 import type { InventoryItem, CurrencyWalletState } from '@/types/inventory'
 import { InventoryItemRow } from './InventoryPanel.ItemRow'
 import { InventoryCurrencyRow } from './InventoryPanel.CurrencyRow'
+import type { CurrencyTransferTarget } from './InventoryPanel.CurrencyRow'
 import { InventoryAddItemForm } from './InventoryPanel.AddItemForm'
 import { InventoryHistoryOverlay } from './InventoryPanel.History'
 import { InventoryCharacterPicker } from './InventoryPanel.CharacterPicker'
@@ -258,6 +259,54 @@ export function InventoryPanel({
     [moveTargets, currentUserId]
   )
 
+  // Currency transfer only applies to ONLINE players (offline transfer not supported for currency).
+  const onlineMembers = useMemo(() => pickerMembers.filter((m) => m.isOnline), [pickerMembers])
+
+  // Currency transfer targets mirror item move targets with two differences:
+  //   - Always online-only (no offline currency transfer)
+  //   - DM viewing a character gets no targets (DM cannot take currency from a player)
+  const currencyTransferTargets = useMemo<CurrencyTransferTarget[]>(() => {
+    if (isReadOnly) return []
+    if (isDM) {
+      // DM can only give from party to players, not take from character wallets
+      if (view !== 'party') return []
+      return onlineMembers.map((m) => ({
+        label: m.label,
+        ownerType: 'character' as const,
+        ownerId: m.userId,
+        avatarUrl: m.avatarUrl,
+        isOnline: true,
+      }))
+    }
+    // Player viewing party: can only take to self
+    if (view === 'party') {
+      return [
+        {
+          label: 'My Wallet',
+          ownerType: 'character' as const,
+          ownerId: currentUserId,
+          avatarUrl: playerProfiles.find((p) => p.userId === currentUserId)?.avatarUrl ?? null,
+          isOnline: true,
+        },
+      ]
+    }
+    // Player viewing own inventory: give to party + other online characters
+    return [
+      { label: 'Party', ownerType: 'party' as const, ownerId: null, avatarUrl: null, isOnline: true },
+      ...onlineMembers
+        .filter((m) => m.userId !== currentUserId)
+        .map((m) => ({
+          label: m.label,
+          ownerType: 'character' as const,
+          ownerId: m.userId,
+          avatarUrl: m.avatarUrl,
+          isOnline: true,
+        })),
+    ]
+  }, [isReadOnly, isDM, view, onlineMembers, currentUserId, playerProfiles])
+
+  const currencyTransferLabel = isPlayer ? (view === 'party' ? 'Take' : 'Give') : 'Give'
+
   // ─── Mutation helpers ─────────────────────────────────────────────────────
   const removeItem = useCallback(
     async (itemId: UUID) => {
@@ -298,6 +347,31 @@ export function InventoryPanel({
         headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ownerType: currentOwnerType, ownerId: currentOwnerId, delta }),
       })
+    },
+    [apiUrl, campaignId, authToken, currentOwnerType, currentOwnerId]
+  )
+
+  const transferCurrency = useCallback(
+    async (
+      toOwnerType: 'party' | 'character',
+      toOwnerId: UUID | null,
+      amounts: Partial<Record<string, number>>
+    ) => {
+      const res = await fetch(`${apiUrl}/api/inventory/${campaignId}/transfer/currency`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fromOwnerType: currentOwnerType,
+          fromOwnerId: currentOwnerId,
+          toOwnerType,
+          toOwnerId,
+          amounts,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        return data as { code: string; message?: string; shortfall?: Record<string, number> }
+      }
     },
     [apiUrl, campaignId, authToken, currentOwnerType, currentOwnerId]
   )
@@ -455,6 +529,10 @@ export function InventoryPanel({
             wallet={currentWallet}
             isReadOnly={isReadOnly}
             onAdjust={adjustCurrency}
+            transferTargets={currencyTransferTargets}
+            transferActionLabel={currencyTransferLabel}
+            allWallets={allWallets}
+            onTransfer={transferCurrency}
           />
 
           <div className="inventory-panel__items-header">

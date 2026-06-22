@@ -303,6 +303,25 @@ function ChatWindowComponent({
     [apiUrl, token, sessionId, roomId]
   )
 
+  /** Generic handler for any server-side slash command not handled locally. */
+  const handleServerCommand = useCallback(
+    async (command: string, args: string) => {
+      const res = await fetch(`${apiUrl}/api/chat/command`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ command, args, sessionId, roomId }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.message ?? `HTTP ${res.status}`)
+      }
+    },
+    [apiUrl, token, sessionId, roomId]
+  )
+
   const handleVoiceCommand = useCallback(
     async (preset: string | null) => {
       const res = await fetch(`${apiUrl}/api/audio/voice-preset`, {
@@ -521,6 +540,7 @@ function ChatWindowComponent({
         onVoiceCommand={handleVoiceCommand}
         onConditionCommand={handleConditionCommand}
         onEnvCommand={handleEnvCommand}
+        onServerCommand={handleServerCommand}
         onCommandError={handleCommandError}
         onTypingStarted={handleTypingStarted}
         onTypingStopped={handleTypingStopped}

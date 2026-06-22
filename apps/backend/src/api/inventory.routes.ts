@@ -630,10 +630,16 @@ router.post(
       return res.status(403).json({ code: 'FORBIDDEN', message: 'Insufficient role' })
     }
 
-    // Players may only transfer from their own character wallet
+    // Players may transfer from their own wallet to anywhere, or take from party to their own wallet.
     if (role === 'PLAYER') {
-      if (fromOwnerType !== 'character' || fromOwnerId !== user.userId) {
-        return res.status(403).json({ code: 'FORBIDDEN', message: 'Players can only transfer from their own wallet' })
+      const fromSelf = fromOwnerType === 'character' && fromOwnerId === user.userId
+      const fromPartyToSelf =
+        fromOwnerType === 'party' &&
+        !fromOwnerId &&
+        toOwnerType === 'character' &&
+        toOwnerId === user.userId
+      if (!fromSelf && !fromPartyToSelf) {
+        return res.status(403).json({ code: 'FORBIDDEN', message: 'Players can only transfer from their own wallet or take from party' })
       }
     }
 
