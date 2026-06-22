@@ -208,7 +208,7 @@ export async function syncExternalIntegration(params: {
         externalId: externalCharacterId,
         externalSystem,
       },
-      select: { id: true, metadata: true },
+      select: { id: true },
     })
 
     characterUpdateApplied = character !== null
@@ -216,7 +216,7 @@ export async function syncExternalIntegration(params: {
     if (character) {
       const updateData: Record<string, unknown> = {}
 
-      // Top-level columns
+      // Top-level columns — only patched when present in the incoming payload
       if (typeof params.characterUpdate.name === 'string') {
         updateData.name = params.characterUpdate.name.trim()
       }
@@ -233,9 +233,9 @@ export async function syncExternalIntegration(params: {
         updateData.avatarUrl = params.characterUpdate.avatarUrl.trim()
       }
 
-      // Metadata fields — shallow-merge into existing metadata blob.
-      // stats, conditions, features replace their entire key (per docs §5b field rules).
-      const existingMeta = (character.metadata as Record<string, unknown> | null) || {}
+      // Metadata fields — only keys present in the incoming payload are included.
+      // Merged atomically at the DB level (COALESCE + jsonb ||) so a concurrent
+      // leaner packet cannot overwrite keys written by a richer packet.
       const metaPatch: Record<string, unknown> = {}
 
       if (typeof level === 'number') {
@@ -254,15 +254,19 @@ export async function syncExternalIntegration(params: {
         metaPatch.features = params.characterUpdate.features
       }
 
-      if (Object.keys(metaPatch).length > 0) {
-        updateData.metadata = { ...existingMeta, ...metaPatch }
-      }
-
       if (Object.keys(updateData).length > 0) {
         await prisma.character.update({
           where: { id: character.id },
           data: updateData,
         })
+      }
+
+      if (Object.keys(metaPatch).length > 0) {
+        await prisma.$executeRaw`
+          UPDATE "Character"
+          SET metadata = COALESCE(metadata, '{}') || ${JSON.stringify(metaPatch)}::jsonb
+          WHERE id = ${character.id}::uuid
+        `
       }
     }
   }

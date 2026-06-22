@@ -772,10 +772,19 @@ export const createRoomSlice: StateCreator<
               ? (payload.characterRace ?? null)
               : member.characterRace,
           level: payload.level !== undefined ? (payload.level ?? null) : member.level,
-          characterStats:
-            payload.characterStats !== undefined
-              ? (payload.characterStats ?? null)
-              : member.characterStats,
+          characterStats: (() => {
+            if (payload.characterStats === undefined) return member.characterStats
+            if (payload.characterStats === null) return null
+            // Guard against lean-sync broadcasts overwriting rich stats: if the
+            // existing characterStats has a .stats sub-object but the incoming
+            // payload doesn't (lean packet without combat stats), merge so the
+            // rich stats survive the lean broadcast window.
+            const existing = member.characterStats as Record<string, unknown> | null
+            if (existing?.stats && !(payload.characterStats as Record<string, unknown>).stats) {
+              return { ...existing, ...(payload.characterStats as Record<string, unknown>) }
+            }
+            return payload.characterStats
+          })(),
         }
 
         return nextMember

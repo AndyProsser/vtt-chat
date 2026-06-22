@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   mockCampaignMembershipFindUnique: vi.fn(),
   mockCharacterFindFirst: vi.fn(),
   mockCharacterUpdate: vi.fn(),
+  mockExecuteRaw: vi.fn(),
   mockAdminAuditLogCreate: vi.fn(),
   mockInventoryItemFindFirst: vi.fn(),
   mockInventoryItemCreate: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/infra/db', () => ({
   getPrismaClient: () => ({
+    $executeRaw: mocks.mockExecuteRaw,
     campaignMembership: {
       findUnique: mocks.mockCampaignMembershipFindUnique,
     },
@@ -115,6 +117,7 @@ function fullPolicyCampaign(overrides: Record<string, unknown> = {}) {
 describe('integration-sync.service', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    mocks.mockExecuteRaw.mockResolvedValue(1)
     mocks.mockInventoryItemFindFirst.mockResolvedValue(null)
     mocks.mockInventoryItemCreate.mockImplementation(async ({ data }: any) => buildItemRow(data))
     mocks.mockInventoryItemUpdate.mockImplementation(async ({ where, data }: any) =>
@@ -204,10 +207,7 @@ describe('integration-sync.service', () => {
     mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
       campaign: fullPolicyCampaign(),
     })
-    mocks.mockCharacterFindFirst.mockResolvedValueOnce({
-      id: 'char-1',
-      metadata: { previous: true },
-    })
+    mocks.mockCharacterFindFirst.mockResolvedValueOnce({ id: 'char-1' })
     mocks.mockCharacterUpdate.mockResolvedValueOnce({ id: 'char-1' })
 
     const result = await syncExternalIntegration({
@@ -234,14 +234,16 @@ describe('integration-sync.service', () => {
         campaignUpdate: false,
       },
     })
+    // Top-level columns only — metadata is no longer in this call
     expect(mocks.mockCharacterUpdate).toHaveBeenCalledWith({
       where: { id: 'char-1' },
       data: {
-        metadata: { previous: true, level: 7 },
         class: 'Ranger',
         subclass: 'Hunter',
       },
     })
+    // Metadata patched atomically via raw SQL (prevents lost-update race with concurrent packets)
+    expect(mocks.mockExecuteRaw).toHaveBeenCalledOnce()
     expect(mocks.mockAdminAuditLogCreate).toHaveBeenCalledTimes(1)
   })
 

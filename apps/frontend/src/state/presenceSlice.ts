@@ -589,10 +589,17 @@ export const createPresenceSlice: StateCreator<PresenceSlice> = (set) => ({
                   ? (characterRace ?? undefined)
                   : existing?.characterRace,
               level: level !== undefined ? (level ?? undefined) : existing?.level,
-              characterStats:
-                characterStats !== undefined
-                  ? (characterStats ?? undefined)
-                  : existing?.characterStats,
+              characterStats: (() => {
+                if (characterStats === undefined) return existing?.characterStats
+                if (characterStats === null) return undefined
+                // Guard against lean-sync broadcasts overwriting rich stats: if existing
+                // has a .stats sub-object but incoming doesn't, merge to preserve it.
+                const prev = existing?.characterStats as Record<string, unknown> | undefined
+                if (prev?.stats && !(characterStats as Record<string, unknown>).stats) {
+                  return { ...prev, ...(characterStats as Record<string, unknown>) }
+                }
+                return characterStats ?? undefined
+              })(),
               primaryRoomId: resolvedRoomId,
               previousGroupId:
                 previousGroupId !== undefined ? previousGroupId : existing?.previousGroupId,
