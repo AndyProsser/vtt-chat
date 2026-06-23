@@ -150,6 +150,7 @@ Authoritative PARTY snapshot API:
   - `sessionId: UUID | null` (latest runtime session for status projection)
   - `snapshotAt: number` (epoch ms)
   - `members: Array<{ userId, username, role, playerName, avatarUrl, characterName, characterClass, characterRace, level, characterStats, status, runtimePresenceState, lastSeenAt, currentRuntimeSessionId, manualAway }>`
+- `characterStats` shape: the canonical **flat** `NormalizedCharacterStats` (from `packages/shared/utils/character-stats.ts`) — `{ strength, dexterity, constitution, intelligence, wisdom, charisma, hpCurrent, hpMax, hpTemp?, ac, initiative, passivePerception, speed, proficiencyBonus, level }`. This is the SINGLE format used for mock and extension-synced players, online and offline, and over all WS presence/profile events. External/integration payloads (nested `{ stats: { abilityScores, hp, ... } }`) are transformed via `normalizeCharacterStats` at ingestion and at every read projection. Consumers must read flat keys only — never special-case a nested `stats`/`abilityScores` shape.
 - Source-of-truth order: campaign membership + active character profile + runtime presence projection + websocket connection snapshot.
 - Reconnect/rehydrate: frontend must treat this endpoint as authoritative snapshot after reconnect or suspected WS gap.
 

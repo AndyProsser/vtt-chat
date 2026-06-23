@@ -1,5 +1,5 @@
 import { getPrismaClient } from '@/infra/db'
-import type { UUID } from '@shared'
+import { normalizeCharacterStats, type UUID } from '@shared'
 import type { ExternalSyncResult } from '@/types/integration-sync.types'
 import {
   sanitizeExternalItems,
@@ -269,8 +269,16 @@ export async function syncExternalIntegration(params: {
       if (typeof params.characterUpdate.characterUrl === 'string') {
         metaPatch.characterUrl = params.characterUpdate.characterUrl.trim()
       }
+      // Transform the external (nested) stats payload into the canonical flat shape
+      // before persisting, so the DB holds ONE format shared with mock players. The
+      // legacy nested `stats` key (if any) is stripped below to prevent drift.
+      let wroteCanonicalStats = false
       if (params.characterUpdate.stats && typeof params.characterUpdate.stats === 'object') {
-        metaPatch.stats = params.characterUpdate.stats
+        const normalized = normalizeCharacterStats(params.characterUpdate.stats)
+        if (normalized) {
+          Object.assign(metaPatch, normalized)
+          wroteCanonicalStats = true
+        }
       }
       if (Array.isArray(params.characterUpdate.conditions)) {
         metaPatch.conditions = params.characterUpdate.conditions
@@ -287,11 +295,21 @@ export async function syncExternalIntegration(params: {
       }
 
       if (Object.keys(metaPatch).length > 0) {
-        await prisma.$executeRaw`
-          UPDATE "Character"
-          SET metadata = COALESCE(metadata, '{}') || ${JSON.stringify(metaPatch)}::jsonb
-          WHERE id = ${character.id}::uuid
-        `
+        // When canonical stats were written, drop the obsolete nested `stats` key so
+        // a single character never carries both the flat and nested representations.
+        if (wroteCanonicalStats) {
+          await prisma.$executeRaw`
+            UPDATE "Character"
+            SET metadata = (COALESCE(metadata, '{}') - 'stats') || ${JSON.stringify(metaPatch)}::jsonb
+            WHERE id = ${character.id}::uuid
+          `
+        } else {
+          await prisma.$executeRaw`
+            UPDATE "Character"
+            SET metadata = COALESCE(metadata, '{}') || ${JSON.stringify(metaPatch)}::jsonb
+            WHERE id = ${character.id}::uuid
+          `
+        }
       }
     }
   }

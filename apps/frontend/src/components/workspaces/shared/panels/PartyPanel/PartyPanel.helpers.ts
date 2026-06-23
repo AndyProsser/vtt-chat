@@ -91,33 +91,11 @@ export function mapPresenceStateToUiStatus(state: PresenceState): MockPlayerStat
   return 'here'
 }
 
-/**
- * Normalizes the characterStats blob into a flat ability-score map with long names.
- * Two shapes exist in the wild:
- *   - Dev-mock / legacy flat: { strength, dexterity, constitution, intelligence, wisdom, charisma }
- *   - Extension-synced (DNDBeyond): { stats: { abilityScores: { str, dex, con, int, wis, cha } } }
- */
-function resolveAbilityScores(characterStats: Record<string, unknown>): Record<string, unknown> {
-  const nested = characterStats.stats
-  if (nested && typeof nested === 'object') {
-    const abilityScores = (nested as Record<string, unknown>).abilityScores
-    if (abilityScores && typeof abilityScores === 'object') {
-      const ab = abilityScores as Record<string, unknown>
-      return {
-        strength: ab.str,
-        dexterity: ab.dex,
-        constitution: ab.con,
-        intelligence: ab.int,
-        wisdom: ab.wis,
-        charisma: ab.cha,
-      }
-    }
-  }
-  return characterStats
-}
-
 export function toMockMember(member: PartyPresenceMemberSnapshot): MockPartyMember {
-  const stats = resolveAbilityScores((member.characterStats || {}) as Record<string, unknown>)
+  // characterStats arrives in the canonical flat shape from the backend (see
+  // normalizeCharacterStats in @shared) for both mock and extension-synced
+  // players, online or offline — read the flat ability-score keys directly.
+  const stats = (member.characterStats || {}) as Record<string, unknown>
   const characterName = member.characterName || member.playerName || member.username
   const playerName = member.playerName || member.username
 

@@ -4,6 +4,21 @@ All notable changes to this project are documented here. One entry per version c
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Character stats reverted to defaults (all 10s) when a player went offline** (e.g. extension-synced "Silk" on the PARTY panel): extension-synced characters stored ability scores in the external **nested** shape (`metadata.stats.abilityScores.{str,dex,…}`) while mock players stored the **flat** shape (`metadata.{strength,dexterity,…}`). Readers had accreted per-call band-aids to tolerate both, and the offline PARTY path read only the flat keys — so synced scores fell back to 10. Now there is ONE canonical flat shape end-to-end.
+
+### Changed — Character stats consistency
+
+- Added `normalizeCharacterStats` + `NormalizedCharacterStats` to `packages/shared/utils/character-stats.ts` — the single source of truth for character stat shape. Idempotent; accepts the extension-nested payload, extension-stored metadata, and the mock/legacy flat shape.
+- Extension data is now transformed to the canonical flat shape at **every ingestion point** — `integration-sync.service.ts` (and it strips the obsolete nested `stats` key) and guest-auth `extension.service.ts`.
+- Both backend read projections (`listCampaignMembersForPresence`, `getSessionParticipantProfiles`) normalize on read, so online live-presence, offline PARTY snapshots, and legacy un-resynced rows all surface identical canonical stats.
+- Removed the dual-format band-aids in the frontend (`PartyPanel.helpers.ts`, `groupsPanel.ts`, `presenceSlice.ts`, `roomSlice.ts`) — they now read flat canonical keys only.
+
+---
+
 ## [0.9.6] — 2026-06-22
 
 ### Fixed

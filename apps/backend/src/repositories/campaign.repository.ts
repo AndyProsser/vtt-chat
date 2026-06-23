@@ -1,5 +1,11 @@
 import { Prisma } from '@prisma/client'
-import { deriveCampaignDisplayState, type CampaignDisplayState, type SessionState } from '@shared'
+import {
+  deriveCampaignDisplayState,
+  normalizeCharacterStats,
+  type CampaignDisplayState,
+  type NormalizedCharacterStats,
+  type SessionState,
+} from '@shared'
 import { getPrismaClient } from '@/infra/db'
 import { DEV_MOCK_PREFIX } from '@/constants/dev-mock.constants'
 import { logger } from '@/utils/logger'
@@ -756,7 +762,7 @@ export interface CampaignMemberPresenceProfile {
   characterClass: string | null
   characterRace: string | null
   level: number | null
-  characterStats: Prisma.JsonValue | null
+  characterStats: NormalizedCharacterStats | null
 }
 
 /**
@@ -827,7 +833,7 @@ export async function listCampaignMembersForPresence(
       characterClass: activeCharacter?.class || null,
       characterRace: activeCharacter?.race || null,
       level: rawLevel !== null ? Math.max(1, Math.min(20, Math.round(rawLevel))) : null,
-      characterStats: (metadata as Prisma.JsonValue | null) ?? null,
+      characterStats: normalizeCharacterStats(metadata),
     }
   })
 }

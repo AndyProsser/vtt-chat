@@ -9,7 +9,7 @@ import {
 } from '@/utils/guest-auth.helpers'
 import type { GuestCharacterInput, GuestLoginInput } from '@/types/guest-auth.types'
 import type { Prisma } from '@prisma/client'
-import type { UUID } from '@shared'
+import { normalizeCharacterStats, type UUID } from '@shared'
 import { externalSystemToPlatform } from '@/services/integrations.service'
 
 const prisma = getPrismaClient()
@@ -65,8 +65,13 @@ async function upsertCharacter(params: {
     characterUrl: params.character.characterUrl || null,
   }
 
+  // Transform the external (nested) stats payload into the canonical flat shape so
+  // guest-synced characters store identically to mock + integration-synced players.
   if (params.character.stats !== undefined) {
-    metadata.stats = params.character.stats
+    const normalized = normalizeCharacterStats(params.character.stats)
+    if (normalized) {
+      Object.assign(metadata, normalized)
+    }
   }
   if (params.character.conditions !== undefined) {
     metadata.conditions = params.character.conditions

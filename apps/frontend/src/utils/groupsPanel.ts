@@ -25,6 +25,11 @@ function abilityMod(score: number): string {
   return mod >= 0 ? `+${mod}` : String(mod)
 }
 
+/**
+ * Builds the combat + ability-score chips for a group participant from the
+ * canonical flat characterStats shape (see normalizeCharacterStats in @shared).
+ * The backend normalizes every read path, so this reads flat keys only.
+ */
 export function getGroupStatEntries(member: GroupParticipantStatus): StatGroups {
   const empty: StatGroups = { combatStats: [], abilityScores: [] }
 
@@ -34,12 +39,9 @@ export function getGroupStatEntries(member: GroupParticipantStatus): StatGroups 
   if (!stats) return empty
 
   const typedStats = stats as Record<string, unknown>
-  const syncedStats = typedStats.stats as Record<string, unknown> | undefined
-  const syncedAbility = syncedStats?.abilityScores as Record<string, unknown> | undefined
 
-  function resolveStatNum(syncedVal: unknown, flatVal: unknown): number | undefined {
-    const v = syncedVal !== undefined && syncedVal !== null ? syncedVal : flatVal
-    const n = Number(v)
+  function statNum(value: unknown): number | undefined {
+    const n = Number(value)
     return Number.isFinite(n) ? n : undefined
   }
 
@@ -47,41 +49,39 @@ export function getGroupStatEntries(member: GroupParticipantStatus): StatGroups 
 
   // HP — use min/max to guard against swapped field values in stored data.
   // Display convention: current/max (lower/higher).
-  const syncedHp = syncedStats?.hp as { current?: number; max?: number } | undefined
-  const hpA = resolveStatNum(syncedHp?.current, typedStats.hpCurrent)
-  const hpB = resolveStatNum(syncedHp?.max, typedStats.hpMax)
+  const hpA = statNum(typedStats.hpCurrent)
+  const hpB = statNum(typedStats.hpMax)
   if (hpA !== undefined && hpB !== undefined) {
     combatStats.push(['HP', `${Math.min(hpA, hpB)}/${Math.max(hpA, hpB)}`])
   }
 
-  const ac = resolveStatNum(syncedStats?.ac, typedStats.ac)
+  const ac = statNum(typedStats.ac)
   if (ac !== undefined) combatStats.push(['AC', String(ac)])
 
-  const initiative = resolveStatNum(syncedStats?.initiative, typedStats.initiative)
+  const initiative = statNum(typedStats.initiative)
   if (initiative !== undefined) {
     combatStats.push(['INIT', `${initiative >= 0 ? '+' : ''}${initiative}`])
   }
 
-  const pp = resolveStatNum(syncedStats?.passivePerception, typedStats.passivePerception)
+  const pp = statNum(typedStats.passivePerception)
   if (pp !== undefined) combatStats.push(['PP', String(pp)])
 
-  const speed = resolveStatNum(syncedStats?.speed, typedStats.speed)
+  const speed = statNum(typedStats.speed)
   if (speed !== undefined) combatStats.push(['SPD', `${speed}ft`])
 
-  const ABILITY_MAP: Array<[string, string, string]> = [
-    ['STR', 'str', 'strength'],
-    ['DEX', 'dex', 'dexterity'],
-    ['CON', 'con', 'constitution'],
-    ['INT', 'int', 'intelligence'],
-    ['WIS', 'wis', 'wisdom'],
-    ['CHA', 'cha', 'charisma'],
+  const ABILITY_MAP: Array<[string, string]> = [
+    ['STR', 'strength'],
+    ['DEX', 'dexterity'],
+    ['CON', 'constitution'],
+    ['INT', 'intelligence'],
+    ['WIS', 'wisdom'],
+    ['CHA', 'charisma'],
   ]
 
   const abilityScores: AbilityScoreStat[] = []
-  for (const [label, extKey, flatKey] of ABILITY_MAP) {
-    const raw = syncedAbility?.[extKey] ?? typedStats[flatKey]
-    const value = Number(raw)
-    if (raw !== null && raw !== undefined && Number.isFinite(value)) {
+  for (const [label, flatKey] of ABILITY_MAP) {
+    const value = statNum(typedStats[flatKey])
+    if (value !== undefined) {
       abilityScores.push({ label, value, modifier: abilityMod(value) })
     }
   }

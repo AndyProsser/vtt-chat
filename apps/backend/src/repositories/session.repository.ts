@@ -1,6 +1,10 @@
 import { Prisma } from '@prisma/client'
 import { getPrismaClient } from '@/infra/db'
-import type { CharacterClassEntry } from '@shared'
+import {
+  normalizeCharacterStats,
+  type CharacterClassEntry,
+  type NormalizedCharacterStats,
+} from '@shared'
 
 const prisma = getPrismaClient()
 
@@ -13,7 +17,7 @@ export interface SessionParticipantProfile {
   characterClass: string | null
   characterRace: string | null
   level: number | null
-  characterStats: Record<string, unknown> | null
+  characterStats: NormalizedCharacterStats | null
   characterClasses: CharacterClassEntry[] | null
   multiclass: boolean
 }
@@ -573,7 +577,7 @@ export async function getSessionParticipantProfiles(
         characterClass: characterClasses?.[0]?.name ?? character?.class ?? null,
         characterRace: character?.race || null,
         level: typeof levelValue === 'number' ? levelValue : null,
-        characterStats: metadata,
+        characterStats: normalizeCharacterStats(metadata),
         characterClasses,
         multiclass,
       }
