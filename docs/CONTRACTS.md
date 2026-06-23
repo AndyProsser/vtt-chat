@@ -1251,6 +1251,24 @@ is the locked wire contract, including the party-target payload shape (not previ
 Gates **all** sync payloads — character, inventory, currency. `NONE` rejects everything;
 `DM_ONLY` permits only `source: 'dm'` requests; `DM_AND_PLAYERS` permits both.
 
+### Character-target resolution
+
+A `characterUpdate` resolves the target character by `(campaignId, externalSystem, externalId)`,
+preferring the **active** character then the most-recently-updated. The matched character is marked
+the single **active** character for its owner (deactivating siblings) in the same transaction as the
+column/metadata writes. This guarantees the sync writes to the exact row the PARTY/presence
+projections render — which always read the active character — so synced data is never stranded on a
+hidden/duplicate row.
+
+Extension data is the **source of truth** and is applied with section-wise **overwrite** semantics
+(shared `mergeCharacterMetadata`): each section present in the packet fully replaces its metadata
+counterpart, the stats section is reset wholesale to the canonical flat shape (see the party-presence
+`characterStats` contract above) with any legacy nested `stats` dropped, and sections **absent** from
+the packet are preserved (the extension sends multiple packets; the first often omits stats, so a
+stats-less packet never wipes stats). The metadata read+write runs under a row lock
+(`SELECT … FOR UPDATE`) so concurrent packets serialize. Guest-auth login ingestion uses the same
+`mergeCharacterMetadata` helper for identical behaviour.
+
 ### Layer 2 — inventory-specific campaign settings
 
 Four `Campaign` fields, evaluated independently once Layer 1 permits the caller:

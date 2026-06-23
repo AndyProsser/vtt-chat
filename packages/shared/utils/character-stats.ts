@@ -36,6 +36,33 @@ export interface NormalizedCharacterStats {
   conditions?: unknown[]
 }
 
+/**
+ * The stat-section keys of {@link NormalizedCharacterStats} — everything except
+ * `level` and `conditions`, which are managed as their own metadata sections.
+ *
+ * Used to fully REPLACE the stats section on an extension overwrite: every key here
+ * is cleared and then re-set from the incoming payload, so no stale ability/combat
+ * value can survive a re-sync. The extension is the source of truth for stats.
+ */
+export const CHARACTER_STAT_KEYS = [
+  'proficiencyBonus',
+  'strength',
+  'dexterity',
+  'constitution',
+  'intelligence',
+  'wisdom',
+  'charisma',
+  'hpCurrent',
+  'hpMax',
+  'hpTemp',
+  'ac',
+  'initiative',
+  'passivePerception',
+  'speed',
+  'spellSlots',
+  'pactMagic',
+] as const
+
 /** Coerces a value to a finite number, or undefined when not numeric. */
 function finiteNumber(value: unknown): number | undefined {
   const n = typeof value === 'string' ? Number(value) : value
@@ -124,4 +151,66 @@ export function normalizeCharacterStats(raw: unknown): NormalizedCharacterStats 
   }
 
   return Object.keys(out).length > 0 ? out : null
+}
+
+/**
+ * Applies an extension character payload onto existing character metadata with
+ * section-wise OVERWRITE semantics. This is THE single way synced character data is
+ * persisted — used by both ingestion points (the sync API and guest-auth login) so
+ * behaviour is identical everywhere.
+ *
+ * The extension is the source of truth: each section PRESENT in `incoming` fully
+ * replaces its counterpart. The stats section is reset wholesale (every
+ * {@link CHARACTER_STAT_KEYS} entry cleared then re-set from the payload, and any
+ * legacy nested `stats` key dropped) so no stale ability/combat value can survive a
+ * re-sync. Sections ABSENT from `incoming` are preserved untouched — the extension
+ * sends multiple packets and the first frequently omits stats, so a stats-less
+ * packet must never wipe previously-synced stats.
+ *
+ * Pure: returns a new metadata object; callers persist the result.
+ */
+export function mergeCharacterMetadata(
+  existing: unknown,
+  incoming: {
+    level?: number
+    characterUrl?: string
+    stats?: unknown
+    conditions?: unknown
+    features?: unknown
+  }
+): Record<string, unknown> {
+  const next: Record<string, unknown> =
+    existing && typeof existing === 'object' && !Array.isArray(existing)
+      ? { ...(existing as Record<string, unknown>) }
+      : {}
+
+  if (typeof incoming.level === 'number' && Number.isFinite(incoming.level)) {
+    next.level = incoming.level
+  }
+  if (typeof incoming.characterUrl === 'string' && incoming.characterUrl.trim().length > 0) {
+    next.characterUrl = incoming.characterUrl.trim()
+  }
+  if (incoming.stats !== undefined) {
+    const normalized = normalizeCharacterStats(incoming.stats)
+    // Only replace when the payload carried real stats — an empty/invalid stats
+    // object (normalized === null) preserves the existing section.
+    if (normalized) {
+      delete next.stats
+      for (const key of CHARACTER_STAT_KEYS) {
+        if (normalized[key] !== undefined) {
+          next[key] = normalized[key]
+        } else {
+          delete next[key]
+        }
+      }
+    }
+  }
+  if (Array.isArray(incoming.conditions)) {
+    next.conditions = incoming.conditions
+  }
+  if (Array.isArray(incoming.features)) {
+    next.features = incoming.features
+  }
+
+  return next
 }

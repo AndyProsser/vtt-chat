@@ -9,7 +9,9 @@ const mocks = vi.hoisted(() => ({
   mockCampaignMembershipFindUnique: vi.fn(),
   mockCharacterFindFirst: vi.fn(),
   mockCharacterUpdate: vi.fn(),
+  mockCharacterUpdateMany: vi.fn(),
   mockExecuteRaw: vi.fn(),
+  mockQueryRaw: vi.fn(),
   mockAdminAuditLogCreate: vi.fn(),
   mockInventoryItemFindFirst: vi.fn(),
   mockInventoryItemCreate: vi.fn(),
@@ -22,15 +24,21 @@ const mocks = vi.hoisted(() => ({
   mockEventBroadcasterSendToUser: vi.fn(),
 }))
 
-vi.mock('@/infra/db', () => ({
-  getPrismaClient: () => ({
+vi.mock('@/infra/db', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client: any = {
     $executeRaw: mocks.mockExecuteRaw,
+    $queryRaw: mocks.mockQueryRaw,
+    // Run transactional callbacks against the same mocked client so existing
+    // per-method spies (update / updateMany / $executeRaw) still observe calls.
+    $transaction: (fn: (tx: typeof client) => unknown) => fn(client),
     campaignMembership: {
       findUnique: mocks.mockCampaignMembershipFindUnique,
     },
     character: {
       findFirst: mocks.mockCharacterFindFirst,
       update: mocks.mockCharacterUpdate,
+      updateMany: mocks.mockCharacterUpdateMany,
     },
     adminAuditLog: {
       create: mocks.mockAdminAuditLogCreate,
@@ -51,8 +59,9 @@ vi.mock('@/infra/db', () => ({
     pendingExtensionSync: {
       create: mocks.mockPendingExtensionSyncCreate,
     },
-  }),
-}))
+  }
+  return { getPrismaClient: () => client }
+})
 
 vi.mock('@/ws/event-broadcaster', () => ({
   default: {
@@ -118,6 +127,9 @@ describe('integration-sync.service', () => {
   beforeEach(() => {
     vi.resetAllMocks()
     mocks.mockExecuteRaw.mockResolvedValue(1)
+    mocks.mockQueryRaw.mockResolvedValue([])
+    mocks.mockCharacterUpdate.mockResolvedValue({})
+    mocks.mockCharacterUpdateMany.mockResolvedValue({ count: 0 })
     mocks.mockInventoryItemFindFirst.mockResolvedValue(null)
     mocks.mockInventoryItemCreate.mockImplementation(async ({ data }: any) => buildItemRow(data))
     mocks.mockInventoryItemUpdate.mockImplementation(async ({ where, data }: any) =>
@@ -207,7 +219,11 @@ describe('integration-sync.service', () => {
     mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
       campaign: fullPolicyCampaign(),
     })
-    mocks.mockCharacterFindFirst.mockResolvedValueOnce({ id: 'char-1' })
+    mocks.mockCharacterFindFirst.mockResolvedValueOnce({
+      id: 'char-1',
+      userId: USER_ID,
+      isActive: false,
+    })
     mocks.mockCharacterUpdate.mockResolvedValueOnce({ id: 'char-1' })
 
     const result = await syncExternalIntegration({
@@ -234,17 +250,150 @@ describe('integration-sync.service', () => {
         campaignUpdate: false,
       },
     })
-    // Top-level columns only — metadata is no longer in this call
+    // Synced character is activated so the PARTY/presence projections (which read the
+    // active character) render the synced data. Columns + overwritten metadata are
+    // written together in the activating update.
     expect(mocks.mockCharacterUpdate).toHaveBeenCalledWith({
       where: { id: 'char-1' },
       data: {
         class: 'Ranger',
         subclass: 'Hunter',
+        isActive: true,
+        metadata: { level: 7 },
       },
     })
-    // Metadata patched atomically via raw SQL (prevents lost-update race with concurrent packets)
-    expect(mocks.mockExecuteRaw).toHaveBeenCalledOnce()
+    // Inactive synced character: its owner's other active characters are deactivated
+    // to maintain the single-active invariant.
+    expect(mocks.mockCharacterUpdateMany).toHaveBeenCalledWith({
+      where: {
+        campaignId: CAMPAIGN_ID,
+        userId: USER_ID,
+        id: { not: 'char-1' },
+        isActive: true,
+      },
+      data: { isActive: false },
+    })
+    // Metadata is read under a row lock (SELECT ... FOR UPDATE) before the overwrite.
+    expect(mocks.mockQueryRaw).toHaveBeenCalledOnce()
     expect(mocks.mockAdminAuditLogCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it('overwrites the stats section from the extension, dropping stale flat keys and any legacy nested shape', async () => {
+    mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+      campaign: fullPolicyCampaign(),
+    })
+    mocks.mockCharacterFindFirst.mockResolvedValueOnce({
+      id: 'char-1',
+      userId: USER_ID,
+      isActive: true,
+    })
+    // Existing metadata carries STALE data the extension must overwrite: a wrong
+    // strength, a stale combat key not in the new payload, and a legacy nested `stats`.
+    mocks.mockQueryRaw.mockResolvedValueOnce([
+      {
+        metadata: {
+          level: 1,
+          strength: 99,
+          hpTemp: 50,
+          stats: { abilityScores: { str: 99 } },
+          features: ['Old Feature'],
+        },
+      },
+    ])
+
+    const result = await syncExternalIntegration({
+      campaignId: CAMPAIGN_ID,
+      externalSystem: 'dndbeyond',
+      source: 'player',
+      user: { userId: USER_ID, username: 'player-one', role: 'PLAYER' },
+      characterUpdate: {
+        externalCharacterId: '151855498',
+        name: 'Silk',
+        level: 4,
+        stats: {
+          initiative: 3,
+          proficiencyBonus: 2,
+          passivePerception: 14,
+          abilityScores: { str: 10, dex: 16, con: 10, int: 8, wis: 14, cha: 17 },
+          hp: { current: 23, max: 23, temp: 0 },
+          ac: 14,
+          speed: 30,
+        },
+        features: ['Magical Cunning'],
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    // Already active → no sibling deactivation needed.
+    expect(mocks.mockCharacterUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.mockQueryRaw).toHaveBeenCalledOnce()
+
+    const writtenMetadata = mocks.mockCharacterUpdate.mock.calls[0][0].data.metadata as Record<
+      string,
+      unknown
+    >
+    // Canonical flat stats from the payload (extension is source of truth).
+    expect(writtenMetadata).toMatchObject({
+      level: 4,
+      strength: 10,
+      dexterity: 16,
+      constitution: 10,
+      intelligence: 8,
+      wisdom: 14,
+      charisma: 17,
+      hpCurrent: 23,
+      hpMax: 23,
+      hpTemp: 0,
+      ac: 14,
+      initiative: 3,
+      passivePerception: 14,
+      proficiencyBonus: 2,
+      speed: 30,
+      features: ['Magical Cunning'],
+    })
+    // Stale strength overwritten, not merged.
+    expect(writtenMetadata.strength).toBe(10)
+    // Legacy nested representation removed.
+    expect(writtenMetadata.stats).toBeUndefined()
+    expect(writtenMetadata.abilityScores).toBeUndefined()
+  })
+
+  it('preserves an existing stats section when a stats-less packet arrives (multi-packet sync)', async () => {
+    mocks.mockCampaignMembershipFindUnique.mockResolvedValueOnce({
+      campaign: fullPolicyCampaign(),
+    })
+    mocks.mockCharacterFindFirst.mockResolvedValueOnce({
+      id: 'char-1',
+      userId: USER_ID,
+      isActive: true,
+    })
+    // A previous packet already persisted canonical flat stats.
+    mocks.mockQueryRaw.mockResolvedValueOnce([
+      { metadata: { level: 4, strength: 10, dexterity: 16, hpCurrent: 23, hpMax: 23 } },
+    ])
+
+    const result = await syncExternalIntegration({
+      campaignId: CAMPAIGN_ID,
+      externalSystem: 'dndbeyond',
+      source: 'player',
+      user: { userId: USER_ID, username: 'player-one', role: 'PLAYER' },
+      // Stats-less packet (the common "first packet" shape).
+      characterUpdate: { externalCharacterId: '151855498', name: 'Silk', level: 4 },
+    })
+
+    expect(result.ok).toBe(true)
+    const writtenMetadata = mocks.mockCharacterUpdate.mock.calls[0][0].data.metadata as Record<
+      string,
+      unknown
+    >
+    // Existing stats survive — absent sections are not touched.
+    expect(writtenMetadata).toMatchObject({
+      level: 4,
+      strength: 10,
+      dexterity: 16,
+      hpCurrent: 23,
+      hpMax: 23,
+    })
   })
 
   describe('Layer 2: inventory-specific policy', () => {

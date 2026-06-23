@@ -33,4 +33,9 @@ export {
   calculateNextOccurrence,
   type SessionSchedule,
 } from './session-schedule'
-export { normalizeCharacterStats, type NormalizedCharacterStats } from './character-stats'
+export {
+  normalizeCharacterStats,
+  mergeCharacterMetadata,
+  CHARACTER_STAT_KEYS,
+  type NormalizedCharacterStats,
+} from './character-stats'

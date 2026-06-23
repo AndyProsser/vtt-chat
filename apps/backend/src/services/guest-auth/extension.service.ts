@@ -9,7 +9,7 @@ import {
 } from '@/utils/guest-auth.helpers'
 import type { GuestCharacterInput, GuestLoginInput } from '@/types/guest-auth.types'
 import type { Prisma } from '@prisma/client'
-import { normalizeCharacterStats, type UUID } from '@shared'
+import { mergeCharacterMetadata, type UUID } from '@shared'
 import { externalSystemToPlatform } from '@/services/integrations.service'
 
 const prisma = getPrismaClient()
@@ -56,29 +56,22 @@ async function upsertCharacter(params: {
           externalSystem: params.externalSystem,
           externalId,
         },
-        select: { id: true },
+        select: { id: true, metadata: true },
       })
     : null
 
-  const metadata: Record<string, unknown> = {
-    level: params.character.level ?? null,
-    characterUrl: params.character.characterUrl || null,
-  }
-
-  // Transform the external (nested) stats payload into the canonical flat shape so
-  // guest-synced characters store identically to mock + integration-synced players.
-  if (params.character.stats !== undefined) {
-    const normalized = normalizeCharacterStats(params.character.stats)
-    if (normalized) {
-      Object.assign(metadata, normalized)
-    }
-  }
-  if (params.character.conditions !== undefined) {
-    metadata.conditions = params.character.conditions
-  }
-  if (params.character.features !== undefined) {
-    metadata.features = params.character.features
-  }
+  // Section-wise OVERWRITE onto any existing metadata (same source-of-truth rule as
+  // the sync API): present sections replace, absent sections are preserved — so a
+  // lean re-login that omits stats never wipes previously-synced stats. Stats are
+  // normalized to the canonical flat shape shared with mock + synced players.
+  const metadata = mergeCharacterMetadata(existing?.metadata, {
+    level: typeof params.character.level === 'number' ? params.character.level : undefined,
+    characterUrl:
+      typeof params.character.characterUrl === 'string' ? params.character.characterUrl : undefined,
+    stats: params.character.stats,
+    conditions: params.character.conditions,
+    features: params.character.features,
+  })
 
   if (existing) {
     return prisma.character.update({

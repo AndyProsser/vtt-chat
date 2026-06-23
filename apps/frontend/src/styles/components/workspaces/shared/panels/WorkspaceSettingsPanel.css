@@ -178,6 +178,93 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.crbs-field--span {
+  grid-column: 1 / -1;
+}
+
+/* ── Inline class/subclass field with [+] button ─────────────────── */
+
+.crbs-class-input-row {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.crbs-class-input-row .crbs-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Per-class rows in multiclass mode ───────────────────────────── */
+
+.crbs-class-row {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.crbs-class-row .crbs-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.crbs-class-row .vsi-wrapper {
+  flex-shrink: 0;
+  width: 3.25rem;
+}
+
+/* ── [+] / [−] action button ─────────────────────────────────────── */
+
+.crbs-class-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color 120ms, color 120ms, border-color 120ms;
+}
+
+.crbs-class-action-btn:hover:not(:disabled) {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.crbs-class-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.crbs-class-action-btn .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+.crbs-class-action-btn--remove:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 15%, var(--color-surface-raised));
+  color: var(--color-danger, #ef4444);
+  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 40%, var(--color-border-soft));
+}
+
+/* ── Read-only level display (multiclass total) ───────────────────── */
+
+.crbs-input--readonly {
+  opacity: 0.65;
+  cursor: default;
+  -moz-appearance: textfield;
+  text-align: center;
+}
+
+.crbs-input--readonly::-webkit-inner-spin-button,
+.crbs-input--readonly::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
 .crbs-attributes-row {
   display: grid;
   grid-template-columns: minmax(3.75rem, 4.75rem) minmax(0, 1fr);

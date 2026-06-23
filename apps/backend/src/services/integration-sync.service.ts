@@ -1,5 +1,6 @@
+import { Prisma } from '@prisma/client'
 import { getPrismaClient } from '@/infra/db'
-import { normalizeCharacterStats, type UUID } from '@shared'
+import { mergeCharacterMetadata, type UUID } from '@shared'
 import type { ExternalSyncResult } from '@/types/integration-sync.types'
 import {
   sanitizeExternalItems,
@@ -202,13 +203,19 @@ export async function syncExternalIntegration(params: {
     // (sanitizeExternalSystem). Prevents lookup failures from case mismatches.
     const externalSystem = params.externalSystem.trim().toLowerCase()
 
+    // Prefer the active character, then the most-recently-updated, so sync targets
+    // the SAME row the PARTY/presence projections render (they read the active
+    // character). Without an explicit order, a duplicate or inactive row could win
+    // the match and stats would land on a row that is never displayed — a root
+    // cause of "synced but not visible / doesn't persist reliably".
     const character = await prisma.character.findFirst({
       where: {
         campaignId: params.campaignId,
         externalId: externalCharacterId,
         externalSystem,
       },
-      select: { id: true },
+      orderBy: [{ isActive: 'desc' }, { updatedAt: 'desc' }],
+      select: { id: true, userId: true, isActive: true },
     })
 
     characterUpdateApplied = character !== null
@@ -258,59 +265,56 @@ export async function syncExternalIntegration(params: {
         updateData.avatarUrl = params.characterUpdate.avatarUrl.trim()
       }
 
-      // Metadata fields — only keys present in the incoming payload are included.
-      // Merged atomically at the DB level (COALESCE + jsonb ||) so a concurrent
-      // leaner packet cannot overwrite keys written by a richer packet.
-      const metaPatch: Record<string, unknown> = {}
+      // Captured outside the transaction closure so TS keeps the characterUpdate
+      // narrowing; these are the source-of-truth sections fed to mergeCharacterMetadata.
+      const metadataOverwriteInput = {
+        characterUrl:
+          typeof params.characterUpdate.characterUrl === 'string'
+            ? params.characterUpdate.characterUrl
+            : undefined,
+        stats: params.characterUpdate.stats,
+        conditions: params.characterUpdate.conditions,
+        features: params.characterUpdate.features,
+      }
 
-      if (typeof level === 'number') {
-        metaPatch.level = level
-      }
-      if (typeof params.characterUpdate.characterUrl === 'string') {
-        metaPatch.characterUrl = params.characterUpdate.characterUrl.trim()
-      }
-      // Transform the external (nested) stats payload into the canonical flat shape
-      // before persisting, so the DB holds ONE format shared with mock players. The
-      // legacy nested `stats` key (if any) is stripped below to prevent drift.
-      let wroteCanonicalStats = false
-      if (params.characterUpdate.stats && typeof params.characterUpdate.stats === 'object') {
-        const normalized = normalizeCharacterStats(params.characterUpdate.stats)
-        if (normalized) {
-          Object.assign(metaPatch, normalized)
-          wroteCanonicalStats = true
+      // Activation + column writes + metadata overwrite run in ONE transaction so a
+      // partial failure can never leave synced stats on a hidden (inactive) row. The
+      // synced character becomes the single active one for its owner (the projections
+      // only render the active character), guaranteeing write target == display source.
+      await prisma.$transaction(async (tx) => {
+        if (!character.isActive) {
+          await tx.character.updateMany({
+            where: {
+              campaignId: params.campaignId,
+              userId: character.userId,
+              id: { not: character.id },
+              isActive: true,
+            },
+            data: { isActive: false },
+          })
         }
-      }
-      if (Array.isArray(params.characterUpdate.conditions)) {
-        metaPatch.conditions = params.characterUpdate.conditions
-      }
-      if (Array.isArray(params.characterUpdate.features)) {
-        metaPatch.features = params.characterUpdate.features
-      }
 
-      if (Object.keys(updateData).length > 0) {
-        await prisma.character.update({
-          where: { id: character.id },
-          data: updateData,
+        // Row-locked read so concurrent sync packets serialize — the next packet sees
+        // this one's committed metadata, so a stats-less packet can never clobber the
+        // stats a richer packet just wrote (and vice versa). The extension is the
+        // source of truth: mergeCharacterMetadata overwrites each provided section.
+        const rows = await tx.$queryRaw<Array<{ metadata: unknown }>>`
+          SELECT metadata FROM "Character" WHERE id = ${character.id}::uuid FOR UPDATE
+        `
+        const nextMetadata = mergeCharacterMetadata(rows[0]?.metadata, {
+          level: typeof level === 'number' ? level : undefined,
+          ...metadataOverwriteInput,
         })
-      }
 
-      if (Object.keys(metaPatch).length > 0) {
-        // When canonical stats were written, drop the obsolete nested `stats` key so
-        // a single character never carries both the flat and nested representations.
-        if (wroteCanonicalStats) {
-          await prisma.$executeRaw`
-            UPDATE "Character"
-            SET metadata = (COALESCE(metadata, '{}') - 'stats') || ${JSON.stringify(metaPatch)}::jsonb
-            WHERE id = ${character.id}::uuid
-          `
-        } else {
-          await prisma.$executeRaw`
-            UPDATE "Character"
-            SET metadata = COALESCE(metadata, '{}') || ${JSON.stringify(metaPatch)}::jsonb
-            WHERE id = ${character.id}::uuid
-          `
-        }
-      }
+        await tx.character.update({
+          where: { id: character.id },
+          data: {
+            ...updateData,
+            isActive: true,
+            metadata: nextMetadata as Prisma.InputJsonValue,
+          },
+        })
+      })
     }
   }
 
