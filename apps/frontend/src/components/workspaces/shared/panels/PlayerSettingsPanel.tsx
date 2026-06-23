@@ -221,7 +221,7 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                       type="button"
                       className="crbs-class-action-btn"
                       aria-label="Add secondary class"
-                      disabled={disabled || classes.length >= 2}
+                      disabled={disabled || classes.length >= 5}
                       onClick={handleAddClass}
                     >
                       <span className="material-symbols-outlined" aria-hidden="true">add</span>

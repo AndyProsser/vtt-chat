@@ -602,6 +602,7 @@ export async function listCharactersForUser(userId: string): Promise<
     race: string | null
     class: string | null
     subclass: string | null
+    classes: Prisma.JsonValue | null
     avatarUrl: string | null
     metadata: Prisma.JsonValue | null
     isActive: boolean
@@ -623,6 +624,7 @@ export async function listCharactersForUser(userId: string): Promise<
     race: row.race,
     class: row.class,
     subclass: row.subclass,
+    classes: row.classes ?? null,
     avatarUrl: row.avatarUrl,
     metadata: row.metadata,
     isActive: row.isActive,

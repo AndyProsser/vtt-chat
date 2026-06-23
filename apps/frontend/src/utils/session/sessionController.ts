@@ -356,6 +356,9 @@ export const createCharacterSettingsController = (ctx: SessionControllerContext)
           race: characterDraft.race.trim() || 'Human',
           class:
             (characterDraft.classes?.[0]?.name ?? characterDraft.className.trim()) || 'Fighter',
+          // Null out the legacy subclass column when classes array is present so
+          // buildCharacterDraft never falls back to the class+'/'+subclass join.
+          subclass: characterDraft.classes?.length ? null : undefined,
           classes: characterDraft.classes ?? null,
           avatarUrl: characterDraft.avatarUrl.trim() || null,
           metadata,

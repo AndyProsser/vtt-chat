@@ -120,8 +120,38 @@ export function buildCharacterDraft(character: UserCharacterRecord | null): Play
   }
 
   // Build classes array: prefer new classes column, fall back to legacy class/subclass.
-  const characterClasses: CharacterClassEntry[] = Array.isArray(character.classes) && character.classes.length > 0
-    ? (character.classes as CharacterClassEntry[])
+  // Normalize each entry: some older rows or DnDBeyond-synced rows may store
+  // { className, classLevel, subclassName } instead of { name, level }.
+  function normalizeClassEntry(raw: unknown): CharacterClassEntry | null {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+    const entry = raw as Record<string, unknown>
+    const name =
+      typeof entry.name === 'string' && entry.name.trim()
+        ? entry.name.trim()
+        : typeof entry.className === 'string' && entry.className.trim()
+          ? typeof entry.subclassName === 'string' && entry.subclassName.trim()
+            ? `${entry.className.trim()} / ${entry.subclassName.trim()}`
+            : entry.className.trim()
+          : null
+    const level = Math.max(
+      1,
+      Math.min(
+        20,
+        Math.round(
+          Number(
+            typeof entry.level === 'number' ? entry.level : entry.classLevel
+          ) || 1
+        )
+      )
+    )
+    return name ? { name, level } : null
+  }
+
+  const rawClasses = Array.isArray(character.classes) ? character.classes : []
+  const normalizedClasses = rawClasses.map(normalizeClassEntry).filter(Boolean) as CharacterClassEntry[]
+
+  const characterClasses: CharacterClassEntry[] = normalizedClasses.length > 0
+    ? normalizedClasses
     : character.class
       ? [{ name: [character.class, character.subclass].filter(Boolean).join(' / '), level: Math.max(1, Math.min(20, Number(metadata.level) || 1)) }]
       : [{ name: 'Fighter', level: 1 }]

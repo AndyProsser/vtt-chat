@@ -10,8 +10,6 @@ import {
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import { createCharacterSettingsController } from '@/utils/session/sessionController'
 
-/** Debounce delay for regular field changes (ms). */
-const AUTO_SAVE_DEBOUNCE_MS = 1500
 
 type UseWorkspacesCharacterSettingsOrchestrationParams = {
   characterSettingsController: ReturnType<typeof createCharacterSettingsController>
@@ -41,21 +39,15 @@ export function useWorkspacesCharacterSettingsOrchestration(
   } = params
 
   /**
-   * isDirtyRef: true when the user has edited a non-avatar field since the last save/load.
    * pendingImmediateSaveRef: true when an avatar change just occurred and requires an immediate save.
-   * srdFieldFocusedRef: true while race/class/subclass input has focus — suppresses the debounce
-   *   timer so the popup isn't dismissed by a mid-typing save. Save fires on blur instead.
-   * doAutoSaveRef: always holds the latest auto-save closure to avoid stale captures in setTimeout.
+   * doAutoSaveRef: always holds the latest save closure to avoid stale captures in the effect.
    */
-  const isDirtyRef = useRef(false)
   const pendingImmediateSaveRef = useRef(false)
-  const srdFieldFocusedRef = useRef(false)
   const doAutoSaveRef = useRef<() => Promise<void>>(async () => {})
 
   const loadUserCharacters = useCallback(async () => {
     if (!selectedCampaignId) {
       resetCharacterSettings(characterSettingsActions)
-      isDirtyRef.current = false
       return
     }
 
@@ -74,18 +66,13 @@ export function useWorkspacesCharacterSettingsOrchestration(
       resetCharacterSettings(characterSettingsActions)
     }
 
-    // Clear dirty flag so the state change from applyLoadedCharacters doesn't
-    // trigger an auto-save of freshly-loaded server data.
-    isDirtyRef.current = false
     characterSettingsActions.setIsCharacterSettingsLoading(false)
   }, [characterSettingsActions, characterSettingsController, selectedCampaignId])
 
   /**
    * Core save implementation.
-   * showNotice: false for background auto-saves to avoid toasting on every debounce.
    * For new characters (no selectedCharacterId) we reload after save to obtain the server-assigned ID.
-   * For existing characters we skip the reload — the draft is already correct and an unnecessary
-   * reload would clobber any edits the user made while the request was in-flight.
+   * For existing characters we skip the reload — the draft is already correct.
    */
   const doSave = useCallback(
     async ({ showNotice = true }: { showNotice?: boolean } = {}) => {
@@ -126,16 +113,13 @@ export function useWorkspacesCharacterSettingsOrchestration(
     ]
   )
 
-  // Update ref on every render so setTimeout callbacks always call the latest doSave.
+  // Update ref on every render so the effect always calls the latest doSave.
   doAutoSaveRef.current = () => doSave({ showNotice: false })
 
   /**
-   * Auto-save effect.
-   * Fires whenever characterSettingsPanel changes (i.e. after any field edit).
-   *
-   * - If an avatar change was just flagged (pendingImmediateSaveRef), save immediately.
-   * - Otherwise, start a 1.5s debounce; each new edit resets the timer via cleanup.
-   * - Guards against saving while a save or load is already in-flight.
+   * Avatar-only auto-save effect.
+   * Fires immediately after an avatar upload/remove (pendingImmediateSaveRef).
+   * All other field changes require an explicit manual save via the Save button.
    */
   useEffect(() => {
     if (!selectedCampaignId || isCharacterSettingsLoading || isCharacterSettingsSaving) {
@@ -144,26 +128,8 @@ export function useWorkspacesCharacterSettingsOrchestration(
 
     if (pendingImmediateSaveRef.current) {
       pendingImmediateSaveRef.current = false
-      isDirtyRef.current = false
       void doAutoSaveRef.current()
-      return
     }
-
-    if (!isDirtyRef.current) {
-      return
-    }
-
-    // Suppress the timer while a SRD field has focus — save fires on blur instead.
-    if (srdFieldFocusedRef.current) {
-      return
-    }
-
-    const timer = setTimeout(() => {
-      isDirtyRef.current = false
-      void doAutoSaveRef.current()
-    }, AUTO_SAVE_DEBOUNCE_MS)
-
-    return () => clearTimeout(timer)
   }, [
     characterSettingsPanel,
     selectedCampaignId,
@@ -171,17 +137,15 @@ export function useWorkspacesCharacterSettingsOrchestration(
     isCharacterSettingsSaving,
   ])
 
-  /** Manual save triggered by the Save button. Shows notice and cancels any pending auto-save. */
+  /** Manual save triggered by the Save button. */
   const saveCharacterSettings = useCallback(async () => {
-    isDirtyRef.current = false
     pendingImmediateSaveRef.current = false
     await doSave({ showNotice: true })
   }, [doSave])
 
   /**
    * Updates the draft for a single field.
-   * Avatar changes (upload applied or remove) trigger an immediate save.
-   * All other changes arm the debounce timer.
+   * Avatar changes trigger an immediate background save; all other fields require manual save.
    */
   const handleCharacterFieldChange = useCallback(
     (field: keyof PlayerSettingsPanel, value: string | number) => {
@@ -190,34 +154,17 @@ export function useWorkspacesCharacterSettingsOrchestration(
       )
       if (field === 'avatarUrl') {
         pendingImmediateSaveRef.current = true
-      } else {
-        isDirtyRef.current = true
       }
     },
     [characterSettingsActions, characterSettingsPanel]
   )
 
-  /** Called when race/class/subclass input receives focus — suppresses auto-save timer. */
-  const handleSrdFieldFocus = useCallback(() => {
-    srdFieldFocusedRef.current = true
-  }, [])
-
-  /**
-   * Called when race/class/subclass input loses focus.
-   * If the user made changes while focused, triggers an immediate background save
-   * now that the popup is safely dismissed.
-   */
-  const handleSrdFieldBlur = useCallback(() => {
-    srdFieldFocusedRef.current = false
-    if (isDirtyRef.current && !isCharacterSettingsLoading && !isCharacterSettingsSaving) {
-      isDirtyRef.current = false
-      void doAutoSaveRef.current()
-    }
-  }, [isCharacterSettingsLoading, isCharacterSettingsSaving])
+  const handleSrdFieldFocus = useCallback(() => {}, [])
+  const handleSrdFieldBlur = useCallback(() => {}, [])
 
   /**
    * Updates the classes array on the draft, keeping className and level in sync.
-   * total level is recomputed from per-class levels so callers need not do it themselves.
+   * Total level is recomputed from per-class levels so callers need not do it themselves.
    */
   const handleClassesChange = useCallback(
     (classes: CharacterClassEntry[]) => {
@@ -228,7 +175,6 @@ export function useWorkspacesCharacterSettingsOrchestration(
         className: classes[0]?.name ?? characterSettingsPanel.className,
         level: totalLevel,
       })
-      isDirtyRef.current = true
     },
     [characterSettingsActions, characterSettingsPanel]
   )
