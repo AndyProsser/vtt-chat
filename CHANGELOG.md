@@ -4,28 +4,32 @@ All notable changes to this project are documented here. One entry per version c
 
 ---
 
-## [Unreleased]
+## [0.9.6] — 2026-06-24
+
+### Added — W-Extension-DM-Link
+
+- **`POST /api/auth/extension/dm-link`**: New endpoint for DMs to link their full vtt-chat account to their external system (DDB) identity on first extension launch. Issues a `deviceCredential` for future returning-DM launches. Full-account JWT required; guest tokens are rejected with 403.
+- **Guest account merge**: If the DM previously connected as a guest player (same DDB `externalUserId`), their Characters and CampaignMemberships are automatically transferred to the full account and the guest user is soft-deleted. If two full accounts share the same DDB identity, the endpoint returns `409 IDENTITY_CONFLICT` for admin resolution.
+- **`POST /api/integrations/external/dm-sync` — full-account enforcement**: Guest JWTs now receive `403 FORBIDDEN`. Protects the privileged DM campaign sync operation.
+- **Campaign name sync**: `dm-sync` now updates `Campaign.name` when `campaignData.name` differs from the stored name. DDB is treated as the source of truth for the campaign name.
+- **Character stubs**: `Character.userId` is now nullable. `dm-sync` provisions unowned stub characters (userId = null) for players who have no vtt-chat account yet; stubs are promoted to owned characters automatically when the player connects via the extension.
+- **`/ext-launch?mode=dm-link`** page spec and extension popup DM states added to `docs/extension/DM-LINK.md` and `docs/extension/EXTENSION-UX.md` (Section 10).
 
 ### Fixed
 
-- **Character stats reverted to defaults (all 10s) when a player went offline** (e.g. extension-synced "Silk" on the PARTY panel): extension-synced characters stored ability scores in the external **nested** shape (`metadata.stats.abilityScores.{str,dex,…}`) while mock players stored the **flat** shape (`metadata.{strength,dexterity,…}`). Readers had accreted per-call band-aids to tolerate both, and the offline PARTY path read only the flat keys — so synced scores fell back to 10. Now there is ONE canonical flat shape end-to-end.
-- **Extension sync wrote to a character row the UI never displays** (intermittent "synced but not visible / doesn't persist"): the sync matched the character by `externalId` with no `orderBy`/active handling, while every PARTY/presence projection reads the user's **active** character. With duplicate or inactive rows the write and the read targeted different rows, so synced data silently vanished. The sync now resolves the character deterministically (active, then most-recent), and atomically marks it the single active character for its owner — guaranteeing the write target and display source are the same row.
-- **Synced stats applied incorrectly / stale values lingered**: extension data is now treated as the **source of truth** with section-wise **overwrite** semantics, not a shallow jsonb merge. A new shared `mergeCharacterMetadata` helper fully replaces each section the packet carries — the stats section is reset wholesale (every canonical stat key cleared then re-set, legacy nested `stats` dropped) so no stale ability/combat value survives a re-sync — while sections **absent** from a packet are preserved (the extension's first packet often omits stats, so a stats-less packet must never wipe stats). Both ingestion points (the sync API and guest-auth login) use the same helper, and the sync read+write runs under a row lock (`SELECT … FOR UPDATE`) so concurrent packets serialize and can't lose each other's writes.
+- **Character stats reverted to defaults (all 10s) when a player went offline**: extension-synced characters stored ability scores in the external nested shape while the offline PARTY path read only the flat shape. Now ONE canonical flat shape is enforced end-to-end.
+- **Extension sync wrote to a character row the UI never displays** (intermittent "synced but not visible"): the sync matched characters by `externalId` with no active-row handling, while every PARTY projection reads the active character. The sync now resolves deterministically (active, then most-recent) and atomically marks it the single active row.
+- **Synced stats applied incorrectly / stale values lingered**: extension data is treated as source-of-truth with section-wise overwrite semantics via a new `mergeCharacterMetadata` helper. The stats section is reset wholesale on every sync; sections absent from a packet are preserved. Sync read+write runs under `SELECT … FOR UPDATE` to serialize concurrent packets.
+- **Slash commands broken** (`/loot`, `/loot-split`, `/spend`, `/earn`, `/take`, `/give`, `/drop`): `MessageInput` had no catch-all for server-side commands — they fell through the if-else chain silently. Added a generic `onServerCommand` prop that forwards any unrecognised slash command to `POST /api/chat/command`. `ChatWindow` wires it up.
 
 ### Changed — Character stats consistency
 
-- Added `normalizeCharacterStats` + `NormalizedCharacterStats` to `packages/shared/utils/character-stats.ts` — the single source of truth for character stat shape. Idempotent; accepts the extension-nested payload, extension-stored metadata, and the mock/legacy flat shape.
-- Extension data is now transformed to the canonical flat shape at **every ingestion point** — `integration-sync.service.ts` (and it strips the obsolete nested `stats` key) and guest-auth `extension.service.ts`.
-- Both backend read projections (`listCampaignMembersForPresence`, `getSessionParticipantProfiles`) normalize on read, so online live-presence, offline PARTY snapshots, and legacy un-resynced rows all surface identical canonical stats.
-- Removed the dual-format band-aids in the frontend (`PartyPanel.helpers.ts`, `groupsPanel.ts`, `presenceSlice.ts`, `roomSlice.ts`) — they now read flat canonical keys only.
+- Added `normalizeCharacterStats` + `NormalizedCharacterStats` to `packages/shared/utils/character-stats.ts` — the single source of truth for character stat shape.
+- Extension data is now transformed to the canonical flat shape at every ingestion point (`integration-sync.service.ts`, `extension.service.ts`).
+- Both backend read projections (`listCampaignMembersForPresence`, `getSessionParticipantProfiles`) normalize on read.
+- Removed the dual-format band-aids in the frontend (`PartyPanel.helpers.ts`, `groupsPanel.ts`, `presenceSlice.ts`, `roomSlice.ts`).
 
----
-
-## [0.9.6] — 2026-06-22
-
-### Fixed
-
-- **Slash commands broken** (`/loot`, `/loot-split`, `/spend`, `/earn`, `/take`, `/give`, `/drop`): `MessageInput` had no catch-all for server-side commands — they fell through the if-else chain silently. Added a generic `onServerCommand` prop that forwards any unrecognised slash command to `POST /api/chat/command`. `ChatWindow` wires it up.
+### Changed — W-Inventory-System (`/loot`, `/loot-split`, `/spend`, `/earn`, `/take`, `/give`, `/drop`): `MessageInput` had no catch-all for server-side commands — they fell through the if-else chain silently. Added a generic `onServerCommand` prop that forwards any unrecognised slash command to `POST /api/chat/command`. `ChatWindow` wires it up.
 
 ### Changed — W-Inventory-System
 

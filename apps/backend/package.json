@@ -1,6 +1,6 @@
 {
   "name": "vtt-chat-backend",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "license": "AGPL-3.0-only",
   "description": "Backend service for VTT-Chat: a DM-grade, session-aware tabletop voice & chat platform.",
   "type": "module",
