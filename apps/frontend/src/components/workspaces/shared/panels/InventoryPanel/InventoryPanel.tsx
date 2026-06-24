@@ -515,8 +515,8 @@ export function InventoryPanel({
         </div>
       ) : (
         <div className="inventory-panel__body">
-          {/* "Brom's Inventory" label when DM has a character selected */}
-          {viewedMember && (
+          {/* "Brom's Inventory" label when DM has a character selected — hidden for players */}
+          {isDM && viewedMember && (
             <p className="inventory-panel__char-label">
               {viewedMember.label}'s Inventory
               {!viewedMember.isOnline && (

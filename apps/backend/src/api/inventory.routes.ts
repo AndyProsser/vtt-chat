@@ -170,12 +170,35 @@ router.get('/:campaignId/history', requireAuth, async (req: Request, res: Respon
   }
 
   try {
-    const history = await getInventoryHistory(campaignId as UUID, limit, offset, {
-      ownerType,
-      ownerId: ownerType === 'character' ? (ownerId ?? null) : undefined,
-      dateFrom,
-      dateTo,
-    })
+    type HistoryFilters = {
+      ownerType?: 'party' | 'character'
+      ownerId?: string | null
+      dateFrom?: Date
+      dateTo?: Date
+      viewerUserId?: string
+    }
+
+    let historyParams: HistoryFilters = { ownerType, dateFrom, dateTo }
+
+    if (role === 'DM') {
+      // DM sees all; honour explicit filters as-is
+      historyParams.ownerId = ownerType === 'character' ? (ownerId ?? null) : undefined
+    } else {
+      // Players/spectators: enforce visibility to own character + party only
+      if (ownerType === 'character') {
+        if (ownerId && ownerId !== user.userId) {
+          return res.status(403).json({ code: 'FORBIDDEN', message: "Cannot view other players' inventory history" })
+        }
+        // Restrict to own userId even if ownerId was absent
+        historyParams.ownerId = user.userId
+      } else if (!ownerType) {
+        // No filter specified → show own character + party (combined player view)
+        historyParams = { dateFrom, dateTo, viewerUserId: user.userId }
+      }
+      // ownerType === 'party' → no change, party is always visible to members
+    }
+
+    const history = await getInventoryHistory(campaignId as UUID, limit, offset, historyParams)
     return res.json({ history })
   } catch (err) {
     logger.error('inventory.routes', 'Failed to fetch inventory history', { campaignId, err })

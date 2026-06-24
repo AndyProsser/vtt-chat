@@ -11,6 +11,7 @@ import { getPrismaClient } from '@/infra/db'
 import {
   syncExternalInventoryItems,
   setExternalCurrencyWallet,
+  deleteExternalItemsNotInList,
   type ExternalInventoryItemInput,
   type InventoryItemDto,
   type CurrencyWalletDto,
@@ -30,24 +31,49 @@ const DENOMINATIONS = ['cp', 'sp', 'ep', 'gp', 'pp'] as const
 
 export type ConflictResolution = 'OVERWRITE' | 'IGNORE' | 'PROMPT'
 
-/** Validates and normalizes a raw `items` payload into safe `ExternalInventoryItemInput`s. */
+/**
+ * Maps a raw item type field (as sent by DnD Beyond or similar) to our InventoryItemCategory.
+ * "custom" items → HOMEBREW; magic-item rarities → MAGIC_ITEM; everything else → EQUIPMENT.
+ */
+function inferSrdCategory(it: Record<string, unknown>): InventoryItemCategory {
+  if (
+    typeof it.srdCategory === 'string' &&
+    VALID_ITEM_CATEGORIES.includes(it.srdCategory as string)
+  ) {
+    return it.srdCategory as InventoryItemCategory
+  }
+  if (it.type === 'custom') return InventoryItemCategory.HOMEBREW
+  if (
+    typeof it.rarity === 'string' &&
+    it.rarity !== '' &&
+    it.rarity !== 'Common'
+  ) {
+    return InventoryItemCategory.MAGIC_ITEM
+  }
+  return InventoryItemCategory.EQUIPMENT
+}
+
+/** Validates and normalizes a raw `items` payload into safe `ExternalInventoryItemInput`s.
+ *  Accepts both `externalId` (canonical) and `id` (DnD Beyond numeric id) as the external key. */
 export function sanitizeExternalItems(items: unknown): ExternalInventoryItemInput[] {
   if (!Array.isArray(items)) return []
   return items
-    .filter(
-      (it): it is Record<string, unknown> =>
-        Boolean(it) && typeof (it as any).externalId === 'string' && typeof (it as any).name === 'string'
-    )
+    .filter((it): it is Record<string, unknown> => {
+      if (!it || typeof it !== 'object') return false
+      const obj = it as Record<string, unknown>
+      const hasId = typeof obj.externalId === 'string' || obj.id !== undefined
+      return hasId && typeof obj.name === 'string' && (obj.name as string).trim().length > 0
+    })
     .map((it: any) => ({
-      externalId: String(it.externalId).trim(),
+      externalId:
+        typeof it.externalId === 'string' && it.externalId.trim().length > 0
+          ? it.externalId.trim()
+          : String(it.id),
       name: String(it.name).trim(),
       quantity: Math.max(1, Number(it.quantity) || 1),
       srdKey: typeof it.srdKey === 'string' ? it.srdKey.trim() : undefined,
-      srdCategory:
-        typeof it.srdCategory === 'string' && VALID_ITEM_CATEGORIES.includes(it.srdCategory)
-          ? (it.srdCategory as InventoryItemCategory)
-          : InventoryItemCategory.EQUIPMENT,
-      notes: typeof it.notes === 'string' ? it.notes.trim() : undefined,
+      srdCategory: inferSrdCategory(it),
+      notes: typeof it.notes === 'string' && it.notes.trim().length > 0 ? it.notes.trim() : undefined,
     }))
 }
 
@@ -107,6 +133,36 @@ async function broadcastInventoryItemEvent(params: {
           editedByUserId: actorUserId,
           editedAt: item.updatedAt,
         },
+  }
+  await eventBroadcaster.broadcastToCampaignMembers(item.campaignId, event)
+}
+
+async function broadcastInventoryRemovedEvent(params: {
+  item: InventoryItemDto
+  actorUserId: UUID
+  actorRole: Role
+  sessionId: UUID
+}): Promise<void> {
+  const { item, actorUserId, actorRole, sessionId } = params
+  const event: EventEnvelope = {
+    id: randomUUID() as UUID,
+    type: 'INVENTORY:ITEM_REMOVED',
+    version: 1,
+    userId: actorUserId,
+    userRole: actorRole,
+    sessionId,
+    roomId: null,
+    timestamp: Date.now(),
+    payload: {
+      campaignId: item.campaignId,
+      itemId: item.id,
+      ownerType: item.ownerType,
+      ownerId: item.ownerId,
+      name: item.name,
+      quantity: item.quantity,
+      removedByUserId: actorUserId,
+      removedAt: Date.now(),
+    },
   }
   await eventBroadcaster.broadcastToCampaignMembers(item.campaignId, event)
 }
@@ -262,14 +318,37 @@ export async function applyItemsSection(params: {
 
   const actorRole = params.actorUserId === params.dmUserId ? Role.DM : Role.PLAYER
   const sessionId = params.sessionId ?? NO_SESSION_ID
+
+  // Broadcast only items that actually changed content (skip no-op re-syncs)
   for (let i = 0; i < result.upserted.length; i++) {
-    await broadcastInventoryItemEvent({
-      item: result.upserted[i],
-      wasCreated: result.wasCreated[i],
+    if (result.wasChanged[i]) {
+      await broadcastInventoryItemEvent({
+        item: result.upserted[i],
+        wasCreated: result.wasCreated[i],
+        actorUserId: params.actorUserId,
+        actorRole,
+        sessionId,
+      })
+    }
+  }
+
+  // Replace semantics for character-owned syncs: remove items from this source that
+  // are no longer in the incoming list. Party inventory uses merge semantics.
+  // Use the full params.items list (not toApplyNow) so PROMPT-queued items are not deleted.
+  if (params.ownerType === 'character') {
+    const incomingIds = params.items.map((it) => it.externalId)
+    const removed = await deleteExternalItemsNotInList({
+      campaignId: params.campaignId,
+      ownerId: params.ownerId,
+      ownerType: 'character',
+      externalSource: params.externalSource,
+      keepExternalIds: incomingIds,
       actorUserId: params.actorUserId,
-      actorRole,
-      sessionId,
+      sessionId: params.sessionId,
     })
+    for (const { item } of removed) {
+      await broadcastInventoryRemovedEvent({ item, actorUserId: params.actorUserId, actorRole, sessionId })
+    }
   }
 
   return { upserted: result.upserted.length, pendingConflicts }

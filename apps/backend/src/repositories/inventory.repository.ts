@@ -101,6 +101,16 @@ export async function findInventoryItemByExternalId(params: {
   })
 }
 
+/**
+ * Upserts an external item with three-level matching:
+ * 1. Match by (campaignId, ownerId, externalSource, externalId) → update in-place.
+ * 2. Match by (campaignId, ownerId, name, externalId IS NULL) → claim the existing item
+ *    by stamping externalId/externalSource onto it (SRD name-connect).
+ * 3. No match → create new EXTERNAL item.
+ *
+ * Returns `created` (new row) and `changed` (row content was actually modified — false when
+ * an update left all fields identical, so callers can skip history writes and WS events).
+ */
 export async function upsertExternalInventoryItem(params: {
   campaignId: string
   ownerId: string | null
@@ -114,22 +124,58 @@ export async function upsertExternalInventoryItem(params: {
   notes: string | null
   addedByUserId: string
   now: Date
-}): Promise<{ row: InventoryItemRow; created: boolean }> {
-  const existing = await findInventoryItemByExternalId({
+}): Promise<{ row: InventoryItemRow; created: boolean; changed: boolean }> {
+  // Level 1: match by external key
+  const byExternalId = await findInventoryItemByExternalId({
     campaignId: params.campaignId,
     ownerId: params.ownerId,
     externalSource: params.externalSource,
     externalId: params.externalId,
   })
 
-  if (existing) {
+  if (byExternalId) {
+    const isChanged =
+      byExternalId.name !== params.name ||
+      byExternalId.quantity !== params.quantity ||
+      (byExternalId.notes ?? null) !== (params.notes ?? null)
+
+    if (!isChanged) return { row: byExternalId, created: false, changed: false }
+
     const row = await prisma.inventoryItem.update({
-      where: { id: existing.id },
+      where: { id: byExternalId.id },
       data: { name: params.name, quantity: params.quantity, notes: params.notes, updatedAt: params.now },
     })
-    return { row, created: false }
+    return { row, created: false, changed: true }
   }
 
+  // Level 2: name-connect — claim an existing unlinked item with the same name
+  const byName = await prisma.inventoryItem.findFirst({
+    where: {
+      campaignId: params.campaignId,
+      ownerId: params.ownerId,
+      name: { equals: params.name, mode: 'insensitive' },
+      externalId: null,
+    },
+  })
+
+  if (byName) {
+    const row = await prisma.inventoryItem.update({
+      where: { id: byName.id },
+      data: {
+        externalId: params.externalId,
+        externalSource: params.externalSource,
+        // Prefer existing srdKey if already set; otherwise use the one from the sync
+        srdKey: byName.srdKey ?? params.srdKey,
+        name: params.name,
+        quantity: params.quantity,
+        notes: params.notes,
+        updatedAt: params.now,
+      },
+    })
+    return { row, created: false, changed: true }
+  }
+
+  // Level 3: create new
   const { randomUUID } = await import('node:crypto')
   const row = await createInventoryItemRecord({
     id: randomUUID(),
@@ -148,7 +194,38 @@ export async function upsertExternalInventoryItem(params: {
     createdAt: params.now,
     updatedAt: params.now,
   })
-  return { row, created: true }
+  return { row, created: true, changed: true }
+}
+
+/**
+ * Deletes all items for the given owner+source whose externalId is NOT in `keepExternalIds`.
+ * Returns the deleted rows so callers can write history entries and broadcast ITEM_REMOVED.
+ */
+export async function deleteStaleExternalItems(params: {
+  campaignId: string
+  ownerId: string | null
+  externalSource: string
+  keepExternalIds: string[]
+}): Promise<InventoryItemRow[]> {
+  const toDelete = await prisma.inventoryItem.findMany({
+    where: {
+      campaignId: params.campaignId,
+      ownerId: params.ownerId,
+      externalSource: params.externalSource,
+      externalId: {
+        not: null,
+        notIn: params.keepExternalIds.length > 0 ? params.keepExternalIds : ['__never__'],
+      },
+    },
+  })
+
+  if (toDelete.length === 0) return []
+
+  await prisma.inventoryItem.deleteMany({
+    where: { id: { in: toDelete.map((r) => r.id) } },
+  })
+
+  return toDelete
 }
 
 export async function updateInventoryItemRecord(params: {
@@ -268,28 +345,49 @@ export async function listInventoryHistory(params: {
   ownerId?: string | null
   dateFrom?: Date
   dateTo?: Date
+  /**
+   * When set, restricts results to entries visible to this player:
+   * their own character history (ownerId = viewerUserId) plus party history.
+   * Takes precedence over ownerType/ownerId when present.
+   */
+  viewerUserId?: string
 }): Promise<InventoryHistoryRow[]> {
-  const { ownerType, ownerId, dateFrom, dateTo } = params
+  const { ownerType, ownerId, dateFrom, dateTo, viewerUserId } = params
 
-  // Owner filter: match any history row where the actor's owned entity appears
-  // in either the from or to side of the action.
-  const ownerWhere =
-    ownerType === 'party'
-      ? {
-          OR: [
-            { fromOwnerType: 'party', fromOwnerId: null },
-            { toOwnerType: 'party', toOwnerId: null },
-          ],
-        }
-      : ownerType === 'character' && ownerId
+  let ownerWhere: object | undefined
+
+  if (viewerUserId) {
+    // Player-scoped view: own character entries OR party entries
+    ownerWhere = {
+      OR: [
+        { fromOwnerType: 'character', fromOwnerId: viewerUserId },
+        { toOwnerType: 'character', toOwnerId: viewerUserId },
+        { actorUserId: viewerUserId },
+        { fromOwnerType: 'party', fromOwnerId: null },
+        { toOwnerType: 'party', toOwnerId: null },
+      ],
+    }
+  } else {
+    // Owner filter: match any history row where the actor's owned entity appears
+    // in either the from or to side of the action.
+    ownerWhere =
+      ownerType === 'party'
         ? {
             OR: [
-              { fromOwnerType: 'character', fromOwnerId: ownerId },
-              { toOwnerType: 'character', toOwnerId: ownerId },
-              { actorUserId: ownerId },
+              { fromOwnerType: 'party', fromOwnerId: null },
+              { toOwnerType: 'party', toOwnerId: null },
             ],
           }
-        : undefined
+        : ownerType === 'character' && ownerId
+          ? {
+              OR: [
+                { fromOwnerType: 'character', fromOwnerId: ownerId },
+                { toOwnerType: 'character', toOwnerId: ownerId },
+                { actorUserId: ownerId },
+              ],
+            }
+          : undefined
+  }
 
   return prisma.inventoryHistoryEntry.findMany({
     where: {

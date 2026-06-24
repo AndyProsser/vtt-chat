@@ -78,6 +78,18 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
   }
 
   try {
+    // Normalise DnD Beyond field aliases before passing to the sync service.
+    // Extension sends currencyUpdate.currency (not .wallet) and items[].id (not .externalId).
+    const normalisedCurrencyUpdate =
+      currencyUpdate && typeof currencyUpdate === 'object'
+        ? { ...currencyUpdate, wallet: currencyUpdate.wallet ?? currencyUpdate.currency }
+        : currencyUpdate
+
+    const normalisedPartyCurrencyUpdate =
+      partyCurrencyUpdate && typeof partyCurrencyUpdate === 'object'
+        ? { ...partyCurrencyUpdate, wallet: partyCurrencyUpdate.wallet ?? partyCurrencyUpdate.currency }
+        : partyCurrencyUpdate
+
     const result = await syncExternalIntegration({
       campaignId,
       externalSystem,
@@ -91,9 +103,9 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
       characterUpdate,
       campaignUpdate,
       inventoryUpdate,
-      currencyUpdate,
+      currencyUpdate: normalisedCurrencyUpdate,
       partyInventoryUpdate,
-      partyCurrencyUpdate,
+      partyCurrencyUpdate: normalisedPartyCurrencyUpdate,
       sessionId: typeof sessionId === 'string' ? sessionId : undefined,
     })
 

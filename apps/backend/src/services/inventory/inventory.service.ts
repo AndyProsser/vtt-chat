@@ -20,6 +20,7 @@ import {
   createInventoryHistoryRecord,
   listInventoryHistory,
   upsertExternalInventoryItem,
+  deleteStaleExternalItems,
   type InventoryItemRow,
   type CurrencyWalletRow,
   type InventoryHistoryRow,
@@ -140,6 +141,7 @@ export async function getInventoryHistory(
     ownerId?: string | null
     dateFrom?: Date
     dateTo?: Date
+    viewerUserId?: string
   }
 ): Promise<InventoryHistoryDto[]> {
   const [rows, dmId] = await Promise.all([
@@ -688,6 +690,8 @@ export interface ExternalInventorySyncResult {
   upserted: InventoryItemDto[]
   /** Parallel to `upserted` — true if the item at the same index was newly created. */
   wasCreated: boolean[]
+  /** Parallel to `upserted` — false when the update left all content fields identical (no-op). */
+  wasChanged: boolean[]
   created: number
   updated: number
 }
@@ -712,11 +716,12 @@ export async function syncExternalInventoryItems(params: {
   const now = new Date()
   const results: InventoryItemDto[] = []
   const createdFlags: boolean[] = []
+  const changedFlags: boolean[] = []
   let created = 0
   let updated = 0
 
   for (const item of params.items) {
-    const { row, created: wasCreated } = await upsertExternalInventoryItem({
+    const { row, created: wasCreated, changed: wasChanged } = await upsertExternalInventoryItem({
       campaignId: params.campaignId,
       ownerId: params.ownerId,
       ownerType,
@@ -731,31 +736,88 @@ export async function syncExternalInventoryItems(params: {
       now,
     })
 
-    await createInventoryHistoryRecord({
-      id: randomUUID() as UUID,
-      campaignId: params.campaignId,
-      itemId: row.id,
-      sessionId: params.sessionId ?? null,
-      actorUserId: params.actorUserId,
-      actionType: wasCreated ? InventoryActionType.ITEM_ADDED : InventoryActionType.ITEM_EDITED,
-      fromOwnerType: wasCreated ? null : ownerType,
-      fromOwnerId: wasCreated ? null : params.ownerId,
-      toOwnerType: ownerType,
-      toOwnerId: params.ownerId,
-      quantity: item.quantity,
-      currencyDelta: null,
-      itemName: item.name,
-      notes: item.notes ?? null,
-      createdAt: now,
-    })
+    // Only write history when content actually changed — skip no-op re-syncs
+    if (wasChanged) {
+      await createInventoryHistoryRecord({
+        id: randomUUID() as UUID,
+        campaignId: params.campaignId,
+        itemId: row.id,
+        sessionId: params.sessionId ?? null,
+        actorUserId: params.actorUserId,
+        actionType: wasCreated ? InventoryActionType.ITEM_ADDED : InventoryActionType.ITEM_EDITED,
+        fromOwnerType: wasCreated ? null : ownerType,
+        fromOwnerId: wasCreated ? null : params.ownerId,
+        toOwnerType: ownerType,
+        toOwnerId: params.ownerId,
+        quantity: item.quantity,
+        currencyDelta: null,
+        itemName: item.name,
+        notes: item.notes ?? null,
+        createdAt: now,
+      })
+    }
 
     results.push(mapItem(row))
     createdFlags.push(wasCreated)
+    changedFlags.push(wasChanged)
     if (wasCreated) created++
-    else updated++
+    else if (wasChanged) updated++
   }
 
-  return { upserted: results, wasCreated: createdFlags, created, updated }
+  return { upserted: results, wasCreated: createdFlags, wasChanged: changedFlags, created, updated }
+}
+
+export interface DeletedExternalItemResult {
+  item: InventoryItemDto
+}
+
+/**
+ * Deletes all items for the given owner+source that are NOT in `keepExternalIds`.
+ * Writes an ITEM_REMOVED history entry for each deletion.
+ * Returns the deleted items so callers can broadcast INVENTORY:ITEM_REMOVED events.
+ */
+export async function deleteExternalItemsNotInList(params: {
+  campaignId: UUID
+  ownerId: UUID | null
+  ownerType: 'character' | 'party'
+  externalSource: string
+  keepExternalIds: string[]
+  actorUserId: UUID
+  sessionId?: UUID
+}): Promise<DeletedExternalItemResult[]> {
+  const deleted = await deleteStaleExternalItems({
+    campaignId: params.campaignId,
+    ownerId: params.ownerId,
+    externalSource: params.externalSource,
+    keepExternalIds: params.keepExternalIds,
+  })
+
+  if (deleted.length === 0) return []
+
+  const now = new Date()
+  await Promise.all(
+    deleted.map((row) =>
+      createInventoryHistoryRecord({
+        id: randomUUID() as UUID,
+        campaignId: params.campaignId,
+        itemId: row.id,
+        sessionId: params.sessionId ?? null,
+        actorUserId: params.actorUserId,
+        actionType: InventoryActionType.ITEM_REMOVED,
+        fromOwnerType: params.ownerType,
+        fromOwnerId: params.ownerId,
+        toOwnerType: null,
+        toOwnerId: null,
+        quantity: row.quantity,
+        currencyDelta: null,
+        itemName: row.name,
+        notes: null,
+        createdAt: now,
+      })
+    )
+  )
+
+  return deleted.map((row) => ({ item: mapItem(row) }))
 }
 
 /**
