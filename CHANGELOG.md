@@ -29,8 +29,6 @@ All notable changes to this project are documented here. One entry per version c
 - Both backend read projections (`listCampaignMembersForPresence`, `getSessionParticipantProfiles`) normalize on read.
 - Removed the dual-format band-aids in the frontend (`PartyPanel.helpers.ts`, `groupsPanel.ts`, `presenceSlice.ts`, `roomSlice.ts`).
 
-### Changed — W-Inventory-System (`/loot`, `/loot-split`, `/spend`, `/earn`, `/take`, `/give`, `/drop`): `MessageInput` had no catch-all for server-side commands — they fell through the if-else chain silently. Added a generic `onServerCommand` prop that forwards any unrecognised slash command to `POST /api/chat/command`. `ChatWindow` wires it up.
-
 ### Changed — W-Inventory-System
 
 - **`/loot-split` auto-split**: Removed the 60-second accept flow. Loot is now distributed immediately when the DM runs `/loot-split` — each connected player's share is transferred party→character in the same request. Non-even remainders stay in the party inventory. The `LootSplitCard` in chat shows the completed split with named recipients; no accept button or countdown.
