@@ -6,6 +6,7 @@
 
 import { InventoryItemCategory, Role } from '@shared'
 import type { UUID, CurrencyWallet, EventEnvelope } from '@shared'
+import { logger } from '@/utils'
 import { randomUUID } from 'node:crypto'
 import { getPrismaClient } from '@/infra/db'
 import {
@@ -95,6 +96,7 @@ async function broadcastInventoryItemEvent(params: {
   actorRole: Role
   sessionId: UUID
 }): Promise<void> {
+  if (!eventBroadcaster.isReady()) return
   const { item, wasCreated, actorUserId, actorRole, sessionId } = params
   const event: EventEnvelope = {
     id: randomUUID() as UUID,
@@ -134,7 +136,13 @@ async function broadcastInventoryItemEvent(params: {
           editedAt: item.updatedAt,
         },
   }
-  await eventBroadcaster.broadcastToCampaignMembers(item.campaignId, event)
+  try {
+    await eventBroadcaster.broadcastToCampaignMembers(item.campaignId, event)
+  } catch (err) {
+    logger.warn('inventory-sync', 'Failed to broadcast inventory item event', {
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
 }
 
 async function broadcastInventoryRemovedEvent(params: {
@@ -143,7 +151,9 @@ async function broadcastInventoryRemovedEvent(params: {
   actorRole: Role
   sessionId: UUID
 }): Promise<void> {
+  if (!eventBroadcaster.isReady()) return
   const { item, actorUserId, actorRole, sessionId } = params
+  const now = Date.now()
   const event: EventEnvelope = {
     id: randomUUID() as UUID,
     type: 'INVENTORY:ITEM_REMOVED',
@@ -152,7 +162,7 @@ async function broadcastInventoryRemovedEvent(params: {
     userRole: actorRole,
     sessionId,
     roomId: null,
-    timestamp: Date.now(),
+    timestamp: now,
     payload: {
       campaignId: item.campaignId,
       itemId: item.id,
@@ -161,10 +171,16 @@ async function broadcastInventoryRemovedEvent(params: {
       name: item.name,
       quantity: item.quantity,
       removedByUserId: actorUserId,
-      removedAt: Date.now(),
+      removedAt: now,
     },
   }
-  await eventBroadcaster.broadcastToCampaignMembers(item.campaignId, event)
+  try {
+    await eventBroadcaster.broadcastToCampaignMembers(item.campaignId, event)
+  } catch (err) {
+    logger.warn('inventory-sync', 'Failed to broadcast inventory removed event', {
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
 }
 
 async function broadcastCurrencyChangedEvent(params: {
@@ -175,6 +191,7 @@ async function broadcastCurrencyChangedEvent(params: {
   actorRole: Role
   sessionId: UUID
 }): Promise<void> {
+  if (!eventBroadcaster.isReady()) return
   const { wallet, delta, newBalance, actorUserId, actorRole, sessionId } = params
   const event: EventEnvelope = {
     id: randomUUID() as UUID,
@@ -196,7 +213,13 @@ async function broadcastCurrencyChangedEvent(params: {
       changedAt: wallet.updatedAt,
     },
   }
-  await eventBroadcaster.broadcastToCampaignMembers(wallet.campaignId, event)
+  try {
+    await eventBroadcaster.broadcastToCampaignMembers(wallet.campaignId, event)
+  } catch (err) {
+    logger.warn('inventory-sync', 'Failed to broadcast currency changed event', {
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
 }
 
 function notifyDmOfPendingSync(params: {

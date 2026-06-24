@@ -20,7 +20,6 @@ import {
   createInventoryHistoryRecord,
   listInventoryHistory,
   upsertExternalInventoryItem,
-  deleteStaleExternalItems,
   type InventoryItemRow,
   type CurrencyWalletRow,
   type InventoryHistoryRow,
@@ -785,18 +784,28 @@ export async function deleteExternalItemsNotInList(params: {
   actorUserId: UUID
   sessionId?: UUID
 }): Promise<DeletedExternalItemResult[]> {
-  const deleted = await deleteStaleExternalItems({
-    campaignId: params.campaignId,
-    ownerId: params.ownerId,
-    externalSource: params.externalSource,
-    keepExternalIds: params.keepExternalIds,
+  // Find first, before any deletion, so history entries can reference the itemId
+  // while the row still exists in DB (FK constraint: onDelete SetNull applies to
+  // existing rows, but new inserts still require a live parent).
+  const toDelete = await prisma.inventoryItem.findMany({
+    where: {
+      campaignId: params.campaignId,
+      ownerId: params.ownerId,
+      externalSource: params.externalSource,
+      externalId: {
+        not: null,
+        notIn: params.keepExternalIds.length > 0 ? params.keepExternalIds : ['__never__'],
+      },
+    },
   })
 
-  if (deleted.length === 0) return []
+  if (toDelete.length === 0) return []
 
   const now = new Date()
+
+  // Write history while items still exist, then delete
   await Promise.all(
-    deleted.map((row) =>
+    toDelete.map((row) =>
       createInventoryHistoryRecord({
         id: randomUUID() as UUID,
         campaignId: params.campaignId,
@@ -817,7 +826,11 @@ export async function deleteExternalItemsNotInList(params: {
     )
   )
 
-  return deleted.map((row) => ({ item: mapItem(row) }))
+  await prisma.inventoryItem.deleteMany({
+    where: { id: { in: toDelete.map((r) => r.id) } },
+  })
+
+  return toDelete.map((row) => ({ item: mapItem(row as InventoryItemRow) }))
 }
 
 /**

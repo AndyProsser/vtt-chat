@@ -197,6 +197,7 @@ The extension communicates with the backend via the **background script**.
 | `POST /api/campaigns/:campaignId/session/ensure`    | Extension token   | Create IDLE session if none exists; returns existing session if any   |
 | `POST /api/integrations/external/avatar-upload`     | Token             | Upload avatar image; returns hosted `avatarUrl`                       |
 | `POST /api/integrations/external/sync`              | Token             | Push character/campaign updates per sync policy                       |
+| `POST /api/integrations/external/dm-sync`           | DM token          | DM-triggered full sync; provisions party character stubs              |
 | `POST /api/integrations/logs/ingest`                | Token             | External log ingestion (rolls, attacks, etc.)                         |
 | `POST /api/livekit/token`                           | Token             | LiveKit room token                                                    |
 
@@ -564,6 +565,138 @@ When a policy blocks only part of a combined sync request (e.g. inventory enable
 | 403 | `SYNC_POLICY_PARTY_ACCESS_DENIED` | Caller is a player and `extensionPartyInventorySyncAccess` is `DM_ONLY` or `DISABLED`, and the request targets only party inventory. |
 
 Requests containing both character and party targets are never rejected wholesale on a party policy violation — character items are applied and the party portions are skipped (see Partial Application above).
+
+---
+
+---
+
+### 5f. DM Campaign Sync Protocol
+
+The DM can manually trigger a full campaign sync from the extension popup after connecting. This sync is DM-only and operates independently of the per-player character sync covered in §5b.
+
+#### When it runs
+
+- The DM clicks **Sync Campaign** in the extension popup (manual trigger only).
+- It also fires automatically after a successful DM login (`runGuestLoginAndLaunch` with `isDm=true`).
+
+#### Endpoint
+
+```http
+POST /api/integrations/external/dm-sync
+Authorization: Bearer <dm-token>
+Content-Type: application/json
+```
+
+**Auth requirement:** The caller must be authenticated as the campaign DM. The backend rejects this endpoint with `403 FORBIDDEN` if the caller's role is not `DM` for the given campaign.
+
+#### Request
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "dndbeyond",
+  "externalCampaignId": "string (DDB campaign ID)",
+  "campaignData": {
+    "name": "string",
+    "description": "string or null",
+    "publicNotes": "string or null",
+    "dmExternalUserId": "string (DDB user ID of the DM)",
+    "dmUsername": "string or null",
+    "dateCreated": "ISO 8601 string or null",
+    "memberCount": 4
+  },
+  "characters": [
+    {
+      "externalCharacterId": "string (DDB character ID)",
+      "externalUserId": "string (DDB user ID of the character's owner)",
+      "displayName": "string or null (DDB username)",
+      "name": "string or null (character name)",
+      "level": 5,
+      "avatarUrl": "string or null (DDB CDN URL — not yet mirrored)",
+      "characterUrl": "https://www.dndbeyond.com/characters/<id>"
+    }
+  ]
+}
+```
+
+`characters` is populated by the extension by either:
+
+1. Asking a live DDB tab's content script to extract full character data (`dm-fetch-campaign-data`).
+2. Falling back to direct DDB API calls from the background script using the DM's session cookies (produces basic metadata only — no full stats).
+
+#### Response (200)
+
+```json
+{
+  "message": "DM campaign sync completed",
+  "applied": {
+    "campaignUpdated": true,
+    "charactersProvisioned": 3,
+    "charactersLinked": 1,
+    "charactersSkipped": 0
+  }
+}
+```
+
+| Field                   | Meaning                                                          |
+| ----------------------- | ---------------------------------------------------------------- |
+| `charactersProvisioned` | Stub character records created for players with no VTT-Chat link |
+| `charactersLinked`      | Matched to an existing VTT-Chat user via ExternalIdentity        |
+| `charactersSkipped`     | Omitted due to missing `externalCharacterId`                     |
+
+#### Character resolution strategy
+
+For each entry in `characters`, the backend applies the following resolution order:
+
+##### Step 1 — Match by `externalUserId`
+
+Look up an `ExternalIdentity` record where `(externalSystem, externalUserId)` matches. If found, the owning VTT-Chat user is known. Upsert the character against that user account (same as the standard player sync in §5b).
+
+##### Step 2 — Stub creation (no match found)
+
+If no `ExternalIdentity` exists for the given `externalUserId`, the backend creates an **unowned character stub**:
+
+- `Character` row is created with `externalSystem`, `externalId` (`externalCharacterId`), `externalUserId`, and available metadata fields.
+- `userId` is `null` — the stub has no VTT-Chat account owner yet.
+- No `CampaignMembership` record is created at this point.
+- The stub is visible to the DM in the campaign management panel, labelled as "pending player link".
+
+Stubs are idempotent: re-running the DM sync updates the stub's metadata but does not create duplicates.
+
+##### Step 3 — Lazy promotion on first player connect
+
+When a player later connects via the extension (guest login or full login), the auth flow:
+
+1. Creates or looks up an `ExternalIdentity` for their `(externalSystem, externalUserId)`.
+2. Searches for an existing character stub in the campaign matching `(externalSystem, externalId=externalCharacterId)` with `userId IS NULL`.
+3. If a stub is found: sets `userId` on the character, creates the `CampaignMembership`, and promotes the stub to a full campaign member. The character's existing metadata (name, level, avatar, etc.) from the DM sync is preserved and updated with any richer data from the player's own sync.
+4. If no stub is found: the normal guest-login character creation path runs.
+
+This means the DM sync pre-populates the campaign with character records that are seamlessly adopted the moment each player connects — no manual resolution needed for the common case.
+
+#### Players with existing VTT-Chat accounts not yet linked to DDB
+
+A player may have a full VTT-Chat account but no `ExternalIdentity` for DDB (they joined via email/password, not the extension). In this case:
+
+- The DM sync **does not auto-link** them. Matching by display name or email is not attempted — DDB does not expose player emails via its campaign API, and fuzzy name matching risks incorrect merges.
+- A stub character is created as normal (Step 2 above).
+- The existing VTT-Chat user and the stub coexist until one of the following resolves it:
+  - The player links their DDB account from their VTT-Chat profile settings (self-service).
+  - The DM uses the campaign management panel to manually assign the stub to an existing member.
+- Once linked, the stub is promoted via the same lazy-promotion logic (Step 3).
+
+#### Avatar handling
+
+The `avatarUrl` values in the DM sync payload are raw DDB CDN URLs. The backend **does not mirror avatars** during DM campaign sync — mirroring is performed by the extension during per-character syncs (§5c). The raw URLs are stored in `Character.metadata.avatarUrl` as a fallback until the player's own extension sync provides a mirrored URL.
+
+#### Error responses
+
+| Status | Code                          | Cause                                                              |
+| ------ | ----------------------------- | ------------------------------------------------------------------ |
+| 400    | `INVALID_INPUT`               | Missing `campaignId`, `externalSystem`, or malformed body          |
+| 401    | `UNAUTHORIZED`                | Missing or invalid token                                           |
+| 403    | `FORBIDDEN`                   | Caller is not the DM of the specified campaign                     |
+| 403    | `INTEGRATION_NOT_AUTHORIZED`  | External system is blocked or not authorized by the platform admin |
 
 ---
 

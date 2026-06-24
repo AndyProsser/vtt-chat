@@ -1,6 +1,7 @@
 import { Request, Response, Router, NextFunction } from 'express'
 import { extractTokenFromHeader, verifyToken } from '@/services/auth.service'
 import { ErrorCode, isValidUUID } from '@shared'
+import { logger } from '@/utils'
 import type { UUID } from '@shared'
 import { getSessionPresence } from '@/services/room.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
@@ -186,7 +187,11 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
       message: 'Sync completed successfully',
       applied: result.applied,
     })
-  } catch {
+  } catch (err) {
+    logger.error('integrations', 'Unhandled error in POST /external/sync', {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    })
     return res.status(500).json({
       code: ErrorCode.INTERNAL_ERROR,
       message: 'Failed to sync external data',
