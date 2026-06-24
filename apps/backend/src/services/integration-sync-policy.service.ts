@@ -5,19 +5,23 @@
  */
 
 import { InventoryItemCategory, Role } from '@shared'
-import type { UUID, CurrencyWallet } from '@shared'
+import type { UUID, CurrencyWallet, EventEnvelope } from '@shared'
 import { randomUUID } from 'node:crypto'
 import { getPrismaClient } from '@/infra/db'
 import {
   syncExternalInventoryItems,
   setExternalCurrencyWallet,
   type ExternalInventoryItemInput,
+  type InventoryItemDto,
+  type CurrencyWalletDto,
 } from '@/services/inventory/inventory.service'
 import {
   queuePendingItemConflict,
   queuePendingCurrencyConflict,
 } from '@/services/inventory/pending-extension-sync.service'
 import eventBroadcaster from '@/ws/event-broadcaster'
+
+const NO_SESSION_ID = '00000000-0000-4000-8000-000000000000' as UUID
 
 const prisma = getPrismaClient()
 
@@ -56,6 +60,87 @@ export function sanitizeExternalWallet(wallet: Record<string, unknown>): Partial
     gp: typeof wallet.gp === 'number' ? Math.max(0, wallet.gp) : undefined,
     pp: typeof wallet.pp === 'number' ? Math.max(0, wallet.pp) : undefined,
   }
+}
+
+async function broadcastInventoryItemEvent(params: {
+  item: InventoryItemDto
+  wasCreated: boolean
+  actorUserId: UUID
+  actorRole: Role
+  sessionId: UUID
+}): Promise<void> {
+  const { item, wasCreated, actorUserId, actorRole, sessionId } = params
+  const event: EventEnvelope = {
+    id: randomUUID() as UUID,
+    type: wasCreated ? 'INVENTORY:ITEM_ADDED' : 'INVENTORY:ITEM_EDITED',
+    version: 1,
+    userId: actorUserId,
+    userRole: actorRole,
+    sessionId,
+    roomId: null,
+    timestamp: wasCreated ? item.createdAt : item.updatedAt,
+    payload: wasCreated
+      ? {
+          campaignId: item.campaignId,
+          itemId: item.id,
+          ownerType: item.ownerType,
+          ownerId: item.ownerId,
+          name: item.name,
+          quantity: item.quantity,
+          source: item.source,
+          srdKey: item.srdKey ?? undefined,
+          srdCategory: item.srdCategory,
+          notes: item.notes ?? undefined,
+          externalId: item.externalId ?? undefined,
+          externalSource: item.externalSource ?? undefined,
+          addedByUserId: item.addedByUserId,
+          addedAt: item.createdAt,
+        }
+      : {
+          campaignId: item.campaignId,
+          itemId: item.id,
+          ownerType: item.ownerType,
+          ownerId: item.ownerId,
+          name: item.name,
+          quantity: item.quantity,
+          notes: item.notes ?? undefined,
+          editedByUserId: actorUserId,
+          editedAt: item.updatedAt,
+        },
+  }
+  await eventBroadcaster.broadcastToCampaignMembers(item.campaignId, event)
+}
+
+async function broadcastCurrencyChangedEvent(params: {
+  wallet: CurrencyWalletDto
+  delta: Partial<CurrencyWallet>
+  newBalance: CurrencyWallet
+  actorUserId: UUID
+  actorRole: Role
+  sessionId: UUID
+}): Promise<void> {
+  const { wallet, delta, newBalance, actorUserId, actorRole, sessionId } = params
+  const event: EventEnvelope = {
+    id: randomUUID() as UUID,
+    type: 'INVENTORY:CURRENCY_CHANGED',
+    version: 1,
+    userId: actorUserId,
+    userRole: actorRole,
+    sessionId,
+    roomId: null,
+    timestamp: wallet.updatedAt,
+    payload: {
+      campaignId: wallet.campaignId,
+      walletId: wallet.id,
+      ownerType: wallet.ownerType,
+      ownerId: wallet.ownerId,
+      delta,
+      newBalance,
+      changedByUserId: actorUserId,
+      changedAt: wallet.updatedAt,
+    },
+  }
+  await eventBroadcaster.broadcastToCampaignMembers(wallet.campaignId, event)
 }
 
 function notifyDmOfPendingSync(params: {
@@ -175,6 +260,18 @@ export async function applyItemsSection(params: {
     sessionId: params.sessionId,
   })
 
+  const actorRole = params.actorUserId === params.dmUserId ? Role.DM : Role.PLAYER
+  const sessionId = params.sessionId ?? NO_SESSION_ID
+  for (let i = 0; i < result.upserted.length; i++) {
+    await broadcastInventoryItemEvent({
+      item: result.upserted[i],
+      wasCreated: result.wasCreated[i],
+      actorUserId: params.actorUserId,
+      actorRole,
+      sessionId,
+    })
+  }
+
   return { upserted: result.upserted.length, pendingConflicts }
 }
 
@@ -203,6 +300,30 @@ export async function applyCurrencySection(params: {
     existing && DENOMINATIONS.some((denom) => typeof params.wallet[denom] === 'number' && existing[denom] !== 0)
   )
 
+  const existingBalance = {
+    cp: existing?.cp ?? 0,
+    sp: existing?.sp ?? 0,
+    ep: existing?.ep ?? 0,
+    gp: existing?.gp ?? 0,
+    pp: existing?.pp ?? 0,
+  }
+
+  const newBalance: CurrencyWallet = {
+    cp: params.wallet.cp ?? existingBalance.cp,
+    sp: params.wallet.sp ?? existingBalance.sp,
+    ep: params.wallet.ep ?? existingBalance.ep,
+    gp: params.wallet.gp ?? existingBalance.gp,
+    pp: params.wallet.pp ?? existingBalance.pp,
+  }
+
+  const delta: Partial<CurrencyWallet> = {
+    cp: newBalance.cp - existingBalance.cp,
+    sp: newBalance.sp - existingBalance.sp,
+    ep: newBalance.ep - existingBalance.ep,
+    gp: newBalance.gp - existingBalance.gp,
+    pp: newBalance.pp - existingBalance.pp,
+  }
+
   const apply = () =>
     setExternalCurrencyWallet({
       campaignId: params.campaignId,
@@ -213,8 +334,12 @@ export async function applyCurrencySection(params: {
       sessionId: params.sessionId,
     })
 
+  const actorRole = params.actorUserId === params.dmUserId ? Role.DM : Role.PLAYER
+  const sessionId = params.sessionId ?? NO_SESSION_ID
+
   if (!isConflict || params.conflictResolution === 'OVERWRITE') {
-    await apply()
+    const wallet = await apply()
+    await broadcastCurrencyChangedEvent({ wallet, delta, newBalance, actorUserId: params.actorUserId, actorRole, sessionId })
     return { updated: true, pendingConflicts: 0 }
   }
 
@@ -242,6 +367,7 @@ export async function applyCurrencySection(params: {
     return { updated: false, pendingConflicts: 1 }
   }
 
-  await apply()
+  const wallet = await apply()
+  await broadcastCurrencyChangedEvent({ wallet, delta, newBalance, actorUserId: params.actorUserId, actorRole, sessionId })
   return { updated: true, pendingConflicts: 0 }
 }

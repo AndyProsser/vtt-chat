@@ -686,6 +686,8 @@ export interface ExternalInventoryItemInput {
 
 export interface ExternalInventorySyncResult {
   upserted: InventoryItemDto[]
+  /** Parallel to `upserted` — true if the item at the same index was newly created. */
+  wasCreated: boolean[]
   created: number
   updated: number
 }
@@ -709,6 +711,7 @@ export async function syncExternalInventoryItems(params: {
   const ownerType = params.ownerType ?? 'character'
   const now = new Date()
   const results: InventoryItemDto[] = []
+  const createdFlags: boolean[] = []
   let created = 0
   let updated = 0
 
@@ -747,11 +750,12 @@ export async function syncExternalInventoryItems(params: {
     })
 
     results.push(mapItem(row))
+    createdFlags.push(wasCreated)
     if (wasCreated) created++
     else updated++
   }
 
-  return { upserted: results, created, updated }
+  return { upserted: results, wasCreated: createdFlags, created, updated }
 }
 
 /**
