@@ -213,6 +213,16 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
  */
 router.post('/external/dm-sync', requireAuth, async (req: Request, res: Response) => {
   const user = (req as any).user
+
+  // DM sync is a privileged campaign operation. Guest tokens are not accepted.
+  if (user.authType !== 'FULL') {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message:
+        'A full vtt-chat account is required to run a DM campaign sync. Guest tokens are not accepted.',
+    })
+  }
+
   const { campaignId, externalSystem, externalCampaignId, campaignData, characters } = req.body || {}
 
   if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {

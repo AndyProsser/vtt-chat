@@ -27,7 +27,9 @@ import {
   listDeviceCredentials,
   revokeDeviceCredential,
 } from '@/services/auth/device-credential.service'
+import { dmLinkAccount } from '@/services/auth/dm-link.service'
 import { DEVICE_CREDENTIAL_EXCHANGE_RATE_LIMIT } from '@/constants/auth.constants'
+import { isValidUUID } from '@shared'
 
 const router = Router()
 
@@ -279,6 +281,105 @@ router.get('/extension/credentials', authMiddleware, async (req: Request, res: R
       code: 'CREDENTIAL_LIST_FAILED',
       message: 'Failed to list device credentials',
     })
+  }
+})
+
+/**
+ * POST /api/auth/extension/dm-link
+ *
+ * Links a DM's full vtt-chat account to their external system identity.
+ * Runs the guest account merge if a guest ExternalIdentity with the same
+ * externalUserId is found. Issues a deviceCredential for future returning launches.
+ *
+ * Requires a full-account JWT. Guest tokens are rejected with 403.
+ * Caller must be the currentDmId of the specified campaign.
+ *
+ * See docs/extension/DM-LINK.md for the full flow specification.
+ */
+router.post('/extension/dm-link', authMiddleware, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const {
+    campaignId,
+    externalSystem,
+    externalUserId,
+    externalCampaignId,
+    email,
+    displayName,
+    deviceId,
+  } = req.body || {}
+
+  if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'campaignId must be a valid UUID' })
+  }
+  if (!externalSystem || typeof externalSystem !== 'string') {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalSystem is required' })
+  }
+  if (!externalUserId || typeof externalUserId !== 'string') {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalUserId is required' })
+  }
+  if (!externalCampaignId || typeof externalCampaignId !== 'string') {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalCampaignId is required' })
+  }
+  if (!deviceId || typeof deviceId !== 'string') {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'deviceId is required' })
+  }
+
+  try {
+    const result = await dmLinkAccount({
+      callerUserId: user.userId,
+      callerAuthType: user.authType,
+      campaignId,
+      externalSystem,
+      externalUserId,
+      externalCampaignId,
+      email: typeof email === 'string' ? email.trim() : '',
+      displayName: typeof displayName === 'string' ? displayName.trim() : null,
+      deviceId,
+    })
+
+    const message = result.merged
+      ? 'DM account linked and guest account merged'
+      : 'DM account linked successfully'
+
+    return res.status(200).json({
+      message,
+      deviceCredential: {
+        credential: result.deviceCredential.credential,
+        deviceId: result.deviceCredential.deviceId,
+      },
+      merged: result.merged,
+      mergedAccount: result.mergedAccount,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'DM_LINK_FAILED'
+
+    if (message === 'NOT_FULL_ACCOUNT') {
+      return res.status(403).json({
+        code: 'FORBIDDEN',
+        message: 'A full vtt-chat account is required to link as DM. Guest tokens are not accepted.',
+      })
+    }
+    if (message === 'NOT_CAMPAIGN_DM') {
+      return res.status(403).json({
+        code: 'FORBIDDEN',
+        message: 'Only the campaign DM may perform a DM account link.',
+      })
+    }
+    if (message === 'INTEGRATION_NOT_AUTHORIZED') {
+      return res.status(403).json({
+        code: 'INTEGRATION_NOT_AUTHORIZED',
+        message: 'This external system is not authorized on this platform.',
+      })
+    }
+    if (message === 'IDENTITY_CONFLICT') {
+      return res.status(409).json({
+        code: 'IDENTITY_CONFLICT',
+        message:
+          'This external account is already linked to a different vtt-chat login. Please contact support.',
+      })
+    }
+
+    return res.status(500).json({ code: 'DM_LINK_FAILED', message: 'Failed to link DM account.' })
   }
 })
 

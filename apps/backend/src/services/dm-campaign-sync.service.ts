@@ -67,6 +67,28 @@ export async function dmCampaignSync(params: {
 
   // ─── Campaign update ─────────────────────────────────────────────────────────
 
+  let campaignUpdated = false
+
+  // Apply campaign name from external system when provided (DDB is source of truth).
+  const incomingName =
+    params.campaignData?.name && typeof params.campaignData.name === 'string'
+      ? params.campaignData.name.trim()
+      : null
+
+  if (incomingName) {
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: params.campaignId },
+      select: { name: true },
+    })
+    if (campaign && campaign.name !== incomingName) {
+      await prisma.campaign.update({
+        where: { id: params.campaignId },
+        data: { name: incomingName },
+      })
+      campaignUpdated = true
+    }
+  }
+
   // Upsert the CampaignExternalLink so we know which DDB campaign this maps to.
   const existingLink = await prisma.campaignExternalLink.findFirst({
     where: {
@@ -75,8 +97,6 @@ export async function dmCampaignSync(params: {
     },
     select: { id: true, externalId: true },
   })
-
-  let campaignUpdated = false
 
   if (!existingLink) {
     await prisma.campaignExternalLink.create({
