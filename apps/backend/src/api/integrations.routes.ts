@@ -6,8 +6,12 @@ import type { UUID } from '@shared'
 import { getSessionPresence } from '@/services/room.service'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
 import { syncExternalIntegration } from '@/services/integration-sync.service'
+import { dmCampaignSync } from '@/services/dm-campaign-sync.service'
 import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.service'
 import { broadcastPresenceProfileUpdate } from '@/services/session/presence-profile-broadcast.service'
+import { getPrismaClient } from '@/infra/db'
+
+const prisma = getPrismaClient()
 
 const router = Router()
 
@@ -195,6 +199,89 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
     return res.status(500).json({
       code: ErrorCode.INTERNAL_ERROR,
       message: 'Failed to sync external data',
+    })
+  }
+})
+
+/**
+ * POST /api/integrations/external/dm-sync
+ *
+ * DM-triggered full campaign sync. Provisions unowned stub characters for players
+ * who don't have VTT-Chat accounts yet, and upserts characters for known players.
+ *
+ * Requires DM authentication. Rejects with 403 if the caller is not the campaign DM.
+ */
+router.post('/external/dm-sync', requireAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user
+  const { campaignId, externalSystem, externalCampaignId, campaignData, characters } = req.body || {}
+
+  if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'campaignId must be a valid UUID',
+      field: 'campaignId',
+    })
+  }
+
+  if (!externalSystem || typeof externalSystem !== 'string') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'externalSystem is required',
+      field: 'externalSystem',
+    })
+  }
+
+  if (!externalCampaignId || typeof externalCampaignId !== 'string') {
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'externalCampaignId is required',
+      field: 'externalCampaignId',
+    })
+  }
+
+  // Verify caller is the DM of the specified campaign.
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { currentDmId: true, supportedPlatforms: true },
+  })
+
+  if (!campaign) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Campaign not found or access denied',
+    })
+  }
+
+  if (campaign.currentDmId !== user.userId) {
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Only the campaign DM may perform a DM campaign sync',
+    })
+  }
+
+  try {
+    const result = await dmCampaignSync({
+      campaignId,
+      externalSystem,
+      externalCampaignId,
+      campaignData: campaignData && typeof campaignData === 'object' ? campaignData : undefined,
+      characters: Array.isArray(characters) ? characters : [],
+      actorUserId: user.userId,
+      actorUsername: user.username,
+    })
+
+    return res.status(200).json({
+      message: 'DM campaign sync completed',
+      applied: result.applied,
+    })
+  } catch (err) {
+    logger.error('integrations', 'Unhandled error in POST /external/dm-sync', {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    })
+    return res.status(500).json({
+      code: ErrorCode.INTERNAL_ERROR,
+      message: 'Failed to complete DM campaign sync',
     })
   }
 })

@@ -194,7 +194,9 @@ export async function listSessionMessagesPage(params: {
       })
 
       activeCharacters.forEach((character) => {
-        authorCharacterNameByUserId.set(character.userId, character.name)
+        if (character.userId) {
+          authorCharacterNameByUserId.set(character.userId, character.name)
+        }
       })
     }
   }

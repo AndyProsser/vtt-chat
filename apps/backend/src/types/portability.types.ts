@@ -61,7 +61,7 @@ export interface CampaignTransferBundle {
     userRole: Role
   }>
   characters: Array<{
-    userId: string
+    userId: string | null
     name: string
     status: string
     race: string | null

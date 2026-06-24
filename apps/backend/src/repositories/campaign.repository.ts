@@ -535,7 +535,7 @@ export async function createCharacterForCampaign(params: {
 }): Promise<{
   id: string
   campaignId: string
-  userId: string
+  userId: string | null
   name: string
   status: 'ALIVE' | 'DEAD' | 'LEFT' | 'UNKNOWN'
   race: string | null
@@ -648,7 +648,7 @@ export async function updateCharacterForCampaignMember(params: {
 }): Promise<{
   id: string
   campaignId: string
-  userId: string
+  userId: string | null
   name: string
   status: 'ALIVE' | 'DEAD' | 'LEFT' | 'UNKNOWN'
   race: string | null

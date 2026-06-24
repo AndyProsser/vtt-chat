@@ -192,6 +192,9 @@ async function resolveImportedUsers(
   })
 
   bundle.characters.forEach((character) => {
+    // Stubs (userId=null) have no VTT-Chat account — skip user mapping; they'll be
+    // re-provisioned by the DM campaign sync in the destination campaign.
+    if (!character.userId) return
     if (!sourceUsers.has(character.userId)) {
       sourceUsers.set(character.userId, {
         username: `imported-${character.name}`,
@@ -612,7 +615,9 @@ export async function importCampaignBundle(
       await tx.character.createMany({
         data: bundle.characters.map((character) => ({
           campaignId: campaign.id,
-          userId: userIdMap.get(character.userId) || actorUserId,
+          userId: character.userId
+            ? userIdMap.get(character.userId) || actorUserId
+            : null,
           name: character.name,
           status: character.status as any,
           race: character.race,

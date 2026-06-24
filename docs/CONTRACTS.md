@@ -1545,7 +1545,59 @@ Backend processing of the new format:
 
 ---
 
-**Document Version**: 1.1
+### DM Campaign Sync endpoint
+
+`POST /api/integrations/external/dm-sync` — DM-only. Provisions unowned character stubs for players with no VTT-Chat account, and upserts characters for players whose ExternalIdentity is already known.
+
+**Auth:** Caller must be the `currentDmId` of the campaign. Returns `403 FORBIDDEN` otherwise.
+
+**Request:**
+
+```json
+{
+  "campaignId": "uuid",
+  "externalSystem": "dndbeyond",
+  "externalCampaignId": "string",
+  "characters": [
+    {
+      "externalCharacterId": "string (required)",
+      "externalUserId": "string (required)",
+      "name": "string | null",
+      "displayName": "string | null",
+      "level": "number | null",
+      "avatarUrl": "string | null",
+      "characterUrl": "string | null"
+    }
+  ]
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "message": "DM campaign sync completed",
+  "applied": {
+    "campaignUpdated": true,
+    "charactersProvisioned": 3,
+    "charactersLinked": 1,
+    "charactersSkipped": 0
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `campaignUpdated` | `CampaignExternalLink` was created or updated |
+| `charactersProvisioned` | Stub records created/updated (no ExternalIdentity match) |
+| `charactersLinked` | Characters upserted against an existing VTT-Chat user |
+| `charactersSkipped` | Entries missing `externalCharacterId` or `externalUserId` |
+
+**Character stub schema change:** `Character.userId` is now nullable. Stubs have `userId = null` until the player connects via the extension — at which point `loginGuestViaExtension` promotes the stub by setting `userId` and creating the `CampaignMembership`.
+
+---
+
+**Document Version**: 1.2
 **Locked By**: Stage 0 Build Agent
 **Lock Date**: April 17, 2026
 **Amendment Date**: 2026-05-21 — Campaign visibility model, request-to-join, WATCH entry, guest upgrade, campaign retire/resume, admin export/import contracts added.

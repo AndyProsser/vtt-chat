@@ -324,7 +324,7 @@ export async function validateSpectatorInviteCode(
       class: character.class,
       level: typeof levelValue === 'number' ? levelValue : null,
       avatarUrl: character.avatarUrl,
-      online: onlineUsers.has(character.userId),
+      online: character.userId ? onlineUsers.has(character.userId) : false,
     }
   })
 

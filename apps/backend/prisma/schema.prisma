@@ -208,7 +208,7 @@ model CampaignJoinRequest {
 
 model Character {
   id             String          @id @default(uuid()) @db.Uuid
-  userId         String          @db.Uuid
+  userId         String?         @db.Uuid
   campaignId     String          @db.Uuid
   name           String
   status         CharacterStatus @default(ALIVE)
@@ -219,9 +219,10 @@ model Character {
   avatarUrl      String?
   externalSystem String?
   externalId     String?
+  externalUserId String?
   isActive       Boolean         @default(false)
   metadata       Json?
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   campaign       Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt

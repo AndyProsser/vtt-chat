@@ -547,7 +547,7 @@ export async function getSessionParticipantProfiles(
 
   const characterByUserId = new Map<string, (typeof characters)[number]>()
   for (const character of characters) {
-    if (!characterByUserId.has(character.userId)) {
+    if (character.userId && !characterByUserId.has(character.userId)) {
       characterByUserId.set(character.userId, character)
     }
   }
