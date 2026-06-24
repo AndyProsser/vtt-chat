@@ -324,7 +324,98 @@ The overlay must support:
 
 ---
 
-## 10. Planned Enhancements
+## 10. Extension Popup — DM States
+
+The extension popup renders different UIs depending on whether the page is a DDB campaign page and whether the logged-in user owns the campaign.
+
+> Full DM link flow specification (first-time link, returning launch, invite code handling) is in [DM-LINK.md](DM-LINK.md). This section covers the visible UX only.
+
+### 10.1 Not on a DDB Campaign Page
+
+Standard popup: server selector, last-used campaign summary, player Launch button if a credential is stored.
+
+### 10.2 On a DDB Campaign Page — User Is Not a Member
+
+```text
+┌─────────────────────────────────────────────────────┐
+│  VTT-Chat                                  [×]      │
+│                                                     │
+│  📋  The Lost Mines of Phandelver                   │
+│      You are not a member of this campaign          │
+│                                                     │
+│  Ask the DM for a player invite link.               │
+└─────────────────────────────────────────────────────┘
+```
+
+### 10.3 On a DDB Campaign Page — User Is a Player (Not DM)
+
+Standard player launch UI — enter invite code, or launch if credential is stored. Not shown here (existing flow, no change).
+
+### 10.4 On a DDB Campaign Page — User Is the DM, Not Yet Linked
+
+```text
+┌─────────────────────────────────────────────────────┐
+│  VTT-Chat                                  [×]      │
+│                                                     │
+│  📋  The Lost Mines of Phandelver                   │
+│      You are the DM of this campaign                │
+│                                                     │
+│  Enter your VTT-Chat invite code to link:           │
+│  ┌────────────────────────────────────────────────┐ │
+│  │  abc123...                              [✓]    │ │
+│  └────────────────────────────────────────────────┘ │
+│  ✓ "The Lost Mines of Phandelver"                   │
+│                                                     │
+│  [ Link & Launch as DM ]                            │
+│                                                     │
+│  ────────────────────────────────────────────────   │
+│  Not the DM? → Launch as player instead             │
+└─────────────────────────────────────────────────────┘
+```
+
+- The invite code input validates on blur; the campaign name confirmation appears below the field on success.
+- "Link & Launch as DM" is disabled until the code is valid.
+- "Not the DM?" link switches the popup to the player branch.
+
+### 10.5 On a DDB Campaign Page — Returning DM (Campaign Linked)
+
+```text
+┌─────────────────────────────────────────────────────┐
+│  VTT-Chat                                  [×]      │
+│                                                     │
+│  📋  The Lost Mines of Phandelver                   │
+│      ✓ Linked  ·  You are the DM                    │
+│                                                     │
+│  🟢 2 players online  ·  Session: Active            │
+│                                                     │
+│  [ Launch as DM ]          [ Sync Campaign ]        │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+- Session status is fetched from `GET /api/campaigns/:campaignId/session-status`.
+- **Sync Campaign** shows a spinner during the sync and a brief success/error toast on completion.
+- Error toast copy: _"Sync failed — check your connection and try again."_
+
+### 10.6 /ext-launch DM-Link Page
+
+This page is opened by the extension when the DM clicks **Link & Launch as DM** for the first time. It is a minimal authenticated handoff page — not the main campaign workspace.
+
+| Element           | Detail                                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Heading           | "Log in to link your DM account"                                                                                                     |
+| Sub-heading       | "Enter your vtt-chat password to link this campaign to your DDB account."                                                            |
+| Email field       | Pre-filled from DDB profile email; read-only                                                                                         |
+| Password field    | Standard password input                                                                                                              |
+| Submit button     | "Log in & Link"                                                                                                                      |
+| Error state       | Inline error below password field; submit re-enabled                                                                                 |
+| Identity conflict | Separate error block: _"This DDB account is already linked to a different vtt-chat login. Please contact support."_ No retry offered |
+
+After successful login and dm-link call, the page redirects to the campaign workspace. The browser tab that was opened by the extension becomes the active campaign tab.
+
+---
+
+## 11. Planned Enhancements
 
 Planned improvements:
 

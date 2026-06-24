@@ -574,10 +574,17 @@ Requests containing both character and party targets are never rejected wholesal
 
 The DM can manually trigger a full campaign sync from the extension popup after connecting. This sync is DM-only and operates independently of the per-player character sync covered in §5b.
 
+> **Full DM identity and campaign linking flow** (first-time launch, account linking, guest merge) is specified in [DM-LINK.md](DM-LINK.md). The endpoint below is the data-sync step that runs _after_ identity has been established.
+
+#### Auth requirement
+
+`POST /api/integrations/external/dm-sync` requires a **full account token** (`authType = FULL`). Guest tokens return `403 FORBIDDEN`. The DM must have completed the DM link flow ([DM-LINK.md §4](DM-LINK.md)) before calling this endpoint.
+
 #### When it runs
 
-- The DM clicks **Sync Campaign** in the extension popup (manual trigger only).
-- It also fires automatically after a successful DM login (`runGuestLoginAndLaunch` with `isDm=true`).
+- Automatically after a successful DM link (`POST /api/auth/extension/dm-link` completes).
+- Automatically on returning DM launches (throttled: at most once per 10 minutes per campaign).
+- Manually when the DM clicks **Sync Campaign** in the extension popup (bypasses throttle).
 
 #### Endpoint
 
@@ -640,9 +647,14 @@ Content-Type: application/json
 
 | Field                   | Meaning                                                          |
 | ----------------------- | ---------------------------------------------------------------- |
+| `campaignUpdated`       | `true` when the campaign name or external link was changed       |
 | `charactersProvisioned` | Stub character records created for players with no VTT-Chat link |
 | `charactersLinked`      | Matched to an existing VTT-Chat user via ExternalIdentity        |
 | `charactersSkipped`     | Omitted due to missing `externalCharacterId`                     |
+
+#### Campaign name sync
+
+When `campaignData.name` is present in the request, the backend updates `Campaign.name` to match the DDB campaign name. This keeps the two in sync without any manual step in vtt-chat. If the DM renames the campaign inside vtt-chat and subsequently runs a DM sync, the sync overwrites the rename. See [DM-LINK.md §8](DM-LINK.md) for override behaviour and the planned opt-out setting.
 
 #### Character resolution strategy
 
