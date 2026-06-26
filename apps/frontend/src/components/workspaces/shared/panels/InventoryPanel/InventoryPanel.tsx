@@ -7,8 +7,8 @@
  *   DM        → horizontal avatar-strip picker (Party + all characters; default Party)
  *   Spectator → Party only, read-only
  *
- * DM viewing an offline character's inventory: Add/Move allowed, Remove blocked.
- * Online status is derived live from sessionPresenceByUser (WS-updated).
+ * Items are grouped into container sections; top-level (uncontainerised) items
+ * appear below all container sections. See docs/subsystems/INVENTORY-SYSTEM.md §5.2
  */
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
@@ -20,6 +20,7 @@ import { Icon } from '@/components/ui/Icon'
 import '@/styles/components/workspaces/shared/panels/InventoryPanel.css'
 import type { InventoryItem, CurrencyWalletState } from '@/types/inventory'
 import { InventoryItemRow } from './InventoryPanel.ItemRow'
+import { ContainerSection } from './InventoryPanel.ContainerSection'
 import { InventoryCurrencyRow } from './InventoryPanel.CurrencyRow'
 import type { CurrencyTransferTarget } from './InventoryPanel.CurrencyRow'
 import { InventoryAddItemForm } from './InventoryPanel.AddItemForm'
@@ -73,7 +74,6 @@ export function InventoryPanel({
   const [showHistory, setShowHistory] = useState(false)
   const [showOfflinePlayers, setShowOfflinePlayers] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Static profiles (label + avatar) for all campaign players, fetched once on mount
   const [playerProfiles, setPlayerProfiles] = useState<CampaignPlayerProfile[]>(EMPTY_PROFILES)
 
   const hydrateInventory = useStore((state) => state.hydrateInventory)
@@ -83,7 +83,6 @@ export function InventoryPanel({
   const itemsBucket = useStore((state) => state.inventoryItems[campaignId])
   const walletsBucket = useStore((state) => state.currencyWallets[campaignId])
 
-  // Object.values in useMemo — never inside the selector — to avoid snapshot loops
   const allItems = useMemo(
     () => (itemsBucket ? (Object.values(itemsBucket) as InventoryItem[]) : EMPTY_ITEMS),
     [itemsBucket]
@@ -93,7 +92,6 @@ export function InventoryPanel({
     [walletsBucket]
   )
 
-  // Live presence — WS-updated, used to derive online/offline status in real time
   const sessionPresenceByUser = useStore(
     (state) => state.sessionPresence[sessionId] ?? EMPTY_PRESENCE
   )
@@ -115,8 +113,6 @@ export function InventoryPanel({
         if (!cancelled) hydrateInventory(campaignId, data.items, data.wallets)
       })
 
-    // Fetch all campaign member profiles (online + offline) for character picker and move targets.
-    // Not needed for spectators (read-only, no move targets).
     const fetchProfiles = !isReadOnly
       ? fetch(`${apiUrl}/api/campaigns/${campaignId}/party-presence`, { headers })
           .then((res) => (res.ok ? res.json() : null))
@@ -144,9 +140,7 @@ export function InventoryPanel({
               )
             }
           )
-          .catch(() => {
-            /* non-critical */
-          })
+          .catch(() => { /* non-critical */ })
       : Promise.resolve()
 
     Promise.all([fetchInventory, fetchProfiles]).catch(() => {
@@ -156,12 +150,10 @@ export function InventoryPanel({
       }
     })
 
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [campaignId, apiUrl, authToken, hydrateInventory, setInventoryLoading, isReadOnly])
 
-  // ─── Character picker members — profile + live online status ─────────────
+  // ─── Character picker members ─────────────────────────────────────────────
   const pickerMembers = useMemo<CharacterPickerMember[]>(
     () =>
       playerProfiles.map((p) => ({
@@ -171,8 +163,6 @@ export function InventoryPanel({
     [playerProfiles, sessionPresenceByUser]
   )
 
-  // DM toggle: show offline players in picker and move targets.
-  // Players always see only online players.
   const visibleMembers = useMemo<CharacterPickerMember[]>(
     () => (isDM && showOfflinePlayers ? pickerMembers : pickerMembers.filter((m) => m.isOnline)),
     [isDM, showOfflinePlayers, pickerMembers]
@@ -181,7 +171,6 @@ export function InventoryPanel({
   const toggleOfflinePlayers = () => {
     setShowOfflinePlayers((prev) => {
       const next = !prev
-      // If hiding offline while viewing an offline character, snap back to party
       if (!next && view !== 'party') {
         const member = pickerMembers.find((m) => m.userId === view)
         if (member && !member.isOnline) {
@@ -198,7 +187,6 @@ export function InventoryPanel({
   const currentOwnerId = view === 'party' ? null : (view as UUID)
   const currentOwnerType = view === 'party' ? ('party' as const) : ('character' as const)
 
-  // DM viewing an offline character → Remove blocked, but Add/Move still allowed
   const viewedMember = useMemo(
     () => (view !== 'party' ? (pickerMembers.find((m) => m.userId === view) ?? null) : null),
     [view, pickerMembers]
@@ -217,6 +205,24 @@ export function InventoryPanel({
     [allItems, currentOwnerType, currentOwnerId]
   )
 
+  // Derived container grouping — stable references via useMemo
+  const containers = useMemo(() => currentItems.filter((i) => i.isContainer), [currentItems])
+  const topLevelItems = useMemo(
+    () => currentItems.filter((i) => !i.isContainer && !i.containerId),
+    [currentItems]
+  )
+  const itemsByContainerId = useMemo(() => {
+    const map = new Map<UUID, InventoryItem[]>()
+    for (const item of currentItems) {
+      if (item.containerId) {
+        const existing = map.get(item.containerId) ?? []
+        existing.push(item)
+        map.set(item.containerId, existing)
+      }
+    }
+    return map
+  }, [currentItems])
+
   const currentWallet = useMemo(
     () =>
       allWallets.find(
@@ -227,16 +233,9 @@ export function InventoryPanel({
     [allWallets, currentOwnerType, currentOwnerId]
   )
 
-  // Move targets respect the same online/offline filter as the picker
   const moveTargets = useMemo(
     () => [
-      {
-        label: 'Party',
-        ownerType: 'party' as const,
-        ownerId: null,
-        avatarUrl: null,
-        isOnline: true,
-      },
+      { label: 'Party', ownerType: 'party' as const, ownerId: null, avatarUrl: null, isOnline: true },
       ...visibleMembers
         .map((m) => ({
           label: m.label,
@@ -250,25 +249,17 @@ export function InventoryPanel({
     [visibleMembers]
   )
 
-  // Player viewing party → "Take" targets are only their own character slot.
-  // Player viewing own inventory → "Give" targets are Party + other online characters.
-  // DM → always full list ("Move").
   const moveActionLabel = isPlayer ? (view === 'party' ? 'Take' : 'Give') : 'Move'
   const playerTakeTargets = useMemo(
     () => moveTargets.filter((t) => t.ownerType === 'character' && t.ownerId === currentUserId),
     [moveTargets, currentUserId]
   )
 
-  // Currency transfer only applies to ONLINE players (offline transfer not supported for currency).
   const onlineMembers = useMemo(() => pickerMembers.filter((m) => m.isOnline), [pickerMembers])
 
-  // Currency transfer targets mirror item move targets with two differences:
-  //   - Always online-only (no offline currency transfer)
-  //   - DM viewing a character gets no targets (DM cannot take currency from a player)
   const currencyTransferTargets = useMemo<CurrencyTransferTarget[]>(() => {
     if (isReadOnly) return []
     if (isDM) {
-      // DM can only give from party to players, not take from character wallets
       if (view !== 'party') return []
       return onlineMembers.map((m) => ({
         label: m.label,
@@ -278,7 +269,6 @@ export function InventoryPanel({
         isOnline: true,
       }))
     }
-    // Player viewing party: can only take to self
     if (view === 'party') {
       return [
         {
@@ -290,7 +280,6 @@ export function InventoryPanel({
         },
       ]
     }
-    // Player viewing own inventory: give to party + other online characters
     return [
       { label: 'Party', ownerType: 'party' as const, ownerId: null, avatarUrl: null, isOnline: true },
       ...onlineMembers
@@ -324,6 +313,28 @@ export function InventoryPanel({
         method: 'PATCH',
         headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
+      })
+    },
+    [apiUrl, campaignId, authToken]
+  )
+
+  const saveNotes = useCallback(
+    async (itemId: UUID, notes: string | null) => {
+      await fetch(`${apiUrl}/api/inventory/${campaignId}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      })
+    },
+    [apiUrl, campaignId, authToken]
+  )
+
+  const setContainer = useCallback(
+    async (itemId: UUID, containerId: UUID | null) => {
+      await fetch(`${apiUrl}/api/inventory/${campaignId}/items/${itemId}/container`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ containerId }),
       })
     },
     [apiUrl, campaignId, authToken]
@@ -409,6 +420,28 @@ export function InventoryPanel({
     setShowHistory(false)
   }
 
+  // Shared row props helper to avoid repetition
+  const rowProps = (item: InventoryItem) => {
+    const baseMoveTargets =
+      isPlayer && view === 'party' ? playerTakeTargets : moveTargets
+    return {
+      isReadOnly,
+      canRemove,
+      moveActionLabel,
+      onRemove: removeItem,
+      onEdit: editItem,
+      onMove: moveItem,
+      onSaveNotes: saveNotes,
+      onSetContainer: setContainer,
+      moveTargets: baseMoveTargets.filter(
+        (t) => !(t.ownerType === item.ownerType && t.ownerId === item.ownerId)
+      ),
+      availableContainers: containers,
+    }
+  }
+
+  const totalItemCount = currentItems.length
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <section className="inventory-panel" aria-label="Inventory">
@@ -453,7 +486,6 @@ export function InventoryPanel({
         </div>
       </header>
 
-      {/* Player: Mine + Party tabs */}
       {isPlayer && (
         <div className="inventory-panel__view-tabs" role="tablist" aria-label="Inventory view">
           <button
@@ -466,7 +498,6 @@ export function InventoryPanel({
           >
             My Inventory
           </button>
-
           <button
             type="button"
             role="tab"
@@ -480,7 +511,6 @@ export function InventoryPanel({
         </div>
       )}
 
-      {/* DM: avatar-strip character picker (includes Party as first slot) */}
       {isDM && (
         <InventoryCharacterPicker
           members={visibleMembers}
@@ -515,7 +545,6 @@ export function InventoryPanel({
         </div>
       ) : (
         <div className="inventory-panel__body">
-          {/* "Brom's Inventory" label when DM has a character selected — hidden for players */}
           {isDM && viewedMember && (
             <p className="inventory-panel__char-label">
               {viewedMember.label}'s Inventory
@@ -537,7 +566,7 @@ export function InventoryPanel({
 
           <div className="inventory-panel__items-header">
             <span className="inventory-panel__items-label">
-              Items {currentItems.length > 0 ? `(${currentItems.length})` : ''}
+              Items {totalItemCount > 0 ? `(${totalItemCount})` : ''}
             </span>
             {!isReadOnly && (
               <button
@@ -562,31 +591,39 @@ export function InventoryPanel({
             />
           )}
 
-          {currentItems.length === 0 && !showAddForm ? (
+          {totalItemCount === 0 && !showAddForm ? (
             <p className="inventory-panel__empty">No items yet.</p>
           ) : (
             <ul className="inventory-panel__item-list" aria-label="Inventory items">
-              {currentItems.map((item) => {
-                // For players taking from party, only their own character is a valid target.
-                // For all other cases, exclude the item's current owner from targets.
-                const baseMoveTargets =
-                  isPlayer && view === 'party' ? playerTakeTargets : moveTargets
-                return (
-                  <InventoryItemRow
-                    key={item.id}
-                    item={item}
-                    isReadOnly={isReadOnly}
-                    canRemove={canRemove}
-                    moveActionLabel={moveActionLabel}
-                    onRemove={removeItem}
-                    onEdit={editItem}
-                    onMove={moveItem}
-                    moveTargets={baseMoveTargets.filter(
-                      (t) => !(t.ownerType === item.ownerType && t.ownerId === item.ownerId)
-                    )}
-                  />
-                )
-              })}
+              {/* Container sections first */}
+              {containers.map((container) => (
+                <ContainerSection
+                  key={container.id}
+                  container={container}
+                  contents={itemsByContainerId.get(container.id) ?? EMPTY_ITEMS}
+                  isReadOnly={isReadOnly}
+                  canRemove={canRemove}
+                  moveActionLabel={moveActionLabel}
+                  moveTargets={(isPlayer && view === 'party' ? playerTakeTargets : moveTargets).filter(
+                    (t) => !(t.ownerType === container.ownerType && t.ownerId === container.ownerId)
+                  )}
+                  onRemove={removeItem}
+                  onEdit={editItem}
+                  onMove={moveItem}
+                  onSaveNotes={saveNotes}
+                  onSetContainer={setContainer}
+                  otherContainers={containers.filter((c) => c.id !== container.id)}
+                />
+              ))}
+
+              {/* Top-level items below all containers */}
+              {topLevelItems.map((item) => (
+                <InventoryItemRow
+                  key={item.id}
+                  item={item}
+                  {...rowProps(item)}
+                />
+              ))}
             </ul>
           )}
         </div>

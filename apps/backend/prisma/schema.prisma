@@ -666,11 +666,17 @@ model InventoryItem {
   addedByUserId  String                @db.Uuid
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
+  // Container support (§2.1b)
+  isContainer    Boolean               @default(false)
+  containerId    String?               @db.Uuid  // ID of parent InventoryItem; null = top-level
+  // Extended item data (§2.1c) — populated from SRD at add-time or from extension sync
+  metadata       Json?
   historyEntries InventoryHistoryEntry[]
 
   @@index([campaignId])
   @@index([campaignId, ownerType])
   @@index([campaignId, ownerId])
+  @@index([campaignId, containerId])
   @@index([campaignId, ownerId, externalSource, externalId])
 }
 

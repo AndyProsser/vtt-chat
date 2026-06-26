@@ -1374,3 +1374,334 @@
   color: var(--color-text-muted);
   font-size: 10px;
 }
+
+/* ─── Item row — popover trigger reset ─────────────────────────────────────── */
+
+.inventory-item-row__info--trigger {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s;
+}
+
+.inventory-item-row__info--trigger:hover {
+  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+}
+
+/* ─── Item row — metadata sub-text ────────────────────────────────────────── */
+
+.inventory-item-row__meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-item-row__cost {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  align-self: center;
+}
+
+/* ─── Container section ────────────────────────────────────────────────────── */
+
+.inventory-container-section {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--color-border-soft) 80%, var(--color-accent) 20%);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-subtle) 8%);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.inventory-container-section__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
+  background: color-mix(in srgb, var(--color-surface-subtle) 60%, var(--color-accent) 5%);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border-soft) 60%, transparent);
+  cursor: default;
+}
+
+.inventory-container-section__header:hover .inventory-container-section__actions {
+  opacity: 1;
+}
+
+.inventory-container-section__toggle {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s;
+}
+
+.inventory-container-section__toggle:hover {
+  color: var(--color-text-primary);
+}
+
+.inventory-container-section__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-container-section__count {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.inventory-container-section__weight {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.inventory-container-section__actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.inventory-container-section__contents {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Items nested inside a container get a lighter inset style */
+.inventory-container-section__contents .inventory-item-row {
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  padding-left: var(--space-2);
+  border-color: transparent;
+}
+
+.inventory-container-section__contents .inventory-item-row:hover {
+  border-color: var(--color-border-soft);
+}
+
+.inventory-container-section__empty {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ─── Item detail popover ──────────────────────────────────────────────────── */
+
+.inventory-item-detail-popover {
+  width: 240px;
+  max-width: 90vw;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  z-index: 200;
+  outline: none;
+}
+
+.inventory-item-detail-popover:focus {
+  outline: none;
+}
+
+.inventory-item-detail__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.inventory-item-detail__name {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.inventory-item-detail__type {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  display: block;
+}
+
+.inventory-item-detail__close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-left: auto;
+  transition: color 0.12s, background 0.12s;
+}
+
+.inventory-item-detail__close:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-hover);
+}
+
+.inventory-item-detail__meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.inventory-item-detail__subtype {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.inventory-item-detail__cost {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.inventory-item-detail__divider {
+  height: 1px;
+  background: var(--color-border-soft);
+  margin: 2px 0;
+}
+
+.inventory-item-detail__stat-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.inventory-item-detail__stat-label {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 5rem;
+}
+
+.inventory-item-detail__stat-value {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+}
+
+.inventory-item-detail__description {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 6rem;
+  overflow-y: auto;
+}
+
+.inventory-item-detail__notes-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.inventory-item-detail__notes-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.inventory-item-detail__notes-readonly {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.inventory-item-detail__notes-input {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-sm);
+  resize: none;
+  outline: none;
+  line-height: 1.4;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.inventory-item-detail__notes-input:focus {
+  border-color: var(--color-accent);
+}
+
+.inventory-item-detail__notes-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.inventory-item-detail__save-btn {
+  padding: 2px var(--space-3);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-surface);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.inventory-item-detail__save-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.inventory-item-detail__save-btn:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+.inventory-item-detail__arrow {
+  fill: var(--color-surface);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+}

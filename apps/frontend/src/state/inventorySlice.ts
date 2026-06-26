@@ -9,7 +9,7 @@ import type { StateCreator } from 'zustand'
 import { InventoryItemSource, InventoryItemCategory } from '@shared'
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
-import type { InventoryItem, CurrencyWalletState } from '@/types/inventory'
+import type { InventoryItem, CurrencyWalletState, ItemMetadata } from '@/types/inventory'
 
 export type { InventoryItem, CurrencyWalletState } from '@/types/inventory'
 
@@ -32,7 +32,8 @@ export interface InventorySlice {
   handleInventoryItemAdded: (event: EventEnvelope) => void
   handleInventoryItemRemoved: (event: EventEnvelope) => void
   handleInventoryItemTransferred: (event: EventEnvelope) => void
-  handleInventoryItemEdited: (event: EventEnvelope) => void
+  handleInventoryItemUpdated: (event: EventEnvelope) => void
+  handleInventoryContainerTransferred: (event: EventEnvelope) => void
   handleInventoryCurrencyChanged: (event: EventEnvelope) => void
 }
 
@@ -96,6 +97,9 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
       externalSource?: string | null
       addedByUserId: UUID
       addedAt: number
+      isContainer?: boolean
+      containerId?: UUID | null
+      metadata?: ItemMetadata | null
     }
 
     const validSources: string[] = Object.values(InventoryItemSource)
@@ -120,6 +124,9 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
       addedByUserId: payload.addedByUserId,
       createdAt: payload.addedAt,
       updatedAt: payload.addedAt,
+      isContainer: payload.isContainer ?? false,
+      containerId: payload.containerId ?? null,
+      metadata: payload.metadata ?? null,
     }
 
     set((state) => {
@@ -137,9 +144,23 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
     const payload = event.payload as { campaignId: UUID; itemId: UUID }
     set((state) => {
       const bucket = state.inventoryItems[payload.campaignId]
-      if (!bucket?.[payload.itemId]) return state
+      if (!bucket) return state
+
+      const removedItem = bucket[payload.itemId]
+      if (!removedItem) return state
+
       const next = { ...bucket }
       delete next[payload.itemId]
+
+      // If the removed item was a container, cascade-remove all contained items
+      if (removedItem.isContainer) {
+        for (const [id, item] of Object.entries(next)) {
+          if (item.containerId === payload.itemId) {
+            delete next[id as UUID]
+          }
+        }
+      }
+
       return {
         inventoryItems: { ...state.inventoryItems, [payload.campaignId]: next },
       }
@@ -167,6 +188,8 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
               ...item,
               ownerType: payload.toOwnerType,
               ownerId: payload.toOwnerId,
+              // Single-item transfer always clears containerId (top-level on destination)
+              containerId: null,
               updatedAt: payload.transferredAt,
             },
           },
@@ -175,14 +198,23 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
     })
   },
 
-  handleInventoryItemEdited: (event) => {
+  /**
+   * Handles INVENTORY:ITEM_UPDATED — covers notes/quantity edits, containerId
+   * changes (container drag-and-drop within same owner), and extended field updates.
+   */
+  handleInventoryItemUpdated: (event) => {
     const payload = event.payload as {
       campaignId: UUID
       itemId: UUID
+      ownerType: 'party' | 'character'
+      ownerId: UUID | null
       name: string
       quantity: number
-      notes?: string | null
-      editedAt: number
+      notes: string | null
+      isContainer: boolean
+      containerId: UUID | null
+      metadata: ItemMetadata | null
+      updatedAt: number
     }
     set((state) => {
       const bucket = state.inventoryItems[payload.campaignId]
@@ -197,11 +229,80 @@ export const createInventorySlice: StateCreator<InventorySlice> = (set) => ({
               ...item,
               name: payload.name,
               quantity: payload.quantity,
-              notes: payload.notes ?? item.notes,
-              updatedAt: payload.editedAt,
+              notes: payload.notes,
+              isContainer: payload.isContainer,
+              containerId: payload.containerId,
+              metadata: payload.metadata,
+              updatedAt: payload.updatedAt,
             },
           },
         },
+      }
+    })
+  },
+
+  /**
+   * Handles INVENTORY:CONTAINER_TRANSFERRED — atomically replaces the container
+   * and all of its contained items in one state update to avoid orphaned items.
+   */
+  handleInventoryContainerTransferred: (event) => {
+    const payload = event.payload as {
+      campaignId: UUID
+      container: {
+        itemId: UUID
+        ownerType: 'party' | 'character'
+        ownerId: UUID | null
+        name: string
+        quantity: number
+        notes: string | null
+        isContainer: boolean
+        containerId: UUID | null
+        metadata: ItemMetadata | null
+        updatedAt: number
+      }
+      items: Array<{
+        itemId: UUID
+        ownerType: 'party' | 'character'
+        ownerId: UUID | null
+        name: string
+        quantity: number
+        notes: string | null
+        isContainer: boolean
+        containerId: UUID | null
+        metadata: ItemMetadata | null
+        updatedAt: number
+      }>
+    }
+    set((state) => {
+      const bucket = state.inventoryItems[payload.campaignId]
+      if (!bucket) return state
+
+      const next = { ...bucket }
+      const applyUpdate = (u: typeof payload.container) => {
+        const existing = next[u.itemId]
+        if (existing) {
+          next[u.itemId] = {
+            ...existing,
+            ownerType: u.ownerType,
+            ownerId: u.ownerId,
+            name: u.name,
+            quantity: u.quantity,
+            notes: u.notes,
+            isContainer: u.isContainer,
+            containerId: u.containerId,
+            metadata: u.metadata,
+            updatedAt: u.updatedAt,
+          }
+        }
+      }
+
+      applyUpdate(payload.container)
+      for (const item of payload.items) {
+        applyUpdate(item)
+      }
+
+      return {
+        inventoryItems: { ...state.inventoryItems, [payload.campaignId]: next },
       }
     })
   },

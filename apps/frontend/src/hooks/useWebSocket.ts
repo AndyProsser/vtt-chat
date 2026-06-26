@@ -296,8 +296,15 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     dispatcher.register('INVENTORY:ITEM_TRANSFERRED', (event) => {
       useStore.getState().handleInventoryItemTransferred(event)
     })
+    // INVENTORY:ITEM_EDITED kept for backwards compat with older server payloads
     dispatcher.register('INVENTORY:ITEM_EDITED', (event) => {
-      useStore.getState().handleInventoryItemEdited(event)
+      useStore.getState().handleInventoryItemUpdated(event)
+    })
+    dispatcher.register('INVENTORY:ITEM_UPDATED', (event) => {
+      useStore.getState().handleInventoryItemUpdated(event)
+    })
+    dispatcher.register('INVENTORY:CONTAINER_TRANSFERRED', (event) => {
+      useStore.getState().handleInventoryContainerTransferred(event)
     })
     dispatcher.register('INVENTORY:CURRENCY_CHANGED', (event) => {
       useStore.getState().handleInventoryCurrencyChanged(event)

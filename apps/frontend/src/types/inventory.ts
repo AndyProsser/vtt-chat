@@ -1,4 +1,7 @@
 import type { UUID, InventoryItemSource, InventoryItemCategory } from '@shared'
+import type { ItemMetadata } from '@shared'
+
+export type { ItemMetadata }
 
 export interface InventoryItem {
   id: UUID
@@ -16,6 +19,11 @@ export interface InventoryItem {
   addedByUserId: UUID
   createdAt: number
   updatedAt: number
+  // Container support (§2.1b)
+  isContainer: boolean
+  containerId: UUID | null
+  // Extended item data (§2.1c)
+  metadata: ItemMetadata | null
 }
 
 export interface CurrencyWalletState {

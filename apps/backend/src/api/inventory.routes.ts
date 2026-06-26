@@ -23,7 +23,9 @@ import {
   addInventoryItem,
   editInventoryItem,
   removeInventoryItem,
+  removeInventoryContainer,
   transferInventoryItem,
+  updateItemContainerId,
   adjustCurrency,
   transferCurrency,
   type CurrencyDenomination,
@@ -287,6 +289,9 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
           externalSource: item.externalSource ?? undefined,
           addedByUserId: item.addedByUserId,
           addedAt: item.createdAt,
+          isContainer: item.isContainer,
+          containerId: item.containerId,
+          metadata: item.metadata,
         },
       }
       await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
@@ -341,7 +346,7 @@ router.patch('/:campaignId/items/:itemId', requireAuth, async (req: Request, res
     if (wsManager) {
       const event: EventEnvelope = {
         id: crypto.randomUUID() as UUID,
-        type: 'INVENTORY:ITEM_EDITED',
+        type: 'INVENTORY:ITEM_UPDATED',
         version: 1,
         userId: user.userId as UUID,
         userRole: role as any,
@@ -356,14 +361,17 @@ router.patch('/:campaignId/items/:itemId', requireAuth, async (req: Request, res
           name: item.name,
           quantity: item.quantity,
           notes: item.notes,
-          editedByUserId: user.userId,
-          editedAt: item.updatedAt,
+          isContainer: item.isContainer,
+          containerId: item.containerId,
+          metadata: item.metadata,
+          updatedByUserId: user.userId,
+          updatedAt: item.updatedAt,
         },
       }
       await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
     }
 
-    if (session) {
+    if (session && (name || quantity !== undefined)) {
       await broadcastInventorySystemMessage({
         session,
         content: `[Inventory] ${item.name} updated (×${item.quantity}).`,
@@ -378,6 +386,90 @@ router.patch('/:campaignId/items/:itemId', requireAuth, async (req: Request, res
     return res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to edit item' })
   }
 })
+
+// ─── PATCH /api/inventory/:campaignId/items/:itemId/container ──────────────────
+// Sets or clears the containerId on an item (put in / remove from a container).
+
+router.patch(
+  '/:campaignId/items/:itemId/container',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const { campaignId, itemId } = req.params
+    const user = (req as any).user
+    // null = remove from container (top-level); string UUID = put inside this container
+    const { containerId } = req.body as { containerId: string | null }
+
+    if (!isValidUUID(campaignId) || !isValidUUID(itemId)) {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'Invalid id' })
+    }
+    if (containerId !== null && !isValidUUID(containerId)) {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'containerId must be a valid UUID or null' })
+    }
+
+    const role = await resolveCampaignRole(campaignId as UUID, user.userId as UUID)
+    if (!role || role === 'SPECTATOR') {
+      return res.status(403).json({ code: 'FORBIDDEN', message: 'Insufficient role' })
+    }
+
+    try {
+      const session = await getActiveSession(campaignId as UUID)
+      const item = await updateItemContainerId({
+        itemId: itemId as UUID,
+        campaignId: campaignId as UUID,
+        containerId: containerId as UUID | null,
+        actorUserId: user.userId as UUID,
+        sessionId: session?.id as UUID | undefined,
+      })
+
+      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+      if (wsManager) {
+        const event: EventEnvelope = {
+          id: crypto.randomUUID() as UUID,
+          type: 'INVENTORY:ITEM_UPDATED',
+          version: 1,
+          userId: user.userId as UUID,
+          userRole: role as any,
+          sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
+          roomId: null,
+          timestamp: item.updatedAt,
+          payload: {
+            campaignId: item.campaignId,
+            itemId: item.id,
+            ownerType: item.ownerType,
+            ownerId: item.ownerId,
+            name: item.name,
+            quantity: item.quantity,
+            notes: item.notes,
+            isContainer: item.isContainer,
+            containerId: item.containerId,
+            metadata: item.metadata,
+            updatedByUserId: user.userId,
+            updatedAt: item.updatedAt,
+          },
+        }
+        await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
+      }
+
+      return res.json({ item })
+    } catch (err: any) {
+      const code = err?.code
+      if (code === 'CONTAINER_NESTING_FORBIDDEN') {
+        return res.status(400).json({ code, message: err.message })
+      }
+      if (code === 'NOT_A_CONTAINER') {
+        return res.status(400).json({ code, message: err.message })
+      }
+      if (code === 'OWNER_MISMATCH') {
+        return res.status(400).json({ code, message: err.message })
+      }
+      if (code === 'NOT_FOUND') {
+        return res.status(404).json({ code, message: err.message })
+      }
+      logger.error('inventory.routes', 'Failed to update containerId', { campaignId, itemId, err })
+      return res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to update container' })
+    }
+  }
+)
 
 // ─── DELETE /api/inventory/:campaignId/items/:itemId ─────────────────────────
 
@@ -396,46 +488,97 @@ router.delete('/:campaignId/items/:itemId', requireAuth, async (req: Request, re
 
   try {
     const session = await getActiveSession(campaignId as UUID)
-    const item = await removeInventoryItem({
-      itemId: itemId as UUID,
-      campaignId: campaignId as UUID,
-      actorUserId: user.userId as UUID,
-      sessionId: session?.id as UUID | undefined,
-    })
-
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
-    if (wsManager) {
-      const removedAt = Date.now()
-      const event: EventEnvelope = {
-        id: crypto.randomUUID() as UUID,
-        type: 'INVENTORY:ITEM_REMOVED',
-        version: 1,
-        userId: user.userId as UUID,
-        userRole: role as any,
-        sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
-        roomId: null,
-        timestamp: removedAt,
-        payload: {
-          campaignId: campaignId as UUID,
-          itemId: item.id,
-          ownerType: item.ownerType,
-          ownerId: item.ownerId,
-          name: item.name,
-          quantity: item.quantity,
-          removedByUserId: user.userId,
-          removedAt,
-        },
-      }
-      await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
+
+    // Peek at the item first to check if it's a container
+    const { findInventoryItemById } = await import('@/repositories/inventory.repository')
+    const existing = await findInventoryItemById(itemId)
+    if (!existing || existing.campaignId !== campaignId) {
+      return res.status(404).json({ code: 'NOT_FOUND', message: 'Item not found' })
     }
 
-    if (session) {
-      await broadcastInventorySystemMessage({
-        session,
-        content: `[Inventory] ${item.name} ×${item.quantity} removed.`,
+    const removedAt = Date.now()
+    const baseEvent = {
+      version: 1 as const,
+      userId: user.userId as UUID,
+      userRole: role as any,
+      sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
+      roomId: null,
+      timestamp: removedAt,
+    }
+
+    if (existing.isContainer) {
+      // Remove container + all contents atomically, broadcast one event per item
+      const { container, contents } = await removeInventoryContainer({
+        containerId: itemId as UUID,
+        campaignId: campaignId as UUID,
         actorUserId: user.userId as UUID,
-        wsManager,
+        sessionId: session?.id as UUID | undefined,
       })
+
+      if (wsManager) {
+        const allRemoved = [container, ...contents]
+        for (const removed of allRemoved) {
+          await wsManager.broadcastToCampaignMembers(campaignId as UUID, {
+            ...baseEvent,
+            id: crypto.randomUUID() as UUID,
+            type: 'INVENTORY:ITEM_REMOVED' as const,
+            payload: {
+              campaignId: campaignId as UUID,
+              itemId: removed.id,
+              ownerType: removed.ownerType,
+              ownerId: removed.ownerId,
+              name: removed.name,
+              quantity: removed.quantity,
+              removedByUserId: user.userId,
+              removedAt,
+            },
+          })
+        }
+      }
+
+      if (session) {
+        await broadcastInventorySystemMessage({
+          session,
+          content: `[Inventory] ${container.name} and its contents removed.`,
+          actorUserId: user.userId as UUID,
+          wsManager,
+        })
+      }
+    } else {
+      const item = await removeInventoryItem({
+        itemId: itemId as UUID,
+        campaignId: campaignId as UUID,
+        actorUserId: user.userId as UUID,
+        sessionId: session?.id as UUID | undefined,
+      })
+
+      if (wsManager) {
+        await wsManager.broadcastToCampaignMembers(campaignId as UUID, {
+          ...baseEvent,
+          id: crypto.randomUUID() as UUID,
+          type: 'INVENTORY:ITEM_REMOVED' as const,
+          payload: {
+            campaignId: campaignId as UUID,
+            itemId: item.id,
+            ownerType: item.ownerType,
+            ownerId: item.ownerId,
+            name: item.name,
+            quantity: item.quantity,
+            removedByUserId: user.userId,
+            removedAt,
+          },
+        })
+      }
+
+      if (session) {
+        await broadcastInventorySystemMessage({
+          session,
+          content: `[Inventory] ${item.name} ×${item.quantity} removed.`,
+          actorUserId: user.userId as UUID,
+          wsManager,
+        })
+      }
     }
 
     return res.json({ success: true })

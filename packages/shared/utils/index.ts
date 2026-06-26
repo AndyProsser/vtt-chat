@@ -39,3 +39,12 @@ export {
   CHARACTER_STAT_KEYS,
   type NormalizedCharacterStats,
 } from './character-stats'
+export {
+  normalizeFromSrd,
+  normalizeFromDdb,
+  mergeItemMetadata,
+  isKnownContainerType,
+  type ItemMetadata,
+  type SrdItemApiResponse,
+  type DdbItemSyncFields,
+} from './inventory-normalize'

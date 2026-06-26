@@ -6,13 +6,16 @@
 
 import { randomUUID } from 'node:crypto'
 import { InventoryItemSource, InventoryItemCategory, InventoryActionType } from '@shared'
-import type { UUID, CurrencyWallet } from '@shared'
+import type { UUID, CurrencyWallet, ItemMetadata } from '@shared'
+import { isKnownContainerType } from '@shared'
 import {
   createInventoryItemRecord,
   updateInventoryItemRecord,
   deleteInventoryItemRecord,
   transferInventoryItemRecord,
   findInventoryItemById,
+  findItemsInContainer,
+  deleteContainerWithContents,
   listCampaignInventoryItems,
   findOrCreateCurrencyWallet,
   updateCurrencyWalletRecord,
@@ -47,6 +50,9 @@ export interface InventoryItemDto {
   addedByUserId: UUID
   createdAt: number
   updatedAt: number
+  isContainer: boolean
+  containerId: UUID | null
+  metadata: ItemMetadata | null
 }
 
 export interface CurrencyWalletDto {
@@ -79,6 +85,9 @@ function mapItem(row: InventoryItemRow): InventoryItemDto {
     addedByUserId: row.addedByUserId as UUID,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
+    isContainer: row.isContainer,
+    containerId: (row.containerId as UUID) ?? null,
+    metadata: row.metadata ?? null,
   }
 }
 
@@ -209,9 +218,12 @@ export async function addInventoryItem(params: {
   externalSource?: string
   addedByUserId: UUID
   sessionId?: UUID
+  containerId?: UUID | null
+  metadata?: ItemMetadata | null
 }): Promise<InventoryItemDto> {
   const now = new Date()
   const id = randomUUID() as UUID
+  const autoIsContainer = isKnownContainerType(params.name, params.srdKey)
   const row = await createInventoryItemRecord({
     id,
     campaignId: params.campaignId,
@@ -228,6 +240,9 @@ export async function addInventoryItem(params: {
     addedByUserId: params.addedByUserId,
     createdAt: now,
     updatedAt: now,
+    isContainer: autoIsContainer,
+    containerId: params.containerId ?? null,
+    metadata: params.metadata ?? null,
   })
 
   await createInventoryHistoryRecord({
@@ -257,6 +272,8 @@ export async function editInventoryItem(params: {
   name?: string
   quantity?: number
   notes?: string | null
+  containerId?: UUID | null
+  metadata?: ItemMetadata | null
   actorUserId: UUID
   sessionId?: UUID
 }): Promise<InventoryItemDto> {
@@ -265,6 +282,8 @@ export async function editInventoryItem(params: {
     name: params.name,
     quantity: params.quantity,
     notes: params.notes,
+    containerId: params.containerId,
+    metadata: params.metadata,
     updatedAt: new Date(),
   })
 
@@ -414,6 +433,102 @@ export async function adjustCurrency(params: {
   })
 
   return mapWallet(updated)
+}
+
+// ─── Container mutations ──────────────────────────────────────────────────────
+
+/**
+ * Updates the containerId on an item (puts it inside a container or removes it from one).
+ * Validates that:
+ *   - The item exists in the campaign
+ *   - The item is not itself a container (nesting forbidden)
+ *   - If containerId is non-null, the target container is a real container in the same campaign/owner
+ */
+export async function updateItemContainerId(params: {
+  itemId: UUID
+  campaignId: UUID
+  containerId: UUID | null
+  actorUserId: UUID
+  sessionId?: UUID
+}): Promise<InventoryItemDto> {
+  const item = await findInventoryItemById(params.itemId)
+  if (!item || item.campaignId !== params.campaignId) {
+    throw Object.assign(new Error('Item not found'), { code: 'NOT_FOUND' })
+  }
+  if (item.isContainer) {
+    throw Object.assign(new Error('Containers cannot be nested inside another container'), {
+      code: 'CONTAINER_NESTING_FORBIDDEN',
+    })
+  }
+  if (params.containerId !== null) {
+    const container = await findInventoryItemById(params.containerId)
+    if (!container || container.campaignId !== params.campaignId) {
+      throw Object.assign(new Error('Container not found'), { code: 'NOT_FOUND' })
+    }
+    if (!container.isContainer) {
+      throw Object.assign(new Error('Target item is not a container'), { code: 'NOT_A_CONTAINER' })
+    }
+    if (container.ownerType !== item.ownerType || container.ownerId !== item.ownerId) {
+      throw Object.assign(new Error('Container must belong to the same owner as the item'), {
+        code: 'OWNER_MISMATCH',
+      })
+    }
+  }
+
+  const row = await updateInventoryItemRecord({
+    id: params.itemId,
+    containerId: params.containerId,
+    updatedAt: new Date(),
+  })
+  return mapItem(row)
+}
+
+/**
+ * Removes a container item AND all of its contents in a single DB transaction.
+ * Returns the deleted container and all deleted contained items so the caller can
+ * broadcast individual INVENTORY:ITEM_REMOVED events for each.
+ */
+export async function removeInventoryContainer(params: {
+  containerId: UUID
+  campaignId: UUID
+  actorUserId: UUID
+  sessionId?: UUID
+}): Promise<{ container: InventoryItemDto; contents: InventoryItemDto[] }> {
+  const container = await findInventoryItemById(params.containerId)
+  if (!container || container.campaignId !== params.campaignId) {
+    throw new Error('Container not found in this campaign')
+  }
+
+  const contentRows = await findItemsInContainer(params.containerId)
+  const now = new Date()
+
+  // Write history for all deletions before removing rows
+  const historyWrites = [container, ...contentRows].map((row) =>
+    createInventoryHistoryRecord({
+      id: randomUUID() as UUID,
+      campaignId: params.campaignId,
+      itemId: row.id,
+      sessionId: params.sessionId ?? null,
+      actorUserId: params.actorUserId,
+      actionType: InventoryActionType.ITEM_REMOVED,
+      fromOwnerType: row.ownerType,
+      fromOwnerId: row.ownerId,
+      toOwnerType: null,
+      toOwnerId: null,
+      quantity: row.quantity,
+      currencyDelta: null,
+      itemName: row.name,
+      notes: null,
+      createdAt: now,
+    })
+  )
+  await Promise.all(historyWrites)
+  await deleteContainerWithContents(params.containerId)
+
+  return {
+    container: mapItem(container),
+    contents: contentRows.map(mapItem),
+  }
 }
 
 // ─── Item name lookup ────────────────────────────────────────────────────────
@@ -683,6 +798,7 @@ export interface ExternalInventoryItemInput {
   srdKey?: string
   srdCategory?: InventoryItemCategory
   notes?: string
+  metadata?: ItemMetadata | null
 }
 
 export interface ExternalInventorySyncResult {
@@ -720,6 +836,7 @@ export async function syncExternalInventoryItems(params: {
   let updated = 0
 
   for (const item of params.items) {
+    const autoIsContainer = isKnownContainerType(item.name, item.srdKey)
     const { row, created: wasCreated, changed: wasChanged } = await upsertExternalInventoryItem({
       campaignId: params.campaignId,
       ownerId: params.ownerId,
@@ -733,6 +850,8 @@ export async function syncExternalInventoryItems(params: {
       notes: item.notes ?? null,
       addedByUserId: params.actorUserId,
       now,
+      isContainer: autoIsContainer,
+      metadata: item.metadata ?? null,
     })
 
     // Only write history when content actually changed — skip no-op re-syncs

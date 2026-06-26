@@ -3,6 +3,7 @@ import { InventoryItemCategory } from '@shared'
 import type { UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import type { InventoryItem } from '@/types/inventory'
+import { InventoryItemDetailPopover } from './InventoryPanel.ItemDetailPopover'
 
 interface MoveTarget {
   label: string
@@ -29,10 +30,16 @@ interface InventoryItemRowProps {
     toOwnerType: 'party' | 'character',
     toOwnerId: UUID | null
   ) => Promise<void>
+  onSaveNotes: (itemId: UUID, notes: string | null) => Promise<void>
+  onSetContainer: (itemId: UUID, containerId: UUID | null) => Promise<void>
   moveTargets: MoveTarget[]
+  /** Other containers owned by the same owner — for "Put in container" sub-menu. */
+  availableContainers?: InventoryItem[]
+  /** True when item is rendered inside a ContainerSection (shows "Remove from container"). */
+  isInsideContainer?: boolean
 }
 
-type RowMode = 'view' | 'edit' | 'confirm-remove' | 'move'
+type RowMode = 'view' | 'edit' | 'confirm-remove' | 'move' | 'container-select'
 
 export const InventoryItemRow = memo(function InventoryItemRow({
   item,
@@ -42,7 +49,11 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   onRemove,
   onEdit,
   onMove,
+  onSaveNotes,
+  onSetContainer,
   moveTargets,
+  availableContainers = [],
+  isInsideContainer = false,
 }: InventoryItemRowProps) {
   const [mode, setMode] = useState<RowMode>('view')
   const [editName, setEditName] = useState(item.name)
@@ -51,7 +62,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   const [isBusy, setIsBusy] = useState(false)
   const editNameRef = useRef<HTMLInputElement>(null)
 
-  // Keep edit state in sync if item changes externally
   useEffect(() => {
     if (mode === 'view') {
       setEditName(item.name)
@@ -101,6 +111,18 @@ export const InventoryItemRow = memo(function InventoryItemRow({
     }
   }
 
+  async function handleSetContainer(containerId: UUID | null) {
+    if (isBusy) return
+    setIsBusy(true)
+    try {
+      await onSetContainer(item.id, containerId)
+      setMode('view')
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
+  // ─── Edit mode ────────────────────────────────────────────────────────────
   if (mode === 'edit') {
     return (
       <li className="inventory-item-row inventory-item-row--edit">
@@ -152,6 +174,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
     )
   }
 
+  // ─── Confirm-remove mode ─────────────────────────────────────────────────
   if (mode === 'confirm-remove') {
     return (
       <li className="inventory-item-row inventory-item-row--danger">
@@ -177,6 +200,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
     )
   }
 
+  // ─── Move mode ────────────────────────────────────────────────────────────
   if (mode === 'move') {
     return (
       <li className="inventory-item-row inventory-item-row--move">
@@ -226,8 +250,44 @@ export const InventoryItemRow = memo(function InventoryItemRow({
     )
   }
 
+  // ─── Container-select mode ───────────────────────────────────────────────
+  if (mode === 'container-select') {
+    return (
+      <li className="inventory-item-row inventory-item-row--move">
+        <span className="inventory-item-row__move-title">Put {item.name} in:</span>
+        <div className="inventory-item-row__move-grid" role="listbox" aria-label="Select container">
+          {availableContainers.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              role="option"
+              aria-selected={false}
+              className="inventory-item-row__move-card"
+              onClick={() => handleSetContainer(c.id as UUID)}
+              disabled={isBusy}
+            >
+              <span className="inventory-item-row__move-card-avatar" aria-hidden="true">
+                <Icon name="inventory" />
+              </span>
+              <span className="inventory-item-row__move-card-name">{c.name}</span>
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="inventory-item-row__action-btn"
+          onClick={() => setMode('view')}
+        >
+          Cancel
+        </button>
+      </li>
+    )
+  }
+
+  // ─── View mode ────────────────────────────────────────────────────────────
   const isMagic = item.srdCategory === InventoryItemCategory.MAGIC_ITEM
   const isHomebrew = item.srdCategory === InventoryItemCategory.HOMEBREW
+  const meta = item.metadata
 
   return (
     <li className={[
@@ -238,18 +298,36 @@ export const InventoryItemRow = memo(function InventoryItemRow({
       <span className="inventory-item-row__qty" aria-label={`Quantity: ${item.quantity}`}>
         ×{item.quantity}
       </span>
-      <div className="inventory-item-row__info">
-        <span className="inventory-item-row__name">
-          {item.name}
-          {item.srdCategory === InventoryItemCategory.MAGIC_ITEM && (
-            <span className="inventory-item-row__magic-badge" aria-label="Magic item">✦</span>
+
+      {/* Clicking the name/info area opens the detail popover */}
+      <InventoryItemDetailPopover item={item} isReadOnly={isReadOnly} onSaveNotes={onSaveNotes}>
+        <button type="button" className="inventory-item-row__info inventory-item-row__info--trigger">
+          <span className="inventory-item-row__name">
+            {item.name}
+            {isMagic && (
+              <span className="inventory-item-row__magic-badge" aria-label="Magic item">✦</span>
+            )}
+            {isHomebrew && (
+              <span className="inventory-item-row__homebrew-badge" aria-label="Homebrew">⚗</span>
+            )}
+          </span>
+          {(meta?.itemType || meta?.weight != null) && (
+            <span className="inventory-item-row__meta">
+              {[meta?.itemType, meta?.weight != null ? `${meta.weight} lb` : null]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           )}
-          {item.srdCategory === InventoryItemCategory.HOMEBREW && (
-            <span className="inventory-item-row__homebrew-badge" aria-label="Homebrew">⚗</span>
-          )}
+          {item.notes && <span className="inventory-item-row__notes">{item.notes}</span>}
+        </button>
+      </InventoryItemDetailPopover>
+
+      {meta?.costGp != null && (
+        <span className="inventory-item-row__cost" aria-label={`Cost: ${meta.costGp} gp`}>
+          {meta.costGp % 1 === 0 ? meta.costGp : meta.costGp.toFixed(1)} gp
         </span>
-        {item.notes && <span className="inventory-item-row__notes">{item.notes}</span>}
-      </div>
+      )}
+
       {!isReadOnly && (
         <div className="inventory-item-row__actions">
           <button
@@ -261,6 +339,33 @@ export const InventoryItemRow = memo(function InventoryItemRow({
           >
             <Icon name="edit" />
           </button>
+
+          {/* Put in container / Remove from container */}
+          {!item.isContainer && (
+            isInsideContainer ? (
+              <button
+                type="button"
+                className="inventory-item-row__action-icon"
+                aria-label="Remove from container"
+                title="Remove from container"
+                onClick={() => handleSetContainer(null)}
+                disabled={isBusy}
+              >
+                <Icon name="subdirectory_arrow_left" />
+              </button>
+            ) : availableContainers.length > 0 ? (
+              <button
+                type="button"
+                className="inventory-item-row__action-icon"
+                aria-label="Put in container"
+                title="Put in container"
+                onClick={() => setMode('container-select')}
+              >
+                <Icon name="inventory" />
+              </button>
+            ) : null
+          )}
+
           {moveTargets.length > 0 && (
             <button
               type="button"

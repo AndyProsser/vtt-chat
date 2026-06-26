@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { getPrismaClient } from '@/infra/db'
+import type { ItemMetadata } from '@shared'
 
 const prisma = getPrismaClient()
 
@@ -19,6 +20,9 @@ export interface InventoryItemRow {
   addedByUserId: string
   createdAt: Date
   updatedAt: Date
+  isContainer: boolean
+  containerId: string | null
+  metadata: ItemMetadata | null
 }
 
 export interface CurrencyWalletRow {
@@ -58,11 +62,11 @@ export async function listCampaignInventoryItems(campaignId: string): Promise<In
   return prisma.inventoryItem.findMany({
     where: { campaignId },
     orderBy: { createdAt: 'asc' },
-  })
+  }) as unknown as Promise<InventoryItemRow[]>
 }
 
 export async function findInventoryItemById(id: string): Promise<InventoryItemRow | null> {
-  return prisma.inventoryItem.findUnique({ where: { id } })
+  return prisma.inventoryItem.findUnique({ where: { id } }) as unknown as Promise<InventoryItemRow | null>
 }
 
 export async function createInventoryItemRecord(params: {
@@ -81,8 +85,18 @@ export async function createInventoryItemRecord(params: {
   addedByUserId: string
   createdAt: Date
   updatedAt: Date
+  isContainer?: boolean
+  containerId?: string | null
+  metadata?: ItemMetadata | null
 }): Promise<InventoryItemRow> {
-  return prisma.inventoryItem.create({ data: params })
+  return prisma.inventoryItem.create({
+    data: {
+      ...params,
+      isContainer: params.isContainer ?? false,
+      containerId: params.containerId ?? null,
+      metadata: params.metadata ? (params.metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
+    },
+  }) as Promise<InventoryItemRow>
 }
 
 export async function findInventoryItemByExternalId(params: {
@@ -98,7 +112,7 @@ export async function findInventoryItemByExternalId(params: {
       externalSource: params.externalSource,
       externalId: params.externalId,
     },
-  })
+  }) as unknown as Promise<InventoryItemRow | null>
 }
 
 /**
@@ -124,6 +138,8 @@ export async function upsertExternalInventoryItem(params: {
   notes: string | null
   addedByUserId: string
   now: Date
+  isContainer?: boolean
+  metadata?: ItemMetadata | null
 }): Promise<{ row: InventoryItemRow; created: boolean; changed: boolean }> {
   // Level 1: match by external key
   const byExternalId = await findInventoryItemByExternalId({
@@ -133,19 +149,31 @@ export async function upsertExternalInventoryItem(params: {
     externalId: params.externalId,
   })
 
+  const metadataValue = params.metadata
+    ? (params.metadata as Prisma.InputJsonValue)
+    : Prisma.JsonNull
+
   if (byExternalId) {
     const isChanged =
       byExternalId.name !== params.name ||
       byExternalId.quantity !== params.quantity ||
-      (byExternalId.notes ?? null) !== (params.notes ?? null)
+      (byExternalId.notes ?? null) !== (params.notes ?? null) ||
+      (params.metadata !== undefined)
 
     if (!isChanged) return { row: byExternalId, created: false, changed: false }
 
     const row = await prisma.inventoryItem.update({
       where: { id: byExternalId.id },
-      data: { name: params.name, quantity: params.quantity, notes: params.notes, updatedAt: params.now },
+      data: {
+        name: params.name,
+        quantity: params.quantity,
+        notes: params.notes,
+        updatedAt: params.now,
+        ...(params.isContainer !== undefined ? { isContainer: params.isContainer } : {}),
+        ...(params.metadata !== undefined ? { metadata: metadataValue } : {}),
+      },
     })
-    return { row, created: false, changed: true }
+    return { row: row as InventoryItemRow, created: false, changed: true }
   }
 
   // Level 2: name-connect — claim an existing unlinked item with the same name
@@ -164,15 +192,16 @@ export async function upsertExternalInventoryItem(params: {
       data: {
         externalId: params.externalId,
         externalSource: params.externalSource,
-        // Prefer existing srdKey if already set; otherwise use the one from the sync
         srdKey: byName.srdKey ?? params.srdKey,
         name: params.name,
         quantity: params.quantity,
         notes: params.notes,
         updatedAt: params.now,
+        ...(params.isContainer !== undefined ? { isContainer: params.isContainer } : {}),
+        ...(params.metadata !== undefined ? { metadata: metadataValue } : {}),
       },
     })
-    return { row, created: false, changed: true }
+    return { row: row as InventoryItemRow, created: false, changed: true }
   }
 
   // Level 3: create new
@@ -193,6 +222,8 @@ export async function upsertExternalInventoryItem(params: {
     addedByUserId: params.addedByUserId,
     createdAt: params.now,
     updatedAt: params.now,
+    isContainer: params.isContainer ?? false,
+    metadata: params.metadata,
   })
   return { row, created: true, changed: true }
 }
@@ -225,7 +256,7 @@ export async function deleteStaleExternalItems(params: {
     where: { id: { in: toDelete.map((r) => r.id) } },
   })
 
-  return toDelete
+  return toDelete as unknown as InventoryItemRow[]
 }
 
 export async function updateInventoryItemRecord(params: {
@@ -233,13 +264,34 @@ export async function updateInventoryItemRecord(params: {
   name?: string
   quantity?: number
   notes?: string | null
+  containerId?: string | null
+  metadata?: ItemMetadata | null
   updatedAt: Date
 }): Promise<InventoryItemRow> {
-  const { id, updatedAt, ...rest } = params
+  const { id, updatedAt, metadata, ...rest } = params
   return prisma.inventoryItem.update({
     where: { id },
-    data: { ...rest, updatedAt },
-  })
+    data: {
+      ...rest,
+      updatedAt,
+      ...(metadata !== undefined
+        ? { metadata: metadata ? (metadata as Prisma.InputJsonValue) : Prisma.JsonNull }
+        : {}),
+    },
+  }) as unknown as Promise<InventoryItemRow>
+}
+
+/** Finds all items whose containerId matches the given container item ID. */
+export async function findItemsInContainer(containerId: string): Promise<InventoryItemRow[]> {
+  return prisma.inventoryItem.findMany({ where: { containerId } }) as unknown as Promise<InventoryItemRow[]>
+}
+
+/** Deletes a container item and all items contained within it atomically. */
+export async function deleteContainerWithContents(containerId: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.inventoryItem.deleteMany({ where: { containerId } }),
+    prisma.inventoryItem.delete({ where: { id: containerId } }),
+  ])
 }
 
 export async function deleteInventoryItemRecord(id: string): Promise<void> {
@@ -259,7 +311,7 @@ export async function transferInventoryItemRecord(params: {
       ownerId: params.toOwnerId,
       updatedAt: params.updatedAt,
     },
-  })
+  }) as unknown as Promise<InventoryItemRow>
 }
 
 // ─── Currency Wallets ────────────────────────────────────────────────────────
