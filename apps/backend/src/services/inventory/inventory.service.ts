@@ -15,6 +15,7 @@ import {
   transferInventoryItemRecord,
   transferContainerWithContentsRecord,
   findInventoryItemById,
+  findInventoryItemByExternalId,
   findItemsInContainer,
   deleteContainerWithContents,
   listCampaignInventoryItems,
@@ -858,6 +859,8 @@ export interface ExternalInventoryItemInput {
   srdCategory?: InventoryItemCategory
   notes?: string
   metadata?: ItemMetadata | null
+  /** External ID of the container this item belongs to (e.g. DDB backpack ID). Resolved to internal containerId in syncExternalInventoryItems. */
+  containerExternalId?: string | null
 }
 
 export interface ExternalInventorySyncResult {
@@ -868,6 +871,8 @@ export interface ExternalInventorySyncResult {
   wasChanged: boolean[]
   created: number
   updated: number
+  /** Items whose containerId was resolved from containerExternalId in the second pass. Caller must broadcast INVENTORY:ITEM_UPDATED for each. */
+  containerLinksApplied: InventoryItemDto[]
 }
 
 /**
@@ -941,7 +946,65 @@ export async function syncExternalInventoryItems(params: {
     else if (wasChanged) updated++
   }
 
-  return { upserted: results, wasCreated: createdFlags, wasChanged: changedFlags, created, updated }
+  // ─── Second pass: resolve containerExternalId → containerId ─────────────────
+  // Runs after all upserts so every container is guaranteed to exist in the DB.
+  const containerLinksApplied: InventoryItemDto[] = []
+  const itemsNeedingContainer = params.items.filter((i) => i.containerExternalId)
+
+  if (itemsNeedingContainer.length > 0) {
+    // Map externalId → result index for in-place patching
+    const resultIdxByExternalId = new Map<string, number>()
+    for (let i = 0; i < params.items.length; i++) {
+      resultIdxByExternalId.set(params.items[i].externalId, i)
+    }
+
+    // Build externalId → InventoryItemDto map from this batch
+    const dtoByExternalId = new Map<string, InventoryItemDto>()
+    for (const dto of results) {
+      if (dto.externalId) dtoByExternalId.set(dto.externalId, dto)
+    }
+
+    // Resolve container DTOs — containers may exist in DB from a prior sync
+    const containerByExternalId = new Map<string, InventoryItemDto>()
+    for (const item of itemsNeedingContainer) {
+      const ceid = item.containerExternalId!
+      if (containerByExternalId.has(ceid)) continue
+      let container = dtoByExternalId.get(ceid)
+      if (!container) {
+        const row = await findInventoryItemByExternalId({
+          campaignId: params.campaignId,
+          ownerId: params.ownerId,
+          externalSource: params.externalSource,
+          externalId: ceid,
+        })
+        if (row) container = mapItem(row)
+      }
+      if (container?.isContainer) {
+        containerByExternalId.set(ceid, container)
+      }
+    }
+
+    // Apply containerId to each item that has a valid container resolved
+    for (const item of itemsNeedingContainer) {
+      const container = containerByExternalId.get(item.containerExternalId!)
+      if (!container) continue
+      const idx = resultIdxByExternalId.get(item.externalId)
+      if (idx === undefined) continue
+      const dto = results[idx]
+      if (dto.containerId === container.id) continue
+
+      const updatedRow = await updateInventoryItemRecord({
+        id: dto.id,
+        containerId: container.id,
+        updatedAt: now,
+      })
+      const updatedDto = mapItem(updatedRow)
+      results[idx] = updatedDto
+      containerLinksApplied.push(updatedDto)
+    }
+  }
+
+  return { upserted: results, wasCreated: createdFlags, wasChanged: changedFlags, created, updated, containerLinksApplied }
 }
 
 export interface DeletedExternalItemResult {

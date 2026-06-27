@@ -20,6 +20,8 @@ export interface ExternalInventoryItemInput {
   srdKey?: string
   srdCategory?: string
   notes?: string
+  /** External ID of the container this item belongs to (e.g. DDB backpack ID). */
+  containerExternalId?: string
 }
 
 export interface ExternalInventoryUpdate {

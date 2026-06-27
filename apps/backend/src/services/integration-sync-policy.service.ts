@@ -75,6 +75,15 @@ export function sanitizeExternalItems(items: unknown): ExternalInventoryItemInpu
       srdKey: typeof it.srdKey === 'string' ? it.srdKey.trim() : undefined,
       srdCategory: inferSrdCategory(it),
       notes: typeof it.notes === 'string' && it.notes.trim().length > 0 ? it.notes.trim() : undefined,
+      // DDB sends container membership as `containerId` (numeric DDB ID) or `containerExternalId` (string)
+      containerExternalId:
+        typeof it.containerExternalId === 'string' && it.containerExternalId.trim().length > 0
+          ? it.containerExternalId.trim()
+          : typeof it.containerId === 'string' && it.containerId.trim().length > 0
+            ? it.containerId.trim()
+            : typeof it.containerId === 'number'
+              ? String(it.containerId)
+              : undefined,
     }))
 }
 
@@ -100,7 +109,8 @@ async function broadcastInventoryItemEvent(params: {
   const { item, wasCreated, actorUserId, actorRole, sessionId } = params
   const event: EventEnvelope = {
     id: randomUUID() as UUID,
-    type: wasCreated ? 'INVENTORY:ITEM_ADDED' : 'INVENTORY:ITEM_EDITED',
+    // Edits use INVENTORY:ITEM_UPDATED (full payload) so containerId/metadata reach clients
+    type: wasCreated ? 'INVENTORY:ITEM_ADDED' : 'INVENTORY:ITEM_UPDATED',
     version: 1,
     userId: actorUserId,
     userRole: actorRole,
@@ -131,15 +141,60 @@ async function broadcastInventoryItemEvent(params: {
           ownerId: item.ownerId,
           name: item.name,
           quantity: item.quantity,
-          notes: item.notes ?? undefined,
-          editedByUserId: actorUserId,
-          editedAt: item.updatedAt,
+          notes: item.notes ?? null,
+          isContainer: item.isContainer,
+          containerId: item.containerId ?? null,
+          metadata: item.metadata ?? null,
+          updatedByUserId: actorUserId,
+          updatedAt: item.updatedAt,
         },
   }
   try {
     await eventBroadcaster.broadcastToCampaignMembers(item.campaignId, event)
   } catch (err) {
     logger.warn('inventory-sync', 'Failed to broadcast inventory item event', {
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
+
+/** Broadcasts INVENTORY:ITEM_UPDATED for a single item (used for container-link second-pass updates). */
+async function broadcastInventoryItemUpdated(params: {
+  item: InventoryItemDto
+  actorUserId: UUID
+  actorRole: Role
+  sessionId: UUID
+}): Promise<void> {
+  if (!eventBroadcaster.isReady()) return
+  const { item, actorUserId, actorRole, sessionId } = params
+  const event: EventEnvelope = {
+    id: randomUUID() as UUID,
+    type: 'INVENTORY:ITEM_UPDATED',
+    version: 1,
+    userId: actorUserId,
+    userRole: actorRole,
+    sessionId,
+    roomId: null,
+    timestamp: item.updatedAt,
+    payload: {
+      campaignId: item.campaignId,
+      itemId: item.id,
+      ownerType: item.ownerType,
+      ownerId: item.ownerId,
+      name: item.name,
+      quantity: item.quantity,
+      notes: item.notes ?? null,
+      isContainer: item.isContainer,
+      containerId: item.containerId ?? null,
+      metadata: item.metadata ?? null,
+      updatedByUserId: actorUserId,
+      updatedAt: item.updatedAt,
+    },
+  }
+  try {
+    await eventBroadcaster.broadcastToCampaignMembers(item.campaignId, event)
+  } catch (err) {
+    logger.warn('inventory-sync', 'Failed to broadcast container link update', {
       error: err instanceof Error ? err.message : String(err),
     })
   }
@@ -353,6 +408,11 @@ export async function applyItemsSection(params: {
         sessionId,
       })
     }
+  }
+
+  // Broadcast container-link updates set by the second pass (containerExternalId resolution)
+  for (const item of result.containerLinksApplied) {
+    await broadcastInventoryItemUpdated({ item, actorUserId: params.actorUserId, actorRole, sessionId })
   }
 
   // Replace semantics for character-owned syncs: remove items from this source that
