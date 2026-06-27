@@ -303,6 +303,7 @@ export async function transferInventoryItemRecord(params: {
   toOwnerType: string
   toOwnerId: string | null
   updatedAt: Date
+  clearContainerId?: boolean
 }): Promise<InventoryItemRow> {
   return prisma.inventoryItem.update({
     where: { id: params.id },
@@ -310,8 +311,50 @@ export async function transferInventoryItemRecord(params: {
       ownerType: params.toOwnerType,
       ownerId: params.toOwnerId,
       updatedAt: params.updatedAt,
+      // Always clear containerId on transfer — the source container stays with the old owner
+      containerId: params.clearContainerId !== false ? null : undefined,
     },
   }) as unknown as Promise<InventoryItemRow>
+}
+
+/**
+ * Atomically transfers a container and all of its contained items to a new owner.
+ * Returns the updated container row and all updated content rows.
+ */
+export async function transferContainerWithContentsRecord(params: {
+  containerId: string
+  toOwnerType: string
+  toOwnerId: string | null
+  updatedAt: Date
+}): Promise<{ container: InventoryItemRow; contents: InventoryItemRow[] }> {
+  const contentIds = await prisma.inventoryItem
+    .findMany({ where: { containerId: params.containerId }, select: { id: true } })
+    .then((rows) => rows.map((r) => r.id))
+
+  const updateData = {
+    ownerType: params.toOwnerType,
+    ownerId: params.toOwnerId,
+    updatedAt: params.updatedAt,
+  }
+
+  await prisma.$transaction([
+    prisma.inventoryItem.update({ where: { id: params.containerId }, data: updateData }),
+    ...(contentIds.length > 0
+      ? [prisma.inventoryItem.updateMany({ where: { id: { in: contentIds } }, data: updateData })]
+      : []),
+  ])
+
+  const [container, contents] = await Promise.all([
+    prisma.inventoryItem.findUniqueOrThrow({ where: { id: params.containerId } }),
+    contentIds.length > 0
+      ? prisma.inventoryItem.findMany({ where: { id: { in: contentIds } } })
+      : Promise.resolve([]),
+  ])
+
+  return {
+    container: container as unknown as InventoryItemRow,
+    contents: contents as unknown as InventoryItemRow[],
+  }
 }
 
 // ─── Currency Wallets ────────────────────────────────────────────────────────

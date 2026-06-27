@@ -13,6 +13,7 @@ import {
   updateInventoryItemRecord,
   deleteInventoryItemRecord,
   transferInventoryItemRecord,
+  transferContainerWithContentsRecord,
   findInventoryItemById,
   findItemsInContainer,
   deleteContainerWithContents,
@@ -341,6 +342,10 @@ export async function removeInventoryItem(params: {
   return mapItem(existing)
 }
 
+/**
+ * Transfers a single (non-container) item to a new owner.
+ * Always clears containerId — the source container belongs to the old owner.
+ */
 export async function transferInventoryItem(params: {
   itemId: UUID
   campaignId: UUID
@@ -360,6 +365,7 @@ export async function transferInventoryItem(params: {
     toOwnerType: params.toOwnerType,
     toOwnerId: params.toOwnerId,
     updatedAt: now,
+    clearContainerId: true,
   })
 
   await createInventoryHistoryRecord({
@@ -381,6 +387,59 @@ export async function transferInventoryItem(params: {
   })
 
   return mapItem(row)
+}
+
+/**
+ * Transfers a container and all of its contained items to a new owner atomically.
+ * Returns the updated container DTO and all updated content DTOs for broadcast.
+ */
+export async function transferInventoryContainer(params: {
+  containerId: UUID
+  campaignId: UUID
+  toOwnerType: 'party' | 'character'
+  toOwnerId: UUID | null
+  actorUserId: UUID
+  sessionId?: UUID
+}): Promise<{ container: InventoryItemDto; contents: InventoryItemDto[] }> {
+  const existing = await findInventoryItemById(params.containerId)
+  if (!existing || existing.campaignId !== params.campaignId) {
+    throw new Error('Container not found in this campaign')
+  }
+  if (!existing.isContainer) {
+    throw new Error('Item is not a container')
+  }
+
+  const now = new Date()
+  const { container, contents } = await transferContainerWithContentsRecord({
+    containerId: params.containerId,
+    toOwnerType: params.toOwnerType,
+    toOwnerId: params.toOwnerId,
+    updatedAt: now,
+  })
+
+  // History for container + all contents
+  const historyWrites = [existing, ...contents].map((row) =>
+    createInventoryHistoryRecord({
+      id: randomUUID() as UUID,
+      campaignId: params.campaignId,
+      itemId: row.id,
+      sessionId: params.sessionId ?? null,
+      actorUserId: params.actorUserId,
+      actionType: InventoryActionType.ITEM_TRANSFERRED,
+      fromOwnerType: row.ownerType,
+      fromOwnerId: row.ownerId,
+      toOwnerType: params.toOwnerType,
+      toOwnerId: params.toOwnerId,
+      quantity: row.quantity,
+      currencyDelta: null,
+      itemName: row.name,
+      notes: null,
+      createdAt: now,
+    })
+  )
+  await Promise.all(historyWrites)
+
+  return { container: mapItem(container), contents: contents.map(mapItem) }
 }
 
 // ─── Currency mutations ───────────────────────────────────────────────────────

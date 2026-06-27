@@ -1705,3 +1705,43 @@
   fill: var(--color-surface);
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
 }
+
+/* ─── Drag-and-drop ────────────────────────────────────────────────────────── */
+
+.inventory-item-row--draggable {
+  cursor: grab;
+}
+
+.inventory-item-row--draggable:active {
+  cursor: grabbing;
+}
+
+.inventory-item-row--dragging {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Container section highlighted as a drop target */
+.inventory-container-section--drag-over {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface) 92%);
+}
+
+.inventory-container-section--drag-over .inventory-container-section__header {
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface-subtle) 86%);
+}
+
+/* Top-level drop zone (remove from container) */
+.inventory-panel__top-level-zone {
+  display: contents;
+}
+
+.inventory-panel__top-level-zone--drag-over {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: var(--radius-sm);
+  outline: 2px dashed color-mix(in srgb, var(--color-accent) 50%, transparent);
+  outline-offset: 3px;
+  padding: 4px;
+}

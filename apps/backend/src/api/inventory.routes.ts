@@ -8,10 +8,11 @@
 import crypto from 'node:crypto'
 import { Router } from 'express'
 import type { Request, Response, NextFunction } from 'express'
-import { InventoryItemSource, InventoryItemCategory, MessageType, isValidUUID } from '@shared'
-import type { UUID } from '@shared'
+import { InventoryItemSource, InventoryItemCategory, MessageType, isValidUUID, normalizeFromSrd } from '@shared'
+import type { UUID, SrdItemApiResponse } from '@shared'
 import { verifyToken } from '@/services/auth.service'
 import { getCampaignForUser } from '@/repositories/campaign.repository'
+import { getRedisClient } from '@/infra/redis'
 
 /** Sentinel used as sessionId in event envelopes when no active session exists. */
 export const NO_SESSION_ID = '00000000-0000-4000-8000-000000000000' as UUID
@@ -25,6 +26,7 @@ import {
   removeInventoryItem,
   removeInventoryContainer,
   transferInventoryItem,
+  transferInventoryContainer,
   updateItemContainerId,
   adjustCurrency,
   transferCurrency,
@@ -33,6 +35,35 @@ import {
 import type { WebSocketManager } from '@/ws'
 import type { EventEnvelope } from '@shared'
 import { logger } from '@/utils'
+
+const SRD_ORIGIN = 'https://www.dnd5eapi.co'
+const SRD_CACHE_TTL_S = 86400
+
+/** Fetches a single SRD item detail from the upstream API (with Redis caching) and normalises it. */
+async function fetchSrdItemMetadata(
+  srdKey: string,
+  srdCategory: InventoryItemCategory,
+  ruleset: '2014' | '2024'
+): Promise<import('@shared').ItemMetadata | null> {
+  const type = srdCategory === InventoryItemCategory.MAGIC_ITEM ? 'magic-items' : 'equipment'
+  const cacheKey = `srd:detail:${ruleset}:${type}:${srdKey}`
+  try {
+    const redis = await getRedisClient()
+    const cached = await redis.get(cacheKey)
+    if (cached) {
+      return normalizeFromSrd(JSON.parse(cached) as SrdItemApiResponse)
+    }
+    const res = await fetch(`${SRD_ORIGIN}/api/${ruleset}/${type}/${srdKey}`, {
+      signal: AbortSignal.timeout(5000),
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as SrdItemApiResponse
+    await redis.set(cacheKey, JSON.stringify(data), { EX: SRD_CACHE_TTL_S })
+    return normalizeFromSrd(data)
+  } catch {
+    return null
+  }
+}
 
 const router = Router()
 
@@ -242,6 +273,14 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
 
   try {
     const session = await getActiveSession(campaignId as UUID)
+
+    // Fetch and normalise SRD metadata when an srdKey is provided (cached upstream call)
+    const effectiveRuleset: '2014' | '2024' = req.body.ruleset === '2014' ? '2014' : '2024'
+    const itemMetadata =
+      srdKey && typeof srdKey === 'string'
+        ? await fetchSrdItemMetadata(srdKey.trim(), effectiveSrdCategory, effectiveRuleset)
+        : null
+
     const item = await addInventoryItem({
       campaignId: campaignId as UUID,
       ownerType,
@@ -261,6 +300,7 @@ router.post('/:campaignId/items', requireAuth, async (req: Request, res: Respons
       externalSource: typeof externalSource === 'string' ? externalSource.trim() : undefined,
       addedByUserId: user.userId as UUID,
       sessionId: session?.id as UUID | undefined,
+      metadata: itemMetadata,
     })
 
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -612,6 +652,85 @@ router.post(
 
     try {
       const session = await getActiveSession(campaignId as UUID)
+      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
+      const baseEvent = {
+        version: 1 as const,
+        userId: user.userId as UUID,
+        userRole: role as any,
+        sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
+        roomId: null,
+      }
+
+      // Peek at the item to check if it's a container; containers move with their contents
+      const { findInventoryItemById } = await import('@/repositories/inventory.repository')
+      const peeked = await findInventoryItemById(itemId)
+      if (!peeked || peeked.campaignId !== campaignId) {
+        return res.status(404).json({ code: 'NOT_FOUND', message: 'Item not found' })
+      }
+
+      if (peeked.isContainer) {
+        const { container, contents } = await transferInventoryContainer({
+          containerId: itemId as UUID,
+          campaignId: campaignId as UUID,
+          toOwnerType,
+          toOwnerId: toOwnerId ?? null,
+          actorUserId: user.userId as UUID,
+          sessionId: session?.id as UUID | undefined,
+        })
+
+        if (wsManager) {
+          const event: EventEnvelope = {
+            ...baseEvent,
+            id: crypto.randomUUID() as UUID,
+            type: 'INVENTORY:CONTAINER_TRANSFERRED',
+            timestamp: container.updatedAt,
+            payload: {
+              campaignId: container.campaignId,
+              container: {
+                itemId: container.id,
+                ownerType: container.ownerType,
+                ownerId: container.ownerId,
+                name: container.name,
+                quantity: container.quantity,
+                notes: container.notes,
+                isContainer: container.isContainer,
+                containerId: container.containerId,
+                metadata: container.metadata,
+                updatedAt: container.updatedAt,
+              },
+              items: contents.map((c) => ({
+                itemId: c.id,
+                ownerType: c.ownerType,
+                ownerId: c.ownerId,
+                name: c.name,
+                quantity: c.quantity,
+                notes: c.notes,
+                isContainer: c.isContainer,
+                containerId: c.containerId,
+                metadata: c.metadata,
+                updatedAt: c.updatedAt,
+              })),
+              transferredByUserId: user.userId,
+              transferredAt: container.updatedAt,
+            },
+          }
+          await wsManager.broadcastToCampaignMembers(campaignId as UUID, event)
+        }
+
+        if (session) {
+          const dest = toOwnerType === 'party' ? 'party inventory' : 'character inventory'
+          await broadcastInventorySystemMessage({
+            session,
+            content: `[Inventory] ${container.name} (and ${contents.length} item${contents.length === 1 ? '' : 's'}) moved to ${dest}.`,
+            actorUserId: user.userId as UUID,
+            wsManager,
+          })
+        }
+
+        return res.json({ item: container })
+      }
+
+      // Non-container item — standard single transfer
       const item = await transferInventoryItem({
         itemId: itemId as UUID,
         campaignId: campaignId as UUID,
@@ -621,16 +740,11 @@ router.post(
         sessionId: session?.id as UUID | undefined,
       })
 
-      const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
       if (wsManager) {
         const event: EventEnvelope = {
+          ...baseEvent,
           id: crypto.randomUUID() as UUID,
           type: 'INVENTORY:ITEM_TRANSFERRED',
-          version: 1,
-          userId: user.userId as UUID,
-          userRole: role as any,
-          sessionId: (session?.id ?? NO_SESSION_ID) as UUID,
-          roomId: null,
           timestamp: item.updatedAt,
           payload: {
             campaignId: item.campaignId,

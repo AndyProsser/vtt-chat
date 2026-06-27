@@ -35,6 +35,10 @@ interface ContainerSectionProps {
   onSetContainer: (itemId: UUID, containerId: UUID | null) => Promise<void>
   /** Other containers in the same owner scope — for "put in container" actions on contents. */
   otherContainers: InventoryItem[]
+  /** Drag-and-drop: ID of the item currently being dragged (null if none). */
+  draggingItemId?: UUID | null
+  onDragItemStart?: (itemId: UUID) => void
+  onDragItemEnd?: () => void
 }
 
 export const ContainerSection = memo(function ContainerSection({
@@ -50,17 +54,50 @@ export const ContainerSection = memo(function ContainerSection({
   onSaveNotes,
   onSetContainer,
   otherContainers,
+  draggingItemId,
+  onDragItemStart,
+  onDragItemEnd,
 }: ContainerSectionProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+
+  // An item can be dropped here if it's not already in this container
+  const canAcceptDrop = draggingItemId != null && !contents.some((c) => c.id === draggingItemId)
 
   const totalWeight = contents.reduce((sum, item) => {
     return sum + (item.metadata?.weight ?? 0) * item.quantity
   }, 0)
 
+  function handleDragOver(e: React.DragEvent) {
+    if (!canAcceptDrop) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setIsDragOver(true)
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragOver(false)
+    const droppedId = e.dataTransfer.getData('text/plain') as UUID
+    if (droppedId && canAcceptDrop) {
+      onSetContainer(droppedId, container.id as UUID)
+    }
+  }
+
   return (
-    <li className="inventory-container-section">
-      {/* Container header row */}
-      <div className="inventory-container-section__header">
+    <li
+      className={[
+        'inventory-container-section',
+        isDragOver && canAcceptDrop ? 'inventory-container-section--drag-over' : '',
+      ].filter(Boolean).join(' ')}
+    >
+      {/* Container header row — also acts as drop target */}
+      <div
+        className="inventory-container-section__header"
+        onDragOver={handleDragOver}
+        onDragLeave={() => setIsDragOver(false)}
+        onDrop={handleDrop}
+      >
         <button
           type="button"
           className="inventory-container-section__toggle"
@@ -130,6 +167,9 @@ export const ContainerSection = memo(function ContainerSection({
                 )}
                 availableContainers={otherContainers.filter((c) => c.id !== container.id)}
                 isInsideContainer
+                isDragging={draggingItemId === item.id}
+                onDragItemStart={onDragItemStart}
+                onDragItemEnd={onDragItemEnd}
               />
             ))
           )}

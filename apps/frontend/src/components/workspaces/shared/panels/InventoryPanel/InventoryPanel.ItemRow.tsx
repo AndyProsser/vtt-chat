@@ -37,6 +37,12 @@ interface InventoryItemRowProps {
   availableContainers?: InventoryItem[]
   /** True when item is rendered inside a ContainerSection (shows "Remove from container"). */
   isInsideContainer?: boolean
+  /** Drag-and-drop: called when drag starts on this row. */
+  onDragItemStart?: (itemId: UUID) => void
+  /** Drag-and-drop: called when drag ends (drop or cancel). */
+  onDragItemEnd?: () => void
+  /** Whether this item is currently being dragged (applies dim style). */
+  isDragging?: boolean
 }
 
 type RowMode = 'view' | 'edit' | 'confirm-remove' | 'move' | 'container-select'
@@ -54,6 +60,9 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   moveTargets,
   availableContainers = [],
   isInsideContainer = false,
+  onDragItemStart,
+  onDragItemEnd,
+  isDragging = false,
 }: InventoryItemRowProps) {
   const [mode, setMode] = useState<RowMode>('view')
   const [editName, setEditName] = useState(item.name)
@@ -288,13 +297,25 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   const isMagic = item.srdCategory === InventoryItemCategory.MAGIC_ITEM
   const isHomebrew = item.srdCategory === InventoryItemCategory.HOMEBREW
   const meta = item.metadata
+  const isDraggable = !isReadOnly && !item.isContainer && mode === 'view'
 
   return (
-    <li className={[
-      'inventory-item-row',
-      isMagic ? 'inventory-item-row--magic' : '',
-      isHomebrew ? 'inventory-item-row--homebrew' : '',
-    ].filter(Boolean).join(' ')}>
+    <li
+      className={[
+        'inventory-item-row',
+        isMagic ? 'inventory-item-row--magic' : '',
+        isHomebrew ? 'inventory-item-row--homebrew' : '',
+        isDragging ? 'inventory-item-row--dragging' : '',
+        isDraggable ? 'inventory-item-row--draggable' : '',
+      ].filter(Boolean).join(' ')}
+      draggable={isDraggable}
+      onDragStart={isDraggable ? (e) => {
+        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer.setData('text/plain', item.id)
+        onDragItemStart?.(item.id as UUID)
+      } : undefined}
+      onDragEnd={isDraggable ? () => onDragItemEnd?.() : undefined}
+    >
       <span className="inventory-item-row__qty" aria-label={`Quantity: ${item.quantity}`}>
         ×{item.quantity}
       </span>

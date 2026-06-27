@@ -75,6 +75,8 @@ export function InventoryPanel({
   const [showOfflinePlayers, setShowOfflinePlayers] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [playerProfiles, setPlayerProfiles] = useState<CampaignPlayerProfile[]>(EMPTY_PROFILES)
+  const [draggingItemId, setDraggingItemId] = useState<UUID | null>(null)
+  const [topLevelDragOver, setTopLevelDragOver] = useState(false)
 
   const hydrateInventory = useStore((state) => state.hydrateInventory)
   const setInventoryLoading = useStore((state) => state.setInventoryLoading)
@@ -420,6 +422,13 @@ export function InventoryPanel({
     setShowHistory(false)
   }
 
+  // Drag-and-drop handlers — passed down to rows and container sections
+  const handleDragItemStart = useCallback((itemId: UUID) => setDraggingItemId(itemId), [])
+  const handleDragItemEnd = useCallback(() => {
+    setDraggingItemId(null)
+    setTopLevelDragOver(false)
+  }, [])
+
   // Shared row props helper to avoid repetition
   const rowProps = (item: InventoryItem) => {
     const baseMoveTargets =
@@ -437,6 +446,9 @@ export function InventoryPanel({
         (t) => !(t.ownerType === item.ownerType && t.ownerId === item.ownerId)
       ),
       availableContainers: containers,
+      isDragging: draggingItemId === item.id,
+      onDragItemStart: handleDragItemStart,
+      onDragItemEnd: handleDragItemEnd,
     }
   }
 
@@ -613,17 +625,45 @@ export function InventoryPanel({
                   onSaveNotes={saveNotes}
                   onSetContainer={setContainer}
                   otherContainers={containers.filter((c) => c.id !== container.id)}
+                  draggingItemId={draggingItemId}
+                  onDragItemStart={handleDragItemStart}
+                  onDragItemEnd={handleDragItemEnd}
                 />
               ))}
 
-              {/* Top-level items below all containers */}
-              {topLevelItems.map((item) => (
-                <InventoryItemRow
-                  key={item.id}
-                  item={item}
-                  {...rowProps(item)}
-                />
-              ))}
+              {/* Top-level items — also a drop target to remove items from containers */}
+              {(topLevelItems.length > 0 || (draggingItemId != null)) && (
+                <li
+                  className={[
+                    'inventory-panel__top-level-zone',
+                    topLevelDragOver && draggingItemId != null ? 'inventory-panel__top-level-zone--drag-over' : '',
+                  ].filter(Boolean).join(' ')}
+                  onDragOver={(e) => {
+                    if (draggingItemId == null) return
+                    // Only show drop hint if item is currently inside a container
+                    const isDraggingInsideContainer = topLevelItems.every((i) => i.id !== draggingItemId)
+                    if (!isDraggingInsideContainer) return
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    setTopLevelDragOver(true)
+                  }}
+                  onDragLeave={() => setTopLevelDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const droppedId = e.dataTransfer.getData('text/plain') as UUID
+                    if (droppedId) setContainer(droppedId, null)
+                    setTopLevelDragOver(false)
+                  }}
+                >
+                  {topLevelItems.map((item) => (
+                    <InventoryItemRow
+                      key={item.id}
+                      item={item}
+                      {...rowProps(item)}
+                    />
+                  ))}
+                </li>
+              )}
             </ul>
           )}
         </div>
