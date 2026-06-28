@@ -899,8 +899,23 @@ export async function syncExternalInventoryItems(params: {
   let created = 0
   let updated = 0
 
-  for (const item of params.items) {
-    const autoIsContainer = isKnownContainerType(item.name, item.srdKey)
+  // Items that are referenced as containers by other items in this batch — used to correctly
+  // set isContainer regardless of name (covers non-SRD containers like "Bag of Holding").
+  const referencedAsContainerIds = new Set(
+    params.items.flatMap((i) => (i.containerExternalId ? [i.containerExternalId] : [])),
+  )
+
+  // Process containers before their contents so upserted results are in dependency order,
+  // which ensures WS broadcasts reach clients in the right sequence.
+  const orderedItems = [...params.items].sort((a, b) => {
+    const aIsContainer = referencedAsContainerIds.has(a.externalId)
+    const bIsContainer = referencedAsContainerIds.has(b.externalId)
+    if (aIsContainer === bIsContainer) return 0
+    return aIsContainer ? -1 : 1
+  })
+
+  for (const item of orderedItems) {
+    const autoIsContainer = isKnownContainerType(item.name, item.srdKey) || referencedAsContainerIds.has(item.externalId)
     const { row, created: wasCreated, changed: wasChanged } = await upsertExternalInventoryItem({
       campaignId: params.campaignId,
       ownerId: params.ownerId,
@@ -949,13 +964,13 @@ export async function syncExternalInventoryItems(params: {
   // ─── Second pass: resolve containerExternalId → containerId ─────────────────
   // Runs after all upserts so every container is guaranteed to exist in the DB.
   const containerLinksApplied: InventoryItemDto[] = []
-  const itemsNeedingContainer = params.items.filter((i) => i.containerExternalId)
+  const itemsNeedingContainer = orderedItems.filter((i) => i.containerExternalId)
 
   if (itemsNeedingContainer.length > 0) {
     // Map externalId → result index for in-place patching
     const resultIdxByExternalId = new Map<string, number>()
-    for (let i = 0; i < params.items.length; i++) {
-      resultIdxByExternalId.set(params.items[i].externalId, i)
+    for (let i = 0; i < orderedItems.length; i++) {
+      resultIdxByExternalId.set(orderedItems[i].externalId, i)
     }
 
     // Build externalId → InventoryItemDto map from this batch
