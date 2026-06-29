@@ -3,7 +3,7 @@ import { InventoryItemCategory } from '@shared'
 import type { UUID } from '@shared'
 import { Icon } from '@/components/ui/Icon'
 import type { InventoryItem } from '@/types/inventory'
-import { InventoryItemDetailPopover } from './InventoryPanel.ItemDetailPopover'
+import { InventoryItemDetailHoverCard } from './InventoryPanel.ItemDetailHoverCard'
 
 interface MoveTarget {
   label: string
@@ -30,7 +30,6 @@ interface InventoryItemRowProps {
     toOwnerType: 'party' | 'character',
     toOwnerId: UUID | null
   ) => Promise<void>
-  onSaveNotes: (itemId: UUID, notes: string | null) => Promise<void>
   onSetContainer: (itemId: UUID, containerId: UUID | null) => Promise<void>
   moveTargets: MoveTarget[]
   /** Other containers owned by the same owner — for "Put in container" sub-menu. */
@@ -55,7 +54,6 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   onRemove,
   onEdit,
   onMove,
-  onSaveNotes,
   onSetContainer,
   moveTargets,
   availableContainers = [],
@@ -213,7 +211,9 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   if (mode === 'move') {
     return (
       <li className="inventory-item-row inventory-item-row--move">
-        <span className="inventory-item-row__move-title">{moveActionLabel} {item.name} to:</span>
+        <span className="inventory-item-row__move-title">
+          {moveActionLabel} {item.name} to:
+        </span>
         <div className="inventory-item-row__move-grid" role="listbox" aria-label="Move destination">
           {moveTargets.map((t) => {
             const avatarContent =
@@ -307,29 +307,39 @@ export const InventoryItemRow = memo(function InventoryItemRow({
         isHomebrew ? 'inventory-item-row--homebrew' : '',
         isDragging ? 'inventory-item-row--dragging' : '',
         isDraggable ? 'inventory-item-row--draggable' : '',
-      ].filter(Boolean).join(' ')}
+      ]
+        .filter(Boolean)
+        .join(' ')}
       draggable={isDraggable}
-      onDragStart={isDraggable ? (e) => {
-        e.dataTransfer.effectAllowed = 'move'
-        e.dataTransfer.setData('text/plain', item.id)
-        onDragItemStart?.(item.id as UUID)
-      } : undefined}
+      onDragStart={
+        isDraggable
+          ? (e) => {
+              e.dataTransfer.effectAllowed = 'move'
+              e.dataTransfer.setData('text/plain', item.id)
+              onDragItemStart?.(item.id as UUID)
+            }
+          : undefined
+      }
       onDragEnd={isDraggable ? () => onDragItemEnd?.() : undefined}
     >
       <span className="inventory-item-row__qty" aria-label={`Quantity: ${item.quantity}`}>
         ×{item.quantity}
       </span>
 
-      {/* Clicking the name/info area opens the detail popover */}
-      <InventoryItemDetailPopover item={item} isReadOnly={isReadOnly} onSaveNotes={onSaveNotes}>
-        <button type="button" className="inventory-item-row__info inventory-item-row__info--trigger">
+      {/* Hovering the name/info area reveals the read-only detail card */}
+      <InventoryItemDetailHoverCard item={item}>
+        <span className="inventory-item-row__info inventory-item-row__info--trigger">
           <span className="inventory-item-row__name">
             {item.name}
             {isMagic && (
-              <span className="inventory-item-row__magic-badge" aria-label="Magic item">✦</span>
+              <span className="inventory-item-row__magic-badge" aria-label="Magic item">
+                ✦
+              </span>
             )}
             {isHomebrew && (
-              <span className="inventory-item-row__homebrew-badge" aria-label="Homebrew">⚗</span>
+              <span className="inventory-item-row__homebrew-badge" aria-label="Homebrew">
+                ⚗
+              </span>
             )}
           </span>
           {(meta?.itemType || meta?.weight != null) && (
@@ -340,8 +350,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
             </span>
           )}
           {item.notes && <span className="inventory-item-row__notes">{item.notes}</span>}
-        </button>
-      </InventoryItemDetailPopover>
+        </span>
+      </InventoryItemDetailHoverCard>
 
       {meta?.costGp != null && (
         <span className="inventory-item-row__cost" aria-label={`Cost: ${meta.costGp} gp`}>
@@ -362,8 +372,8 @@ export const InventoryItemRow = memo(function InventoryItemRow({
           </button>
 
           {/* Put in container / Remove from container */}
-          {!item.isContainer && (
-            isInsideContainer ? (
+          {!item.isContainer &&
+            (isInsideContainer ? (
               <button
                 type="button"
                 className="inventory-item-row__action-icon"
@@ -384,8 +394,7 @@ export const InventoryItemRow = memo(function InventoryItemRow({
               >
                 <Icon name="inventory" />
               </button>
-            ) : null
-          )}
+            ) : null)}
 
           {moveTargets.length > 0 && (
             <button

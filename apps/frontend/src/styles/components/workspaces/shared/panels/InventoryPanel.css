@@ -701,11 +701,21 @@
 }
 
 /* Per-denomination border colours */
-.inventory-currency-row__coin[data-coin='pp'] { border-color: #b8cfe8; }  /* platinum */
-.inventory-currency-row__coin[data-coin='gp'] { border-color: #c9952a; }  /* gold */
-.inventory-currency-row__coin[data-coin='ep'] { border-color: #7ab0b0; }  /* electrum */
-.inventory-currency-row__coin[data-coin='sp'] { border-color: #9898ac; }  /* silver */
-.inventory-currency-row__coin[data-coin='cp'] { border-color: #a0612a; }  /* copper */
+.inventory-currency-row__coin[data-coin='pp'] {
+  border-color: #b8cfe8;
+} /* platinum */
+.inventory-currency-row__coin[data-coin='gp'] {
+  border-color: #c9952a;
+} /* gold */
+.inventory-currency-row__coin[data-coin='ep'] {
+  border-color: #7ab0b0;
+} /* electrum */
+.inventory-currency-row__coin[data-coin='sp'] {
+  border-color: #9898ac;
+} /* silver */
+.inventory-currency-row__coin[data-coin='cp'] {
+  border-color: #a0612a;
+} /* copper */
 
 .inventory-currency-row__amount {
   font-size: var(--font-size-sm);
@@ -801,16 +811,36 @@
 }
 
 /* Per-denomination border colours on edit/transfer inputs */
-.inventory-currency-row__edit-coin[data-coin='pp'] .inventory-currency-row__edit-input { border-color: #b8cfe8; }
-.inventory-currency-row__edit-coin[data-coin='gp'] .inventory-currency-row__edit-input { border-color: #c9952a; }
-.inventory-currency-row__edit-coin[data-coin='ep'] .inventory-currency-row__edit-input { border-color: #7ab0b0; }
-.inventory-currency-row__edit-coin[data-coin='sp'] .inventory-currency-row__edit-input { border-color: #9898ac; }
-.inventory-currency-row__edit-coin[data-coin='cp'] .inventory-currency-row__edit-input { border-color: #a0612a; }
-.inventory-currency-row__edit-coin[data-coin='pp'] .inventory-currency-row__edit-input:focus { border-color: #b8cfe8; }
-.inventory-currency-row__edit-coin[data-coin='gp'] .inventory-currency-row__edit-input:focus { border-color: #c9952a; }
-.inventory-currency-row__edit-coin[data-coin='ep'] .inventory-currency-row__edit-input:focus { border-color: #7ab0b0; }
-.inventory-currency-row__edit-coin[data-coin='sp'] .inventory-currency-row__edit-input:focus { border-color: #9898ac; }
-.inventory-currency-row__edit-coin[data-coin='cp'] .inventory-currency-row__edit-input:focus { border-color: #a0612a; }
+.inventory-currency-row__edit-coin[data-coin='pp'] .inventory-currency-row__edit-input {
+  border-color: #b8cfe8;
+}
+.inventory-currency-row__edit-coin[data-coin='gp'] .inventory-currency-row__edit-input {
+  border-color: #c9952a;
+}
+.inventory-currency-row__edit-coin[data-coin='ep'] .inventory-currency-row__edit-input {
+  border-color: #7ab0b0;
+}
+.inventory-currency-row__edit-coin[data-coin='sp'] .inventory-currency-row__edit-input {
+  border-color: #9898ac;
+}
+.inventory-currency-row__edit-coin[data-coin='cp'] .inventory-currency-row__edit-input {
+  border-color: #a0612a;
+}
+.inventory-currency-row__edit-coin[data-coin='pp'] .inventory-currency-row__edit-input:focus {
+  border-color: #b8cfe8;
+}
+.inventory-currency-row__edit-coin[data-coin='gp'] .inventory-currency-row__edit-input:focus {
+  border-color: #c9952a;
+}
+.inventory-currency-row__edit-coin[data-coin='ep'] .inventory-currency-row__edit-input:focus {
+  border-color: #7ab0b0;
+}
+.inventory-currency-row__edit-coin[data-coin='sp'] .inventory-currency-row__edit-input:focus {
+  border-color: #9898ac;
+}
+.inventory-currency-row__edit-coin[data-coin='cp'] .inventory-currency-row__edit-input:focus {
+  border-color: #a0612a;
+}
 
 .inventory-currency-row__edit-input::-webkit-outer-spin-button,
 .inventory-currency-row__edit-input::-webkit-inner-spin-button {
@@ -1375,7 +1405,13 @@
   font-size: 10px;
 }
 
-/* ─── Item row — popover trigger reset ─────────────────────────────────────── */
+/* ─── Item row — hover-card trigger reset ──────────────────────────────────── */
+
+.inventory-item-detail-anchor {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
 
 .inventory-item-row__info--trigger {
   flex: 1;
@@ -1387,13 +1423,8 @@
   border: none;
   padding: 0;
   text-align: left;
-  cursor: pointer;
   border-radius: var(--radius-sm);
   transition: background 0.1s;
-}
-
-.inventory-item-row__info--trigger:hover {
-  background: color-mix(in srgb, var(--color-accent) 7%, transparent);
 }
 
 /* ─── Item row — metadata sub-text ────────────────────────────────────────── */
@@ -1515,10 +1546,9 @@
   font-style: italic;
 }
 
-/* ─── Item detail popover ──────────────────────────────────────────────────── */
+/* ─── Item detail hover card ───────────────────────────────────────────────── */
 
-.inventory-item-detail-popover {
-  width: 240px;
+.inventory-item-detail-card {
   max-width: 90vw;
   background: var(--color-surface);
   border: 1px solid var(--color-border-soft);
@@ -1528,18 +1558,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  z-index: 200;
-  outline: none;
-}
-
-.inventory-item-detail-popover:focus {
-  outline: none;
+  pointer-events: auto;
 }
 
 .inventory-item-detail__header {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
+  flex-direction: column;
+  gap: 2px;
 }
 
 .inventory-item-detail__name {
@@ -1555,27 +1580,7 @@
 .inventory-item-detail__type {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  margin-top: 2px;
   display: block;
-}
-
-.inventory-item-detail__close {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  padding: 2px;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  margin-left: auto;
-  transition: color 0.12s, background 0.12s;
-}
-
-.inventory-item-detail__close:hover {
-  color: var(--color-text-primary);
-  background: var(--color-surface-hover);
 }
 
 .inventory-item-detail__meta-row {
@@ -1624,6 +1629,25 @@
   color: var(--color-text-primary);
 }
 
+/* Item properties rendered as pills (Finesse, Light, Thrown (20/60), …) */
+.inventory-item-detail__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.inventory-item-detail__pill {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-radius: 999px;
+  padding: 1px var(--space-2);
+  white-space: nowrap;
+}
+
 .inventory-item-detail__description {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
@@ -1654,56 +1678,6 @@
   color: var(--color-text-secondary);
   margin: 0;
   line-height: 1.4;
-}
-
-.inventory-item-detail__notes-input {
-  width: 100%;
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-primary);
-  background: var(--color-surface-subtle);
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-sm);
-  resize: none;
-  outline: none;
-  line-height: 1.4;
-  transition: border-color 0.15s;
-  box-sizing: border-box;
-}
-
-.inventory-item-detail__notes-input:focus {
-  border-color: var(--color-accent);
-}
-
-.inventory-item-detail__notes-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.inventory-item-detail__save-btn {
-  padding: 2px var(--space-3);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--color-surface);
-  background: var(--color-accent);
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.inventory-item-detail__save-btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.inventory-item-detail__save-btn:not(:disabled):hover {
-  opacity: 0.85;
-}
-
-.inventory-item-detail__arrow {
-  fill: var(--color-surface);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
 }
 
 /* ─── Drag-and-drop ────────────────────────────────────────────────────────── */

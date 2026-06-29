@@ -29,9 +29,15 @@ interface ContainerSectionProps {
   moveActionLabel?: string
   moveTargets: MoveTarget[]
   onRemove: (itemId: UUID) => Promise<void>
-  onEdit: (itemId: UUID, updates: { name?: string; quantity?: number; notes?: string | null }) => Promise<void>
-  onMove: (itemId: UUID, toOwnerType: 'party' | 'character', toOwnerId: UUID | null) => Promise<void>
-  onSaveNotes: (itemId: UUID, notes: string | null) => Promise<void>
+  onEdit: (
+    itemId: UUID,
+    updates: { name?: string; quantity?: number; notes?: string | null }
+  ) => Promise<void>
+  onMove: (
+    itemId: UUID,
+    toOwnerType: 'party' | 'character',
+    toOwnerId: UUID | null
+  ) => Promise<void>
   onSetContainer: (itemId: UUID, containerId: UUID | null) => Promise<void>
   /** Other containers in the same owner scope — for "put in container" actions on contents. */
   otherContainers: InventoryItem[]
@@ -51,7 +57,6 @@ export const ContainerSection = memo(function ContainerSection({
   onRemove,
   onEdit,
   onMove,
-  onSaveNotes,
   onSetContainer,
   otherContainers,
   draggingItemId,
@@ -89,7 +94,9 @@ export const ContainerSection = memo(function ContainerSection({
       className={[
         'inventory-container-section',
         isDragOver && canAcceptDrop ? 'inventory-container-section--drag-over' : '',
-      ].filter(Boolean).join(' ')}
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       {/* Container header row — also acts as drop target */}
       <div
@@ -136,7 +143,9 @@ export const ContainerSection = memo(function ContainerSection({
                 className="inventory-item-row__action-icon"
                 aria-label={`${moveActionLabel} container`}
                 title={`${moveActionLabel} container and contents`}
-                onClick={() => onMove(container.id, moveTargets[0].ownerType, moveTargets[0].ownerId)}
+                onClick={() =>
+                  onMove(container.id, moveTargets[0].ownerType, moveTargets[0].ownerId)
+                }
               >
                 <Icon name="move_item" />
               </button>
@@ -146,7 +155,10 @@ export const ContainerSection = memo(function ContainerSection({
       </div>
 
       {!collapsed && (
-        <ul className="inventory-container-section__contents" aria-label={`Contents of ${container.name}`}>
+        <ul
+          className="inventory-container-section__contents"
+          aria-label={`Contents of ${container.name}`}
+        >
           {contents.length === 0 ? (
             <li className="inventory-container-section__empty">Empty</li>
           ) : (
@@ -160,7 +172,6 @@ export const ContainerSection = memo(function ContainerSection({
                 onRemove={onRemove}
                 onEdit={onEdit}
                 onMove={onMove}
-                onSaveNotes={onSaveNotes}
                 onSetContainer={onSetContainer}
                 moveTargets={moveTargets.filter(
                   (t) => !(t.ownerType === item.ownerType && t.ownerId === item.ownerId)

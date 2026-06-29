@@ -320,17 +320,6 @@ export function InventoryPanel({
     [apiUrl, campaignId, authToken]
   )
 
-  const saveNotes = useCallback(
-    async (itemId: UUID, notes: string | null) => {
-      await fetch(`${apiUrl}/api/inventory/${campaignId}/items/${itemId}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes }),
-      })
-    },
-    [apiUrl, campaignId, authToken]
-  )
-
   const setContainer = useCallback(
     async (itemId: UUID, containerId: UUID | null) => {
       await fetch(`${apiUrl}/api/inventory/${campaignId}/items/${itemId}/container`, {
@@ -440,7 +429,6 @@ export function InventoryPanel({
       onRemove: removeItem,
       onEdit: editItem,
       onMove: moveItem,
-      onSaveNotes: saveNotes,
       onSetContainer: setContainer,
       moveTargets: baseMoveTargets.filter(
         (t) => !(t.ownerType === item.ownerType && t.ownerId === item.ownerId)
@@ -622,7 +610,6 @@ export function InventoryPanel({
                   onRemove={removeItem}
                   onEdit={editItem}
                   onMove={moveItem}
-                  onSaveNotes={saveNotes}
                   onSetContainer={setContainer}
                   otherContainers={containers.filter((c) => c.id !== container.id)}
                   draggingItemId={draggingItemId}
