@@ -5,16 +5,22 @@ import { memo, useEffect, useRef, type RefObject } from 'react'
  *
  * Leaf component for visualising the local microphone transmit level.
  *
- * Purpose: keep the high-frequency (~60Hz) mic-level animation out of React's
- * render path. The level is read from a shared `RefObject<number>`
- * (updated imperatively by the AudioPanel meter loop) and written directly to
- * a CSS variable on a single span via `requestAnimationFrame`. No React state
- * is ever set, so this leaf — and crucially its parents (AudioPanel,
+ * Purpose: keep the mic-level animation out of React's render path. The level is
+ * read from a shared `RefObject<number>` (updated imperatively by the AudioPanel
+ * meter loop) and written directly to a CSS variable on a single span. No React
+ * state is ever set, so this leaf — and crucially its parents (AudioPanel,
  * AudioDevicePanel, AudioSettingsPanel) — do not re-render at mic frame rate.
+ *
+ * Driven by a ~30Hz `setInterval`, NOT `requestAnimationFrame`: this leaf is
+ * always mounted (AudioDevicePanel renders unconditionally), so a per-frame rAF
+ * loop would pin the browser refresh driver at 60fps for the entire session even
+ * when the level is a flat zero — measurable idle CPU. A timer lets the refresh
+ * driver sleep when nothing is actually animating, and 30Hz is smooth for a bar.
  *
  * This is the leaf-isolation pattern from copilot-instructions.md applied to a
  * non-Zustand high-frequency signal.
  */
+const METER_RENDER_INTERVAL_MS = 33
 interface MicLevelMeterProps {
   /** Stable ref holding the latest 0..1 mic level. Updated imperatively. */
   levelRef: RefObject<number>
@@ -43,7 +49,6 @@ function MicLevelMeterImpl({
       return
     }
 
-    let rafId = 0
     let lastWritten = -1
 
     const tick = () => {
@@ -54,13 +59,13 @@ function MicLevelMeterImpl({
         lastWritten = percent
         fill.style.setProperty(cssVariable, `${percent}%`)
       }
-      rafId = window.requestAnimationFrame(tick)
     }
 
-    rafId = window.requestAnimationFrame(tick)
+    tick()
+    const intervalId = window.setInterval(tick, METER_RENDER_INTERVAL_MS)
 
     return () => {
-      window.cancelAnimationFrame(rafId)
+      window.clearInterval(intervalId)
     }
   }, [cssVariable, levelRef])
 

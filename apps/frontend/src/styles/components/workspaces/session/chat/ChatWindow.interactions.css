@@ -109,14 +109,25 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--color-text-secondary) 68%, #ffffff 32%);
   opacity: 0.38;
+}
+
+/*
+ * Animate ONLY while the overlay is active (someone is typing). The dots are
+ * always present in the DOM, and the inactive overlay is hidden via
+ * `visibility: hidden` — which does NOT stop CSS animations. An always-on
+ * `infinite` animation therefore kept the browser refresh driver ticking every
+ * frame (compositor animation) even in a fully idle session, a measurable chunk
+ * of idle CPU. Gating the animation on --active stops it when nobody is typing.
+ */
+.session-chat-window__typing-overlay--active .session-chat-window__typing-dots > span {
   animation: chatTypingDot 1.2s infinite ease-in-out;
 }
 
-.session-chat-window__typing-dots > span:nth-child(2) {
+.session-chat-window__typing-overlay--active .session-chat-window__typing-dots > span:nth-child(2) {
   animation-delay: 0.18s;
 }
 
-.session-chat-window__typing-dots > span:nth-child(3) {
+.session-chat-window__typing-overlay--active .session-chat-window__typing-dots > span:nth-child(3) {
   animation-delay: 0.36s;
 }
 
