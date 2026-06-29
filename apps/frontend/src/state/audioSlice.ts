@@ -9,7 +9,7 @@ import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
 import {
   createAudioDeviceSlice,
-  initialAudioDeviceState,
+  hydratedAudioDeviceState,
   type AudioDeviceSlice,
 } from './audioDeviceSlice'
 import {
@@ -120,7 +120,8 @@ export const createAudioSlice: StateCreator<AudioSlice> = (set, get, api) => ({
   // ========== Reset ==========
   reset: () =>
     set(() => ({
-      device: initialAudioDeviceState,
+      // Preserve the user's remembered device-local prefs across resets.
+      device: hydratedAudioDeviceState(),
       ...initialAudioPresetsState,
       ...initialAudioOverridesState,
       activeEffects: {},

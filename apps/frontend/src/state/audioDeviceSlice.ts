@@ -1,5 +1,10 @@
 import type { StateCreator } from 'zustand'
 import type { AudioDeviceState } from '@/types/audio'
+import {
+  loadAudioDevicePrefs,
+  saveAudioDevicePrefs,
+  updateTouchesPersistedPrefs,
+} from '@/utils/audioDevicePrefs'
 
 export interface AudioDeviceSlice {
   device: AudioDeviceState
@@ -7,6 +12,9 @@ export interface AudioDeviceSlice {
   setDevice: (state: Partial<AudioDeviceState>) => void
 }
 
+/** Factory defaults. Runtime fields (enabled/microphoneOn/isSpeaking) always
+ *  start fresh; device-local preferences are overlaid from localStorage via
+ *  `hydratedAudioDeviceState()`. */
 export const initialAudioDeviceState: AudioDeviceState = {
   enabled: false,
   microphoneOn: false,
@@ -19,10 +27,18 @@ export const initialAudioDeviceState: AudioDeviceState = {
   noiseFilterLevel: 'auto',
 }
 
+/** Defaults with the user's persisted device preferences applied. Use this for
+ *  both initial slice state and reset, so a remembered mic/speaker survives page
+ *  refresh and session resets (and is used the instant the user unmutes). */
+export const hydratedAudioDeviceState = (): AudioDeviceState => ({
+  ...initialAudioDeviceState,
+  ...loadAudioDevicePrefs(),
+})
+
 export const createAudioDeviceSlice: StateCreator<AudioDeviceSlice, [], [], AudioDeviceSlice> = (
   set
 ) => ({
-  device: initialAudioDeviceState,
+  device: hydratedAudioDeviceState(),
 
   initializeAudio: (enabled) =>
     set((state) => {
@@ -47,11 +63,17 @@ export const createAudioDeviceSlice: StateCreator<AudioDeviceSlice, [], [], Audi
         return state
       }
 
-      return {
-        device: {
-          ...state.device,
-          ...updates,
-        },
+      const device = {
+        ...state.device,
+        ...updates,
       }
+
+      // Persist device-local preferences (selected mic/speaker, gain, filters)
+      // whenever one actually changes, so they survive refresh and resets.
+      if (updateTouchesPersistedPrefs(updates)) {
+        saveAudioDevicePrefs(device)
+      }
+
+      return { device }
     }),
 })
