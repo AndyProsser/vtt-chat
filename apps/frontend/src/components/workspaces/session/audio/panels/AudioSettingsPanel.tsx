@@ -57,28 +57,62 @@ export function AudioSettingsPanel({
   const [micDevices, setMicDevices] = useState<MediaDeviceOption[]>([])
   const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceOption[]>([])
 
+  // Populate the device dropdowns, robust to the permission/timing race.
+  //
+  // On the FIRST open, mic permission usually isn't granted yet, so
+  // `enumerateDevices()` returns entries with empty ids/labels (filtered out
+  // here) → empty dropdowns until the panel was closed and reopened. Relying on
+  // the `devicechange` event is not enough: Firefox fires it on physical
+  // device add/remove, NOT when labels become available after a permission
+  // grant. So we deterministically ACQUIRE permission first (acquire + release a
+  // short-lived stream), THEN enumerate. `devicechange` is still wired up to
+  // catch genuine hot-plug/unplug while the panel is open.
   useEffect(() => {
-    navigator.mediaDevices
-      .enumerateDevices()
-      .then((devices) => {
-        const mics = devices
-          .filter((d) => d.kind === 'audioinput' && d.deviceId.trim().length > 0)
-          .map((d, i) => ({
-            deviceId: d.deviceId,
-            label: d.label || getFallbackAudioDeviceLabel('microphone', i),
-          }))
-        const speakers = devices
-          .filter((d) => d.kind === 'audiooutput' && d.deviceId.trim().length > 0)
-          .map((d, i) => ({
-            deviceId: d.deviceId,
-            label: d.label || getFallbackAudioDeviceLabel('speaker', i),
-          }))
-        setMicDevices(mics)
-        setSpeakerDevices(speakers)
-      })
-      .catch(() => {
-        /* permissions not yet granted — list stays empty */
-      })
+    let cancelled = false
+
+    const enumerate = () =>
+      navigator.mediaDevices
+        .enumerateDevices()
+        .then((devices) => {
+          if (cancelled) return
+          const mics = devices
+            .filter((d) => d.kind === 'audioinput' && d.deviceId.trim().length > 0)
+            .map((d, i) => ({
+              deviceId: d.deviceId,
+              label: d.label || getFallbackAudioDeviceLabel('microphone', i),
+            }))
+          const speakers = devices
+            .filter((d) => d.kind === 'audiooutput' && d.deviceId.trim().length > 0)
+            .map((d, i) => ({
+              deviceId: d.deviceId,
+              label: d.label || getFallbackAudioDeviceLabel('speaker', i),
+            }))
+          setMicDevices(mics)
+          setSpeakerDevices(speakers)
+        })
+        .catch(() => {
+          /* enumeration failed — leave whatever we have */
+        })
+
+    const ensurePermissionThenEnumerate = async () => {
+      try {
+        // Forces the permission prompt/grant so labels + full list are exposed.
+        // Released immediately; the live preview owns its own stream separately.
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        stream.getTracks().forEach((track) => track.stop())
+      } catch {
+        /* denied or unavailable — enumerate anyway (list may stay empty) */
+      }
+      if (!cancelled) await enumerate()
+    }
+
+    void ensurePermissionThenEnumerate()
+    navigator.mediaDevices.addEventListener('devicechange', enumerate)
+
+    return () => {
+      cancelled = true
+      navigator.mediaDevices.removeEventListener('devicechange', enumerate)
+    }
   }, [])
 
   return (
