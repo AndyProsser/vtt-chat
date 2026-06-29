@@ -41,6 +41,13 @@ const ESTIMATED_CARD_HEIGHT = 220
 /** Small grace period on leave so a flick past the row edge doesn't flicker. */
 const CLOSE_DELAY_MS = 90
 
+/** Maps an external sync source id to a short pill label (e.g. 'dndbeyond' → 'DDB'). */
+function externalSourceLabel(externalSource: string | null): string {
+  const key = externalSource?.toLowerCase() ?? ''
+  if (key === 'dndbeyond' || key === 'ddb') return 'DDB'
+  return externalSource ? externalSource.toUpperCase() : 'Synced'
+}
+
 /**
  * Computes a fixed-position style for the card. It drops DOWN from the row,
  * left-aligned to the hovered info area (i.e. just right of the quantity value),
@@ -107,6 +114,17 @@ export const InventoryItemDetailHoverCard = memo(function InventoryItemDetailHov
   const meta = item.metadata
   const hasExtended = item.source !== InventoryItemSource.CUSTOM && !!meta
 
+  // Source pill (top-right): where this item's data came from.
+  const source = (() => {
+    if (item.source === InventoryItemSource.EXTERNAL) {
+      return { label: externalSourceLabel(item.externalSource), tone: 'external' as const }
+    }
+    if (item.source === InventoryItemSource.SRD) {
+      return { label: 'SRD', tone: 'srd' as const }
+    }
+    return { label: 'Custom', tone: 'custom' as const }
+  })()
+
   // Single-line summary: "Type (Subtype) · weight · cost".
   // "Other Gear" is a generic DDB bucket — show the meaningful subtype instead.
   const typeLabel = (() => {
@@ -145,8 +163,15 @@ export const InventoryItemDetailHoverCard = memo(function InventoryItemDetailHov
           >
             {/* Header */}
             <div className="inventory-item-detail__header">
-              <span className="inventory-item-detail__name">{item.name}</span>
-              {summary && <span className="inventory-item-detail__type">{summary}</span>}
+              <div className="inventory-item-detail__heading">
+                <span className="inventory-item-detail__name">{item.name}</span>
+                {summary && <span className="inventory-item-detail__type">{summary}</span>}
+              </div>
+              <span
+                className={`inventory-item-detail__source-pill inventory-item-detail__source-pill--${source.tone}`}
+              >
+                {source.label}
+              </span>
             </div>
 
             {hasExtended && (

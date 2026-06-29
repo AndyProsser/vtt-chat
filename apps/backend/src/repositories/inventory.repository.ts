@@ -192,6 +192,12 @@ export async function upsertExternalInventoryItem(params: {
       data: {
         externalId: params.externalId,
         externalSource: params.externalSource,
+        // Fully convert the matched item to an externally-synced one: it is now
+        // tracked by externalId and subject to the external delete lifecycle. Setting
+        // source=EXTERNAL also ensures a previously CUSTOM item renders its new
+        // metadata (the detail card hides extended data for CUSTOM items).
+        // srdKey is preserved so SRD detail lookups still work.
+        source: 'EXTERNAL',
         srdKey: byName.srdKey ?? params.srdKey,
         name: params.name,
         quantity: params.quantity,

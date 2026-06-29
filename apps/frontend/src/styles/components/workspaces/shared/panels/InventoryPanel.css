@@ -1572,8 +1572,48 @@
 
 .inventory-item-detail__header {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.inventory-item-detail__heading {
+  display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+}
+
+/* Source pill (SRD / DDB / Custom) — top-right of the header. */
+.inventory-item-detail__source-pill {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.inventory-item-detail__source-pill--external {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 32%, transparent);
+}
+
+.inventory-item-detail__source-pill--srd {
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-text-secondary) 28%, transparent);
+}
+
+.inventory-item-detail__source-pill--custom {
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-text-muted) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-text-muted) 26%, transparent);
 }
 
 .inventory-item-detail__name {

@@ -262,7 +262,7 @@ Items are grouped into sections. Each container item forms a collapsible section
 | Qty    | `item.quantity`                  | Always shown                  |
 | Cost   | `item.costGp`                    | Shown in GP; `—` if unknown   |
 
-Full item detail (damage, description, range, armor class, all properties, notes) opens in a Radix Popover on row click — see §5.6.
+Full item detail (damage, description, range, armor class, all properties, notes) appears in a read-only hover card — see §5.7.
 
 ### 5.3 Item Actions
 
@@ -338,40 +338,42 @@ Items can be reorganised via drag-and-drop within the INVENTORY panel.
 - Items cannot be dragged between owners unless role permissions allow the transfer.
 - On drop, the UI optimistically reorders then waits for the WS event to confirm. If the API rejects, the item snaps back and a toast is shown.
 
-### 5.7 Item Detail Popper
+### 5.7 Item Detail Hover Card
 
-Clicking any item row (outside the `[⋯]` action trigger) opens a Radix Popover with the item's full detail. Content varies by `source`:
+**Hovering** any item row reveals a **read-only** detail card (`InventoryItemDetailHoverCard`).
+It mirrors the player profile cards: it appears anchored beside the row and **vanishes the moment the
+pointer moves onto it**, so it never blocks the row's drag/actions. All values are sourced from
+SRD/DDB and are **not editable here** — the only editable field (notes) is changed via the row's
+**Edit** action (§5.3), not in the card. Content varies by `source`:
 
 **SRD / EXTERNAL items:**
 
 ```text
 ┌─────────────────────────────────────────────┐
-│  Longsword                    Weapon · 3 lb  │
-│  Martial Melee                    Cost: 15gp  │
+│  Longsword                            [DDB]  │   ← source pill, top-right
+│  Weapon (Martial Melee) · 3 lb · 15 gp       │   ← single summary line, small text
 │  ───────────────────────────────────────────  │
-│  Damage:     1d8 slashing                     │
-│  Properties: Versatile (1d10)                 │
+│  DAMAGE   1d8 slashing                        │
+│  (Versatile (1d10))                           │   ← properties as pills
 │  ───────────────────────────────────────────  │
 │  A versatile weapon that can be wielded       │
 │  one- or two-handed.                          │
 │  ───────────────────────────────────────────  │
-│  Notes: [Heirloom — belonged to my father   ] │
-│                                    [Save]     │
+│  NOTES                                        │
+│  Heirloom — belonged to my father            │   ← read-only
 └─────────────────────────────────────────────┘
 ```
 
-**CUSTOM items:**
+**CUSTOM items:** name + read-only notes only (no SRD/DDB data to show).
 
-```text
-┌─────────────────────────────────────────────┐
-│  Cursed Amulet                               │
-│  ───────────────────────────────────────────  │
-│  Notes: [Found in the ruins of Thyrin Keep ] │
-│                                    [Save]     │
-└─────────────────────────────────────────────┘
-```
+Notes:
 
-Fields shown only when populated: Damage, Properties, Description. Weight and cost always shown when present.
+- A small **source pill** sits at the top-right of the header: `DDB` (EXTERNAL, mapped from
+  `externalSource`), `SRD`, or `Custom`.
+- The summary line is `Type (Subtype) · weight · cost`; each part is shown only when present.
+- The generic DDB `Other Gear` type is displayed as its subtype (e.g. `Adventuring Gear`) in both the
+  card and the row meta line; all other types are unchanged.
+- Fields shown only when populated: Damage, Properties, Description. Weight and cost shown when present.
 
 ## 6. Chat Commands
 
@@ -620,11 +622,26 @@ The browser extension can push character inventory and currency state from exter
 
 ### 12.1 Item Sync
 
-Items are **upserted** by `(campaignId, characterId, externalSource, externalId)`:
+Items are **upserted** with three-level matching (see `upsertExternalInventoryItem` in
+`apps/backend/src/repositories/inventory.repository.ts`):
 
-- If an item with the matching `externalSource`+`externalId` already exists on the character, its `name` and `quantity` are updated in place.
-- If no match is found, a new item is created with `source: 'EXTERNAL'`.
-- Items not present in the sync payload are **left untouched** (merge semantics — the extension does not delete items).
+1. **By external key** `(campaignId, ownerId, externalSource, externalId)` — if a row already
+   carries this external id, it is updated in place.
+2. **By name (name-connect)** — if no external-key match, the backend looks for an existing
+   **unlinked** item (`externalId IS NULL`) with the same `name` (case-insensitive). If found, that
+   row is **converted to externally-synced**: `externalId`/`externalSource` are stamped on it,
+   `source` is set to `EXTERNAL`, and the extended metadata is applied. The original `srdKey` is
+   preserved so SRD detail lookups keep working. This lets a manually-added SRD (or free-text
+   CUSTOM) item adopt its DnD Beyond counterpart instead of producing a duplicate.
+3. **No match** — a new item is created with `source: 'EXTERNAL'`.
+
+**Deletion / retention semantics (character syncs):** after upserting, the backend removes only
+items whose `externalSource` matches the sync source **and** whose `externalId` is **not** in the
+incoming payload (`deleteExternalItemsNotInList`). Manually-added SRD/CUSTOM items have a null
+`externalId`/`externalSource` and are therefore **never deleted by a sync** — they are retained
+until a future sync name-connects them or the user removes them manually. Name matching is strict
+(exact, case-insensitive); items whose SRD and DDB names differ are left as separate rows for the
+player to reconcile. Party inventory uses pure merge semantics (no deletion).
 
 The `inventoryUpdate` payload:
 
@@ -673,6 +690,15 @@ The `inventoryUpdate` payload:
 
 - All extended fields (`weight`, `itemType`, `itemSubtype`, `costGp`, `damage`, `properties`, `description`) are **optional**. Omitting a field leaves the persisted value unchanged.
 - Sending `null` explicitly clears the field.
+- **Live-payload aliases.** The fields above are the canonical contract; the DnD Beyond extension's
+  live payload uses different names, which the backend normalizes (`normalizeExternalItemMetadata`
+  in `integration-sync-policy.service.ts`): `type`→`itemType`, `subtype`→`itemSubtype`,
+  `cost`→`costGp`, split `damage`+`damageType`→combined `damage` (`"1d4 piercing"`), and a
+  comma-separated `properties` string (`"Finesse, Light, Thrown (20/60)"`)→`string[]`. `properties`
+  is also accepted as a `string[]` or `[{ name }]`.
+- **HTML descriptions are stripped at ingestion.** DDB sends `description` as HTML; the backend
+  reduces it to plain text (block tags → newlines, entities decoded) via `stripHtml`
+  (`packages/shared/utils/inventory-normalize.ts`) so the frontend renders stored text directly.
 - Extended fields are ignored for CUSTOM items created inside VTT-Chat — they are only applied when `externalId` is present.
 - The `srdKey` field is unchanged; it continues to identify the SRD item for detail lookups. Extended fields are a cache of the data the SRD (or DDB) would return on a detail fetch, reducing the need for on-demand lookups.
 - Container detection from the extension: if the synced item's `name` (case-insensitive) or `srdKey` matches a known container type (`backpack`, `chest`, `pouch`, `sack`, `basket`), the backend sets `isContainer = true` automatically. The extension does not need to send an `isContainer` field.

@@ -6,6 +6,16 @@ All notable changes to this project are documented here. One entry per version c
 
 ## [Unreleased]
 
+### Fixed — Inventory
+
+- **DDB/SRD item data now renders correctly in the detail card**: extended metadata (type, subtype, weight, cost, damage, properties, description) was largely empty. Three root causes fixed: (1) `normalizeFromSrd` only read the 2014 SRD schema, so the default 2024 ruleset (`equipment_categories[]` array, `description` not `desc`, a 5 ft melee `range`) produced empty metadata — it now handles both schemas and de-duplicates enriched properties (`Versatile (1d10)` replaces bare `Versatile`); (2) the DnD Beyond extension's live payload uses different field names than the documented contract (`type`/`subtype`/`cost`, split `damage`+`damageType`, comma-separated `properties` string) — `normalizeExternalItemMetadata` now maps these (and still accepts the canonical names); (3) HTML descriptions from DDB are now stripped to plain text at ingestion (`stripHtml`).
+- **SRD ↔ DDB reconciliation**: a manually-added SRD/CUSTOM item is now **converted in place** when a DnD Beyond item with the same name (exact, case-insensitive) syncs — the row is stamped with `externalId`/`externalSource`, `source` becomes `EXTERNAL` (so previously-CUSTOM items render their new metadata), and `srdKey` is preserved. Unmatched SRD/CUSTOM items (null `externalId`) are **never deleted** by a sync. See `docs/subsystems/INVENTORY-SYSTEM.md` §12.1.
+- **Inventory item rows no longer emit a nested-`<li>` hydration error**: the top-level drop zone (`<li>`) wrapped row `<li>`s directly; rows are now wrapped in a nested `<ul>` (matching the container-section pattern).
+
+### Changed — Inventory
+
+- **Item detail popover → read-only hover card**: the per-item detail popup now opens on hover (not click), is read-only, and vanishes when the pointer moves onto it — matching the player profile cards. Properties render as pills; notes are edited via the row's Edit action. The header is a single line (`Type (Subtype) · weight · cost`), and the generic DDB `Other Gear` type is displayed as its subtype (e.g. `Adventuring Gear`) in both the card and the row meta line.
+
 ### Fixed — Performance
 
 - **Session timer no longer forces a React commit every second**: `SessionTimerLeaf` drove its 1-second clock through `setState`, so each tick committed and dragged sibling toolbar icons, the memoized `ConnectionStatusLeaf`, and the open right-rail Radix `Tabs` through reconciliation — pure wasted work observed in an idle greenroom profiler trace. The per-second value is now written directly to the DOM via refs (imperative tick); React state is retained only for the server-driven anchor and popper visibility. No `setState` per tick → no commit → nothing outside the leaf re-renders on the clock.
