@@ -58,34 +58,72 @@ function inferSrdCategory(it: Record<string, unknown>): InventoryItemCategory {
  */
 function normalizeExternalItemMetadata(it: Record<string, unknown>): ItemMetadata | undefined {
   const meta = normalizeFromDdb({
-    itemType: typeof it.itemType === 'string' ? it.itemType : undefined,
-    itemSubtype: typeof it.itemSubtype === 'string' ? it.itemSubtype : undefined,
+    // Live DnD Beyond uses `type`/`subtype`/`cost`; the documented sync contract
+    // uses `itemType`/`itemSubtype`/`costGp`. Accept either, preferring the canonical.
+    itemType: firstString(it.itemType, it.type),
+    itemSubtype: firstString(it.itemSubtype, it.subtype),
     weight: typeof it.weight === 'number' ? it.weight : undefined,
-    costGp: typeof it.costGp === 'number' ? it.costGp : undefined,
+    costGp: firstNumber(it.costGp, it.cost),
     description: typeof it.description === 'string' ? it.description : undefined,
-    damage: typeof it.damage === 'string' ? it.damage : undefined,
+    damage: extractDamage(it),
     properties: extractPropertyNames(it.properties),
   })
   return Object.keys(meta).length > 0 ? meta : undefined
 }
 
+/** Returns the first argument that is a non-empty string, else undefined. */
+function firstString(...vals: unknown[]): string | undefined {
+  for (const v of vals) {
+    if (typeof v === 'string' && v.trim().length > 0) return v.trim()
+  }
+  return undefined
+}
+
+/** Returns the first argument that is a finite number, else undefined. */
+function firstNumber(...vals: unknown[]): number | undefined {
+  for (const v of vals) {
+    if (typeof v === 'number' && Number.isFinite(v)) return v
+  }
+  return undefined
+}
+
+/**
+ * Builds a combined damage string. The live DDB payload splits damage into
+ * `damage` ('1d4') + `damageType` ('Piercing'); the documented contract sends a
+ * single combined `damage` string. Output matches the SRD format ('1d4 piercing').
+ */
+function extractDamage(it: Record<string, unknown>): string | undefined {
+  const dice = typeof it.damage === 'string' ? it.damage.trim() : undefined
+  if (!dice) return undefined
+  // If the value already includes a type (documented contract), use it as-is.
+  if (/\s/.test(dice)) return dice
+  const type = typeof it.damageType === 'string' ? it.damageType.trim().toLowerCase() : ''
+  return type ? `${dice} ${type}` : dice
+}
+
 /**
  * Extracts property names from an external `properties` field. DnD Beyond sends
- * these either as plain strings (`['Finesse']`) or as objects (`[{ name: 'Finesse' }]`,
- * the raw DDB item-definition shape). Returns `undefined` when nothing usable is present.
+ * these as a comma-separated string ('Finesse, Light, Thrown (20/60), Nick'); the
+ * documented contract sends a string array, and the raw DDB item definition uses
+ * `[{ name }]` objects. All three are accepted. Returns undefined when empty.
  */
 function extractPropertyNames(raw: unknown): string[] | undefined {
-  if (!Array.isArray(raw)) return undefined
-  const names = raw
-    .map((p) => {
+  let names: string[]
+  if (typeof raw === 'string') {
+    names = raw.split(',').map((p) => p.trim())
+  } else if (Array.isArray(raw)) {
+    names = raw.map((p) => {
       if (typeof p === 'string') return p.trim()
       if (p && typeof p === 'object' && typeof (p as { name?: unknown }).name === 'string') {
         return (p as { name: string }).name.trim()
       }
       return ''
     })
-    .filter((name) => name.length > 0)
-  return names.length > 0 ? names : undefined
+  } else {
+    return undefined
+  }
+  const filtered = names.filter((name) => name.length > 0)
+  return filtered.length > 0 ? filtered : undefined
 }
 
 /** Validates and normalizes a raw `items` payload into safe `ExternalInventoryItemInput`s.

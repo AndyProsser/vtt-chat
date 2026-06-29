@@ -68,6 +68,7 @@ const HTML_ENTITIES: Record<string, string> = {
  */
 export function stripHtml(input: string): string {
   let out = input
+    .replace(/\r\n?/g, '\n')
     .replace(/<\s*(br|\/p|\/div|\/li|\/h[1-6]|\/tr|\/ul|\/ol)\s*\/?\s*>/gi, '\n')
     .replace(/<[^>]+>/g, '')
   for (const [entity, char] of Object.entries(HTML_ENTITIES)) {

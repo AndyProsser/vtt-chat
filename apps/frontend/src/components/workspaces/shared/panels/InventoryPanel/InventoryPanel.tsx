@@ -142,7 +142,9 @@ export function InventoryPanel({
               )
             }
           )
-          .catch(() => { /* non-critical */ })
+          .catch(() => {
+            /* non-critical */
+          })
       : Promise.resolve()
 
     Promise.all([fetchInventory, fetchProfiles]).catch(() => {
@@ -152,7 +154,9 @@ export function InventoryPanel({
       }
     })
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [campaignId, apiUrl, authToken, hydrateInventory, setInventoryLoading, isReadOnly])
 
   // ─── Character picker members ─────────────────────────────────────────────
@@ -237,7 +241,13 @@ export function InventoryPanel({
 
   const moveTargets = useMemo(
     () => [
-      { label: 'Party', ownerType: 'party' as const, ownerId: null, avatarUrl: null, isOnline: true },
+      {
+        label: 'Party',
+        ownerType: 'party' as const,
+        ownerId: null,
+        avatarUrl: null,
+        isOnline: true,
+      },
       ...visibleMembers
         .map((m) => ({
           label: m.label,
@@ -283,7 +293,13 @@ export function InventoryPanel({
       ]
     }
     return [
-      { label: 'Party', ownerType: 'party' as const, ownerId: null, avatarUrl: null, isOnline: true },
+      {
+        label: 'Party',
+        ownerType: 'party' as const,
+        ownerId: null,
+        avatarUrl: null,
+        isOnline: true,
+      },
       ...onlineMembers
         .filter((m) => m.userId !== currentUserId)
         .map((m) => ({
@@ -420,8 +436,7 @@ export function InventoryPanel({
 
   // Shared row props helper to avoid repetition
   const rowProps = (item: InventoryItem) => {
-    const baseMoveTargets =
-      isPlayer && view === 'party' ? playerTakeTargets : moveTargets
+    const baseMoveTargets = isPlayer && view === 'party' ? playerTakeTargets : moveTargets
     return {
       isReadOnly,
       canRemove,
@@ -604,7 +619,10 @@ export function InventoryPanel({
                   isReadOnly={isReadOnly}
                   canRemove={canRemove}
                   moveActionLabel={moveActionLabel}
-                  moveTargets={(isPlayer && view === 'party' ? playerTakeTargets : moveTargets).filter(
+                  moveTargets={(isPlayer && view === 'party'
+                    ? playerTakeTargets
+                    : moveTargets
+                  ).filter(
                     (t) => !(t.ownerType === container.ownerType && t.ownerId === container.ownerId)
                   )}
                   onRemove={removeItem}
@@ -619,16 +637,22 @@ export function InventoryPanel({
               ))}
 
               {/* Top-level items — also a drop target to remove items from containers */}
-              {(topLevelItems.length > 0 || (draggingItemId != null)) && (
+              {(topLevelItems.length > 0 || draggingItemId != null) && (
                 <li
                   className={[
                     'inventory-panel__top-level-zone',
-                    topLevelDragOver && draggingItemId != null ? 'inventory-panel__top-level-zone--drag-over' : '',
-                  ].filter(Boolean).join(' ')}
+                    topLevelDragOver && draggingItemId != null
+                      ? 'inventory-panel__top-level-zone--drag-over'
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                   onDragOver={(e) => {
                     if (draggingItemId == null) return
                     // Only show drop hint if item is currently inside a container
-                    const isDraggingInsideContainer = topLevelItems.every((i) => i.id !== draggingItemId)
+                    const isDraggingInsideContainer = topLevelItems.every(
+                      (i) => i.id !== draggingItemId
+                    )
                     if (!isDraggingInsideContainer) return
                     e.preventDefault()
                     e.dataTransfer.dropEffect = 'move'
@@ -642,13 +666,12 @@ export function InventoryPanel({
                     setTopLevelDragOver(false)
                   }}
                 >
-                  {topLevelItems.map((item) => (
-                    <InventoryItemRow
-                      key={item.id}
-                      item={item}
-                      {...rowProps(item)}
-                    />
-                  ))}
+                  {/* Nested <ul> so the row <li>s aren't direct children of this <li> (invalid HTML) */}
+                  <ul className="inventory-panel__top-level-list" aria-label="Top-level items">
+                    {topLevelItems.map((item) => (
+                      <InventoryItemRow key={item.id} item={item} {...rowProps(item)} />
+                    ))}
+                  </ul>
                 </li>
               )}
             </ul>

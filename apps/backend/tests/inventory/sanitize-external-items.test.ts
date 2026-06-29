@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest'
 import { sanitizeExternalItems } from '@/services/integration-sync-policy.service'
 
 describe('sanitizeExternalItems — DDB metadata normalization', () => {
-  it('maps DDB extended fields into canonical item metadata', () => {
+  it('maps the documented contract fields into canonical item metadata', () => {
     const [item] = sanitizeExternalItems([
       {
         externalId: 'ddb-item-456',
@@ -34,6 +34,35 @@ describe('sanitizeExternalItems — DDB metadata normalization', () => {
       damage: '1d8 slashing',
       properties: ['Versatile (1d10)'],
       description: 'A versatile blade.',
+    })
+  })
+
+  it('maps the LIVE DnD Beyond payload shape (type/subtype/cost, split damage, CSV properties)', () => {
+    // Real fields observed from the dndbeyond extension sync.
+    const [item] = sanitizeExternalItems([
+      {
+        id: 1002312000,
+        name: 'Dagger',
+        type: 'Weapon',
+        subtype: null,
+        rarity: 'Common',
+        quantity: 1,
+        weight: 1,
+        cost: 2,
+        properties: 'Finesse, Light, Thrown (20/60), Nick',
+        damage: '1d4',
+        damageType: 'Piercing',
+        description: '<p>Proficiency with a Dagger adds your bonus.</p>',
+      },
+    ])
+
+    expect(item.metadata).toEqual({
+      itemType: 'Weapon',
+      weight: 1,
+      costGp: 2,
+      damage: '1d4 piercing',
+      properties: ['Finesse', 'Light', 'Thrown (20/60)', 'Nick'],
+      description: 'Proficiency with a Dagger adds your bonus.',
     })
   })
 
@@ -65,7 +94,8 @@ describe('sanitizeExternalItems — DDB metadata normalization', () => {
         externalId: 'ddb-item-2',
         name: 'Dagger',
         quantity: 1,
-        description: '<p>Proficiency with a Dagger lets you add your bonus.</p><p>Second &amp; line.</p>',
+        description:
+          '<p>Proficiency with a Dagger lets you add your bonus.</p><p>Second &amp; line.</p>',
       },
     ])
 

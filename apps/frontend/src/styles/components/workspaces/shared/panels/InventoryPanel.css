@@ -1710,6 +1710,16 @@
   display: contents;
 }
 
+/* Nested list holding the top-level rows (keeps row <li>s out of the zone <li>). */
+.inventory-panel__top-level-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .inventory-panel__top-level-zone--drag-over {
   display: flex;
   flex-direction: column;
