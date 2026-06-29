@@ -11,6 +11,10 @@ All notable changes to this project are documented here. One entry per version c
 - **Session timer no longer forces a React commit every second**: `SessionTimerLeaf` drove its 1-second clock through `setState`, so each tick committed and dragged sibling toolbar icons, the memoized `ConnectionStatusLeaf`, and the open right-rail Radix `Tabs` through reconciliation — pure wasted work observed in an idle greenroom profiler trace. The per-second value is now written directly to the DOM via refs (imperative tick); React state is retained only for the server-driven anchor and popper visibility. No `setState` per tick → no commit → nothing outside the leaf re-renders on the clock.
 - **Mic level meter no longer pins the browser refresh driver at 60fps while idle**: `useMicLevelMeter` (mounted permanently via the left-rail `AudioPanel`) ran a per-frame `requestAnimationFrame` Web-Audio FFT loop whenever the mic was on — even when nothing read the level (audio settings closed, not transmitting). A Firefox profile of an idle greenroom showed this keeping `RefreshDriverTick` / style / paint running ~60×/s (the bulk of the ~2–3% idle CPU). The loop now (1) skips entirely unless the meter is visible (`settingsOpen`) or the user is transmitting, and (2) samples via a ~30Hz `setInterval` instead of rAF, so it never keeps the refresh driver awake. Speaking detection (120ms poll) and the meter bar are unaffected.
 
+### Fixed — Tooling
+
+- **ESLint was broken for all sub-apps**: `apps/{frontend,admin,backend}/eslint.config.mjs` imported the shared config from `../eslint.config.mjs` (`apps/eslint.config.mjs`, which does not exist) instead of the repo-root `../../eslint.config.mjs` — a stale path missed in the rs-05 config restructure. `npx eslint` now resolves in every app.
+
 ---
 
 ## [0.9.6] — 2026-06-24

@@ -1,6 +1,6 @@
 import { defineConfig } from 'eslint/config'
 import eslintReact from '@eslint-react/eslint-plugin'
-import sharedConfig from '../eslint.config.mjs'
+import sharedConfig from '../../eslint.config.mjs'
 
 const REACT_RULE_OVERRIDES = {
   '@eslint-react/no-array-index-key': 'off',
