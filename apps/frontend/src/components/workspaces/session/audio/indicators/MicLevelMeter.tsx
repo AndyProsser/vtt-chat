@@ -32,6 +32,14 @@ interface MicLevelMeterProps {
   cssVariable: string
   /** aria-label for the outer wrapper. */
   ariaLabel: string
+  /**
+   * Whether the level source is live. When false the underlying analyser isn't
+   * running (the ref stays 0), so the polling timer is skipped entirely and the
+   * bar is reset once — this keeps the CPU fully idle. Defaults to `true` for
+   * meters that are only mounted while they should be showing (e.g. the audio
+   * settings panel); the always-mounted device-panel meter passes the real gate.
+   */
+  active?: boolean
 }
 
 function MicLevelMeterImpl({
@@ -40,6 +48,7 @@ function MicLevelMeterImpl({
   fillClassName,
   cssVariable,
   ariaLabel,
+  active = true,
 }: MicLevelMeterProps) {
   const fillRef = useRef<HTMLSpanElement | null>(null)
 
@@ -61,13 +70,21 @@ function MicLevelMeterImpl({
       }
     }
 
+    // Inactive: the level source is off and the ref is a flat zero. Reset the
+    // bar once and run NO timer, so this always-mounted leaf doesn't wake the
+    // CPU ~30×/s for nothing.
+    if (!active) {
+      fill.style.setProperty(cssVariable, '0%')
+      return
+    }
+
     tick()
     const intervalId = window.setInterval(tick, METER_RENDER_INTERVAL_MS)
 
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [cssVariable, levelRef])
+  }, [active, cssVariable, levelRef])
 
   return (
     <span className={wrapperClassName} aria-label={ariaLabel}>

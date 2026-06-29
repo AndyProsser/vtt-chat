@@ -184,6 +184,9 @@ export function AudioDevicePanel({
           fillClassName="session-audio-device-panel__tx-meter-fill"
           cssVariable="--audio-tx-level-height"
           ariaLabel={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
+          // Matches useMicLevelMeter's analyser gate: the level ref is only live
+          // (and worth polling) while previewing in settings or transmitting.
+          active={settingsOpen || (device.microphoneOn && (!device.pttEnabled || pttActive))}
         />
 
         {/* Mode status pill — leaf component subscribed only to mute state */}
