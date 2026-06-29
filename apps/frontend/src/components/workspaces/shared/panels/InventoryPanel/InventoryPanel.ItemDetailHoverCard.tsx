@@ -107,6 +107,23 @@ export const InventoryItemDetailHoverCard = memo(function InventoryItemDetailHov
   const meta = item.metadata
   const hasExtended = item.source !== InventoryItemSource.CUSTOM && !!meta
 
+  // Single-line summary: "Type (Subtype) · weight · cost".
+  // "Other Gear" is a generic DDB bucket — show the meaningful subtype instead.
+  const typeLabel = (() => {
+    if (!meta?.itemType) return meta?.itemSubtype ?? null
+    if (meta.itemType === 'Other Gear') return meta.itemSubtype ?? meta.itemType
+    return meta.itemSubtype ? `${meta.itemType} (${meta.itemSubtype})` : meta.itemType
+  })()
+  const summary = [
+    typeLabel,
+    meta?.weight != null ? `${meta.weight} lb` : null,
+    meta?.costGp != null
+      ? `${meta.costGp % 1 === 0 ? meta.costGp : meta.costGp.toFixed(2)} gp`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
     <>
       <span
@@ -129,29 +146,11 @@ export const InventoryItemDetailHoverCard = memo(function InventoryItemDetailHov
             {/* Header */}
             <div className="inventory-item-detail__header">
               <span className="inventory-item-detail__name">{item.name}</span>
-              {meta?.itemType && (
-                <span className="inventory-item-detail__type">
-                  {meta.itemType}
-                  {meta?.weight != null && ` · ${meta.weight} lb`}
-                </span>
-              )}
+              {summary && <span className="inventory-item-detail__type">{summary}</span>}
             </div>
 
             {hasExtended && (
               <>
-                {(meta?.itemSubtype || meta?.costGp != null) && (
-                  <div className="inventory-item-detail__meta-row">
-                    {meta?.itemSubtype && (
-                      <span className="inventory-item-detail__subtype">{meta.itemSubtype}</span>
-                    )}
-                    {meta?.costGp != null && (
-                      <span className="inventory-item-detail__cost">
-                        Cost: {meta.costGp % 1 === 0 ? meta.costGp : meta.costGp.toFixed(2)} gp
-                      </span>
-                    )}
-                  </div>
-                )}
-
                 {(meta?.damage || (meta?.properties && meta.properties.length > 0)) && (
                   <div className="inventory-item-detail__divider" />
                 )}
