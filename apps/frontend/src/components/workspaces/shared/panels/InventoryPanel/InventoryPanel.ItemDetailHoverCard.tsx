@@ -33,7 +33,7 @@ interface AnchorRect {
   right: number
 }
 
-const CARD_WIDTH = 248
+const CARD_WIDTH = 300
 const EDGE_PADDING = 8
 const CARD_GAP = 8
 /** Approximate card height used only to decide above/below placement. */

@@ -64,11 +64,28 @@ function normalizeExternalItemMetadata(it: Record<string, unknown>): ItemMetadat
     costGp: typeof it.costGp === 'number' ? it.costGp : undefined,
     description: typeof it.description === 'string' ? it.description : undefined,
     damage: typeof it.damage === 'string' ? it.damage : undefined,
-    properties: Array.isArray(it.properties)
-      ? it.properties.filter((p): p is string => typeof p === 'string')
-      : undefined,
+    properties: extractPropertyNames(it.properties),
   })
   return Object.keys(meta).length > 0 ? meta : undefined
+}
+
+/**
+ * Extracts property names from an external `properties` field. DnD Beyond sends
+ * these either as plain strings (`['Finesse']`) or as objects (`[{ name: 'Finesse' }]`,
+ * the raw DDB item-definition shape). Returns `undefined` when nothing usable is present.
+ */
+function extractPropertyNames(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const names = raw
+    .map((p) => {
+      if (typeof p === 'string') return p.trim()
+      if (p && typeof p === 'object' && typeof (p as { name?: unknown }).name === 'string') {
+        return (p as { name: string }).name.trim()
+      }
+      return ''
+    })
+    .filter((name) => name.length > 0)
+  return names.length > 0 ? names : undefined
 }
 
 /** Validates and normalizes a raw `items` payload into safe `ExternalInventoryItemInput`s.

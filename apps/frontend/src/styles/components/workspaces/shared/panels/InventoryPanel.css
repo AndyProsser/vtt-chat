@@ -1649,13 +1649,13 @@
 }
 
 .inventory-item-detail__description {
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   color: var(--color-text-secondary);
-  line-height: 1.5;
+  line-height: 1.45;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 6rem;
+  max-height: 7rem;
   overflow-y: auto;
 }
 

@@ -46,6 +46,34 @@ describe('sanitizeExternalItems — DDB metadata normalization', () => {
     expect(item.metadata).toBeUndefined()
   })
 
+  it('accepts DDB properties as {name} objects, not just strings', () => {
+    const [item] = sanitizeExternalItems([
+      {
+        externalId: 'ddb-item-1',
+        name: 'Dagger',
+        quantity: 1,
+        properties: [{ name: 'Finesse' }, { name: 'Light' }, { name: 'Thrown' }],
+      },
+    ])
+
+    expect(item.metadata?.properties).toEqual(['Finesse', 'Light', 'Thrown'])
+  })
+
+  it('strips HTML from DDB descriptions, preserving paragraph breaks', () => {
+    const [item] = sanitizeExternalItems([
+      {
+        externalId: 'ddb-item-2',
+        name: 'Dagger',
+        quantity: 1,
+        description: '<p>Proficiency with a Dagger lets you add your bonus.</p><p>Second &amp; line.</p>',
+      },
+    ])
+
+    expect(item.metadata?.description).toBe(
+      'Proficiency with a Dagger lets you add your bonus.\nSecond & line.'
+    )
+  })
+
   it('drops malformed extended values rather than storing junk', () => {
     const [item] = sanitizeExternalItems([
       {

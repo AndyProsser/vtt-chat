@@ -45,6 +45,41 @@ function normaliseCost(quantity: number, unit: string): number | undefined {
   return Math.round(quantity * factor * 100) / 100
 }
 
+// ─── HTML stripping ────────────────────────────────────────────────────────────
+
+const HTML_ENTITIES: Record<string, string> = {
+  '&nbsp;': ' ',
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&#39;': "'",
+  '&apos;': "'",
+  '&mdash;': '—',
+  '&ndash;': '–',
+}
+
+/**
+ * Strips HTML tags and decodes common entities, leaving plain text. Block-level
+ * tags (</p>, <br>, </li>, …) become newlines so paragraph breaks survive. Run at
+ * ingestion so descriptions from rich-HTML sources (DDB) are stored as plain text
+ * and every reader can render them directly. Entities are decoded AFTER tags are
+ * removed, so the output is always inert text (never re-introduces markup).
+ */
+export function stripHtml(input: string): string {
+  let out = input
+    .replace(/<\s*(br|\/p|\/div|\/li|\/h[1-6]|\/tr|\/ul|\/ol)\s*\/?\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+  for (const [entity, char] of Object.entries(HTML_ENTITIES)) {
+    out = out.replace(new RegExp(entity, 'gi'), char)
+  }
+  return out
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+}
+
 // ─── SRD API normalisation ────────────────────────────────────────────────────
 
 /**
@@ -158,7 +193,10 @@ export function normalizeFromSrd(raw: SrdItemApiResponse): ItemMetadata {
   // description — 2014 `desc`, 2024 `description`; either may be a string or array
   const descSource = raw.description ?? raw.desc
   const descRaw = Array.isArray(descSource) ? descSource.join('\n') : descSource
-  if (descRaw) meta.description = descRaw
+  if (descRaw) {
+    const desc = stripHtml(descRaw)
+    if (desc) meta.description = desc
+  }
 
   // damage
   if (raw.damage?.damage_dice) {
@@ -244,7 +282,7 @@ export function normalizeFromDdb(raw: DdbItemSyncFields): ItemMetadata {
   if (raw.itemSubtype !== undefined) meta.itemSubtype = raw.itemSubtype
   if (raw.weight !== undefined && Number.isFinite(raw.weight)) meta.weight = raw.weight
   if (raw.costGp !== undefined && Number.isFinite(raw.costGp)) meta.costGp = raw.costGp
-  if (raw.description !== undefined) meta.description = raw.description
+  if (raw.description !== undefined) meta.description = stripHtml(raw.description)
   if (raw.damage !== undefined) meta.damage = raw.damage
   if (raw.properties !== undefined && Array.isArray(raw.properties))
     meta.properties = raw.properties
