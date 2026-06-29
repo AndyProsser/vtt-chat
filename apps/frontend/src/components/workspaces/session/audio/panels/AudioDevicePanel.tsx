@@ -184,9 +184,10 @@ export function AudioDevicePanel({
           fillClassName="session-audio-device-panel__tx-meter-fill"
           cssVariable="--audio-tx-level-height"
           ariaLabel={AUDIO_SETTINGS_COPY.outgoingMicrophoneLevel}
-          // Matches useMicLevelMeter's analyser gate: the level ref is only live
-          // (and worth polling) while previewing in settings or transmitting.
-          active={settingsOpen || (device.microphoneOn && (!device.pttEnabled || pttActive))}
+          // The device-panel transmit meter is meaningful only while actually
+          // transmitting — a muted mic has no outgoing level, so disable it
+          // completely (no timer). Settings-preview has its own meter.
+          active={device.microphoneOn && (!device.pttEnabled || pttActive)}
         />
 
         {/* Mode status pill — leaf component subscribed only to mute state */}
