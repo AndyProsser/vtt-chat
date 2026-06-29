@@ -15,7 +15,7 @@ All notable changes to this project are documented here. One entry per version c
 
 ### Fixed — Audio
 
-- **Audio device lists were empty on the first open of the settings panel**: `AudioSettingsPanel` enumerated devices once on mount, but on first open mic permission isn't granted yet, so the browser returns devices with empty ids/labels (filtered out) → empty dropdowns until the panel was closed and reopened. It now also re-enumerates on the `devicechange` event, which fires once the mic-preview `getUserMedia` grants permission and labels become available — so the lists populate on first open.
+- **Audio device lists were empty on the first open of the settings panel**: `AudioSettingsPanel` enumerated devices once on mount, but on first open mic permission isn't granted yet, so the browser returns devices with empty ids/labels (filtered out) → empty dropdowns until the panel was closed and reopened. `devicechange` alone doesn't help (Firefox fires it on physical add/remove, not on permission-grant), so the panel now deterministically acquires permission first — `getUserMedia({audio:true})`, immediately released — and only then enumerates, guaranteeing populated lists on first open. `devicechange` is still wired for genuine hot-plug while the panel is open.
 
 ### Fixed — Tooling
 
