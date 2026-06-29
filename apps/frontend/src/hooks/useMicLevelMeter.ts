@@ -21,11 +21,23 @@ interface UseMicLevelMeterParams {
   settingsOpen: boolean
 }
 
+/** Sampling cadence for the analyser. ~30Hz: smooth for the on-screen meter bar
+ * and far finer than the 120ms local-speaking poll, while a `setInterval` (not
+ * `requestAnimationFrame`) keeps this loop from pinning the browser refresh
+ * driver — the verified cause of idle CPU when nothing visible is animating. */
+const METER_SAMPLE_INTERVAL_MS = 33
+
 /**
- * Sets up a Web Audio analyser loop that writes mic transmit level into a ref
- * at RAF rate. The ref is intentionally NOT React state — callers must not use
- * it as a render dependency (use it only as a read-only data source for
- * non-React consumers like MicLevelMeter canvas).
+ * Sets up a Web Audio analyser loop that writes mic transmit level into a ref.
+ * The ref is intentionally NOT React state — callers must not use it as a render
+ * dependency (use it only as a read-only data source for non-React consumers
+ * like the MicLevelMeter bar).
+ *
+ * The only consumers of this level are the on-screen meter (visible when
+ * `settingsOpen`) and local speaking detection (active only while transmitting).
+ * When neither is active the loop is skipped entirely — producing the value was
+ * pure waste, and as a per-frame rAF loop it also kept the refresh driver awake
+ * at 60fps, burning CPU in an otherwise idle session.
  */
 export function useMicLevelMeter({
   localAudioTrack,
@@ -38,7 +50,17 @@ export function useMicLevelMeter({
 }: UseMicLevelMeterParams) {
   const localTransmitLevelRef = useRef(0)
 
+  // Mirrors AudioPanel's isTransmittingNow: open mic, or PTT actively held.
+  const isTransmittingNow = device.microphoneOn && (!device.pttEnabled || pttActive)
+
   useEffect(() => {
+    // Nothing reads the level when the meter is hidden and we are not
+    // transmitting — don't capture audio or run the analyser at all.
+    if (!settingsOpen && !isTransmittingNow) {
+      localTransmitLevelRef.current = 0
+      return
+    }
+
     const localPublications = Array.from(
       room?.localParticipant.audioTrackPublications?.values?.() ?? []
     )
@@ -65,7 +87,6 @@ export function useMicLevelMeter({
 
       const waveform = new Uint8Array(analyser.fftSize)
       const spectrum = new Uint8Array(analyser.frequencyBinCount)
-      let rafId = 0
       let smoothed = 0
 
       const sampleLevel = () => {
@@ -103,13 +124,14 @@ export function useMicLevelMeter({
         )
         smoothed = smoothed * 0.65 + calibrated * 0.35
         localTransmitLevelRef.current = smoothed
-        rafId = window.requestAnimationFrame(sampleLevel)
       }
 
-      rafId = window.requestAnimationFrame(sampleLevel)
+      // Timer-driven (not rAF) so the loop never keeps the refresh driver awake.
+      sampleLevel()
+      const intervalId = window.setInterval(sampleLevel, METER_SAMPLE_INTERVAL_MS)
 
       return () => {
-        window.cancelAnimationFrame(rafId)
+        window.clearInterval(intervalId)
         localTransmitLevelRef.current = 0
         source.disconnect()
         analyser.disconnect()
@@ -118,45 +140,44 @@ export function useMicLevelMeter({
     }
 
     if (!mediaStreamTrack) {
-      const shouldPreviewWhileMuted = settingsOpen && !device.microphoneOn
-      if (device.microphoneOn || shouldPreviewWhileMuted) {
-        let cancelled = false
-        let cleanupMeter: () => void = () => {}
-        let fallbackStream: MediaStream | null = null
+      // No published track yet (e.g. previewing while muted, or transmitting
+      // before LiveKit publishes) — capture a local stream just for the meter.
+      // The outer guard already established the level is needed.
+      let cancelled = false
+      let cleanupMeter: () => void = () => {}
+      let fallbackStream: MediaStream | null = null
 
-        void navigator.mediaDevices
-          .getUserMedia({
-            audio: {
-              deviceId:
-                device.selectedMicDeviceId && device.selectedMicDeviceId !== 'default'
-                  ? { exact: device.selectedMicDeviceId }
-                  : undefined,
-              channelCount: 1,
-              echoCancellation: device.noiseFilterLevel !== 'low',
-              noiseSuppression: device.noiseFilterLevel !== 'low',
-              autoGainControl: device.autoGainEnabled,
-            },
-          })
-          .then((stream) => {
-            if (cancelled) {
-              stream.getTracks().forEach((track) => track.stop())
-              return
-            }
-            fallbackStream = stream
-            const fallbackInputTrack = stream.getAudioTracks()[0]
-            cleanupMeter = startMeterFromTrack(fallbackInputTrack)
-          })
-          .catch(() => {
-            // Ignore capture failures; meter remains at zero.
-          })
+      void navigator.mediaDevices
+        .getUserMedia({
+          audio: {
+            deviceId:
+              device.selectedMicDeviceId && device.selectedMicDeviceId !== 'default'
+                ? { exact: device.selectedMicDeviceId }
+                : undefined,
+            channelCount: 1,
+            echoCancellation: device.noiseFilterLevel !== 'low',
+            noiseSuppression: device.noiseFilterLevel !== 'low',
+            autoGainControl: device.autoGainEnabled,
+          },
+        })
+        .then((stream) => {
+          if (cancelled) {
+            stream.getTracks().forEach((track) => track.stop())
+            return
+          }
+          fallbackStream = stream
+          const fallbackInputTrack = stream.getAudioTracks()[0]
+          cleanupMeter = startMeterFromTrack(fallbackInputTrack)
+        })
+        .catch(() => {
+          // Ignore capture failures; meter remains at zero.
+        })
 
-        return () => {
-          cancelled = true
-          cleanupMeter()
-          fallbackStream?.getTracks().forEach((track) => track.stop())
-        }
+      return () => {
+        cancelled = true
+        cleanupMeter()
+        fallbackStream?.getTracks().forEach((track) => track.stop())
       }
-      return
     }
 
     return startMeterFromTrack(mediaStreamTrack)
@@ -173,6 +194,7 @@ export function useMicLevelMeter({
     device.noiseFilterLevel,
     device.micGain,
     settingsOpen,
+    isTransmittingNow,
   ])
 
   return { localTransmitLevelRef }
