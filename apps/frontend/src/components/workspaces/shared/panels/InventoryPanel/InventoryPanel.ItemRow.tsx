@@ -299,6 +299,11 @@ export const InventoryItemRow = memo(function InventoryItemRow({
   const meta = item.metadata
   const isDraggable = !isReadOnly && !item.isContainer && mode === 'view'
 
+  // "Other Gear" is a generic DDB bucket — show the meaningful subtype instead
+  // (matches the detail hover card).
+  const typeLabel =
+    meta?.itemType === 'Other Gear' ? (meta.itemSubtype ?? meta.itemType) : meta?.itemType
+
   return (
     <li
       className={[
@@ -342,9 +347,9 @@ export const InventoryItemRow = memo(function InventoryItemRow({
               </span>
             )}
           </span>
-          {(meta?.itemType || meta?.weight != null) && (
+          {(typeLabel || meta?.weight != null) && (
             <span className="inventory-item-row__meta">
-              {[meta?.itemType, meta?.weight != null ? `${meta.weight} lb` : null]
+              {[typeLabel, meta?.weight != null ? `${meta.weight} lb` : null]
                 .filter(Boolean)
                 .join(' · ')}
             </span>
