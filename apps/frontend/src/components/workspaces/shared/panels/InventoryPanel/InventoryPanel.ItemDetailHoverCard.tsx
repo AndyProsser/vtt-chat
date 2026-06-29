@@ -42,25 +42,28 @@ const ESTIMATED_CARD_HEIGHT = 220
 const CLOSE_DELAY_MS = 90
 
 /**
- * Computes a fixed-position anchor for the card, preferring placement to the
- * left of the row (matching the player card), clamped to the viewport.
+ * Computes a fixed-position style for the card. It drops DOWN from the row,
+ * left-aligned to the hovered info area (i.e. just right of the quantity value),
+ * and clamps to the viewport — flipping upward only when there's no room below.
  */
 function computeCardStyle(anchor: AnchorRect): React.CSSProperties {
-  const preferredLeft = anchor.left - CARD_WIDTH - CARD_GAP
-  const left =
-    preferredLeft >= EDGE_PADDING
-      ? preferredLeft
-      : Math.min(anchor.right + CARD_GAP, window.innerWidth - CARD_WIDTH - EDGE_PADDING)
+  // Left-align under the info area; clamp so the card never runs off-screen.
+  const left = Math.max(
+    EDGE_PADDING,
+    Math.min(anchor.left, window.innerWidth - CARD_WIDTH - EDGE_PADDING)
+  )
 
   const fitsBelow =
     anchor.bottom + CARD_GAP + ESTIMATED_CARD_HEIGHT <= window.innerHeight - EDGE_PADDING
-  const top = fitsBelow ? anchor.top : Math.max(EDGE_PADDING, anchor.bottom - ESTIMATED_CARD_HEIGHT)
+  const top = fitsBelow
+    ? anchor.bottom + CARD_GAP
+    : Math.max(EDGE_PADDING, anchor.top - ESTIMATED_CARD_HEIGHT - CARD_GAP)
 
   return {
     position: 'fixed',
     zIndex: 1200,
     width: CARD_WIDTH,
-    left: Math.max(EDGE_PADDING, left),
+    left,
     top,
   }
 }

@@ -27,39 +27,39 @@ All inventory changes during an `ACTIVE` session produce a system message in the
 interface InventoryItem {
   id: string
   campaignId: string
-  ownerId: string       // characterId or 'party'
+  ownerId: string // characterId or 'party'
   ownerType: 'CHARACTER' | 'PARTY'
   name: string
-  quantity: number      // always ≥ 1
+  quantity: number // always ≥ 1
   source: 'SRD' | 'CUSTOM' | 'EXTERNAL'
-  srdIndex?: string     // SRD item index (e.g. 'longsword'); set when source = 'SRD'
+  srdIndex?: string // SRD item index (e.g. 'longsword'); set when source = 'SRD'
   srdRuleset?: '2014' | '2024'
-  notes?: string        // free-text DM/player annotation; the only editable field for CUSTOM items
-  externalId?: string   // External system item ID (e.g. DDB item ID); set when source = 'EXTERNAL'
+  notes?: string // free-text DM/player annotation; the only editable field for CUSTOM items
+  externalId?: string // External system item ID (e.g. DDB item ID); set when source = 'EXTERNAL'
   externalSource?: string // External system name (e.g. 'DDB'); set when source = 'EXTERNAL'
-  addedBy: string       // userId
+  addedBy: string // userId
   addedAt: Date
   updatedAt: Date
 
   // ── Container support (§2.1b) ─────────────────────────────────────────────
-  isContainer: boolean  // true only for the five recognised container types
-  containerId?: string  // ID of the parent InventoryItem; null = top-level
+  isContainer: boolean // true only for the five recognised container types
+  containerId?: string // ID of the parent InventoryItem; null = top-level
 
   // ── Extended item data ────────────────────────────────────────────────────
   // Stored in a metadata JSON column. Absent for CUSTOM items.
   // Populated from the SRD API at add-time for SRD items, or from the DDB
   // extension sync for EXTERNAL items. See §2.1c for field mapping.
-  itemType?: string     // primary category, e.g. 'Weapon', 'Armor', 'Adventuring Gear'
-  itemSubtype?: string  // sub-category, e.g. 'Martial Melee', 'Light Armor', 'Druidic Focus'
-  weight?: number       // weight in lb
-  costGp?: number       // base cost normalised to GP (e.g. SRD cost 10sp → 1.0 gp)
-  description?: string  // flavor text / mechanical description
-  damage?: string        // combined string, e.g. '1d8 slashing'
-  properties?: string[]  // base weapon properties PLUS range/thrown/versatile/armor merged in
-                         // e.g. ['Finesse', 'Light', 'Thrown (20/60)', 'Nick']
-                         // e.g. ['Versatile (1d10)']
-                         // e.g. ['Light Armor (AC 11)']
-                         // See §2.1c for full merge rules
+  itemType?: string // primary category, e.g. 'Weapon', 'Armor', 'Adventuring Gear'
+  itemSubtype?: string // sub-category, e.g. 'Martial Melee', 'Light Armor', 'Druidic Focus'
+  weight?: number // weight in lb
+  costGp?: number // base cost normalised to GP (e.g. SRD cost 10sp → 1.0 gp)
+  description?: string // flavor text / mechanical description
+  damage?: string // combined string, e.g. '1d8 slashing'
+  properties?: string[] // base weapon properties PLUS range/thrown/versatile/armor merged in
+  // e.g. ['Finesse', 'Light', 'Thrown (20/60)', 'Nick']
+  // e.g. ['Versatile (1d10)']
+  // e.g. ['Light Armor (AC 11)']
+  // See §2.1c for full merge rules
 }
 ```
 
@@ -67,14 +67,14 @@ interface InventoryItem {
 
 Five item types can act as containers: **Backpack**, **Chest**, **Pouch**, **Sack**, **Basket**.
 
-| Rule | Detail |
-| ---- | ------ |
-| Recognised container types | `backpack`, `chest`, `pouch`, `sack`, `basket` (matched by SRD index or item name, case-insensitive) |
-| Nesting depth | **Exactly one level.** A container can hold items; it cannot hold another container. |
-| Ownership | All items inside a container must share the container's `ownerId`/`ownerType`. |
-| Container transfer | Moving a container between owners (character ↔ party) atomically moves all of its contents in the same DB transaction and emits a single `INVENTORY:CONTAINER_TRANSFERRED` event. |
-| Custom containers | CUSTOM items are never automatically flagged `isContainer = true`. A DM can manually mark a custom item as a container (e.g. "Bag of Holding homebrew") via the item detail panel. |
-| Capacity | Capacity tracking (current weight vs. container weight limit) is a planned feature and is **not** part of this contract. Weight display is informational only. |
+| Rule                       | Detail                                                                                                                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recognised container types | `backpack`, `chest`, `pouch`, `sack`, `basket` (matched by SRD index or item name, case-insensitive)                                                                               |
+| Nesting depth              | **Exactly one level.** A container can hold items; it cannot hold another container.                                                                                               |
+| Ownership                  | All items inside a container must share the container's `ownerId`/`ownerType`.                                                                                                     |
+| Container transfer         | Moving a container between owners (character ↔ party) atomically moves all of its contents in the same DB transaction and emits a single `INVENTORY:CONTAINER_TRANSFERRED` event.  |
+| Custom containers          | CUSTOM items are never automatically flagged `isContainer = true`. A DM can manually mark a custom item as a container (e.g. "Bag of Holding homebrew") via the item detail panel. |
+| Capacity                   | Capacity tracking (current weight vs. container weight limit) is a planned feature and is **not** part of this contract. Weight display is informational only.                     |
 
 ### 2.1c Field Mapping — SRD and DDB
 
@@ -82,35 +82,35 @@ All source data is normalised at ingestion time. Range, thrown, versatile, and a
 
 **Scalar fields:**
 
-| `InventoryItem` field | SRD source                                              | DDB source                                     |
-| --------------------- | ------------------------------------------------------- | ---------------------------------------------- |
-| `itemType`            | `equipment_categories[0].name`                          | `type.typeName`                                |
-| `itemSubtype`         | *(derived from equipment subcategory)*                  | `subType`                                      |
-| `weight`              | `weight`                                                | `weight`                                       |
-| `costGp`              | `cost.quantity` + `cost.unit` (normalised to GP)        | `definition.cost` (normalised to GP)           |
-| `description`         | `description`                                           | `definition.notes`                             |
-| `damage`              | `damage.damage_dice` + `damage.damage_type.name`        | `damage.diceString` + `damage.damageType.name` |
+| `InventoryItem` field | SRD source                                       | DDB source                                     |
+| --------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| `itemType`            | `equipment_categories[0].name`                   | `type.typeName`                                |
+| `itemSubtype`         | _(derived from equipment subcategory)_           | `subType`                                      |
+| `weight`              | `weight`                                         | `weight`                                       |
+| `costGp`              | `cost.quantity` + `cost.unit` (normalised to GP) | `definition.cost` (normalised to GP)           |
+| `description`         | `description`                                    | `definition.notes`                             |
+| `damage`              | `damage.damage_dice` + `damage.damage_type.name` | `damage.diceString` + `damage.damageType.name` |
 
 **`properties[]` assembly** — entries appended in this order:
 
-| What is merged              | SRD source                             | DDB source                                          | Appended as              |
-| --------------------------- | -------------------------------------- | --------------------------------------------------- | ------------------------ |
-| Weapon properties           | `properties[].name`                    | `definition.properties[].name`                      | `"Finesse"`, `"Nick"`, … |
-| Ranged attack range         | `range.normal` / `range.long`          | `definition.range` / `definition.longRange`         | `"Range (60/120)"`       |
-| Thrown weapon range         | `throw_range.normal` / `.long`         | `definition.throwRange` / `.throwLongRange`           | `"Thrown (20/60)"`     |
-| Versatile two-handed damage | `two_handed_damage.damage_dice`        | two-handed damage dice string                       | `"Versatile (1d10)"`     |
-| Armor class                 | `armor_class.base` + subcategory       | `definition.armorClass` + `type.typeName`           | `"Light Armor (AC 11)"`  |
+| What is merged              | SRD source                       | DDB source                                  | Appended as              |
+| --------------------------- | -------------------------------- | ------------------------------------------- | ------------------------ |
+| Weapon properties           | `properties[].name`              | `definition.properties[].name`              | `"Finesse"`, `"Nick"`, … |
+| Ranged attack range         | `range.normal` / `range.long`    | `definition.range` / `definition.longRange` | `"Range (60/120)"`       |
+| Thrown weapon range         | `throw_range.normal` / `.long`   | `definition.throwRange` / `.throwLongRange` | `"Thrown (20/60)"`       |
+| Versatile two-handed damage | `two_handed_damage.damage_dice`  | two-handed damage dice string               | `"Versatile (1d10)"`     |
+| Armor class                 | `armor_class.base` + subcategory | `definition.armorClass` + `type.typeName`   | `"Light Armor (AC 11)"`  |
 
 **Examples by item type:**
 
-| Item        | `damage`        | `properties`                                              |
-| ----------- | --------------- | --------------------------------------------------------- |
-| Longsword   | `1d8 slashing`  | `["Versatile (1d10)"]`                                    |
-| Dagger      | `1d4 piercing`  | `["Finesse", "Light", "Nick", "Thrown (20/60)"]`          |
-| Longbow     | `1d8 piercing`  | `["Ammo", "Heavy", "Two-Handed", "Range (150/600)"]`      |
-| Leather     | *(none)*        | `["Light Armor (AC 11)"]`                                 |
-| Chain Mail  | *(none)*        | `["Heavy Armor (AC 16)", "Stealth Disadvantage"]`         |
-| Caltrops    | *(none)*        | *(none — gear, no combat properties)*                     |
+| Item       | `damage`       | `properties`                                         |
+| ---------- | -------------- | ---------------------------------------------------- |
+| Longsword  | `1d8 slashing` | `["Versatile (1d10)"]`                               |
+| Dagger     | `1d4 piercing` | `["Finesse", "Light", "Nick", "Thrown (20/60)"]`     |
+| Longbow    | `1d8 piercing` | `["Ammo", "Heavy", "Two-Handed", "Range (150/600)"]` |
+| Leather    | _(none)_       | `["Light Armor (AC 11)"]`                            |
+| Chain Mail | _(none)_       | `["Heavy Armor (AC 16)", "Stealth Disadvantage"]`    |
+| Caltrops   | _(none)_       | _(none — gear, no combat properties)_                |
 
 ### 2.2 Currency
 
@@ -179,7 +179,7 @@ DMs choose the SRD ruleset in Campaign Settings. The selected ruleset determines
 | Ruleset | Base URL                            |
 | ------- | ----------------------------------- |
 | 2014    | `https://www.dnd5eapi.co/api/2014/` |
-| 2024    | `https://www.dnd5eapi.co/api2024/`  |
+| 2024    | `https://www.dnd5eapi.co/api/2024/` |
 
 The setting is stored as `campaign.srdRuleset: '2014' | '2024'`. Default: `'2014'`.
 
@@ -254,13 +254,13 @@ Items are grouped into sections. Each container item forms a collapsible section
 
 **Column layout (item rows):**
 
-| Column | Source                           | Notes                              |
-| ------ | -------------------------------- | ---------------------------------- |
-| Name   | `item.name`                      | Always shown                       |
-| Tags   | `itemType` + weapon `properties` | Inline; e.g. `Weapon · Light`      |
-| Weight | `item.weight`                    | In lb; `—` for CUSTOM items        |
-| Qty    | `item.quantity`                  | Always shown                       |
-| Cost   | `item.costGp`                    | Shown in GP; `—` if unknown        |
+| Column | Source                           | Notes                         |
+| ------ | -------------------------------- | ----------------------------- |
+| Name   | `item.name`                      | Always shown                  |
+| Tags   | `itemType` + weapon `properties` | Inline; e.g. `Weapon · Light` |
+| Weight | `item.weight`                    | In lb; `—` for CUSTOM items   |
+| Qty    | `item.quantity`                  | Always shown                  |
+| Cost   | `item.costGp`                    | Shown in GP; `—` if unknown   |
 
 Full item detail (damage, description, range, armor class, all properties, notes) opens in a Radix Popover on row click — see §5.6.
 
@@ -292,11 +292,11 @@ Each entry shows: timestamp, actor, action, item, quantity, from/to owner, and a
 
 The currency area in the INVENTORY panel exposes three actions per wallet/purse:
 
-| Action       | Description                                                                      |
-| ------------ | -------------------------------------------------------------------------------- |
-| **Add**      | Credit the wallet/purse from an external source (loot, sale proceeds, DM award)  |
-| **Remove**   | Debit the wallet/purse (purchase, expenditure) without a destination             |
-| **Transfer** | Move currency between two owners with both sides balanced atomically             |
+| Action       | Description                                                                     |
+| ------------ | ------------------------------------------------------------------------------- |
+| **Add**      | Credit the wallet/purse from an external source (loot, sale proceeds, DM award) |
+| **Remove**   | Debit the wallet/purse (purchase, expenditure) without a destination            |
+| **Transfer** | Move currency between two owners with both sides balanced atomically            |
 
 **Rules:**
 
@@ -325,12 +325,12 @@ The currency area in the INVENTORY panel exposes three actions per wallet/purse:
 
 Items can be reorganised via drag-and-drop within the INVENTORY panel.
 
-| Drag source | Drop target | Outcome |
-| ----------- | ----------- | ------- |
-| Item (non-container) | Container section header or body | Move item into that container (`containerId` updated) |
-| Item (non-container) | Top-level area (outside any container) | Remove from container, promote to top-level |
-| Container | Another owner's tab (Party ↔ Character) | Transfer container + all contents atomically |
-| Item inside container | Another owner's tab | Transfer single item; it becomes top-level on the destination owner |
+| Drag source           | Drop target                             | Outcome                                                             |
+| --------------------- | --------------------------------------- | ------------------------------------------------------------------- |
+| Item (non-container)  | Container section header or body        | Move item into that container (`containerId` updated)               |
+| Item (non-container)  | Top-level area (outside any container)  | Remove from container, promote to top-level                         |
+| Container             | Another owner's tab (Party ↔ Character) | Transfer container + all contents atomically                        |
+| Item inside container | Another owner's tab                     | Transfer single item; it becomes top-level on the destination owner |
 
 **Constraints enforced by both UI and backend:**
 
@@ -383,11 +383,11 @@ Generates randomised post-combat loot and adds everything directly to the Party 
 
 **Arguments:**
 
-| Argument | Required | Values | Default |
-| -------- | -------- | ------ | ------- |
-| `CR` | Yes | `0`–`30` | — |
-| `Rarity` | No | `mundane` / `common` / `uncommon` / `rare` / `very-rare` / `legendary` / `artifact` | Auto-selected by CR band |
-| `hoard` | No | keyword flag | Off — individual loot |
+| Argument | Required | Values                                                                              | Default                  |
+| -------- | -------- | ----------------------------------------------------------------------------------- | ------------------------ |
+| `CR`     | Yes      | `0`–`30`                                                                            | —                        |
+| `Rarity` | No       | `mundane` / `common` / `uncommon` / `rare` / `very-rare` / `legendary` / `artifact` | Auto-selected by CR band |
+| `hoard`  | No       | keyword flag                                                                        | Off — individual loot    |
 
 **Behaviour:**
 
@@ -450,18 +450,18 @@ All commands accept a currency argument as the item name using coin notation:
 
 All events are defined in `shared/events/inventory.ts`.
 
-| Event                                | Trigger                                                    | Payload                                                                                          |
-| ------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `INVENTORY:ITEM_ADDED`               | Item added to any inventory                                | `{ campaignId, ownerId, ownerType, item: InventoryItem }`                                        |
-| `INVENTORY:ITEM_REMOVED`             | Item removed or dropped                                    | `{ campaignId, ownerId, ownerType, itemId, quantity }`                                           |
-| `INVENTORY:ITEM_UPDATED`             | Item metadata updated (notes, quantity, containerId, etc.) | `{ campaignId, ownerId, ownerType, item: InventoryItem }`                                        |
-| `INVENTORY:ITEM_TRANSFERRED`         | Single item moved between owners                           | `{ campaignId, fromOwner, toOwner, item: InventoryItem }`                                        |
-| `INVENTORY:CONTAINER_TRANSFERRED`    | Container + all contents moved between owners              | `{ campaignId, fromOwner, toOwner, container: InventoryItem, items: InventoryItem[] }`           |
-| `INVENTORY:LOOT_SPLIT_PROPOSED`      | DM initiates loot split                                    | `{ campaignId, sessionId, splitId, items, proposedShares }`                                      |
-| `INVENTORY:LOOT_SPLIT_ACCEPTED`      | Player accepts their share                                 | `{ campaignId, splitId, playerId, acceptedItems }`                                               |
-| `INVENTORY:LOOT_SPLIT_EXPIRED`       | Split card timer expires                                   | `{ campaignId, splitId, revertedItems }`                                                         |
-| `INVENTORY:CURRENCY_CHANGED`         | Wallet or purse updated                                    | `{ campaignId, ownerId, ownerType, delta: CurrencyWallet }`                                      |
-| `INVENTORY:EXTENSION_SYNC_PENDING`   | Extension sync produces a conflict under `PROMPT` policy   | `{ campaignId, characterId, pendingSyncId, kind: 'ITEM' \| 'CURRENCY', externalId }`             |
+| Event                              | Trigger                                                    | Payload                                                                                |
+| ---------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `INVENTORY:ITEM_ADDED`             | Item added to any inventory                                | `{ campaignId, ownerId, ownerType, item: InventoryItem }`                              |
+| `INVENTORY:ITEM_REMOVED`           | Item removed or dropped                                    | `{ campaignId, ownerId, ownerType, itemId, quantity }`                                 |
+| `INVENTORY:ITEM_UPDATED`           | Item metadata updated (notes, quantity, containerId, etc.) | `{ campaignId, ownerId, ownerType, item: InventoryItem }`                              |
+| `INVENTORY:ITEM_TRANSFERRED`       | Single item moved between owners                           | `{ campaignId, fromOwner, toOwner, item: InventoryItem }`                              |
+| `INVENTORY:CONTAINER_TRANSFERRED`  | Container + all contents moved between owners              | `{ campaignId, fromOwner, toOwner, container: InventoryItem, items: InventoryItem[] }` |
+| `INVENTORY:LOOT_SPLIT_PROPOSED`    | DM initiates loot split                                    | `{ campaignId, sessionId, splitId, items, proposedShares }`                            |
+| `INVENTORY:LOOT_SPLIT_ACCEPTED`    | Player accepts their share                                 | `{ campaignId, splitId, playerId, acceptedItems }`                                     |
+| `INVENTORY:LOOT_SPLIT_EXPIRED`     | Split card timer expires                                   | `{ campaignId, splitId, revertedItems }`                                               |
+| `INVENTORY:CURRENCY_CHANGED`       | Wallet or purse updated                                    | `{ campaignId, ownerId, ownerType, delta: CurrencyWallet }`                            |
+| `INVENTORY:EXTENSION_SYNC_PENDING` | Extension sync produces a conflict under `PROMPT` policy   | `{ campaignId, characterId, pendingSyncId, kind: 'ITEM' \| 'CURRENCY', externalId }`   |
 
 **Notes on new events:**
 
@@ -496,14 +496,14 @@ WS dispatch rules:
 
 ### Character Inventory
 
-| Method   | Path                                                      | Description                                                       |
-| -------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
-| `GET`    | `/api/campaigns/:id/inventory/character/:charId`          | List all character inventory items                                |
-| `POST`   | `/api/campaigns/:id/inventory/character/:charId`          | Add item to character                                             |
-| `PUT`    | `/api/campaigns/:id/inventory/character/:charId/:itemId`  | Update quantity, notes, `containerId`, or extended fields         |
-| `DELETE` | `/api/campaigns/:id/inventory/character/:charId/:itemId`  | Remove item; if container, also removes all contents              |
-| `GET`    | `/api/campaigns/:id/inventory/character/:charId/currency` | Get character wallet                                              |
-| `PUT`    | `/api/campaigns/:id/inventory/character/:charId/currency` | Update character wallet                                           |
+| Method   | Path                                                      | Description                                               |
+| -------- | --------------------------------------------------------- | --------------------------------------------------------- |
+| `GET`    | `/api/campaigns/:id/inventory/character/:charId`          | List all character inventory items                        |
+| `POST`   | `/api/campaigns/:id/inventory/character/:charId`          | Add item to character                                     |
+| `PUT`    | `/api/campaigns/:id/inventory/character/:charId/:itemId`  | Update quantity, notes, `containerId`, or extended fields |
+| `DELETE` | `/api/campaigns/:id/inventory/character/:charId/:itemId`  | Remove item; if container, also removes all contents      |
+| `GET`    | `/api/campaigns/:id/inventory/character/:charId/currency` | Get character wallet                                      |
+| `PUT`    | `/api/campaigns/:id/inventory/character/:charId/currency` | Update character wallet                                   |
 
 **`containerId` update rules (applies to both party and character `PUT` endpoints):**
 
@@ -539,11 +539,11 @@ WS dispatch rules:
 
 See §12.3 and [EXTENSION-INTEGRATION.md §5e](../extension/EXTENSION-INTEGRATION.md) for the policy that creates these records.
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/inventory/:campaignId/sync/pending` | List pending extension sync conflicts awaiting DM review (DM only) |
-| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/approve` | Apply the pending change via the standard 4-layer contract (DM only) |
-| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/reject` | Discard the pending change, leaving the existing record untouched (DM only) |
+| Method | Path                                                         | Description                                                                 |
+| ------ | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| `GET`  | `/api/inventory/:campaignId/sync/pending`                    | List pending extension sync conflicts awaiting DM review (DM only)          |
+| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/approve` | Apply the pending change via the standard 4-layer contract (DM only)        |
+| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/reject`  | Discard the pending change, leaving the existing record untouched (DM only) |
 
 ---
 
@@ -566,9 +566,9 @@ Redis is **not** used for inventory state (not presence/audio data). Zustand is 
 
 ```ts
 interface InventoryState {
-  partyItems: InventoryItem[]                       // flat list; containerId links items to containers
+  partyItems: InventoryItem[] // flat list; containerId links items to containers
   partyWallet: CurrencyWallet
-  characterItems: Record<string, InventoryItem[]>   // keyed by characterId; also flat
+  characterItems: Record<string, InventoryItem[]> // keyed by characterId; also flat
   characterWallets: Record<string, CurrencyWallet>
   pendingLootSplits: LootSplitProposal[]
   isLoading: boolean
@@ -582,14 +582,13 @@ Items are stored as a **flat array** — the container hierarchy is derived at r
 ```ts
 // Returns container items first (sorted by name), then top-level items
 const EMPTY_ITEMS: InventoryItem[] = []
-const selectPartyContainers = (state) =>
-  state.partyItems.filter(i => i.isContainer)
+const selectPartyContainers = (state) => state.partyItems.filter((i) => i.isContainer)
 
 const selectItemsInContainer = (containerId: string) => (state) =>
-  state.partyItems.filter(i => i.containerId === containerId)
+  state.partyItems.filter((i) => i.containerId === containerId)
 
 const selectTopLevelPartyItems = (state) =>
-  state.partyItems.filter(i => !i.containerId && !i.isContainer)
+  state.partyItems.filter((i) => !i.containerId && !i.isContainer)
 ```
 
 **WS handler responsibilities:**

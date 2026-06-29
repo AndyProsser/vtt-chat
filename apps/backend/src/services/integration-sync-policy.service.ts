@@ -4,8 +4,8 @@
  * Reference: docs/extension/EXTENSION-INTEGRATION.md §5e, docs/subsystems/INVENTORY-SYSTEM.md §12.3
  */
 
-import { InventoryItemCategory, Role } from '@shared'
-import type { UUID, CurrencyWallet, EventEnvelope } from '@shared'
+import { InventoryItemCategory, Role, normalizeFromDdb } from '@shared'
+import type { UUID, CurrencyWallet, EventEnvelope, ItemMetadata } from '@shared'
 import { logger } from '@/utils'
 import { randomUUID } from 'node:crypto'
 import { getPrismaClient } from '@/infra/db'
@@ -44,14 +44,31 @@ function inferSrdCategory(it: Record<string, unknown>): InventoryItemCategory {
     return it.srdCategory as InventoryItemCategory
   }
   if (it.type === 'custom') return InventoryItemCategory.HOMEBREW
-  if (
-    typeof it.rarity === 'string' &&
-    it.rarity !== '' &&
-    it.rarity !== 'Common'
-  ) {
+  if (typeof it.rarity === 'string' && it.rarity !== '' && it.rarity !== 'Common') {
     return InventoryItemCategory.MAGIC_ITEM
   }
   return InventoryItemCategory.EQUIPMENT
+}
+
+/**
+ * Normalizes the extended fields of a raw external item (DnD Beyond etc.) into the
+ * canonical ItemMetadata shape so the frontend can render any source identically.
+ * Returns `undefined` when the payload carries no extended fields, so an item-only
+ * (name/quantity) sync leaves previously-stored metadata untouched on upsert.
+ */
+function normalizeExternalItemMetadata(it: Record<string, unknown>): ItemMetadata | undefined {
+  const meta = normalizeFromDdb({
+    itemType: typeof it.itemType === 'string' ? it.itemType : undefined,
+    itemSubtype: typeof it.itemSubtype === 'string' ? it.itemSubtype : undefined,
+    weight: typeof it.weight === 'number' ? it.weight : undefined,
+    costGp: typeof it.costGp === 'number' ? it.costGp : undefined,
+    description: typeof it.description === 'string' ? it.description : undefined,
+    damage: typeof it.damage === 'string' ? it.damage : undefined,
+    properties: Array.isArray(it.properties)
+      ? it.properties.filter((p): p is string => typeof p === 'string')
+      : undefined,
+  })
+  return Object.keys(meta).length > 0 ? meta : undefined
 }
 
 /** Validates and normalizes a raw `items` payload into safe `ExternalInventoryItemInput`s.
@@ -74,7 +91,11 @@ export function sanitizeExternalItems(items: unknown): ExternalInventoryItemInpu
       quantity: Math.max(1, Number(it.quantity) || 1),
       srdKey: typeof it.srdKey === 'string' ? it.srdKey.trim() : undefined,
       srdCategory: inferSrdCategory(it),
-      notes: typeof it.notes === 'string' && it.notes.trim().length > 0 ? it.notes.trim() : undefined,
+      notes:
+        typeof it.notes === 'string' && it.notes.trim().length > 0 ? it.notes.trim() : undefined,
+      // Normalize extended fields (weight, damage, properties, …) so EXTERNAL items
+      // carry the same metadata structure as SRD items — see normalizeExternalItemMetadata.
+      metadata: normalizeExternalItemMetadata(it),
       // DDB sends container membership as `containerId` (numeric DDB ID) or `containerExternalId` (string)
       containerExternalId:
         typeof it.containerExternalId === 'string' && it.containerExternalId.trim().length > 0
@@ -412,7 +433,12 @@ export async function applyItemsSection(params: {
 
   // Broadcast container-link updates set by the second pass (containerExternalId resolution)
   for (const item of result.containerLinksApplied) {
-    await broadcastInventoryItemUpdated({ item, actorUserId: params.actorUserId, actorRole, sessionId })
+    await broadcastInventoryItemUpdated({
+      item,
+      actorUserId: params.actorUserId,
+      actorRole,
+      sessionId,
+    })
   }
 
   // Replace semantics for character-owned syncs: remove items from this source that
@@ -430,7 +456,12 @@ export async function applyItemsSection(params: {
       sessionId: params.sessionId,
     })
     for (const { item } of removed) {
-      await broadcastInventoryRemovedEvent({ item, actorUserId: params.actorUserId, actorRole, sessionId })
+      await broadcastInventoryRemovedEvent({
+        item,
+        actorUserId: params.actorUserId,
+        actorRole,
+        sessionId,
+      })
     }
   }
 
@@ -459,7 +490,8 @@ export async function applyCurrencySection(params: {
   })
 
   const isConflict = Boolean(
-    existing && DENOMINATIONS.some((denom) => typeof params.wallet[denom] === 'number' && existing[denom] !== 0)
+    existing &&
+    DENOMINATIONS.some((denom) => typeof params.wallet[denom] === 'number' && existing[denom] !== 0)
   )
 
   const existingBalance = {
@@ -501,7 +533,14 @@ export async function applyCurrencySection(params: {
 
   if (!isConflict || params.conflictResolution === 'OVERWRITE') {
     const wallet = await apply()
-    await broadcastCurrencyChangedEvent({ wallet, delta, newBalance, actorUserId: params.actorUserId, actorRole, sessionId })
+    await broadcastCurrencyChangedEvent({
+      wallet,
+      delta,
+      newBalance,
+      actorUserId: params.actorUserId,
+      actorRole,
+      sessionId,
+    })
     return { updated: true, pendingConflicts: 0 }
   }
 
@@ -530,6 +569,13 @@ export async function applyCurrencySection(params: {
   }
 
   const wallet = await apply()
-  await broadcastCurrencyChangedEvent({ wallet, delta, newBalance, actorUserId: params.actorUserId, actorRole, sessionId })
+  await broadcastCurrencyChangedEvent({
+    wallet,
+    delta,
+    newBalance,
+    actorUserId: params.actorUserId,
+    actorRole,
+    sessionId,
+  })
   return { updated: true, pendingConflicts: 0 }
 }
