@@ -43,6 +43,20 @@ Post-session audio recording, local transcription (Whisper.cpp or FasterWhisper)
 
 ---
 
+### W-DM-Quick-Generate
+
+**Status**: ⚪ Not Started
+**Priority**: 🔵 Low
+**Depends on**: W-AI-Writing-Assistant
+
+DM-facing chat slash commands that generate quick narrative content on demand — NPCs, locations, encounters, traps, rumors, and weather — without leaving the chat panel. Commands follow the same pattern as `/loot-random`: typed in chat, resolved server-side, output as a system message and (optionally) persisted to campaign data. AI provider optional: falls back to static D&D 5e tables when no provider is configured.
+
+Commands planned: `/npc`, `/place`, `/encounter`, `/trap`, `/rumor`, `/weather`
+
+**Docs**: [docs/dm-tools/DM-QUICK-GENERATE.md](docs/dm-tools/DM-QUICK-GENERATE.md)
+
+---
+
 ### W-AI-Writing-Assistant
 
 **Status**: ⚪ Not Started
