@@ -15,19 +15,22 @@
 
 ## Planned
 
-### Admin System — Quality, Scalability & UX
+### Admin System — Reimagined Command Centre
 
-**Status**: ⚪ Not Started
+**Status**: ⚪ Not Started (design complete)
 **Priority**: 🟡 High
 
-The admin app (`apps/admin/`) has not received sustained investment and does not yet meet the same quality or scalability bar as the main app. This item covers a focused improvement pass:
+**Design**: [`docs/architecture/ADMIN-SYSTEM.md`](docs/architecture/ADMIN-SYSTEM.md)
 
-- **UX/UI**: Visual polish, consistent design language, improved navigation ergonomics
-- **Scalability**: Pagination and virtual scrolling for large user/campaign lists; avoid full table scans in admin API routes
-- **Code quality**: File-size compliance (400-line limit), unit and integration coverage matching backend standards
-- **Feature parity**: Queue inspection, recording status, and sync-conflict review as first-class UI surfaces rather than raw API calls
+A full redesign of the admin app — consolidating the 8-page nav into 5, absorbing redundant telemetry pages, and bringing the aesthetic and scope up to "mini command centre with a D&D flavour":
 
-Detailed design and acceptance criteria to be captured in `docs/architecture/ADMIN-SYSTEM.md` before work begins.
+- **Dashboard** (*The Scrying Pool*): unified status strip + activity charts + live job summary; replaces the current Dashboard, Analytics, and System Health pages
+- **Campaigns** (*The Chronicle*): full lifecycle management — archive, backup, restore, lock, import/export, reassign DM, rename, per-campaign storage, session logs, recordings (future)
+- **Users** (*Guild Roster*): moderation, role management, bans with duration, invite via email
+- **Settings** (*The Tome*): major expansion — SMTP + email templates, AI provider configuration (local/remote/cloud), backup schedule + history, job queue schedule + live inspector, external system integrations
+- **Logs** (*Hall of Records*): unified viewer for events, errors, email, trace, and audit logs in a single tabbed page
+
+See the design doc for page-by-page acceptance criteria, component guidelines, and colour palette.
 
 ---
 
