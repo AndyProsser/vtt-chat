@@ -3,22 +3,21 @@
  *
  * Two paths:
  *
- * TOKEN PATH — credential already issued (returning DM or player auto-login):
+ * TOKEN PATH — credential already issued (returning DM or player, or first-time DM after
+ *   dm-link-init completes in the extension):
  *   URL: /ext-launch?campaignId=<uuid>&token=<jwt>&sessionId=<id>
- *   Validates token, redirects straight to campaign workspace.
+ *   Validates token, redirects straight to campaign workspace. No form shown.
  *
- * DM-LINK PATH — first-time DM link (no token):
- *   URL: /ext-launch?campaignId=<uuid>&hint=<ddb-email>&mode=dm-link
- *         &externalUserId=<ddb-uid>&externalCampaignId=<ddb-cid>
- *         &externalSystem=dndbeyond&deviceId=<uuid>[&campaignName=<name>]
+ * HINT PATH — fallback re-auth (extension sends hint but no token):
+ *   URL: /ext-launch?campaignId=<uuid>&hint=<email>
+ *   Shows a login form with email pre-filled. On success navigates to campaign.
+ *   This path does NOT run the DM link sequence — the extension must call
+ *   POST /api/auth/extension/dm-link-init before opening this tab.
  *
- *   After login this page runs the full DM link sequence:
- *     1. POST /api/auth/extension/dm-link   → claim DM status, get deviceCredential
- *     2. POST /api/integrations/external/dm-sync → update campaign name from DDB
- *     3. POST /api/campaigns/:id/session/ensure   → guarantee an IDLE session exists
- *     4. Signal extension via window.postMessage (content script relay) +
- *        window.opener.postMessage (popup path fallback) — see docs/extension/DM-LINK.md §9
- *     5. Redirect to campaign workspace
+ * First-time DM link no longer uses a browser tab for auth. The extension calls
+ * POST /api/auth/extension/dm-link-init directly, receives { token, deviceCredential,
+ * sessionId }, stores the credential, then opens the token path above.
+ * See docs/extension/DM-LINK.md §4.
  *
  * DEV mode (import.meta.env.DEV):
  *   The username field is editable so the developer can type their local vtt-chat username
@@ -39,36 +38,17 @@ import '@/styles/components/routes/AuthSurface.css'
 
 const isDev = import.meta.env.DEV
 
-interface DmLinkParams {
-  externalUserId: string
-  externalCampaignId: string
-  externalSystem: string
-  deviceId: string
-  campaignName?: string
-}
-
 interface ExtLaunchRouteViewProps {
   apiUrl: string
   campaignId: string
   sessionId: string
   token?: string
   hint?: string
-  mode?: 'dm-link'
-  dmLinkParams?: DmLinkParams
   onFullAccountAuthenticated: (
     token: string,
     user: { id: UUID; username: string; role: Role }
   ) => void
   onGuestAuthenticated: (token: string, user: { id: UUID; username: string; role: Role }) => void
-}
-
-type LinkStep = 'linking' | 'syncing' | 'ensuring-session' | 'done'
-
-const STEP_LABELS: Record<LinkStep, string> = {
-  linking: 'Linking your DM account…',
-  syncing: 'Syncing campaign from D&D Beyond…',
-  'ensuring-session': 'Preparing your session…',
-  done: 'Launching campaign…',
 }
 
 export function ExtLaunchRouteView({
@@ -77,25 +57,19 @@ export function ExtLaunchRouteView({
   sessionId,
   token,
   hint,
-  mode,
-  dmLinkParams,
   onFullAccountAuthenticated,
   onGuestAuthenticated,
 }: ExtLaunchRouteViewProps) {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [linkStep, setLinkStep] = useState<LinkStep | null>(null)
   const [password, setPassword] = useState('')
   // DEV: editable username field; PROD: never rendered (hint is locked).
   const [devUsername, setDevUsername] = useState('')
   const tokenExchangedRef = useRef(false)
 
-  const isDmLinkMode = mode === 'dm-link'
-
   // Mirrors the continueToCampaignSession pattern used by the player guest flow.
   // acceptedSessionId is the real session UUID from session/ensure; falls back to
-  // the URL prop for the token path. Route to `/` so AppMainRouteView picks up the
-  // LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY and calls handleEnterCampaign.
+  // the URL prop for the token path.
   const redirectToCampaign = useCallback(
     (acceptedSessionId?: string) => {
       if (!campaignId) return
@@ -113,121 +87,8 @@ export function ExtLaunchRouteView({
     [campaignId, sessionId]
   )
 
-  /**
-   * Runs the full DM link sequence after a successful login:
-   *  1. dm-link  → claim DM status and get a deviceCredential
-   *  2. dm-sync  → update campaign name from DDB (best-effort; non-fatal)
-   *  3. session/ensure → guarantee an IDLE session exists
-   *  4. postMessage    → extension stores the deviceCredential
-   */
-  const runDmLinkSequence = async (authToken: string): Promise<string | undefined> => {
-    if (!dmLinkParams) return undefined
-
-    const { externalUserId, externalCampaignId, externalSystem, deviceId, campaignName } =
-      dmLinkParams
-
-    const headers = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${authToken}`,
-    }
-
-    // Step 1: dm-link
-    setLinkStep('linking')
-    const linkRes = await fetch(`${apiUrl}/api/auth/extension/dm-link`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        campaignId,
-        externalSystem,
-        externalUserId,
-        externalCampaignId,
-        email: hint ?? '',
-        deviceId,
-      }),
-    })
-
-    const linkData = await linkRes.json().catch(() => ({}))
-    if (!linkRes.ok) {
-      throw new Error(linkData.message || 'Failed to link DM account')
-    }
-
-    const deviceCredential: { credential: string; deviceId: string } | undefined =
-      linkData.deviceCredential
-
-    // Step 2: dm-sync (best-effort — update campaign name; non-fatal if it fails)
-    setLinkStep('syncing')
-    try {
-      await fetch(`${apiUrl}/api/integrations/external/dm-sync`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          campaignId,
-          externalSystem,
-          externalCampaignId,
-          campaignData: campaignName ? { name: campaignName } : undefined,
-          characters: [],
-        }),
-      })
-    } catch {
-      // Non-fatal: name will sync on next full extension sync
-    }
-
-    // Step 3: session/ensure — capture the sessionId for the redirect
-    setLinkStep('ensuring-session')
-    const ensureRes = await fetch(`${apiUrl}/api/campaigns/${campaignId}/session/ensure`, {
-      method: 'POST',
-      headers,
-    })
-    const ensureData = await ensureRes.json().catch(() => ({}))
-    const ensuredSessionId: string | undefined = ensureData.sessionId || undefined
-
-    // Step 4: signal the extension that dm-link completed and deliver the deviceCredential.
-    //
-    // Two channels fire simultaneously so the message arrives regardless of how the
-    // extension opened this tab:
-    //
-    //  a) window.postMessage(payload, origin) — primary. Posts to THIS window so the
-    //     extension content script (injected into the vtt-chat domain) receives it via
-    //     window.addEventListener('message'). Works in Chrome and Firefox because content
-    //     scripts share the window object with the page even though they run in an
-    //     isolated JS world. The content script then relays to the background via
-    //     chrome.runtime.sendMessage / browser.runtime.sendMessage.
-    //
-    //  b) window.opener.postMessage — fallback. Works when the tab was opened via
-    //     window.open() from the extension popup (window.opener is set). Not applicable
-    //     for chrome.tabs.create() (opener is null).
-    //
-    // The extension must handle both; deduplication is the extension's responsibility.
-    setLinkStep('done')
-    if (deviceCredential) {
-      const payload = {
-        type: 'VTT_CHAT_DM_LINK_COMPLETE',
-        payload: {
-          campaignId,
-          deviceCredential,
-          merged: linkData.merged ?? false,
-        },
-      }
-      try {
-        // Channel A: content script on this page receives via window.addEventListener
-        window.postMessage(payload, window.location.origin)
-      } catch {
-        // Non-fatal
-      }
-      try {
-        // Channel B: extension popup receives when tab was opened via window.open()
-        if (window.opener) {
-          window.opener.postMessage(payload, window.location.origin)
-        }
-      } catch {
-        // Non-fatal: extension will handle missing credential by re-prompting
-      }
-    }
-
-    return ensuredSessionId
-  }
-
-  // Auto-authenticate when a token is provided in the URL (returning DM / player).
+  // Auto-authenticate when a token is provided in the URL (returning DM / player,
+  // or first-time DM after dm-link-init completes in the extension).
   useEffect(() => {
     if (!token) return
     if (tokenExchangedRef.current) return
@@ -270,6 +131,8 @@ export function ExtLaunchRouteView({
     void authenticate()
   }, [token, apiUrl, onFullAccountAuthenticated, onGuestAuthenticated, redirectToCampaign])
 
+  // Hint path: plain login form — no DM link sequence. The extension must complete
+  // dm-link-init before opening this tab. This form is a fallback re-auth only.
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!password) return
@@ -280,7 +143,6 @@ export function ExtLaunchRouteView({
     setError(null)
 
     try {
-      // Step: login
       const loginRes = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -302,17 +164,10 @@ export function ExtLaunchRouteView({
         role: (loginData.user.role as Role) || Role.PLAYER,
       }
 
-      // Run the full DM link sequence if this is a dm-link launch.
-      let ensuredSessionId: string | undefined
-      if (isDmLinkMode && dmLinkParams) {
-        ensuredSessionId = await runDmLinkSequence(authToken)
-      }
-
-      redirectToCampaign(ensuredSessionId)
+      redirectToCampaign()
       onFullAccountAuthenticated(authToken, user)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
-      setLinkStep(null)
     } finally {
       setIsLoading(false)
     }
@@ -359,18 +214,10 @@ export function ExtLaunchRouteView({
     )
   }
 
-  // DM-link / hint path: show login form.
+  // Hint / fallback path: re-auth form with pre-filled email.
   const canSubmit = isDev
     ? !isLoading && devUsername.trim().length > 0 && password.length > 0
     : !isLoading && !!hint && password.length > 0
-
-  const headingText = isDmLinkMode ? 'Log in to link your DM account' : 'Sign in to continue'
-
-  const copyText = isDev
-    ? 'DEV mode — enter your local vtt-chat username to link as DM.'
-    : isDmLinkMode
-      ? 'Log in with your vtt-chat account to link it to this D&D Beyond campaign.'
-      : 'Enter your password to launch into the campaign session.'
 
   return (
     <div className="auth-form-pane">
@@ -379,79 +226,74 @@ export function ExtLaunchRouteView({
           <div className="auth-form-card__header">
             <div>
               <p className="auth-card__eyebrow">Extension Launch</p>
-              <h2 className="auth-card__title">{headingText}</h2>
+              <h2 className="auth-card__title">Sign in to continue</h2>
             </div>
-            <div className="auth-form-card__badge">
-              {isDev ? 'DEV' : isDmLinkMode ? 'DM Link' : 'Full account'}
-            </div>
+            <div className="auth-form-card__badge">{isDev ? 'DEV' : 'Full account'}</div>
           </div>
 
-          <p className="auth-form-card__copy">{copyText}</p>
+          <p className="auth-form-card__copy">
+            {isDev
+              ? 'DEV mode — enter your local vtt-chat username to continue.'
+              : 'Enter your password to launch into the campaign session.'}
+          </p>
 
           {error && <div className="auth-alert">{error}</div>}
 
-          {/* Linking progress overlay — shown after login while running the DM sequence */}
-          {linkStep && <div className="auth-status-panel">{STEP_LABELS[linkStep]}</div>}
-
-          {!linkStep && (
-            <>
-              {isDev ? (
-                <Form.Field className="auth-field" name="username">
-                  <Form.Label htmlFor="ext-launch-username">Username</Form.Label>
-                  <Form.Control asChild>
-                    <input
-                      id="ext-launch-username"
-                      type="text"
-                      value={devUsername}
-                      onChange={(e) => setDevUsername(e.target.value)}
-                      disabled={isLoading}
-                      autoComplete="username"
-                      placeholder="e.g. test"
-                      required
-                      autoFocus
-                    />
-                  </Form.Control>
-                </Form.Field>
-              ) : (
-                <Form.Field className="auth-field" name="email">
-                  <Form.Label htmlFor="ext-launch-email">Email</Form.Label>
-                  <Form.Control asChild>
-                    <input
-                      id="ext-launch-email"
-                      type="email"
-                      value={hint ?? ''}
-                      disabled
-                      readOnly
-                      autoComplete="username"
-                    />
-                  </Form.Control>
-                </Form.Field>
-              )}
-
-              <Form.Field className="auth-field" name="password">
-                <Form.Label htmlFor="ext-launch-password">Password</Form.Label>
-                <Form.Control asChild>
-                  <input
-                    id="ext-launch-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading}
-                    autoComplete="current-password"
-                    placeholder="Enter your password"
-                    required
-                    autoFocus={!isDev}
-                  />
-                </Form.Control>
-              </Form.Field>
-
-              <Form.Submit asChild>
-                <button type="submit" disabled={!canSubmit} className="auth-submit">
-                  {isLoading ? 'Signing in…' : isDmLinkMode ? 'Link & Launch' : 'Sign in'}
-                </button>
-              </Form.Submit>
-            </>
+          {isDev ? (
+            <Form.Field className="auth-field" name="username">
+              <Form.Label htmlFor="ext-launch-username">Username</Form.Label>
+              <Form.Control asChild>
+                <input
+                  id="ext-launch-username"
+                  type="text"
+                  value={devUsername}
+                  onChange={(e) => setDevUsername(e.target.value)}
+                  disabled={isLoading}
+                  autoComplete="username"
+                  placeholder="e.g. test"
+                  required
+                  autoFocus
+                />
+              </Form.Control>
+            </Form.Field>
+          ) : (
+            <Form.Field className="auth-field" name="email">
+              <Form.Label htmlFor="ext-launch-email">Email</Form.Label>
+              <Form.Control asChild>
+                <input
+                  id="ext-launch-email"
+                  type="email"
+                  value={hint ?? ''}
+                  disabled
+                  readOnly
+                  autoComplete="username"
+                />
+              </Form.Control>
+            </Form.Field>
           )}
+
+          <Form.Field className="auth-field" name="password">
+            <Form.Label htmlFor="ext-launch-password">Password</Form.Label>
+            <Form.Control asChild>
+              <input
+                id="ext-launch-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                required
+                autoFocus={!isDev}
+              />
+            </Form.Control>
+          </Form.Field>
+
+          <Form.Submit asChild>
+            <button type="submit" disabled={!canSubmit} className="auth-submit">
+              {isLoading ? 'Signing in…' : 'Sign in'}
+            </button>
+          </Form.Submit>
         </Form.Root>
       </div>
     </div>

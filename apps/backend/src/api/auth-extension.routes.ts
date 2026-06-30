@@ -9,13 +9,19 @@
  *
  * POST   /extension/preflight              - Pre-flight account status check
  * POST   /extension/guest-login            - Guest auth: create or resume guest session
+ * POST   /extension/dm-link-init          - First-time DM link bootstrap (login + link + session in one call)
  * POST   /extension/credential/exchange    - Exchange a device credential for a fresh JWT (rotates it)
  * GET    /extension/credentials            - List the caller's active device credentials
  * DELETE /extension/credentials/:credentialId - Revoke a device credential
  */
 
 import { Router, Request, Response, NextFunction } from 'express'
-import { verifyToken, extractTokenFromHeader } from '@/services/auth.service'
+import {
+  verifyToken,
+  extractTokenFromHeader,
+  verifyPassword,
+  createToken,
+} from '@/services/auth.service'
 import { createRateLimit } from '@/infra/http/rate-limit'
 import { ErrorCode } from '@shared'
 import { getExternalSystem, isExternalSystemAuthAllowed } from '@/services/integrations.service'
@@ -28,8 +34,33 @@ import {
   revokeDeviceCredential,
 } from '@/services/auth/device-credential.service'
 import { dmLinkAccount } from '@/services/auth/dm-link.service'
+import { dmCampaignSync } from '@/services/dm-campaign-sync.service'
 import { DEVICE_CREDENTIAL_EXCHANGE_RATE_LIMIT } from '@/constants/auth.constants'
 import { isValidUUID } from '@shared'
+import type { UUID } from '@shared'
+import { getPrismaClient } from '@/infra/db'
+import { listSessionsByCampaign } from '@/repositories/session.repository'
+import { createSession } from '@/services/session/core.service'
+import { ensureSessionDefaultRoomsForSession } from '@/services/room.service'
+import { normalizePlayerFacingRole } from '@/services/session/authz.service'
+
+const prisma = getPrismaClient()
+
+/** Active session states — any of these means a session is in progress or queued. */
+const ACTIVE_SESSION_STATES = new Set(['IDLE', 'ACTIVE', 'PAUSED', 'COOLDOWN'])
+
+/**
+ * DEV passwordless mode: when NODE_ENV=development and ENABLE_PASSWORDLESS_LOGIN=true,
+ * username-only logins are accepted without a password. Email-format logins are still
+ * rejected so that production credentials aren't accepted in a dev environment.
+ */
+const isPasswordlessLoginEnabled =
+  (process.env.NODE_ENV || '').toLowerCase() === 'development' &&
+  ['1', 'true', 'yes', 'on'].includes(
+    String(process.env.ENABLE_PASSWORDLESS_LOGIN || '')
+      .trim()
+      .toLowerCase()
+  )
 
 const router = Router()
 
@@ -285,6 +316,290 @@ router.get('/extension/credentials', authMiddleware, async (req: Request, res: R
     })
   }
 })
+
+/**
+ * POST /api/auth/extension/dm-link-init
+ *
+ * First-time DM link bootstrap. The extension calls this directly — no browser tab is
+ * opened until this returns successfully. The extension supplies the DM's vtt-chat
+ * credentials plus all linking params; this endpoint runs the full sequence in one
+ * round-trip:
+ *   1. Authenticate the DM (username/password → full-account JWT).
+ *   2. Link the DM's vtt-chat account to the external campaign (dm-link).
+ *   3. Sync the campaign name from the external system (best-effort, non-fatal).
+ *   4. Ensure an IDLE session exists for the campaign.
+ *   5. Return { token, deviceCredential, sessionId }.
+ *
+ * On success the extension stores the deviceCredential and opens:
+ *   /ext-launch?campaignId=<uuid>&token=<jwt>&sessionId=<id>
+ * That URL uses the silent token path — no login form is ever shown in the tab.
+ *
+ * See docs/extension/DM-LINK.md §4 for the full flow specification.
+ */
+const dmLinkInitRateLimit = createRateLimit({
+  windowMs: 15 * 60 * 1000,
+  maxRequests: 10,
+  keyGenerator: (req) => String(req.body?.username || req.body?.email || req.ip),
+  message: 'Too many DM link attempts. Please try again later.',
+})
+
+router.post(
+  '/extension/dm-link-init',
+  dmLinkInitRateLimit,
+  async (req: Request, res: Response) => {
+    const {
+      username,
+      password,
+      campaignId,
+      externalSystem,
+      externalUserId,
+      externalCampaignId,
+      email,
+      displayName,
+      deviceId,
+      campaignName,
+    } = req.body || {}
+
+    const identifier = String(username || email || '')
+      .trim()
+      .toLowerCase()
+    const pw = String(password || '')
+    const isEmailLogin = identifier.includes('@')
+
+    if (!identifier) {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'username is required' })
+    }
+    if (!pw && !isPasswordlessLoginEnabled) {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'password is required' })
+    }
+    if (isEmailLogin && isPasswordlessLoginEnabled) {
+      return res.status(400).json({
+        code: 'INVALID_LOGIN_REQUEST',
+        message: 'DEV passwordless mode only supports username (not email) login',
+      })
+    }
+    if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'campaignId must be a valid UUID' })
+    }
+    if (!externalSystem || typeof externalSystem !== 'string') {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalSystem is required' })
+    }
+    if (!externalUserId || typeof externalUserId !== 'string') {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalUserId is required' })
+    }
+    if (!externalCampaignId || typeof externalCampaignId !== 'string') {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalCampaignId is required' })
+    }
+    if (!deviceId || typeof deviceId !== 'string') {
+      return res.status(400).json({ code: 'INVALID_INPUT', message: 'deviceId is required' })
+    }
+
+    // Step 1: Authenticate user.
+    const userRecord = await prisma.user.findFirst({
+      where: {
+        ...(isEmailLogin ? { email: identifier } : { username: identifier }),
+        isActive: true,
+      },
+      select: { id: true, username: true, role: true, authType: true, password: true },
+    })
+
+    // DEV passwordless: auto-create DM account when it doesn't exist.
+    if (!userRecord && isPasswordlessLoginEnabled) {
+      const created = await prisma.user.create({
+        data: { username: identifier, displayName: identifier, authType: 'FULL', role: 'DM' },
+        select: { id: true, username: true, role: true },
+      })
+      const token = createToken({
+        userId: created.id as UUID,
+        username: created.username,
+        role: normalizePlayerFacingRole(created.role),
+        authType: 'FULL',
+      })
+      // Continue with the newly created user — fall through by re-entering flow
+      // via a unified helper isn't possible here, so we handle it as a special case.
+      return handleDmLinkInit({
+        res,
+        userId: created.id,
+        username: created.username,
+        role: created.role,
+        token,
+        campaignId,
+        externalSystem,
+        externalUserId,
+        externalCampaignId,
+        email: email || identifier,
+        displayName: typeof displayName === 'string' ? displayName : null,
+        deviceId,
+        campaignName: typeof campaignName === 'string' ? campaignName : undefined,
+      })
+    }
+
+    if (!userRecord || userRecord.authType !== 'FULL') {
+      return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
+    }
+
+    if (!isPasswordlessLoginEnabled) {
+      if (!userRecord.password) {
+        return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
+      }
+      const valid = await verifyPassword(pw, userRecord.password)
+      if (!valid) {
+        return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
+      }
+    } else if (pw && userRecord.password) {
+      const valid = await verifyPassword(pw, userRecord.password)
+      if (!valid) {
+        return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
+      }
+    }
+
+    const token = createToken({
+      userId: userRecord.id as UUID,
+      username: userRecord.username,
+      role: normalizePlayerFacingRole(userRecord.role),
+      authType: 'FULL',
+    })
+
+    return handleDmLinkInit({
+      res,
+      userId: userRecord.id,
+      username: userRecord.username,
+      role: userRecord.role,
+      token,
+      campaignId,
+      externalSystem,
+      externalUserId,
+      externalCampaignId,
+      email: typeof email === 'string' ? email.trim() : identifier,
+      displayName: typeof displayName === 'string' ? displayName : null,
+      deviceId,
+      campaignName: typeof campaignName === 'string' ? campaignName : undefined,
+    })
+  }
+)
+
+/**
+ * Runs steps 2–5 of the dm-link-init sequence (dm-link, dm-sync, session/ensure, response).
+ * Extracted so both the normal and DEV auto-create paths share the same logic.
+ */
+async function handleDmLinkInit(params: {
+  res: Response
+  userId: string
+  username: string
+  role: string
+  token: string
+  campaignId: string
+  externalSystem: string
+  externalUserId: string
+  externalCampaignId: string
+  email: string
+  displayName: string | null
+  deviceId: string
+  campaignName?: string
+}) {
+  const {
+    res,
+    userId,
+    username,
+    role,
+    token,
+    campaignId,
+    externalSystem,
+    externalUserId,
+    externalCampaignId,
+    email,
+    displayName,
+    deviceId,
+    campaignName,
+  } = params
+
+  // Step 2: Link the DM account to the external campaign.
+  let linkResult
+  try {
+    linkResult = await dmLinkAccount({
+      callerUserId: userId,
+      callerAuthType: 'FULL',
+      campaignId,
+      externalSystem,
+      externalUserId,
+      externalCampaignId,
+      email,
+      displayName,
+      deviceId,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'DM_LINK_FAILED'
+    if (message === 'NOT_FULL_ACCOUNT') {
+      return res.status(403).json({ code: 'FORBIDDEN', message: 'Full account required' })
+    }
+    if (message === 'INTEGRATION_NOT_AUTHORIZED') {
+      return res.status(403).json({ code: 'INTEGRATION_NOT_AUTHORIZED', message: 'External system not authorized' })
+    }
+    if (message === 'CAMPAIGN_NOT_FOUND') {
+      return res.status(404).json({ code: 'CAMPAIGN_NOT_FOUND', message: 'Campaign not found' })
+    }
+    if (message === 'ALREADY_CLAIMED') {
+      return res.status(409).json({
+        code: 'ALREADY_CLAIMED',
+        message: 'Another DM has already linked this campaign.',
+      })
+    }
+    if (message === 'IDENTITY_CONFLICT') {
+      return res.status(409).json({
+        code: 'IDENTITY_CONFLICT',
+        message: 'This external account is already linked to a different vtt-chat login. Please contact support.',
+      })
+    }
+    return res.status(500).json({ code: 'DM_LINK_FAILED', message: 'Failed to link DM account' })
+  }
+
+  // Step 3: DM sync — update campaign name from the external system (best-effort, non-fatal).
+  try {
+    await dmCampaignSync({
+      campaignId,
+      externalSystem,
+      externalCampaignId,
+      campaignData: campaignName ? { name: campaignName } : undefined,
+      characters: [],
+      actorUserId: userId,
+      actorUsername: username,
+    })
+  } catch {
+    // Non-fatal: name will sync on the next full extension sync.
+  }
+
+  // Step 4: Ensure an IDLE session exists for this campaign.
+  let sessionId: string
+  try {
+    const sessions = await listSessionsByCampaign(campaignId)
+    const existing = sessions.find((s) => ACTIVE_SESSION_STATES.has(s.state)) ?? null
+    if (existing) {
+      sessionId = existing.id
+    } else {
+      const session = await createSession(
+        `Session - ${new Date().toLocaleDateString('en-AU')}`,
+        userId as UUID,
+        undefined,
+        campaignId as UUID
+      )
+      await ensureSessionDefaultRoomsForSession(session.id as UUID, session.dmId as UUID)
+      sessionId = session.id
+    }
+  } catch {
+    return res.status(500).json({ code: 'SESSION_ENSURE_FAILED', message: 'Failed to ensure session' })
+  }
+
+  return res.status(200).json({
+    token,
+    deviceCredential: {
+      credential: linkResult.deviceCredential.credential,
+      deviceId: linkResult.deviceCredential.deviceId,
+    },
+    sessionId,
+    merged: linkResult.merged,
+    mergedAccount: linkResult.mergedAccount ?? null,
+  })
+}
 
 /**
  * POST /api/auth/extension/dm-link
