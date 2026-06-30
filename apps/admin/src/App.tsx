@@ -14,13 +14,10 @@ import {
   Typography,
 } from '@mui/material'
 import Dashboard from './pages/Dashboard'
-import Analytics from './pages/Analytics'
 import UserManagement from './pages/UserManagement'
 import CampaignManagement from './pages/CampaignManagement'
-import PlatformStatus from './pages/PlatformStatus'
 import Logs from './pages/Logs'
 import Settings from './pages/Settings'
-import Integrations from './pages/Integrations'
 import Setup from './pages/Setup'
 import Login from './pages/Login'
 import InviteOnboarding from './pages/InviteOnboarding'
@@ -31,14 +28,11 @@ import type { AdminPage, NavItem } from '@/types/nav'
 import './styles/App.css'
 
 const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'analytics', label: 'Analytics' },
-  { key: 'users', label: 'Users' },
-  { key: 'campaigns', label: 'Rooms & Campaigns' },
-  { key: 'status', label: 'System Health' },
-  { key: 'logs', label: 'Logs & Activity' },
-  { key: 'settings', label: 'Settings' },
-  { key: 'integrations', label: 'Integrations' },
+  { key: 'dashboard', label: 'Dashboard', subtitle: 'The Scrying Pool' },
+  { key: 'campaigns', label: 'Campaigns', subtitle: 'The Chronicle' },
+  { key: 'users', label: 'Users', subtitle: 'Guild Roster' },
+  { key: 'settings', label: 'Settings', subtitle: 'The Tome' },
+  { key: 'logs', label: 'Logs', subtitle: 'Hall of Records' },
 ]
 
 export default function App() {
@@ -59,7 +53,6 @@ export default function App() {
     window.location.origin
   const inviteToken = new URLSearchParams(window.location.search).get('invite')
 
-  // Check if setup is required and restore auth on mount
   useEffect(() => {
     initializeAuth()
 
@@ -80,18 +73,14 @@ export default function App() {
 
   useEffect(() => {
     const handoff = new URLSearchParams(window.location.search).get('handoff')
-    if (!handoff || setupRequired) {
-      return
-    }
+    if (!handoff || setupRequired) return
 
     const exchange = async () => {
       setLaunchLoading(true)
       try {
         const response = await fetch(`${API_BASE}/admin/auth/handoff/exchange`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ handoffToken: handoff }),
         })
 
@@ -122,36 +111,21 @@ export default function App() {
     }
 
     window.addEventListener(ADMIN_SESSION_EXPIRED_EVENT, onSessionExpired)
-    return () => {
-      window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, onSessionExpired)
-    }
+    return () => window.removeEventListener(ADMIN_SESSION_EXPIRED_EVENT, onSessionExpired)
   }, [logout])
 
   useEffect(() => {
-    if (!isAuthenticated || !token || setupRequired || setupLoading) {
-      return
-    }
+    if (!isAuthenticated || !token || setupRequired || setupLoading) return
 
     let cancelled = false
 
     const validateSession = async () => {
       try {
         await getJson<{ admin: { id: string } }>('/me')
-
-        if (cancelled) {
-          return
-        }
-
-        setAuthError(null)
+        if (!cancelled) setAuthError(null)
       } catch (error) {
-        if (cancelled) {
-          return
-        }
-
-        if (error instanceof SessionExpiredError) {
-          return
-        }
-
+        if (cancelled) return
+        if (error instanceof SessionExpiredError) return
         const message =
           error instanceof Error ? error.message : 'Unable to validate admin session state'
         setAuthError(message)
@@ -159,7 +133,6 @@ export default function App() {
     }
 
     void validateSession()
-
     return () => {
       cancelled = true
     }
@@ -186,10 +159,6 @@ export default function App() {
     setAuthError(null)
   }
 
-  const handleAuthError = (error: string) => {
-    setAuthError(error)
-  }
-
   const handleOpenFrontend = async () => {
     if (!token) {
       setAuthError('Missing admin session token')
@@ -214,9 +183,7 @@ export default function App() {
       }
 
       const handoffToken = String(data.handoffToken || '').trim()
-      if (!handoffToken) {
-        throw new Error('Missing handoff token in response')
-      }
+      if (!handoffToken) throw new Error('Missing handoff token in response')
 
       window.location.href = `${frontendUrl}/launch?handoff=${encodeURIComponent(handoffToken)}`
     } catch (error) {
@@ -232,27 +199,25 @@ export default function App() {
         <CssBaseline />
         <div className="admin-app">
           <div className="admin-loading-screen">
-            <p>Loading...</p>
+            <p>Loading…</p>
           </div>
         </div>
       </ThemeProvider>
     )
   }
 
-  // Show setup wizard if no admin exists
   if (setupRequired) {
     return (
       <ThemeProvider theme={muiTheme}>
         <CssBaseline />
         <div className="admin-app">
-          <Setup onComplete={handleSetupComplete} onError={handleAuthError} />
+          <Setup onComplete={handleSetupComplete} onError={(e) => setAuthError(e)} />
           {authError && <div className="error-alert">{authError}</div>}
         </div>
       </ThemeProvider>
     )
   }
 
-  // Show login if not authenticated
   if (!isAuthenticated) {
     if (!setupRequired && inviteToken) {
       return (
@@ -262,7 +227,7 @@ export default function App() {
             <InviteOnboarding
               inviteToken={inviteToken}
               onComplete={handleLoginSuccess}
-              onError={handleAuthError}
+              onError={(e) => setAuthError(e)}
             />
             {authError && <div className="error-alert">{authError}</div>}
           </div>
@@ -274,7 +239,7 @@ export default function App() {
       <ThemeProvider theme={muiTheme}>
         <CssBaseline />
         <div className="admin-app">
-          <Login onLoginSuccess={handleLoginSuccess} onError={handleAuthError} />
+          <Login onLoginSuccess={handleLoginSuccess} onError={(e) => setAuthError(e)} />
           {authError && <div className="error-alert">{authError}</div>}
         </div>
       </ThemeProvider>
@@ -283,26 +248,20 @@ export default function App() {
 
   const renderPage = () => {
     switch (page) {
-      case 'analytics':
-        return <Analytics />
-      case 'users':
-        return <UserManagement />
       case 'campaigns':
         return <CampaignManagement />
-      case 'status':
-        return <PlatformStatus />
-      case 'logs':
-        return <Logs />
+      case 'users':
+        return <UserManagement />
       case 'settings':
         return <Settings />
-      case 'integrations':
-        return <Integrations />
+      case 'logs':
+        return <Logs />
       default:
-        return <Dashboard />
+        return <Dashboard onNavigateToJobs={() => setPage('settings')} />
     }
   }
 
-  const navWidth = isNavCollapsed ? 76 : 240
+  const navWidth = isNavCollapsed ? 56 : 200
 
   return (
     <ThemeProvider theme={muiTheme}>
@@ -320,7 +279,7 @@ export default function App() {
                 VTT-Chat Admin
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Operations console
+                Operations Console
               </Typography>
             </Box>
 
@@ -328,34 +287,34 @@ export default function App() {
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => setIsNavCollapsed((prev) => !prev)}
                 aria-label={isNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
+                onClick={() => setIsNavCollapsed((prev) => !prev)}
               >
-                {isNavCollapsed ? 'Expand Nav' : 'Collapse Nav'}
+                {isNavCollapsed ? '▶' : '◀'}
               </Button>
               <Button
                 variant="contained"
                 size="small"
-                onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
                 aria-label="Toggle theme"
+                onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
               >
-                Theme: {theme === 'dark' ? 'Dark' : 'Light'}
+                {theme === 'dark' ? 'Dark' : 'Light'}
               </Button>
               <Button
                 variant="outlined"
                 size="small"
+                aria-label="Open frontend"
                 onClick={handleOpenFrontend}
                 disabled={launchLoading}
-                aria-label="Open frontend"
               >
-                {launchLoading ? 'Opening App...' : 'Open App'}
+                {launchLoading ? 'Opening…' : 'Open App'}
               </Button>
               <Button
                 variant="outlined"
                 color="error"
                 size="small"
-                onClick={handleLogout}
                 aria-label="Logout"
+                onClick={handleLogout}
               >
                 Logout
               </Button>
@@ -382,17 +341,39 @@ export default function App() {
           <List sx={{ pt: 1 }} aria-label="Admin navigation">
             {NAV_ITEMS.map((item) => (
               <ListItem key={item.key} disablePadding>
-                <ListItemButton selected={page === item.key} onClick={() => setPage(item.key)}>
-                  <ListItemText
-                    primary={isNavCollapsed ? item.label.slice(0, 2).toUpperCase() : item.label}
-                  />
+                <ListItemButton
+                  selected={page === item.key}
+                  onClick={() => setPage(item.key)}
+                  sx={{ borderRadius: '0 8px 8px 0', mr: 1 }}
+                >
+                  {isNavCollapsed ? (
+                    <ListItemText
+                      primary={
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>
+                          {item.label.slice(0, 2).toUpperCase()}
+                        </span>
+                      }
+                    />
+                  ) : (
+                    <ListItemText
+                      primary={<span style={{ fontSize: 13, fontWeight: 500 }}>{item.label}</span>}
+                      secondary={
+                        <span style={{ fontSize: 11, opacity: 0.6 }}>{item.subtitle}</span>
+                      }
+                    />
+                  )}
                 </ListItemButton>
               </ListItem>
             ))}
           </List>
         </Drawer>
 
-        <Box component="main" sx={{ ml: `${navWidth}px`, mt: '64px', p: 2 }}>
+        <Box component="main" sx={{ ml: `${navWidth}px`, mt: '64px', p: 3 }}>
+          {authError && (
+            <div className="error-alert" style={{ marginBottom: 16 }}>
+              {authError}
+            </div>
+          )}
           {renderPage()}
         </Box>
       </Box>

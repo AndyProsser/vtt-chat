@@ -170,7 +170,7 @@ describe('admin app guard behavior', () => {
     expect(container.textContent).toContain('DashboardPage')
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      '/admin/api/me',
+      'http://localhost/api/admin/me',
       expect.objectContaining({
         method: 'GET',
       })

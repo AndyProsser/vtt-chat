@@ -9,10 +9,18 @@ import type {
   LogTimeRange,
 } from '@/types/logs'
 
-export function useLogsPage() {
+interface UseLogsPageOptions {
+  initialSource?: string
+  initialSeverity?: string
+}
+
+export function useLogsPage({
+  initialSource = 'all',
+  initialSeverity = 'all',
+}: UseLogsPageOptions = {}) {
   const [timeRange, setTimeRange] = useState<LogTimeRange>('24h')
-  const [severity, setSeverity] = useState<string>('all')
-  const [source, setSource] = useState('all')
+  const [severity, setSeverity] = useState<string>(initialSeverity)
+  const [source, setSource] = useState(initialSource)
   const [userId, setUserId] = useState('')
   const [roomId, setRoomId] = useState('')
   const [page, setPage] = useState(1)

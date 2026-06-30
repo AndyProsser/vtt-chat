@@ -253,9 +253,7 @@ describe('Page composition callback wiring', () => {
       root.render(React.createElement(Logs))
     })
 
-    expect(container.textContent).toContain(
-      'Showing 1 of 1 entries (page 1/2) from /admin/api/telemetry/logs'
-    )
+    expect(container.textContent).toContain('Showing 1 of 1 entries (page 1/2)')
 
     const clickText = async (text: string) => {
       const btn = Array.from(container.querySelectorAll('button')).find(

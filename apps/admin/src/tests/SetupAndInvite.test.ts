@@ -9,6 +9,7 @@ const requestJsonMock = vi.fn()
 vi.mock('../utils/api', () => ({
   requestJson: (...args: unknown[]) => requestJsonMock(...args),
   adminApiBase: () => '/admin/api',
+  API_BASE: 'http://localhost/api',
 }))
 
 import InviteOnboarding from '../pages/InviteOnboarding'

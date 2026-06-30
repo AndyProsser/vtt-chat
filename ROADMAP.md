@@ -15,19 +15,22 @@
 
 ## Planned
 
-### Admin System — Quality, Scalability & UX
+### Admin System — Reimagined Command Centre
 
-**Status**: ⚪ Not Started
+**Status**: ⚪ Not Started (design complete)
 **Priority**: 🟡 High
 
-The admin app (`apps/admin/`) has not received sustained investment and does not yet meet the same quality or scalability bar as the main app. This item covers a focused improvement pass:
+**Design**: [`docs/architecture/ADMIN-SYSTEM.md`](docs/architecture/ADMIN-SYSTEM.md)
 
-- **UX/UI**: Visual polish, consistent design language, improved navigation ergonomics
-- **Scalability**: Pagination and virtual scrolling for large user/campaign lists; avoid full table scans in admin API routes
-- **Code quality**: File-size compliance (400-line limit), unit and integration coverage matching backend standards
-- **Feature parity**: Queue inspection, recording status, and sync-conflict review as first-class UI surfaces rather than raw API calls
+A full redesign of the admin app — consolidating the 8-page nav into 5, absorbing redundant telemetry pages, and bringing the aesthetic and scope up to "mini command centre with a D&D flavour":
 
-Detailed design and acceptance criteria to be captured in `docs/architecture/ADMIN-SYSTEM.md` before work begins.
+- **Dashboard** (*The Scrying Pool*): unified status strip + activity charts + live job summary; replaces the current Dashboard, Analytics, and System Health pages
+- **Campaigns** (*The Chronicle*): full lifecycle management — archive, backup, restore, lock, import/export, reassign DM, rename, per-campaign storage, session logs, recordings (future)
+- **Users** (*Guild Roster*): moderation, role management, bans with duration, invite via email
+- **Settings** (*The Tome*): major expansion — SMTP + email templates, AI provider configuration (local/remote/cloud), backup schedule + history, job queue schedule + live inspector, external system integrations
+- **Logs** (*Hall of Records*): unified viewer for events, errors, email, trace, and audit logs in a single tabbed page
+
+See the design doc for page-by-page acceptance criteria, component guidelines, and colour palette.
 
 ---
 
@@ -40,6 +43,20 @@ Detailed design and acceptance criteria to be captured in `docs/architecture/ADM
 Post-session audio recording, local transcription (Whisper.cpp or FasterWhisper), and AI-generated session summary. Runs entirely offline by default; cloud LLM is an opt-in enhancement for summarization only. Controlled by the `VTTCHAT_SUMMARY_PROCESSING_ENABLED` capability gate (off by default).
 
 **Docs**: [docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md](docs/architecture/TRANSCRIPTION-RECORDING-SYSTEM.md), [docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md](docs/ai/AI-CONTEXT-SUMMARY-PROCESSING.md)
+
+---
+
+### W-DM-Quick-Generate
+
+**Status**: ⚪ Not Started
+**Priority**: 🔵 Low
+**Depends on**: W-AI-Writing-Assistant
+
+DM-facing chat slash commands that generate quick narrative content on demand — NPCs, locations, encounters, traps, rumors, and weather — without leaving the chat panel. Commands follow the same pattern as `/loot-random`: typed in chat, resolved server-side, output as a system message and (optionally) persisted to campaign data. AI provider optional: falls back to static D&D 5e tables when no provider is configured.
+
+Commands planned: `/npc`, `/place`, `/encounter`, `/trap`, `/rumor`, `/weather`
+
+**Docs**: [docs/dm-tools/DM-QUICK-GENERATE.md](docs/dm-tools/DM-QUICK-GENERATE.md)
 
 ---
 

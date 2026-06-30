@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoot, Root } from 'react-dom/client'
 
 const useMonitoringTelemetryMock = vi.fn()
+const useDashboardJobsMock = vi.fn()
 
 vi.mock('../features/monitoring/useMonitoringTelemetry', () => ({
   useMonitoringTelemetry: (...args: unknown[]) => useMonitoringTelemetryMock(...args),
@@ -12,13 +13,11 @@ vi.mock('../features/monitoring/MonitoringAreaChart', () => ({
   MonitoringAreaChart: ({ title }: { title: string }) => React.createElement('div', null, title),
 }))
 
-vi.mock('../features/monitoring/TopEventsChart', () => ({
-  TopEventsChart: () => React.createElement('div', null, 'Top Client Telemetry Events (1h)'),
+vi.mock('../features/dashboard/useDashboardJobs', () => ({
+  useDashboardJobs: (...args: unknown[]) => useDashboardJobsMock(...args),
 }))
 
 import Dashboard from '../pages/Dashboard'
-import Analytics from '../pages/Analytics'
-import PlatformStatus from '../pages/PlatformStatus'
 
 const BASE_SNAPSHOT = {
   dashboard: {
@@ -64,19 +63,30 @@ const BASE_SNAPSHOT = {
   error: null,
 }
 
-describe('Monitoring pages', () => {
+const BASE_JOBS = {
+  queues: [],
+  loading: false,
+  error: null,
+  retryBusy: null,
+  reload: vi.fn(),
+  retryFailed: vi.fn(),
+}
+
+describe('Dashboard page', () => {
   let container: HTMLDivElement
   let root: Root
 
-  const renderComponent = async (component: React.ReactElement) => {
+  const renderDashboard = async () => {
     await act(async () => {
-      root.render(component)
+      root.render(React.createElement(Dashboard, { onNavigateToJobs: vi.fn() }))
     })
   }
 
   beforeEach(() => {
     useMonitoringTelemetryMock.mockReset()
     useMonitoringTelemetryMock.mockReturnValue(BASE_SNAPSHOT)
+    useDashboardJobsMock.mockReset()
+    useDashboardJobsMock.mockReturnValue(BASE_JOBS)
 
     container = document.createElement('div')
     document.body.appendChild(container)
@@ -90,31 +100,33 @@ describe('Monitoring pages', () => {
     container.remove()
   })
 
-  it('renders dashboard operational metrics', async () => {
-    await renderComponent(React.createElement(Dashboard))
+  it('renders dashboard with active sessions and connected users', async () => {
+    await renderDashboard()
 
     expect(container.textContent).toContain('Dashboard')
-    expect(container.textContent).toContain('Active Users')
+    expect(container.textContent).toContain('Active Sessions')
+    expect(container.textContent).toContain('Connected Users')
     expect(container.textContent).toContain('42')
-    expect(container.textContent).toContain('Moderation Actions')
   })
 
-  it('renders analytics trends and top client event chart section', async () => {
-    await renderComponent(React.createElement(Analytics))
+  it('renders system status from telemetry', async () => {
+    await renderDashboard()
 
-    expect(container.textContent).toContain('Analytics')
-    expect(container.textContent).toContain('CPU Trend (24h)')
-    expect(container.textContent).toContain('Top Client Telemetry Events (1h)')
-    expect(container.textContent).toContain('Client Events (1h):')
+    expect(container.textContent).toContain('Healthy')
   })
 
-  it('renders system health cards and uptime details', async () => {
-    await renderComponent(React.createElement(PlatformStatus))
+  it('renders job queues zero-state when no queues', async () => {
+    await renderDashboard()
 
-    expect(container.textContent).toContain('System Health')
-    expect(container.textContent).toContain('CPU')
-    expect(container.textContent).toContain('Memory')
-    expect(container.textContent).toContain('Process Uptime')
-    expect(container.textContent).toContain('60 minutes')
+    expect(container.textContent).toContain('Job Queues')
+    expect(container.textContent).toContain('the roads are safe')
+  })
+
+  it('renders chart section', async () => {
+    await renderDashboard()
+
+    expect(container.textContent).toContain('Activity')
+    expect(container.textContent).toContain('Message Throughput')
+    expect(container.textContent).toContain('CPU Load')
   })
 })
