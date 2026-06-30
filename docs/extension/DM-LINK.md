@@ -202,18 +202,18 @@ When a guest account was merged (`merged: true`):
 
 ### Error responses
 
-| Status | Code                         | Cause                                                                    |
-| ------ | ---------------------------- | ------------------------------------------------------------------------ |
-| 400    | `INVALID_INPUT`              | Missing required field                                                   |
-| 400    | `INVALID_LOGIN_REQUEST`      | Email-format username in DEV passwordless mode                           |
-| 401    | `INVALID_CREDENTIALS`        | Wrong password or no full account found for that email/username          |
-| 403    | `FORBIDDEN`                  | Authenticated user is a guest (`authType !== FULL`)                      |
-| 403    | `INTEGRATION_NOT_AUTHORIZED` | External system is blocked or not authorized                             |
-| 404    | `CAMPAIGN_NOT_FOUND`         | `campaignId` does not exist                                              |
-| 409    | `ALREADY_CLAIMED`            | A different DDB identity has already linked this campaign as DM          |
-| 409    | `IDENTITY_CONFLICT`          | `externalUserId` is already linked to a different full vtt-chat account  |
-| 500    | `DM_LINK_FAILED`             | Unexpected server error during linking                                   |
-| 500    | `SESSION_ENSURE_FAILED`      | Unexpected server error during session provisioning                      |
+| Status | Code                         | Cause                                                                   |
+| ------ | ---------------------------- | ----------------------------------------------------------------------- |
+| 400    | `INVALID_INPUT`              | Missing required field                                                  |
+| 400    | `INVALID_LOGIN_REQUEST`      | Email-format username in DEV passwordless mode                          |
+| 401    | `INVALID_CREDENTIALS`        | Wrong password or no full account found for that email/username         |
+| 403    | `FORBIDDEN`                  | Authenticated user is a guest (`authType !== FULL`)                     |
+| 403    | `INTEGRATION_NOT_AUTHORIZED` | External system is blocked or not authorized                            |
+| 404    | `CAMPAIGN_NOT_FOUND`         | `campaignId` does not exist                                             |
+| 409    | `ALREADY_CLAIMED`            | A different DDB identity has already linked this campaign as DM         |
+| 409    | `IDENTITY_CONFLICT`          | `externalUserId` is already linked to a different full vtt-chat account |
+| 500    | `DM_LINK_FAILED`             | Unexpected server error during linking                                  |
+| 500    | `SESSION_ENSURE_FAILED`      | Unexpected server error during session provisioning                     |
 
 ---
 

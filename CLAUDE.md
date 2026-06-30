@@ -4,26 +4,26 @@ VTT-Chat is a real-time, multi-user voice and chat platform for tabletop RPGs (T
 
 **This file is the primary AI context for Claude Code.** It distills the rules you must never violate. Supporting references:
 
-| Source | Purpose |
-| ------ | ------- |
+| Source                            | Purpose                                        |
+| --------------------------------- | ---------------------------------------------- |
 | `.github/copilot-instructions.md` | Full product spec and detailed subsystem rules |
-| `docs/CONTRACTS.md` | Locked API and WS event contracts |
-| `docs/architecture/` | Per-subsystem architecture docs |
-| `packages/shared/events/*.ts` | Authoritative WS event type definitions |
-| `apps/backend/src/ws/index.ts` | WS event registry (runtime source of truth) |
+| `docs/CONTRACTS.md`               | Locked API and WS event contracts              |
+| `docs/architecture/`              | Per-subsystem architecture docs                |
+| `packages/shared/events/*.ts`     | Authoritative WS event type definitions        |
+| `apps/backend/src/ws/index.ts`    | WS event registry (runtime source of truth)    |
 
 ---
 
 ## Tech Stack
 
-| Layer    | Technology                                                  |
-| -------- | ----------------------------------------------------------- |
-| Frontend | React 19, Zustand, Radix UI, TypeScript                     |
-| Admin    | Separate React app, shares design tokens                    |
-| Backend  | Node.js (Express), Prisma ORM, WebSocket server             |
-| Database | PostgreSQL (authoritative), Redis (presence)                |
-| Shared   | `packages/shared/` monorepo package — types, events, utils  |
-| Infra    | Docker Compose; Caddy for TLS/reverse proxy                 |
+| Layer    | Technology                                                 |
+| -------- | ---------------------------------------------------------- |
+| Frontend | React 19, Zustand, Radix UI, TypeScript                    |
+| Admin    | Separate React app, shares design tokens                   |
+| Backend  | Node.js (Express), Prisma ORM, WebSocket server            |
+| Database | PostgreSQL (authoritative), Redis (presence)               |
+| Shared   | `packages/shared/` monorepo package — types, events, utils |
+| Infra    | Docker Compose; Caddy for TLS/reverse proxy                |
 
 ---
 
@@ -60,22 +60,22 @@ await fetch('/api/audio/environments/apply', { method: 'POST', body: ... })
 
 Import `SessionState` from `packages/shared/types/index.ts`. Never use raw strings.
 
-```
+```text
 IDLE ──► ACTIVE ──► PAUSED ──► ACTIVE (resume)
                 │          └──► COOLDOWN ──► ENDED ──► CLEANUP
                 └──────────────► COOLDOWN
 ```
 
-| From       | To         | Trigger                           |
-| ---------- | ---------- | --------------------------------- |
-| `IDLE`     | `ACTIVE`   | DM starts session                 |
-| `ACTIVE`   | `PAUSED`   | DM pauses                         |
-| `ACTIVE`   | `COOLDOWN` | DM ends session (post-game window)|
-| `PAUSED`   | `ACTIVE`   | DM resumes                        |
-| `PAUSED`   | `COOLDOWN` | DM ends from paused state         |
-| `COOLDOWN` | `ENDED`    | Cooldown window expires           |
-| `ENDED`    | `CLEANUP`  | System cleanup completes          |
-| `CLEANUP`  | `IDLE`     | New session provisioned           |
+| From       | To         | Trigger                            |
+| ---------- | ---------- | ---------------------------------- |
+| `IDLE`     | `ACTIVE`   | DM starts session                  |
+| `ACTIVE`   | `PAUSED`   | DM pauses                          |
+| `ACTIVE`   | `COOLDOWN` | DM ends session (post-game window) |
+| `PAUSED`   | `ACTIVE`   | DM resumes                         |
+| `PAUSED`   | `COOLDOWN` | DM ends from paused state          |
+| `COOLDOWN` | `ENDED`    | Cooldown window expires            |
+| `ENDED`    | `CLEANUP`  | System cleanup completes           |
+| `CLEANUP`  | `IDLE`     | New session provisioned            |
 
 **`COOLDOWN`** is the post-session spectator window. OOC chat is enabled; DM effects are frozen; no group changes. Clients display a countdown timer (`cooldownExpiresAt` is backend-authoritative). Use `SESSION:COOLDOWN_STARTED` and `SESSION:COOLDOWN_EXTENDED` events — never infer from timer drift.
 

@@ -371,7 +371,7 @@ The browser extension reads D&D Beyond data to provide seamless authentication a
 
 We have no intention of infringing on Wizards of the Coast's intellectual property or negatively impacting D&D Beyond. We are fans who simply want to create a more immersive chat experience for players to enjoy the game they love. If an official API becomes available, we would be delighted to migrate to it or to contribute to its development. If Wizards of the Coast or D&D Beyond has any concerns, we are very open to discussion and happy to make whatever changes are needed — please reach out via [GitHub Issues](https://github.com/AndyProsser/vtt-chat/issues).
 
-*Dungeons & Dragons and D&D Beyond are trademarks of Wizards of the Coast LLC.*
+_Dungeons & Dragons and D&D Beyond are trademarks of Wizards of the Coast LLC._
 
 ---
 

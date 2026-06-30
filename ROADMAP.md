@@ -24,11 +24,11 @@
 
 A full redesign of the admin app — consolidating the 8-page nav into 5, absorbing redundant telemetry pages, and bringing the aesthetic and scope up to "mini command centre with a D&D flavour":
 
-- **Dashboard** (*The Scrying Pool*): unified status strip + activity charts + live job summary; replaces the current Dashboard, Analytics, and System Health pages
-- **Campaigns** (*The Chronicle*): full lifecycle management — archive, backup, restore, lock, import/export, reassign DM, rename, per-campaign storage, session logs, recordings (future)
-- **Users** (*Guild Roster*): moderation, role management, bans with duration, invite via email
-- **Settings** (*The Tome*): major expansion — SMTP + email templates, AI provider configuration (local/remote/cloud), backup schedule + history, job queue schedule + live inspector, external system integrations
-- **Logs** (*Hall of Records*): unified viewer for events, errors, email, trace, and audit logs in a single tabbed page
+- **Dashboard** (_The Scrying Pool_): unified status strip + activity charts + live job summary; replaces the current Dashboard, Analytics, and System Health pages
+- **Campaigns** (_The Chronicle_): full lifecycle management — archive, backup, restore, lock, import/export, reassign DM, rename, per-campaign storage, session logs, recordings (future)
+- **Users** (_Guild Roster_): moderation, role management, bans with duration, invite via email
+- **Settings** (_The Tome_): major expansion — SMTP + email templates, AI provider configuration (local/remote/cloud), backup schedule + history, job queue schedule + live inspector, external system integrations
+- **Logs** (_Hall of Records_): unified viewer for events, errors, email, trace, and audit logs in a single tabbed page
 
 See the design doc for page-by-page acceptance criteria, component guidelines, and colour palette.
 

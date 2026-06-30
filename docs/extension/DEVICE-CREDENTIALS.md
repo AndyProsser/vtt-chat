@@ -99,13 +99,13 @@ let handled = false // prevent double-store if both channels fire
 window.addEventListener('message', (event: MessageEvent) => {
   // Only accept messages from the vtt-chat origin — not other frames or extensions
   if (event.origin !== VTT_CHAT_ORIGIN) return
-  if (event.source !== window) return       // must come from the page itself
+  if (event.source !== window) return // must come from the page itself
   if (event.data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
   if (handled) return
   handled = true
 
   // Relay to background (MV3: service worker; MV2: background page)
-  chrome.runtime.sendMessage(event.data)   // Firefox: browser.runtime.sendMessage
+  chrome.runtime.sendMessage(event.data) // Firefox: browser.runtime.sendMessage
 })
 ```
 
