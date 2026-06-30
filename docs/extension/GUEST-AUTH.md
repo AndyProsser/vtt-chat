@@ -625,11 +625,17 @@ Response:
     "name": "Aragorn",
     "avatarUrl": "https://ddb.ac/avatars/char.png"
   },
-  "campaignBootstrapped": false
+  "campaignBootstrapped": false,
+  "deviceCredential": {
+    "credential": "opaque-base64url-string",
+    "deviceId": "uuid-sent-in-request"
+  }
 }
 ```
 
 `role` is `"DM"` or `"Player"` as determined by the server. `campaignBootstrapped` is `true` only when this connection created the campaign data structures for the first time.
+
+`deviceCredential` is present only when the request included a `deviceId`. The extension must store it in `localStorage` keyed by `player:<externalCampaignId>:<externalSystem>` alongside the vtt-chat `campaignId` from `user.campaignId`. See [DEVICE-CREDENTIALS.md](DEVICE-CREDENTIALS.md) for the full storage contract and reconnect flows.
 
 ### 4.10 Returning User via Device Credential
 
@@ -872,14 +878,11 @@ Guest login does not expose passwords. Guest accounts do not have passwords. The
 
 ### 8.4 Token Storage
 
-The extension stores the JWT in background script memory only. It is not written to:
+**JWT (short-lived session token):** stored in background script memory only. It is never written to `localStorage`, `sessionStorage`, `chrome.storage`, or cookies. It is lost when the browser is closed or the extension is unloaded.
 
-- `localStorage`
-- `sessionStorage`
-- `chrome.storage` (persisted)
-- Cookies
+**Device credential (long-lived reconnect token):** stored in `localStorage`. It survives browser restarts and is the sole mechanism for reconnecting without re-entering an invite code. See [DEVICE-CREDENTIALS.md](DEVICE-CREDENTIALS.md) for the full storage key convention and exchange flow.
 
-The token is lost when the browser is closed or the extension is unloaded.
+This two-tier model means invite codes are used once and discarded; the extension does not store them.
 
 ---
 

@@ -5,6 +5,7 @@ _How a VTT-Chat DM links their full account to an external system campaign, with
 **Related docs:**
 
 - [GUEST-AUTH.md](GUEST-AUTH.md) — player guest auth and overall trust model
+- [DEVICE-CREDENTIALS.md](DEVICE-CREDENTIALS.md) — storage keys, reconnect flows, and exchange helper (both DM and player)
 - [EXTENSION-INTEGRATION.md](EXTENSION-INTEGRATION.md) — extension architecture and §5f DM Campaign Sync
 - [EXTENSION-UX.md](EXTENSION-UX.md) — popup states and overlay behaviour
 
@@ -93,24 +94,25 @@ _Runs once per DM per campaign. Establishes the campaign link, creates the Exter
 7.  /ext-launch shows email (pre-filled from DDB, read-only) + password field.
       Page heading: "Log in to link your DM account"
 8.  DM submits credentials → POST /api/auth/login → returns full-account JWT.
-9.  /ext-launch (now authenticated) calls:
-        POST /api/auth/extension/dm-link
-      with the full-account JWT. Server:
-        a. Verifies caller is currentDmId of campaignId.
-        b. Upserts ExternalIdentity: (externalSystem, externalUserId) → callerUserId.
-        c. Runs guest account merge if a guest ExternalIdentity with same externalUserId exists (§6).
-        d. Upserts CampaignExternalLink(campaignId, externalSystem, externalCampaignId).
-        e. Issues deviceCredential.
-        f. Returns { deviceCredential, merged, mergedAccountSummary? }.
-10. /ext-launch posts credential to extension via postMessage (§9).
-11. Background script stores deviceCredential in localStorage.
-12. Extension fires:
-        POST /api/integrations/external/dm-sync
-      → sync campaign name, provision character stubs for party members.
-13. Extension fires:
-        POST /api/campaigns/:campaignId/session/ensure
-      → confirms or creates an IDLE session.
-14. /ext-launch redirects to campaign workspace.
+9.  /ext-launch (now authenticated) runs the full DM link sequence:
+      a. POST /api/auth/extension/dm-link with the full-account JWT. Server:
+           i.   Checks CampaignExternalLink for an existing DM claim on this campaign.
+                First-time: takes DM ownership (updates campaign.currentDmId).
+                Returning same account: no-op.
+                Same DDB identity, different vtt-chat account: transfers ownership (account recovery).
+                Different DDB identity already claimed: returns 409 ALREADY_CLAIMED.
+           ii.  Upserts ExternalIdentity: (externalSystem, externalUserId) → callerUserId.
+           iii. Runs guest account merge if a guest ExternalIdentity with same externalUserId exists (§6).
+           iv.  Upserts CampaignExternalLink(campaignId, externalSystem, externalCampaignId).
+           v.   Issues deviceCredential.
+           vi.  Returns { deviceCredential, merged, mergedAccountSummary? }.
+      b. POST /api/integrations/external/dm-sync → sync campaign name (best-effort; non-fatal).
+      c. POST /api/campaigns/:campaignId/session/ensure → confirms or creates an IDLE session.
+      d. Posts VTT_CHAT_DM_LINK_COMPLETE to window.opener (§9) with the deviceCredential.
+10. Background script stores deviceCredential in localStorage.
+    Key: dmlink:<externalCampaignId>:<externalSystem>
+    See DEVICE-CREDENTIALS.md for the full storage shape.
+11. /ext-launch redirects to campaign workspace.
 ```
 
 ---
@@ -142,7 +144,7 @@ _Normal path for all subsequent DM launches. No invite code entry required._
 
 Requires a full-account JWT (`authType = FULL`). Guest tokens return `403 FORBIDDEN`.
 
-The caller must be `currentDmId` of the specified `campaignId`. The campaign was created by the DM in vtt-chat, so this is already guaranteed if the right account is used.
+DM ownership is established via `CampaignExternalLink`, not `campaign.currentDmId`. First-time callers claim ownership by creating the link; returning callers are verified against the stored link.
 
 ### Request
 
@@ -153,15 +155,19 @@ The caller must be `currentDmId` of the specified `campaignId`. The campaign was
   "externalUserId": "string (DDB user ID of the DM)",
   "externalCampaignId": "string (DDB campaign ID)",
   "email": "string (DDB account email — informational only)",
-  "displayName": "string | null (DDB display name — informational only)"
+  "displayName": "string | null (DDB display name — informational only)",
+  "deviceId": "uuid (stable per-browser identifier)"
 }
 ```
 
 ### Server actions (in order)
 
 1. Verify `authType === FULL` on the caller's token → `403` if guest.
-2. Verify caller is `currentDmId` of `campaignId` → `403 FORBIDDEN`.
-3. Verify the external system is platform-authorized → `403 INTEGRATION_NOT_AUTHORIZED`.
+2. Verify the external system is platform-authorized → `403 INTEGRATION_NOT_AUTHORIZED`.
+3. Look up `CampaignExternalLink` for `(campaignId, externalSystem)`:
+   - **No link exists** (first-time): take DM ownership — update `campaign.currentDmId` to caller; create the link with `linkedBy = callerUserId`.
+   - **Link exists, `linkedBy === callerUserId`**: returning DM on same account — no ownership change.
+   - **Link exists, `linkedBy ≠ callerUserId`**: check whether the linked account shares the same DDB identity (account recovery path). If yes: transfer ownership. If no: return `409 ALREADY_CLAIMED`.
 4. Upsert `ExternalIdentity { userId: callerUserId, externalSystem, externalUserId, email }`.
 5. **Guest account merge** — search for any other `ExternalIdentity` where `(externalSystem, externalUserId)` matches but `userId ≠ callerUserId`:
    - If found and that user is `authType = GUEST` → run merge (§7).
@@ -177,7 +183,7 @@ The caller must be `currentDmId` of the specified `campaignId`. The campaign was
 {
   "message": "DM account linked successfully",
   "deviceCredential": {
-    "credential": "opaque-string",
+    "credential": "opaque-base64url-string",
     "deviceId": "uuid"
   },
   "merged": false,
@@ -203,13 +209,15 @@ When a merge occurred (`merged: true`):
 
 ### Error responses
 
-| Status | Code                         | Cause                                                          |
-| ------ | ---------------------------- | -------------------------------------------------------------- |
-| 400    | `INVALID_INPUT`              | Missing `campaignId`, `externalSystem`, or `externalUserId`    |
-| 401    | `UNAUTHORIZED`               | Missing or invalid token                                       |
-| 403    | `FORBIDDEN`                  | Caller is a guest, or is not `currentDmId` of the campaign     |
-| 403    | `INTEGRATION_NOT_AUTHORIZED` | External system is blocked or not authorized                   |
-| 409    | `IDENTITY_CONFLICT`          | `externalUserId` is already linked to a different full account |
+| Status | Code                         | Cause                                                                    |
+| ------ | ---------------------------- | ------------------------------------------------------------------------ |
+| 400    | `INVALID_INPUT`              | Missing `campaignId`, `externalSystem`, `externalUserId`, or `deviceId`  |
+| 401    | `UNAUTHORIZED`               | Missing or invalid token                                                 |
+| 403    | `FORBIDDEN`                  | Caller is a guest (`authType !== FULL`)                                  |
+| 403    | `INTEGRATION_NOT_AUTHORIZED` | External system is blocked or not authorized                             |
+| 404    | `CAMPAIGN_NOT_FOUND`         | `campaignId` does not exist                                              |
+| 409    | `ALREADY_CLAIMED`            | A different DDB identity has already linked this campaign as DM          |
+| 409    | `IDENTITY_CONFLICT`          | `externalUserId` is already linked to a different full vtt-chat account  |
 
 ---
 
@@ -374,14 +382,17 @@ Note: `campaignId` at this stage is not yet known (it's the vtt-chat UUID, not t
 The `/ext-launch` route with `mode=dm-link` must:
 
 1. **Block the guest bypass.** If no JWT is present in the URL params, always show the password login form — never call the guest-login endpoint.
-2. Pre-fill email from the `hint` query param (read-only).
+2. Pre-fill email from the `hint` query param (read-only). In DEV passwordless mode show an editable username field instead.
 3. Show heading: _"Log in to link your DM account"_.
 4. Sub-heading: _"Log in with your vtt-chat account to link it to this DDB campaign."_
-5. On successful `POST /api/auth/login`:
-   - Call `POST /api/auth/extension/dm-link` with the returned JWT.
-   - On success: post `VTT_CHAT_DM_LINK_COMPLETE` message (§9), then redirect to campaign workspace.
-   - On `409 IDENTITY_CONFLICT`: show error _"This DDB account is already linked to a different vtt-chat login. Please contact support."_ Do not redirect.
-   - On other errors: show error with retry button.
+5. On successful `POST /api/auth/login`, run the DM link sequence in order:
+   - **Step 1 — dm-link:** `POST /api/auth/extension/dm-link` with the JWT. Progress label: _"Linking your DM account…"_
+     - On `409 ALREADY_CLAIMED`: show _"Another DM has already linked this campaign."_ Do not proceed.
+     - On `409 IDENTITY_CONFLICT`: show _"This DDB account is already linked to a different vtt-chat login. Please contact support."_ Do not proceed.
+   - **Step 2 — dm-sync:** `POST /api/integrations/external/dm-sync` to update campaign name. Progress label: _"Syncing campaign from D&D Beyond…"_ (best-effort; non-fatal).
+   - **Step 3 — session/ensure:** `POST /api/campaigns/:campaignId/session/ensure`. Progress label: _"Preparing your session…"_ Captures the real `sessionId` for the redirect.
+   - **Step 4 — postMessage:** Post `VTT_CHAT_DM_LINK_COMPLETE` to `window.opener` (§9). Progress label: _"Launching campaign…"_
+   - Redirect to campaign workspace via the lobby auto-enter pattern.
 
 ### 10.4 Invite Code Handling
 

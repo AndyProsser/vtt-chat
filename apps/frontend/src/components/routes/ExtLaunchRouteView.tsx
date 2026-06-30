@@ -29,7 +29,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as Form from '@radix-ui/react-form'
 import { Role } from '@shared'
 import type { UUID } from '@shared'
-import { ACTIVE_SESSION_CONTEXT_STORAGE_KEY } from '@/constants/workspaces.constants'
+import {
+  ACTIVE_SESSION_CONTEXT_STORAGE_KEY,
+  LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY,
+  LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY,
+} from '@/constants/workspaces.constants'
 import '@/styles/components/routes/AuthSurface.css'
 
 const isDev = import.meta.env.DEV
@@ -87,12 +91,26 @@ export function ExtLaunchRouteView({
 
   const isDmLinkMode = mode === 'dm-link'
 
-  const redirectToCampaign = useCallback(() => {
-    if (!campaignId) return
-    const context = JSON.stringify({ campaignId, sessionId })
-    sessionStorage.setItem(ACTIVE_SESSION_CONTEXT_STORAGE_KEY, context)
-    sessionStorage.setItem('postLoginRedirectPath', `/campaigns/${campaignId}`)
-  }, [campaignId, sessionId])
+  // Mirrors the continueToCampaignSession pattern used by the player guest flow.
+  // acceptedSessionId is the real session UUID from session/ensure; falls back to
+  // the URL prop for the token path. Route to `/` so AppMainRouteView picks up the
+  // LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY and calls handleEnterCampaign.
+  const redirectToCampaign = useCallback(
+    (acceptedSessionId?: string) => {
+      if (!campaignId) return
+      const resolvedSessionId = acceptedSessionId || sessionId
+      if (resolvedSessionId) {
+        sessionStorage.setItem(
+          ACTIVE_SESSION_CONTEXT_STORAGE_KEY,
+          JSON.stringify({ campaignId, sessionId: resolvedSessionId })
+        )
+      }
+      sessionStorage.setItem(LOBBY_CAMPAIGN_FOCUS_STORAGE_KEY, campaignId)
+      sessionStorage.setItem(LOBBY_AUTO_ENTER_CAMPAIGN_STORAGE_KEY, campaignId)
+      sessionStorage.setItem('postLoginRedirectPath', '/')
+    },
+    [campaignId, sessionId]
+  )
 
   /**
    * Runs the full DM link sequence after a successful login:
@@ -101,8 +119,8 @@ export function ExtLaunchRouteView({
    *  3. session/ensure → guarantee an IDLE session exists
    *  4. postMessage    → extension stores the deviceCredential
    */
-  const runDmLinkSequence = async (authToken: string) => {
-    if (!dmLinkParams) return
+  const runDmLinkSequence = async (authToken: string): Promise<string | undefined> => {
+    if (!dmLinkParams) return undefined
 
     const { externalUserId, externalCampaignId, externalSystem, deviceId, campaignName } =
       dmLinkParams
@@ -153,12 +171,14 @@ export function ExtLaunchRouteView({
       // Non-fatal: name will sync on next full extension sync
     }
 
-    // Step 3: session/ensure
+    // Step 3: session/ensure — capture the sessionId for the redirect
     setLinkStep('ensuring-session')
-    await fetch(`${apiUrl}/api/campaigns/${campaignId}/session/ensure`, {
+    const ensureRes = await fetch(`${apiUrl}/api/campaigns/${campaignId}/session/ensure`, {
       method: 'POST',
       headers,
     })
+    const ensureData = await ensureRes.json().catch(() => ({}))
+    const ensuredSessionId: string | undefined = ensureData.sessionId || undefined
 
     // Step 4: postMessage deviceCredential back to the extension
     setLinkStep('done')
@@ -179,6 +199,8 @@ export function ExtLaunchRouteView({
         // Non-fatal: extension will handle missing credential by re-prompting
       }
     }
+
+    return ensuredSessionId
   }
 
   // Auto-authenticate when a token is provided in the URL (returning DM / player).
@@ -257,11 +279,12 @@ export function ExtLaunchRouteView({
       }
 
       // Run the full DM link sequence if this is a dm-link launch.
+      let ensuredSessionId: string | undefined
       if (isDmLinkMode && dmLinkParams) {
-        await runDmLinkSequence(authToken)
+        ensuredSessionId = await runDmLinkSequence(authToken)
       }
 
-      redirectToCampaign()
+      redirectToCampaign(ensuredSessionId)
       onFullAccountAuthenticated(authToken, user)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')

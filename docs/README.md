@@ -103,6 +103,8 @@ When UI implementation docs diverge from these migration docs, update the implem
 
 - [EXTENSION-INTEGRATION.md](extension/EXTENSION-INTEGRATION.md) — architecture, pre-flight, communication
 - [GUEST-AUTH.md](extension/GUEST-AUTH.md) — guest/invite-link auth, external identity, sync policy, account upgrade
+- [DM-LINK.md](extension/DM-LINK.md) — DM identity linking, guest merge, returning DM launch
+- [DEVICE-CREDENTIALS.md](extension/DEVICE-CREDENTIALS.md) — credential storage keys, reconnect flows, exchange helper (both DM and player)
 - [EXTENSION-UX.md](extension/EXTENSION-UX.md) — overlay UX and role-aware UI
 - [THIRD-PARTY-INTEGRATIONS.md](extension/THIRD-PARTY-INTEGRATIONS.md) — system separation and admin authorization
 

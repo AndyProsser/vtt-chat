@@ -1138,10 +1138,16 @@ The extension device credential is a **per-user, per-browser opaque token** issu
 
 ### Credential issuance
 
-- Issued in the response body of `POST /api/auth/extension/guest-login` on success as the field `deviceCredential`.
+Credentials are issued from two endpoints:
+
+- **Player:** `POST /api/auth/extension/guest-login` — included in the response as `deviceCredential` when the request body contains a `deviceId`. Shape: `{ credential: string, deviceId: string }`.
+- **DM:** `POST /api/auth/extension/dm-link` — always returns `deviceCredential: { credential: string, deviceId: string }` on success (the DM's `deviceId` is a required field in the request body).
+
+Both responses use the same `{ credential, deviceId }` object shape so the extension can store and exchange credentials without path-specific handling. See [extension/DEVICE-CREDENTIALS.md](extension/DEVICE-CREDENTIALS.md) for the storage key convention and reconnect code.
+
 - Preserved (not re-issued) when a guest upgrades via `POST /api/auth/upgrade` — the credential automatically becomes associated with the now-full account.
-- The extension **must** store `deviceCredential` in browser `localStorage`. The original invite URL or code **must not** be stored for reconnection purposes.
-- Each browser or installation generates and persists a stable `deviceId` (UUID v4) in `localStorage` on first install. This `deviceId` is sent on the initial join call and on every subsequent credential exchange.
+- The extension **must** store the credential object in `localStorage` keyed by role and campaign. The original invite URL or code **must not** be stored for reconnection purposes.
+- Each browser installation generates and persists a stable `deviceId` (UUID v4) in `localStorage` on first install. This `deviceId` is sent on the initial join/link call and on every subsequent credential exchange.
 
 ### Credential exchange
 

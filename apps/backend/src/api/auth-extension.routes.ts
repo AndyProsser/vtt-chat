@@ -181,10 +181,12 @@ router.post('/extension/guest-login', async (req: Request, res: Response) => {
     // Device credential issuance is opt-in: only when the extension sends a
     // stable deviceId (see docs/CONTRACTS.md "Extension Device Credential Contract").
     // Older extension builds that don't send one simply don't get the field.
-    let deviceCredential: string | undefined
+    // Shape matches the DM dm-link response: { credential, deviceId } so the extension
+    // can store and exchange both values without any path-specific handling.
+    let deviceCredential: { credential: string; deviceId: string } | undefined
     if (deviceId) {
       const issued = await issueDeviceCredential({ userId: result.user.id, deviceId })
-      deviceCredential = issued.credential
+      deviceCredential = { credential: issued.credential, deviceId }
     }
 
     return res.status(200).json({
@@ -309,7 +311,9 @@ router.post('/extension/dm-link', authMiddleware, async (req: Request, res: Resp
   } = req.body || {}
 
   if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {
-    return res.status(400).json({ code: 'INVALID_INPUT', message: 'campaignId must be a valid UUID' })
+    return res
+      .status(400)
+      .json({ code: 'INVALID_INPUT', message: 'campaignId must be a valid UUID' })
   }
   if (!externalSystem || typeof externalSystem !== 'string') {
     return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalSystem is required' })
@@ -318,7 +322,9 @@ router.post('/extension/dm-link', authMiddleware, async (req: Request, res: Resp
     return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalUserId is required' })
   }
   if (!externalCampaignId || typeof externalCampaignId !== 'string') {
-    return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalCampaignId is required' })
+    return res
+      .status(400)
+      .json({ code: 'INVALID_INPUT', message: 'externalCampaignId is required' })
   }
   if (!deviceId || typeof deviceId !== 'string') {
     return res.status(400).json({ code: 'INVALID_INPUT', message: 'deviceId is required' })
@@ -356,7 +362,8 @@ router.post('/extension/dm-link', authMiddleware, async (req: Request, res: Resp
     if (message === 'NOT_FULL_ACCOUNT') {
       return res.status(403).json({
         code: 'FORBIDDEN',
-        message: 'A full vtt-chat account is required to link as DM. Guest tokens are not accepted.',
+        message:
+          'A full vtt-chat account is required to link as DM. Guest tokens are not accepted.',
       })
     }
     if (message === 'INTEGRATION_NOT_AUTHORIZED') {
