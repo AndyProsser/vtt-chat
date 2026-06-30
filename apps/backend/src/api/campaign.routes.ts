@@ -262,6 +262,14 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   }
 })
 
+const isPasswordlessLoginEnabled =
+  (process.env.NODE_ENV || '').toLowerCase() === 'development' &&
+  ['1', 'true', 'yes', 'on'].includes(
+    String(process.env.ENABLE_PASSWORDLESS_LOGIN || '')
+      .trim()
+      .toLowerCase()
+  )
+
 router.get('/invite/:code/validate', async (req: Request, res: Response) => {
   const code = String(req.params.code || '').trim()
 
@@ -273,6 +281,16 @@ router.get('/invite/:code/validate', async (req: Request, res: Response) => {
   }
 
   const result = await validatePlayerInviteCode(code)
+
+  // In DEV passwordless mode, include the DM's username so the extension can
+  // call dm-link-init with the correct username instead of an email address.
+  if (result.valid && isPasswordlessLoginEnabled) {
+    return res.status(200).json({
+      ...result,
+      dev: { mode: 'DEV', dmUsername: result.campaign.dmUsername },
+    })
+  }
+
   return res.status(result.valid ? 200 : 404).json(result)
 })
 

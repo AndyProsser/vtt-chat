@@ -18,6 +18,7 @@ export type InviteValidationResult =
         description: string | null
         posterUrl: string | null
         dmDisplayName: string
+        dmUsername: string
         dmOnline: boolean
         connectedPlayersRounded: number
         connectedPlayersLabel: string
@@ -26,6 +27,8 @@ export type InviteValidationResult =
         displayState: 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN'
       }
       platformStatus: PlatformStatus
+      /** Only present when the server is running in DEV passwordless mode. */
+      dev?: { mode: 'DEV'; dmUsername: string }
     }
   | {
       valid: false

@@ -220,6 +220,7 @@ export async function validatePlayerInviteCode(
       description: campaign.description,
       posterUrl: campaign.posterUrl,
       dmDisplayName: campaign.currentDm.displayName || campaign.currentDm.username,
+      dmUsername: campaign.currentDm.username,
       dmOnline: onlineUserIds.has(campaign.currentDmId),
       connectedPlayersRounded,
       connectedPlayersLabel: toPresenceCountLabel(connectedPlayers, connectedPlayersRounded),
