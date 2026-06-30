@@ -84,40 +84,59 @@ if (response.deviceCredential) {
 
 After dm-link completes, `/ext-launch` signals the extension on **two channels simultaneously** (see [DM-LINK.md §9](DM-LINK.md)). The extension must listen on both; it will normally receive exactly one.
 
-### Channel A — BroadcastChannel (primary, handles chrome.tabs.create)
+> **Why not BroadcastChannel?** Chrome content scripts run in an isolated JavaScript realm. BroadcastChannel is realm-scoped, so a channel in the page and one in a content script don't communicate — even with the same name, even in the same tab. `window.postMessage` is used instead because content scripts share the page's `window` object in both Chrome and Firefox.
 
-The ext-launch page broadcasts on `'vtt-chat-ext'`. A content script injected into the vtt-chat domain listens and relays to the background:
+### Channel A — window.postMessage → content script (primary)
+
+The ext-launch page calls `window.postMessage(payload, origin)`. The content script (injected into the vtt-chat domain) receives it because both share the `window` object. The content script then relays to the background.
 
 ```typescript
-// Content script — injected into the vtt-chat domain
-let handled = false // prevent double-store if both channels fire
-const channel = new BroadcastChannel('vtt-chat-ext')
-channel.onmessage = ({ data }: MessageEvent) => {
-  if (data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE' || handled) return
-  handled = true
-  chrome.runtime.sendMessage(data)
-}
+// content-script.ts — injected into the vtt-chat domain
+// Manifest: "matches": ["https://your-vtt-chat-domain.com/*"]
 
-// Background script — receives the relay from the content script
+let handled = false // prevent double-store if both channels fire
+
+window.addEventListener('message', (event: MessageEvent) => {
+  // Only accept messages from the vtt-chat origin — not other frames or extensions
+  if (event.origin !== VTT_CHAT_ORIGIN) return
+  if (event.source !== window) return       // must come from the page itself
+  if (event.data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
+  if (handled) return
+  handled = true
+
+  // Relay to background (MV3: service worker; MV2: background page)
+  chrome.runtime.sendMessage(event.data)   // Firefox: browser.runtime.sendMessage
+})
+```
+
+```typescript
+// background.ts (service worker)
+// Background knows externalCampaignId + externalSystem from when it opened the tab
+
 chrome.runtime.onMessage.addListener((message) => {
   if (message?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
   storeDmCredential(message.payload)
 })
 ```
 
-### Channel B — window.opener.postMessage (fallback, handles window.open)
+### Channel B — window.opener.postMessage (fallback)
+
+Fires when the extension popup used `window.open()` to open the tab. Listen in the popup script:
 
 ```typescript
-// Extension popup or background
+// popup.ts
+let handled = false
+
 window.addEventListener('message', (event: MessageEvent) => {
   if (event.origin !== VTT_CHAT_ORIGIN) return
-  if (event.data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE' || handled) return
+  if (event.data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
+  if (handled) return
   handled = true
   storeDmCredential(event.data.payload)
 })
 ```
 
-### Shared storage helper
+### Shared storage helper (background + popup)
 
 ```typescript
 function storeDmCredential(payload: {

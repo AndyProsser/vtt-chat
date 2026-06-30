@@ -16,8 +16,8 @@
  *     1. POST /api/auth/extension/dm-link   → claim DM status, get deviceCredential
  *     2. POST /api/integrations/external/dm-sync → update campaign name from DDB
  *     3. POST /api/campaigns/:id/session/ensure   → guarantee an IDLE session exists
- *     4. Signal extension via BroadcastChannel('vtt-chat-ext') + window.opener.postMessage
- *        (both sent; extension handles whichever arrives — see DEVICE-CREDENTIALS.md)
+ *     4. Signal extension via window.postMessage (content script relay) +
+ *        window.opener.postMessage (popup path fallback) — see docs/extension/DM-LINK.md §9
  *     5. Redirect to campaign workspace
  *
  * DEV mode (import.meta.env.DEV):
@@ -183,18 +183,21 @@ export function ExtLaunchRouteView({
 
     // Step 4: signal the extension that dm-link completed and deliver the deviceCredential.
     //
-    // Two channels are used so the message arrives regardless of how the extension opened
-    // this tab:
+    // Two channels fire simultaneously so the message arrives regardless of how the
+    // extension opened this tab:
     //
-    //  a) BroadcastChannel('vtt-chat-ext') — primary. Works when the tab was opened via
-    //     chrome.tabs.create() (window.opener is null). The extension content script
-    //     listens on this channel and relays the message to the background via
-    //     chrome.runtime.sendMessage.
+    //  a) window.postMessage(payload, origin) — primary. Posts to THIS window so the
+    //     extension content script (injected into the vtt-chat domain) receives it via
+    //     window.addEventListener('message'). Works in Chrome and Firefox because content
+    //     scripts share the window object with the page even though they run in an
+    //     isolated JS world. The content script then relays to the background via
+    //     chrome.runtime.sendMessage / browser.runtime.sendMessage.
     //
     //  b) window.opener.postMessage — fallback. Works when the tab was opened via
-    //     window.open() from the extension popup (window.opener is set).
+    //     window.open() from the extension popup (window.opener is set). Not applicable
+    //     for chrome.tabs.create() (opener is null).
     //
-    // The extension must handle both; it will typically receive one or the other.
+    // The extension must handle both; deduplication is the extension's responsibility.
     setLinkStep('done')
     if (deviceCredential) {
       const payload = {
@@ -206,13 +209,13 @@ export function ExtLaunchRouteView({
         },
       }
       try {
-        const channel = new BroadcastChannel('vtt-chat-ext')
-        channel.postMessage(payload)
-        channel.close()
+        // Channel A: content script on this page receives via window.addEventListener
+        window.postMessage(payload, window.location.origin)
       } catch {
-        // BroadcastChannel not available in this context — fall through to opener
+        // Non-fatal
       }
       try {
+        // Channel B: extension popup receives when tab was opened via window.open()
         if (window.opener) {
           window.opener.postMessage(payload, window.location.origin)
         }

@@ -283,6 +283,8 @@ When `campaignData.name` is present in a `POST /api/integrations/external/dm-syn
 
 After a successful `dm-link` call, `/ext-launch` signals the extension on **two channels simultaneously**. The extension must handle whichever arrives — it will normally receive one or the other depending on how the tab was opened.
 
+> **Chrome and Firefox compatibility note:** `BroadcastChannel` is NOT used here. Chrome content scripts run in an isolated JavaScript realm and cannot receive BroadcastChannel messages posted by the page. `window.postMessage` is used instead, because content scripts share the `window` object with the page in both Chrome and Firefox.
+
 ### Message payload (identical on both channels)
 
 ```json
@@ -299,57 +301,19 @@ After a successful `dm-link` call, `/ext-launch` signals the extension on **two 
 }
 ```
 
-### Channel A — BroadcastChannel (primary)
+### Channel A — window.postMessage to self (primary)
 
-The ext-launch page posts to `new BroadcastChannel('vtt-chat-ext')` and immediately closes the channel. This works when the tab was opened via `chrome.tabs.create()` (the normal extension path), where `window.opener` is `null`.
+The ext-launch page calls `window.postMessage(payload, window.location.origin)`. This posts to the current window. The extension **content script** (injected into the vtt-chat domain) receives it via `window.addEventListener('message')` because content scripts share the page's `window` object. The content script then relays the message to the background via `chrome.runtime.sendMessage` / `browser.runtime.sendMessage`.
 
-**Extension content script** (injected into the vtt-chat domain) must listen and relay:
-
-```typescript
-const channel = new BroadcastChannel('vtt-chat-ext')
-channel.onmessage = ({ data }: MessageEvent) => {
-  if (data?.type === 'VTT_CHAT_DM_LINK_COMPLETE') {
-    chrome.runtime.sendMessage(data)
-  }
-}
-```
-
-**Extension background script** handles the relayed message:
-
-```typescript
-chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
-  const { campaignId, deviceCredential } = message.payload
-  // Store using the externalCampaignId + externalSystem from extension context
-  // (background script knows these from when it opened the ext-launch tab)
-  localStorage.setItem(
-    `dmlink:${externalCampaignId}:${externalSystem}`,
-    JSON.stringify({ campaignId, deviceCredential })
-  )
-})
-```
+This is the primary path when the tab was opened via `chrome.tabs.create()`, where `window.opener` is `null`.
 
 ### Channel B — window.opener.postMessage (fallback)
 
-The ext-launch page also calls `window.opener.postMessage(payload, origin)` if `window.opener` is set. This is the path when the extension popup used `window.open()` directly.
-
-The extension popup must listen:
-
-```typescript
-window.addEventListener('message', (event: MessageEvent) => {
-  if (event.origin !== VTT_CHAT_ORIGIN) return
-  if (event.data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
-  const { campaignId, deviceCredential } = event.data.payload
-  localStorage.setItem(
-    `dmlink:${externalCampaignId}:${externalSystem}`,
-    JSON.stringify({ campaignId, deviceCredential })
-  )
-})
-```
+The ext-launch page also calls `window.opener.postMessage(payload, origin)` if `window.opener` is non-null. This fires when the extension popup used `window.open()` to open the tab.
 
 ### Deduplication
 
-The extension should track whether it has already stored the credential for this launch (e.g. a boolean flag per open ext-launch tab) so that receiving both channels doesn't trigger a double-store. A double-store is harmless but noisy.
+Use a per-tab boolean flag in the content script/popup so that receiving both channels doesn't trigger a double-store. A double-store is harmless but should be avoided.
 
 If `merged: true`, the extension may optionally surface a one-time informational toast: _"A prior guest session was merged into your account."_
 
