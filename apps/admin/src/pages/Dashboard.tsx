@@ -1,92 +1,56 @@
-import { Alert, Box, Card, CardContent, Typography } from '@mui/material'
-import { TelemetryMetricCard } from '../components/TelemetryMetricCard'
+import { useState } from 'react'
+import { Alert, Box, Divider, Typography } from '@mui/material'
+import { DashboardStatusStrip } from '../features/dashboard/DashboardStatusStrip'
+import { DashboardCharts } from '../features/dashboard/DashboardCharts'
+import { DashboardJobsZone } from '../features/dashboard/DashboardJobsZone'
 import { useMonitoringTelemetry } from '../features/monitoring/useMonitoringTelemetry'
+import { useDashboardJobs } from '../features/dashboard/useDashboardJobs'
 
-export default function Dashboard() {
-  const { dashboard, loading, error } = useMonitoringTelemetry({ refreshMs: 15_000 })
+interface Props {
+  onNavigateToJobs: () => void
+}
+
+export default function Dashboard({ onNavigateToJobs }: Props) {
+  const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d'>('24h')
+
+  const { dashboard, status, loading, error } = useMonitoringTelemetry({ refreshMs: 15_000 })
+  const jobs = useDashboardJobs(15_000)
 
   return (
-    <Box component="section" sx={{ display: 'grid', gap: 2 }}>
-      <Typography variant="h5">Dashboard</Typography>
-      <Typography variant="body2" color="text.secondary">
-        Operational overview of platform health and activity.
-      </Typography>
-
-      {loading && <Alert severity="info">Loading telemetry...</Alert>}
-      {error && <Alert severity="error">{error}</Alert>}
-
-      <Box className="admin-card-grid three-col">
-        <TelemetryMetricCard
-          title="Active Users"
-          value={dashboard?.activeUsers ?? '--'}
-          subtitle="Live WebSocket connections"
-        />
-        <TelemetryMetricCard
-          title="Active Rooms"
-          value={dashboard?.activeRooms ?? '--'}
-          subtitle="Sessions currently active"
-        />
-        <TelemetryMetricCard
-          title="Recent Errors"
-          value={dashboard?.recentErrors ?? '--'}
-          subtitle="Last 24 hours"
-        />
-        <TelemetryMetricCard
-          title="System Load"
-          value={
-            typeof dashboard?.systemLoadPercent === 'number'
-              ? `${dashboard.systemLoadPercent}%`
-              : '--'
-          }
-          subtitle="Approximate process load"
-        />
-        <TelemetryMetricCard
-          title="Message Throughput"
-          value={
-            typeof dashboard?.messageThroughputPerMinute === 'number'
-              ? `${dashboard.messageThroughputPerMinute}/min`
-              : '--'
-          }
-          subtitle="Messages in last minute"
-        />
-        <TelemetryMetricCard
-          title="Storage Usage"
-          value={
-            typeof dashboard?.storageUsagePercent === 'number'
-              ? `${dashboard.storageUsagePercent}%`
-              : '--'
-          }
-          subtitle="Heap usage proxy"
-        />
-        <TelemetryMetricCard
-          title="Total Users"
-          value={dashboard?.totalUsers ?? '--'}
-          subtitle="Persisted user records"
-        />
-        <TelemetryMetricCard
-          title="Suspended Users"
-          value={dashboard?.suspendedUsers ?? '--'}
-          subtitle="Currently inactive by moderation"
-        />
-        <TelemetryMetricCard
-          title="Moderation Actions"
-          value={dashboard?.recentModerationActions ?? '--'}
-          subtitle="Last 24 hours"
-        />
+    <Box component="section" sx={{ display: 'grid', gap: 3 }}>
+      <Box>
+        <Typography variant="h5" fontWeight={700}>
+          Dashboard
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          The Scrying Pool — operational overview, auto-refreshing every 15 s
+        </Typography>
       </Box>
 
-      <Card variant="outlined">
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Data Provenance
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Metrics on this page are sourced from the authenticated{' '}
-            <strong>/telemetry/dashboard</strong> endpoint and refresh automatically every 15
-            seconds.
-          </Typography>
-        </CardContent>
-      </Card>
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {/* Zone A — Status Strip */}
+      <DashboardStatusStrip dashboard={dashboard} status={status} loading={loading} />
+
+      <Divider />
+
+      {/* Zone B — Activity Charts */}
+      <DashboardCharts
+        status={status}
+        timeRange={timeRange}
+        onTimeRangeChange={setTimeRange}
+      />
+
+      <Divider />
+
+      {/* Zone C — Running Jobs */}
+      <DashboardJobsZone
+        queues={jobs.queues}
+        loading={jobs.loading}
+        error={jobs.error}
+        retryBusy={jobs.retryBusy}
+        onNavigateToJobs={onNavigateToJobs}
+      />
     </Box>
   )
 }
