@@ -359,16 +359,23 @@ router.post('/extension/dm-link', authMiddleware, async (req: Request, res: Resp
         message: 'A full vtt-chat account is required to link as DM. Guest tokens are not accepted.',
       })
     }
-    if (message === 'NOT_CAMPAIGN_DM') {
-      return res.status(403).json({
-        code: 'FORBIDDEN',
-        message: 'Only the campaign DM may perform a DM account link.',
-      })
-    }
     if (message === 'INTEGRATION_NOT_AUTHORIZED') {
       return res.status(403).json({
         code: 'INTEGRATION_NOT_AUTHORIZED',
         message: 'This external system is not authorized on this platform.',
+      })
+    }
+    if (message === 'CAMPAIGN_NOT_FOUND') {
+      return res.status(404).json({
+        code: 'CAMPAIGN_NOT_FOUND',
+        message: 'Campaign not found.',
+      })
+    }
+    if (message === 'ALREADY_CLAIMED') {
+      return res.status(409).json({
+        code: 'ALREADY_CLAIMED',
+        message:
+          'Another DM has already linked this campaign. Each campaign can only have one linked DM account.',
       })
     }
     if (message === 'IDENTITY_CONFLICT') {

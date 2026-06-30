@@ -5,6 +5,18 @@ import { issueDeviceCredential } from '@/services/auth/device-credential.service
 
 const prisma = getPrismaClient()
 
+/**
+ * In DEV passwordless mode we suffix the DM's externalUserId with '_dm' so that the
+ * same DDB identity can simultaneously exist as a player ExternalIdentity (no suffix)
+ * and a DM ExternalIdentity (_dm suffix) without hitting the unique constraint.
+ * This is only ever true in local development — never in production.
+ */
+const isDevPasswordlessMode =
+  (process.env.NODE_ENV || '').toLowerCase() === 'development' &&
+  ['1', 'true', 'yes', 'on'].includes(
+    String(process.env.ENABLE_PASSWORDLESS_LOGIN || '').toLowerCase()
+  )
+
 export interface DmLinkResult {
   deviceCredential: { credential: string; deviceId: string; expiresAt: Date }
   merged: boolean
@@ -17,23 +29,31 @@ export interface DmLinkResult {
 }
 
 /**
- * Links a DM's full VTT-Chat account to their external system identity.
+ * Links a DM's full VTT-Chat account to their external system identity via Option B:
+ * the CampaignExternalLink (not campaign.currentDmId) is the authority on who the DM is.
  *
- * Actions performed (in order):
- *  1. Validates full-account token and DM role on the campaign.
- *  2. Validates the external system is platform-authorized.
- *  3. Upserts ExternalIdentity: (externalSystem, externalUserId) → callerUserId.
- *  4. Detects any conflicting guest ExternalIdentity with the same externalUserId.
- *     If found: transfers Characters + CampaignMemberships, soft-deletes guest user.
- *     If the conflict is a full account: throws IDENTITY_CONFLICT (admin resolution needed).
- *  5. Upserts CampaignExternalLink for (campaignId, externalSystem, externalCampaignId).
- *  6. Issues a deviceCredential for future returning DM launches.
+ * First-time claim (no CampaignExternalLink for this campaign+system):
+ *   - Any authenticated full account may claim DM status.
+ *   - campaign.currentDmId is updated to the caller.
+ *   - CampaignExternalLink is created with linkedBy = caller.
+ *
+ * Returning DM (CampaignExternalLink exists):
+ *   - If linkedBy === callerUserId → same vtt-chat account, allow.
+ *   - If linkedBy !== callerUserId but DDB externalUserId matches the linkedBy user's
+ *     ExternalIdentity → same person on a different account (e.g. after account recovery);
+ *     transfer ownership.
+ *   - Otherwise → 'ALREADY_CLAIMED' (someone else is the DM).
+ *
+ * DEV mode: DM ExternalIdentity is stored with externalUserId suffixed '_dm' to avoid
+ * unique-constraint collisions when the same DDB account is used for both DM and player
+ * testing in a single dev environment.
  *
  * Throws:
- *  'NOT_FULL_ACCOUNT'       — caller has authType !== FULL
- *  'NOT_CAMPAIGN_DM'        — caller is not currentDmId of campaignId
+ *  'NOT_FULL_ACCOUNT'           — caller has authType !== FULL
  *  'INTEGRATION_NOT_AUTHORIZED' — external system blocked by platform
- *  'IDENTITY_CONFLICT'      — externalUserId already linked to a different full account
+ *  'CAMPAIGN_NOT_FOUND'         — campaignId does not exist
+ *  'ALREADY_CLAIMED'            — a different DDB identity has already linked this campaign as DM
+ *  'IDENTITY_CONFLICT'          — externalUserId already linked to a different full account
  */
 export async function dmLinkAccount(params: {
   callerUserId: string
@@ -56,28 +76,70 @@ export async function dmLinkAccount(params: {
     throw new Error('INTEGRATION_NOT_AUTHORIZED')
   }
 
-  // Verify caller is the campaign DM.
+  // In DEV, suffix _dm so the same DDB identity can coexist as player and DM.
+  const effectiveExternalUserId = isDevPasswordlessMode
+    ? `${params.externalUserId}_dm`
+    : params.externalUserId
+
   const campaign = await prisma.campaign.findUnique({
     where: { id: params.campaignId },
     select: { currentDmId: true },
   })
 
-  if (!campaign || campaign.currentDmId !== params.callerUserId) {
-    throw new Error('NOT_CAMPAIGN_DM')
+  if (!campaign) {
+    throw new Error('CAMPAIGN_NOT_FOUND')
   }
 
-  // Upsert ExternalIdentity for the DM's full account.
+  // Determine whether this is a first-time claim or a returning DM.
+  const existingLink = await prisma.campaignExternalLink.findFirst({
+    where: { campaignId: params.campaignId, externalSystem },
+    select: { id: true, linkedBy: true },
+  })
+
+  if (existingLink) {
+    if (existingLink.linkedBy !== params.callerUserId) {
+      // Different vtt-chat account — check if it's the same DDB person (account recovery).
+      const linkedDmIdentity = await prisma.externalIdentity.findFirst({
+        where: { userId: existingLink.linkedBy, externalSystem },
+        select: { externalUserId: true },
+      })
+
+      if (!linkedDmIdentity || linkedDmIdentity.externalUserId !== effectiveExternalUserId) {
+        // Genuinely different DDB identity — another user is the DM.
+        throw new Error('ALREADY_CLAIMED')
+      }
+
+      // Same DDB identity on a new vtt-chat account — transfer ownership.
+      await prisma.campaign.update({
+        where: { id: params.campaignId },
+        data: { currentDmId: params.callerUserId },
+      })
+      await prisma.campaignExternalLink.update({
+        where: { id: existingLink.id },
+        data: { linkedBy: params.callerUserId },
+      })
+    }
+    // else: same vtt-chat account — returning DM on new device, no ownership change needed.
+  } else {
+    // First-time claim: take DM ownership of the campaign.
+    await prisma.campaign.update({
+      where: { id: params.campaignId },
+      data: { currentDmId: params.callerUserId },
+    })
+  }
+
+  // Upsert the DM's ExternalIdentity (using effectiveExternalUserId in DEV).
   await prisma.externalIdentity.upsert({
     where: {
       externalSystem_externalUserId: {
         externalSystem,
-        externalUserId: params.externalUserId,
+        externalUserId: effectiveExternalUserId,
       },
     },
     create: {
       userId: params.callerUserId,
       externalSystem,
-      externalUserId: params.externalUserId,
+      externalUserId: effectiveExternalUserId,
       email: params.email,
       lastSeenAt: new Date(),
     },
@@ -88,11 +150,11 @@ export async function dmLinkAccount(params: {
     },
   })
 
-  // Detect any conflicting identity with the same externalUserId but different userId.
+  // Detect any conflicting identity with the same effective externalUserId but different userId.
   const conflict = await prisma.externalIdentity.findFirst({
     where: {
       externalSystem,
-      externalUserId: params.externalUserId,
+      externalUserId: effectiveExternalUserId,
       userId: { not: params.callerUserId },
     },
     include: {
@@ -127,11 +189,6 @@ export async function dmLinkAccount(params: {
   }
 
   // Upsert CampaignExternalLink so dm-sync can run without re-entering the invite code.
-  const existingLink = await prisma.campaignExternalLink.findFirst({
-    where: { campaignId: params.campaignId, externalSystem },
-    select: { id: true },
-  })
-
   if (!existingLink) {
     await prisma.campaignExternalLink.create({
       data: {
