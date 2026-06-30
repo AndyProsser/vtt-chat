@@ -8,7 +8,7 @@ vi.mock('../utils/api', () => ({
   requestJson: (...args: unknown[]) => requestJsonMock(...args),
 }))
 
-import Integrations from '../pages/Integrations'
+import { ExternalSystemsSection } from '../features/settings/ExternalSystemsSection'
 
 const BASE_SYSTEMS_RESPONSE = {
   systems: [
@@ -31,13 +31,13 @@ const BASE_SYSTEMS_RESPONSE = {
   ],
 }
 
-describe('Integrations page interactions', () => {
+describe('ExternalSystemsSection interactions', () => {
   let container: HTMLDivElement
   let root: Root
 
   const renderComponent = async () => {
     await act(async () => {
-      root.render(React.createElement(Integrations))
+      root.render(React.createElement(ExternalSystemsSection))
     })
   }
 

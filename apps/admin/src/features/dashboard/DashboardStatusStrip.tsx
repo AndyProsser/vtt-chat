@@ -7,7 +7,10 @@ interface Props {
   loading: boolean
 }
 
-function healthStatus(cpu: number | undefined, mem: number | undefined): {
+function healthStatus(
+  cpu: number | undefined,
+  mem: number | undefined
+): {
   label: string
   color: 'success' | 'warning' | 'error'
 } {
@@ -38,13 +41,13 @@ function KpiCard({ label, value, sub, loading, tooltip }: KpiCardProps) {
         flex: '1 1 140px',
       }}
     >
-      <Typography variant="caption" color="text.secondary" display="block">
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
         {label}
       </Typography>
       {loading ? (
         <Skeleton width={60} height={36} />
       ) : (
-        <Typography variant="h5" fontWeight={700} lineHeight={1.2} sx={{ mt: 0.5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, lineHeight: 1.2, mt: 0.5 }}>
           {value}
         </Typography>
       )}
@@ -86,7 +89,7 @@ export function DashboardStatusStrip({ dashboard, status, loading }: Props) {
           flex: '1 1 140px',
         }}
       >
-        <Typography variant="caption" color="text.secondary" display="block">
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
           System Status
         </Typography>
         {loading ? (

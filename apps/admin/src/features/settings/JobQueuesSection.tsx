@@ -51,7 +51,9 @@ function useQueueInspector() {
     }
   }, [])
 
-  useEffect(() => { void loadQueues() }, [loadQueues])
+  useEffect(() => {
+    void loadQueues()
+  }, [loadQueues])
 
   const toggleExpand = async (name: string) => {
     if (expandedQueue === name) {
@@ -103,16 +105,34 @@ function useQueueInspector() {
   }
 
   return {
-    queues, loading, error, expandedQueue, failedJobs, jobsLoading, actionBusy,
-    loadQueues, toggleExpand, retryJob, deleteJob,
+    queues,
+    loading,
+    error,
+    expandedQueue,
+    failedJobs,
+    jobsLoading,
+    actionBusy,
+    loadQueues,
+    toggleExpand,
+    retryJob,
+    deleteJob,
   }
 }
 
 /** Full job queue inspector with per-queue expand and per-job retry/delete. */
 export function JobQueuesSection() {
   const {
-    queues, loading, error, expandedQueue, failedJobs, jobsLoading, actionBusy,
-    loadQueues, toggleExpand, retryJob, deleteJob,
+    queues,
+    loading,
+    error,
+    expandedQueue,
+    failedJobs,
+    jobsLoading,
+    actionBusy,
+    loadQueues,
+    toggleExpand,
+    retryJob,
+    deleteJob,
   } = useQueueInspector()
 
   return (
@@ -164,7 +184,7 @@ export function JobQueuesSection() {
               }}
               onClick={() => void toggleExpand(q.name)}
             >
-              <Typography variant="body1" fontWeight={600} sx={{ flex: 1 }}>
+              <Typography variant="body1" sx={{ fontWeight: 600, flex: 1 }}>
                 {q.name}
               </Typography>
               {q.counts.active > 0 && (
@@ -207,7 +227,7 @@ export function JobQueuesSection() {
                       {(failedJobs[q.name] ?? []).map((job) => (
                         <TableRow key={job.id}>
                           <TableCell>
-                            <Typography variant="body2" fontWeight={500}>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
                               {job.name}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
@@ -215,7 +235,11 @@ export function JobQueuesSection() {
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="caption" color="error.main" sx={{ wordBreak: 'break-word' }}>
+                            <Typography
+                              variant="caption"
+                              color="error.main"
+                              sx={{ wordBreak: 'break-word' }}
+                            >
                               {job.failedReason}
                             </Typography>
                           </TableCell>

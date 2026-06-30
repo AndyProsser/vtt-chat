@@ -22,7 +22,7 @@ export function DashboardCharts({ status, timeRange, onTimeRangeChange }: Props)
   return (
     <Box sx={{ display: 'grid', gap: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="subtitle1" fontWeight={600}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
           Activity
         </Typography>
         <ToggleButtonGroup
@@ -53,12 +53,7 @@ export function DashboardCharts({ status, timeRange, onTimeRangeChange }: Props)
 
         <Card variant="outlined">
           <CardContent>
-            <MonitoringAreaChart
-              title="CPU Load"
-              points={cpuPoints}
-              color="#f59e0b"
-              ySuffix="%"
-            />
+            <MonitoringAreaChart title="CPU Load" points={cpuPoints} color="#f59e0b" ySuffix="%" />
           </CardContent>
         </Card>
       </Box>
@@ -68,7 +63,7 @@ export function DashboardCharts({ status, timeRange, onTimeRangeChange }: Props)
           <Typography variant="caption" color="text.secondary">
             Memory
           </Typography>
-          <Typography variant="h5" fontWeight={700}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
             {typeof status?.cards.memoryPercent === 'number'
               ? `${status.cards.memoryPercent}%`
               : '—'}
@@ -78,7 +73,7 @@ export function DashboardCharts({ status, timeRange, onTimeRangeChange }: Props)
           <Typography variant="caption" color="text.secondary">
             Disk
           </Typography>
-          <Typography variant="h5" fontWeight={700}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
             {typeof status?.cards.diskPercent === 'number' ? `${status.cards.diskPercent}%` : '—'}
           </Typography>
         </Card>
@@ -86,10 +81,8 @@ export function DashboardCharts({ status, timeRange, onTimeRangeChange }: Props)
           <Typography variant="caption" color="text.secondary">
             Uptime
           </Typography>
-          <Typography variant="h5" fontWeight={700}>
-            {typeof status?.uptimeSec === 'number'
-              ? `${Math.floor(status.uptimeSec / 60)}m`
-              : '—'}
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            {typeof status?.uptimeSec === 'number' ? `${Math.floor(status.uptimeSec / 60)}m` : '—'}
           </Typography>
         </Card>
       </Box>

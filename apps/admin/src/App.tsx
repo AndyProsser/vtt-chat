@@ -133,7 +133,9 @@ export default function App() {
     }
 
     void validateSession()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [isAuthenticated, setupLoading, setupRequired, token])
 
   const handleSetupComplete = (
@@ -285,6 +287,7 @@ export default function App() {
               <Button
                 variant="outlined"
                 size="small"
+                aria-label={isNavCollapsed ? 'Expand navigation' : 'Collapse navigation'}
                 onClick={() => setIsNavCollapsed((prev) => !prev)}
               >
                 {isNavCollapsed ? '▶' : '◀'}
@@ -292,6 +295,7 @@ export default function App() {
               <Button
                 variant="contained"
                 size="small"
+                aria-label="Toggle theme"
                 onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}
               >
                 {theme === 'dark' ? 'Dark' : 'Light'}
@@ -299,12 +303,19 @@ export default function App() {
               <Button
                 variant="outlined"
                 size="small"
+                aria-label="Open frontend"
                 onClick={handleOpenFrontend}
                 disabled={launchLoading}
               >
                 {launchLoading ? 'Opening…' : 'Open App'}
               </Button>
-              <Button variant="outlined" color="error" size="small" onClick={handleLogout}>
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                aria-label="Logout"
+                onClick={handleLogout}
+              >
                 Logout
               </Button>
             </Box>
@@ -337,15 +348,18 @@ export default function App() {
                 >
                   {isNavCollapsed ? (
                     <ListItemText
-                      primary={item.label.slice(0, 2).toUpperCase()}
-                      primaryTypographyProps={{ variant: 'caption', fontWeight: 700 }}
+                      primary={
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1 }}>
+                          {item.label.slice(0, 2).toUpperCase()}
+                        </span>
+                      }
                     />
                   ) : (
                     <ListItemText
-                      primary={item.label}
-                      secondary={item.subtitle}
-                      primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
-                      secondaryTypographyProps={{ variant: 'caption', sx: { opacity: 0.65 } }}
+                      primary={<span style={{ fontSize: 13, fontWeight: 500 }}>{item.label}</span>}
+                      secondary={
+                        <span style={{ fontSize: 11, opacity: 0.6 }}>{item.subtitle}</span>
+                      }
                     />
                   )}
                 </ListItemButton>
@@ -355,7 +369,11 @@ export default function App() {
         </Drawer>
 
         <Box component="main" sx={{ ml: `${navWidth}px`, mt: '64px', p: 3 }}>
-          {authError && <div className="error-alert" style={{ marginBottom: 16 }}>{authError}</div>}
+          {authError && (
+            <div className="error-alert" style={{ marginBottom: 16 }}>
+              {authError}
+            </div>
+          )}
           {renderPage()}
         </Box>
       </Box>

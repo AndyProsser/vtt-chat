@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { Alert, Box, Button, Divider, List, ListItemButton, ListItemText, Typography } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  Divider,
+  List,
+  ListItemButton,
+  ListItemText,
+  Typography,
+} from '@mui/material'
 import { GeneralSection } from '../features/settings/GeneralSection'
 import { MaintenanceSection } from '../features/settings/MaintenanceSection'
 import { FullFeatureFlagsSection } from '../features/settings/FullFeatureFlagsSection'
@@ -124,7 +133,7 @@ export default function Settings() {
   return (
     <Box component="section" sx={{ display: 'grid', gap: 0 }}>
       <Box sx={{ mb: 2 }}>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
           Settings
         </Typography>
         <Typography variant="body2" color="text.secondary">
@@ -132,9 +141,21 @@ export default function Settings() {
         </Typography>
       </Box>
 
-      {loading && <Alert severity="info" sx={{ mb: 2 }}>Loading settings…</Alert>}
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {statusMessage && <Alert severity="success" sx={{ mb: 2 }}>{statusMessage}</Alert>}
+      {loading && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Loading settings...
+        </Alert>
+      )}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {statusMessage && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {statusMessage}
+        </Alert>
+      )}
 
       <Box sx={{ display: 'flex', gap: 0, minHeight: 600 }}>
         {/* Sub-nav sidebar */}
@@ -152,8 +173,14 @@ export default function Settings() {
               <Typography
                 variant="caption"
                 color="text.secondary"
-                fontWeight={600}
-                sx={{ px: 2, py: 0.5, display: 'block', textTransform: 'uppercase', letterSpacing: 0.5 }}
+                sx={{
+                  px: 2,
+                  py: 0.5,
+                  display: 'block',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  fontWeight: 600,
+                }}
               >
                 {group.label}
               </Typography>
@@ -165,10 +192,7 @@ export default function Settings() {
                     onClick={() => setActiveSection(item.key)}
                     sx={{ pl: 2, borderRadius: '0 8px 8px 0', mr: 1 }}
                   >
-                    <ListItemText
-                      primary={item.label}
-                      primaryTypographyProps={{ variant: 'body2' }}
-                    />
+                    <ListItemText primary={<span style={{ fontSize: 13 }}>{item.label}</span>} />
                   </ListItemButton>
                 ))}
               </List>

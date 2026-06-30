@@ -19,7 +19,7 @@ export default function Dashboard({ onNavigateToJobs }: Props) {
   return (
     <Box component="section" sx={{ display: 'grid', gap: 3 }}>
       <Box>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
           Dashboard
         </Typography>
         <Typography variant="body2" color="text.secondary">
@@ -35,11 +35,7 @@ export default function Dashboard({ onNavigateToJobs }: Props) {
       <Divider />
 
       {/* Zone B — Activity Charts */}
-      <DashboardCharts
-        status={status}
-        timeRange={timeRange}
-        onTimeRangeChange={setTimeRange}
-      />
+      <DashboardCharts status={status} timeRange={timeRange} onTimeRangeChange={setTimeRange} />
 
       <Divider />
 

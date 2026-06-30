@@ -34,7 +34,7 @@ export function DashboardJobsZone({ queues, loading, error, onNavigateToJobs }: 
     <Box sx={{ display: 'grid', gap: 1.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box>
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             Job Queues
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -87,7 +87,7 @@ export function DashboardJobsZone({ queues, loading, error, onNavigateToJobs }: 
               {queues.map((q) => (
                 <TableRow key={q.name} hover>
                   <TableCell>
-                    <Typography variant="body2" fontWeight={500}>
+                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {q.name}
                     </Typography>
                   </TableCell>

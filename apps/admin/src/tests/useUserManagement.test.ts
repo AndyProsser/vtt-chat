@@ -6,6 +6,7 @@ const requestJsonMock = vi.fn()
 
 vi.mock('../utils/api', () => ({
   requestJson: (...args: unknown[]) => requestJsonMock(...args),
+  API_BASE: 'http://localhost/api',
 }))
 
 import { useUserManagement } from '../features/users/useUserManagement'

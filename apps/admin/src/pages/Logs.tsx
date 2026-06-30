@@ -19,19 +19,19 @@ const TABS: Array<{ key: LogTab; label: string }> = [
 
 /** Source filter presets per tab — passed into useLogsPage as the initial source. */
 const TAB_SOURCE: Record<LogTab, string> = {
-  events: '',
-  errors: 'error',
+  events: 'all',
+  errors: 'all',
   email: 'email',
   trace: 'trace',
   audit: 'audit',
 }
 
 const TAB_SEVERITY: Record<LogTab, string> = {
-  events: '',
+  events: 'all',
   errors: 'error',
-  email: '',
+  email: 'all',
   trace: 'debug',
-  audit: '',
+  audit: 'all',
 }
 
 function LogTabContent({ tab }: { tab: LogTab }) {
@@ -81,7 +81,7 @@ function LogTabContent({ tab }: { tab: LogTab }) {
         </Alert>
       )}
 
-      {loading && <Alert severity="info">Loading…</Alert>}
+      {loading && <Alert severity="info">Loading logs...</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
 
       <LogFilters
@@ -91,12 +91,30 @@ function LogTabContent({ tab }: { tab: LogTab }) {
         userId={userId}
         roomId={roomId}
         pageSize={pageSize}
-        onTimeRangeChange={(v) => { setTimeRange(v); setPage(1) }}
-        onSeverityChange={(v) => { setSeverity(v); setPage(1) }}
-        onSourceChange={(v) => { setSource(v); setPage(1) }}
-        onUserIdChange={(v) => { setUserId(v); setPage(1) }}
-        onRoomIdChange={(v) => { setRoomId(v); setPage(1) }}
-        onPageSizeChange={(v) => { setPageSize(v); setPage(1) }}
+        onTimeRangeChange={(v) => {
+          setTimeRange(v)
+          setPage(1)
+        }}
+        onSeverityChange={(v) => {
+          setSeverity(v)
+          setPage(1)
+        }}
+        onSourceChange={(v) => {
+          setSource(v)
+          setPage(1)
+        }}
+        onUserIdChange={(v) => {
+          setUserId(v)
+          setPage(1)
+        }}
+        onRoomIdChange={(v) => {
+          setRoomId(v)
+          setPage(1)
+        }}
+        onPageSizeChange={(v) => {
+          setPageSize(v)
+          setPage(1)
+        }}
       />
 
       <Typography variant="body2" color="text.secondary">
@@ -147,7 +165,7 @@ export default function Logs() {
   return (
     <Box component="section" sx={{ display: 'grid', gap: 2 }}>
       <Box>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
           Logs
         </Typography>
         <Typography variant="body2" color="text.secondary">
