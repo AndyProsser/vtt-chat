@@ -30,10 +30,9 @@ export function AiProviderSection({ settings, onChange }: Props) {
     setTestBusy(true)
     setTestResult(null)
     try {
-      const result = await requestJson<{ ok: boolean; models?: string[] }>(
-        '/settings/ai/test',
-        { method: 'POST' }
-      )
+      const result = await requestJson<{ ok: boolean; models?: string[] }>('/settings/ai/test', {
+        method: 'POST',
+      })
       setTestResult({
         ok: result.ok,
         message: result.ok
@@ -90,7 +89,11 @@ export function AiProviderSection({ settings, onChange }: Props) {
 
           {mode === 'remote' && (
             <SettingsField
-              label={settings.aiApiKeySet ? 'Bearer Token (leave blank to keep existing)' : 'Bearer Token (optional)'}
+              label={
+                settings.aiApiKeySet
+                  ? 'Bearer Token (leave blank to keep existing)'
+                  : 'Bearer Token (optional)'
+              }
               htmlFor="aiBearerToken"
             >
               <input
@@ -99,7 +102,9 @@ export function AiProviderSection({ settings, onChange }: Props) {
                 value={apiKey}
                 placeholder={settings.aiApiKeySet ? '••••••••' : 'Optional'}
                 onChange={(e) => setApiKey(e.target.value)}
-                onBlur={() => { if (apiKey) onChange({ aiApiKeySet: true }) }}
+                onBlur={() => {
+                  if (apiKey) onChange({ aiApiKeySet: true })
+                }}
               />
             </SettingsField>
           )}
@@ -131,7 +136,9 @@ export function AiProviderSection({ settings, onChange }: Props) {
               value={settings.aiCloudProvider ?? 'anthropic'}
               onChange={(e) =>
                 onChange({
-                  aiCloudProvider: e.target.value as NonNullable<RuntimeSettings['aiCloudProvider']>,
+                  aiCloudProvider: e.target.value as NonNullable<
+                    RuntimeSettings['aiCloudProvider']
+                  >,
                 })
               }
             >
@@ -150,7 +157,9 @@ export function AiProviderSection({ settings, onChange }: Props) {
               value={apiKey}
               placeholder={settings.aiApiKeySet ? '••••••••' : 'sk-…'}
               onChange={(e) => setApiKey(e.target.value)}
-              onBlur={() => { if (apiKey) onChange({ aiApiKeySet: true }) }}
+              onBlur={() => {
+                if (apiKey) onChange({ aiApiKeySet: true })
+              }}
             />
           </SettingsField>
 

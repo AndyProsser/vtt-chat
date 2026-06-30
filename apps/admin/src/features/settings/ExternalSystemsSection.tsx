@@ -19,11 +19,11 @@ export function ExternalSystemsSection() {
     if (showSpinner) setLoading(true)
     setError(null)
     try {
-      const result = await requestJson<IntegrationsResponse>('/integrations/systems', { method: 'GET' })
+      const result = await requestJson<IntegrationsResponse>('/integrations/systems', {
+        method: 'GET',
+      })
       setSystems(result.systems)
-      setNotesDrafts(
-        Object.fromEntries(result.systems.map((s) => [s.system, s.notes ?? '']))
-      )
+      setNotesDrafts(Object.fromEntries(result.systems.map((s) => [s.system, s.notes ?? ''])))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load integration systems')
     } finally {
@@ -31,7 +31,9 @@ export function ExternalSystemsSection() {
     }
   }
 
-  useEffect(() => { void loadSystems() }, [])
+  useEffect(() => {
+    void loadSystems()
+  }, [])
 
   const runMutation = async (system: string, path: string, init: RequestInit) => {
     setBusySystem(system)
@@ -51,11 +53,16 @@ export function ExternalSystemsSection() {
       <Box>
         <Typography variant="h6">External Systems</Typography>
         <Typography variant="body2" color="text.secondary">
-          Authorized Guilds — third-party systems permitted to authenticate players or push event logs.
+          Authorized Guilds — third-party systems permitted to authenticate players or push event
+          logs.
         </Typography>
       </Box>
 
-      {loading && <Typography color="text.secondary" variant="body2">Loading integration systems…</Typography>}
+      {loading && (
+        <Typography color="text.secondary" variant="body2">
+          Loading integration systems…
+        </Typography>
+      )}
       {error && <Alert severity="error">{error}</Alert>}
 
       <div className="admin-table-wrap">
@@ -84,7 +91,9 @@ export function ExternalSystemsSection() {
                   <tr key={sys.system}>
                     <td>
                       <strong>{sys.displayName}</strong>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{sys.system}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                        {sys.system}
+                      </div>
                     </td>
                     <td>{sys.authorizationState}</td>
                     <td>{sys.allowedScopes.join(', ') || 'none'}</td>

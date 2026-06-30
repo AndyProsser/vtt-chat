@@ -139,11 +139,7 @@ export function BackupSection({ settings, onChange, onBackupNow, backupBusy }: P
       </SettingsField>
 
       <div style={{ marginTop: 12 }}>
-        <button
-          className="admin-btn"
-          disabled={backupBusy}
-          onClick={onBackupNow}
-        >
+        <button className="admin-btn" disabled={backupBusy} onClick={onBackupNow}>
           {backupBusy ? 'Queuing Backup…' : 'Backup Now'}
         </button>
         <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>

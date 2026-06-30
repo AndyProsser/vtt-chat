@@ -14,7 +14,10 @@ interface UseLogsPageOptions {
   initialSeverity?: string
 }
 
-export function useLogsPage({ initialSource = 'all', initialSeverity = 'all' }: UseLogsPageOptions = {}) {
+export function useLogsPage({
+  initialSource = 'all',
+  initialSeverity = 'all',
+}: UseLogsPageOptions = {}) {
   const [timeRange, setTimeRange] = useState<LogTimeRange>('24h')
   const [severity, setSeverity] = useState<string>(initialSeverity)
   const [source, setSource] = useState(initialSource)

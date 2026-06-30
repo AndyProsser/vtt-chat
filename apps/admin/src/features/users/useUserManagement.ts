@@ -109,14 +109,11 @@ export function useUserManagement() {
     setExportBusy(true)
     setError(null)
     try {
-      const response = await fetch(
-        `${API_BASE}/admin/users/export?format=${format}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('admin-token') || sessionStorage.getItem('admin-token') || ''}`,
-          },
-        }
-      )
+      const response = await fetch(`${API_BASE}/admin/users/export?format=${format}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('admin-token') || sessionStorage.getItem('admin-token') || ''}`,
+        },
+      })
       if (!response.ok) {
         const body = await response.json().catch(() => ({}))
         throw new Error(body.error || `Export failed (${response.status})`)

@@ -123,7 +123,11 @@ export function EmailSmtpSection({ settings, onChange }: Props) {
       </SettingsField>
 
       <div style={{ marginTop: 12 }}>
-        <button className="admin-btn admin-btn-ghost" disabled={testBusy} onClick={() => void handleTest()}>
+        <button
+          className="admin-btn admin-btn-ghost"
+          disabled={testBusy}
+          onClick={() => void handleTest()}
+        >
           {testBusy ? 'Sending…' : 'Send Test Email'}
         </button>
         <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
