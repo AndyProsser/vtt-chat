@@ -10,9 +10,49 @@ Build and release status badges will be enabled once CI workflows are activated.
 [![Release](https://github.com/AndyProsser/vtt-chat/actions/workflows/release.yml/badge.svg)](https://github.com/AndyProsser/vtt-chat/actions/workflows/release.yml)
 -->
 
-**Version:** 0.6.0 — active development, not yet production-ready\
-**Status:** Core platform stages delivered (0-15). Current execution is testing and operatisation — see [ROADMAP.md](ROADMAP.md) and [docs/DEVELOPMENT-ROADMAP.md](docs/DEVELOPMENT-ROADMAP.md)\
+**Version:** 0.9.6 — active development, not yet production-ready\
+**Status:** Core platform feature-complete through stage 15. Current work: inventory, extension DM-link, audio polish, performance — see [ROADMAP.md](ROADMAP.md) and [docs/DEVELOPMENT-ROADMAP.md](docs/DEVELOPMENT-ROADMAP.md)\
 **Release notes:** [CHANGELOG.md](CHANGELOG.md)
+
+---
+
+## Screenshots
+
+> The Emerald Crown — a live campaign at session 91.
+
+**Campaign dashboard** — manage all your campaigns from one place, with at-a-glance stats on active sessions, total playtime, and peak concurrent players.
+
+![Campaign dashboard showing three campaign cards with poster art, DM, last-active date, and launch controls](docs/images/campaign-dashboard.png)
+
+---
+
+**Greenroom (pre-session)** — the DM's staging area before the session starts. Full party roster with character class, race, level, and role badges. Campaign info, poster art, and next-session scheduling on the right.
+
+![DM greenroom view showing party roster with character details and campaign information panel](docs/images/greenroom-dm-view.png)
+
+---
+
+**Active session — character hover card** — hover any player in the groups panel to see their full stat block: HP, AC, Initiative, passive Perception, speed, and all six ability scores. The "LAST SESSION" lore card reminds the DM of where things left off.
+
+![Active session with character stat hover card expanded over Pip Underbough, showing HP/AC/stats](docs/images/active-session-character-hover.png)
+
+---
+
+**Active session — party panel** — a full party view with every player's character name, player name, race, class, level, all six ability scores, and live presence indicators.
+
+![Active session party panel showing 10 connected players with full stat blocks and HERE presence badges](docs/images/active-session-party-panel.png)
+
+---
+
+**Session journal** — searchable session history across every session of the campaign. Each entry can hold a recap; overdue entries are flagged so nothing gets lost.
+
+![Session journal panel showing 90 sessions of The Emerald Crown with recap status indicators](docs/images/active-session-journal.png)
+
+---
+
+**Chat commands** — slash commands for in-character emotes, dice rolls, whispers, DM voice presets, audio environments, and player conditions — all server-resolved and visible to the right audience.
+
+![Chat commands overlay listing /roll, /me, /ic, /OOC, /whisper, /voice, /condition, /env with syntax and examples](docs/images/active-session-chat-commands.png)
 
 ---
 
@@ -25,7 +65,10 @@ The platform is built around how tabletop sessions actually work:
 - The **DM has full authority** — over the session, audio, presence, and what spectators can see.
 - **Roles are first-class citizens** — DM, Player, and Spectator each have a tailored experience with explicit, documented permission boundaries.
 - **Privacy is enforced by design** — whispers stay private, DM notes are never exposed, and spectators cannot access the green room.
-- **Sessions have a lifecycle** — green room → active session → recap, with state persisted through reconnects and network drops.
+- **Sessions have a lifecycle** — green room → active session → recap window, with state persisted through reconnects and network drops.
+- **Characters are first-class citizens** — ability scores, class, race, level, HP, and inventory sync live from D&D Beyond via the browser extension. No manual re-entry.
+- **Audio is built in** — ambient environments (Tavern, Cave, Forest, Underwater…), per-player voice conditions (Silenced, Whisper, Dragon…), and broadcast/voice-of-god — all DM-controlled per room, per player, in two clicks.
+- **The session journal keeps the campaign alive** — every session is logged, searchable, and flagged for recap so nothing gets lost across 90+ sessions.
 
 VTT-Chat is designed for groups that play regularly and want something that feels native to the hobby, not bolted together from general-purpose tools.
 
