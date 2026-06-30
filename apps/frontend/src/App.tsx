@@ -224,6 +224,22 @@ export default function App() {
             sessionId={routeView.sessionId}
             token={routeView.token}
             hint={routeView.hint}
+            mode={routeView.mode}
+            dmLinkParams={
+              routeView.mode === 'dm-link' &&
+              routeView.externalUserId &&
+              routeView.externalCampaignId &&
+              routeView.externalSystem &&
+              routeView.deviceId
+                ? {
+                    externalUserId: routeView.externalUserId,
+                    externalCampaignId: routeView.externalCampaignId,
+                    externalSystem: routeView.externalSystem,
+                    deviceId: routeView.deviceId,
+                    campaignName: routeView.campaignName,
+                  }
+                : undefined
+            }
             onFullAccountAuthenticated={handleLoginSuccess}
             onGuestAuthenticated={handleGuestExtensionAuthenticated}
           />

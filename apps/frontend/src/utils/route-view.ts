@@ -5,7 +5,20 @@ export type RouteView =
   | { kind: 'browse' }
   | { kind: 'popout-note'; noteId: string }
   | { kind: 'popout-journal'; sessionId: string }
-  | { kind: 'ext-launch'; campaignId: string; sessionId: string; token?: string; hint?: string }
+  | {
+      kind: 'ext-launch'
+      campaignId: string
+      sessionId: string
+      token?: string
+      hint?: string
+      // DM-link mode params — only present when mode=dm-link
+      mode?: 'dm-link'
+      externalUserId?: string
+      externalCampaignId?: string
+      externalSystem?: string
+      deviceId?: string
+      campaignName?: string
+    }
 
 export function resolveRoute(pathname: string, search?: string): RouteView {
   if (pathname === '/ext-launch') {
@@ -14,7 +27,14 @@ export function resolveRoute(pathname: string, search?: string): RouteView {
     const sessionId = params.get('sessionId')?.trim() ?? ''
     const token = params.get('token')?.trim() || undefined
     const hint = params.get('hint')?.trim() || undefined
-    return { kind: 'ext-launch', campaignId, sessionId, token, hint }
+    const rawMode = params.get('mode')?.trim()
+    const mode = rawMode === 'dm-link' ? 'dm-link' : undefined
+    const externalUserId = params.get('externalUserId')?.trim() || undefined
+    const externalCampaignId = params.get('externalCampaignId')?.trim() || undefined
+    const externalSystem = params.get('externalSystem')?.trim() || undefined
+    const deviceId = params.get('deviceId')?.trim() || undefined
+    const campaignName = params.get('campaignName')?.trim() || undefined
+    return { kind: 'ext-launch', campaignId, sessionId, token, hint, mode, externalUserId, externalCampaignId, externalSystem, deviceId, campaignName }
   }
 
   const joinMatch = pathname.match(/^\/join\/([^/]+)$/)
