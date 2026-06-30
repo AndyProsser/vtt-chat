@@ -42,7 +42,12 @@ export interface DmCampaignSyncResult {
 /**
  * DM-triggered full campaign sync from the extension popup.
  *
- * For each character the DDB campaign page reports, the backend:
+ * Handles campaign metadata and character provisioning only. Party inventory and
+ * currency are delegated to `syncExternalIntegration` (with `source: 'dm'`) in the
+ * route so they go through the identical normalization, policy-gate, conflict-resolution,
+ * and WS-broadcast pipeline as the player /sync path.
+ *
+ * For each character:
  *   1. Matches by ExternalIdentity (externalSystem + externalUserId) and upserts
  *      the character against the linked VTT-Chat user (§5f step 1).
  *   2. If no ExternalIdentity exists, creates or updates an unowned stub character
@@ -312,9 +317,10 @@ async function upsertStubCharacter(params: {
   }
 }
 
-function buildCharacterData(params: {
-  entry: DmSyncCharacterInput
-}): { name: string; avatarUrl?: string } {
+function buildCharacterData(params: { entry: DmSyncCharacterInput }): {
+  name: string
+  avatarUrl?: string
+} {
   // name is required on Character; fall back to displayName then a safe placeholder.
   const name =
     (typeof params.entry.name === 'string' ? params.entry.name.trim() : '') ||

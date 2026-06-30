@@ -34,5 +34,4 @@ export type HandoffExchangeUser = {
 }
 
 export type ValidateUserAuthStateResult =
-  | { ok: true }
-  | { ok: false; code: 'INACTIVE_OR_MISSING' | 'TOKEN_INVALIDATED' }
+  { ok: true } | { ok: false; code: 'INACTIVE_OR_MISSING' | 'TOKEN_INVALIDATED' }

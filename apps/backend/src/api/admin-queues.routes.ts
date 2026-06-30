@@ -37,7 +37,9 @@ async function proxyToQueues(
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   })
 
-  const data: unknown = await res.json().catch(() => ({ error: 'Non-JSON response from queues service' }))
+  const data: unknown = await res
+    .json()
+    .catch(() => ({ error: 'Non-JSON response from queues service' }))
   return { status: res.status, data }
 }
 
@@ -58,13 +60,17 @@ function handleProxy(path: (req: Request) => string, method: string) {
 }
 
 /** GET /api/admin/queues — list all queues with job counts. */
-router.get('/', handleProxy(() => '/queues', 'GET'))
+router.get(
+  '/',
+  handleProxy(() => '/queues', 'GET')
+)
 
 /** GET /api/admin/queues/:queue/jobs?state=failed&start=0&end=24 */
 router.get(
   '/:queue/jobs',
   handleProxy(
-    (req) => `/queues/${req.params.queue}/jobs?state=${req.query['state'] ?? 'failed'}&start=${req.query['start'] ?? 0}&end=${req.query['end'] ?? 24}`,
+    (req) =>
+      `/queues/${req.params.queue}/jobs?state=${req.query['state'] ?? 'failed'}&start=${req.query['start'] ?? 0}&end=${req.query['end'] ?? 24}`,
     'GET'
   )
 )

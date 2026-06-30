@@ -92,7 +92,10 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
 
     const normalisedPartyCurrencyUpdate =
       partyCurrencyUpdate && typeof partyCurrencyUpdate === 'object'
-        ? { ...partyCurrencyUpdate, wallet: partyCurrencyUpdate.wallet ?? partyCurrencyUpdate.currency }
+        ? {
+            ...partyCurrencyUpdate,
+            wallet: partyCurrencyUpdate.wallet ?? partyCurrencyUpdate.currency,
+          }
         : partyCurrencyUpdate
 
     const result = await syncExternalIntegration({
@@ -131,8 +134,7 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
     }
 
     const wsManager = req.app.locals.wsManager as
-      | Pick<import('@/ws').WebSocketManager, 'broadcastEventToSession'>
-      | undefined
+      Pick<import('@/ws').WebSocketManager, 'broadcastEventToSession'> | undefined
 
     const hasSyncPayload =
       (characterUpdate && typeof characterUpdate === 'object') ||
@@ -175,7 +177,11 @@ router.post('/external/sync', requireAuth, async (req: Request, res: Response) =
       // If characterUpdateApplied is false the character wasn't in the DB (externalId
       // mismatch), so nothing changed — broadcasting would send characterStats: null and
       // silently wipe stats from every connected client's Zustand store.
-      if (characterUpdate && typeof characterUpdate === 'object' && result.applied.characterUpdateApplied !== false) {
+      if (
+        characterUpdate &&
+        typeof characterUpdate === 'object' &&
+        result.applied.characterUpdateApplied !== false
+      ) {
         await broadcastPresenceProfileUpdate({
           wsManager,
           sessionIds: sessions.map((session) => session.id as UUID),
@@ -223,7 +229,8 @@ router.post('/external/dm-sync', requireAuth, async (req: Request, res: Response
     })
   }
 
-  const { campaignId, externalSystem, externalCampaignId, campaignData, characters } = req.body || {}
+  const { campaignId, externalSystem, externalCampaignId, campaignData, characters, partyData } =
+    req.body || {}
 
   if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {
     return res.status(400).json({
@@ -270,7 +277,7 @@ router.post('/external/dm-sync', requireAuth, async (req: Request, res: Response
   }
 
   try {
-    const result = await dmCampaignSync({
+    const syncResult = await dmCampaignSync({
       campaignId,
       externalSystem,
       externalCampaignId,
@@ -280,9 +287,63 @@ router.post('/external/dm-sync', requireAuth, async (req: Request, res: Response
       actorUsername: user.username,
     })
 
+    // Party inventory/currency use the same pipeline as the player /sync path.
+    // Normalise the flat extension shape { items, currency } → { partyInventoryUpdate,
+    // partyCurrencyUpdate } before delegating to syncExternalIntegration (source: 'dm').
+    // This ensures identical sanitisation, conflict resolution, container linking, and
+    // WS broadcasts — no duplicated logic.
+    let partyApplied: Record<string, unknown> | undefined
+    const hasPartyItems = partyData && Array.isArray(partyData.items) && partyData.items.length > 0
+    const hasPartyCurrency =
+      partyData && typeof (partyData.currency ?? partyData.wallet) === 'object'
+
+    if (hasPartyItems || hasPartyCurrency) {
+      const wsManager = req.app.locals.wsManager as
+        Pick<import('@/ws').WebSocketManager, 'broadcastEventToSession'> | undefined
+
+      const partySyncResult = await syncExternalIntegration({
+        campaignId,
+        externalSystem,
+        source: 'dm',
+        user: { userId: user.userId, username: user.username, role: user.role },
+        ...(hasPartyItems ? { partyInventoryUpdate: { items: partyData.items } } : {}),
+        ...(hasPartyCurrency
+          ? {
+              partyCurrencyUpdate: {
+                wallet: partyData.wallet ?? partyData.currency,
+              },
+            }
+          : {}),
+      })
+
+      if (partySyncResult.ok) {
+        partyApplied = {
+          partyInventoryItemsUpserted: partySyncResult.applied?.partyInventoryItemsUpserted,
+          partyCurrencyUpdated: partySyncResult.applied?.partyCurrencyUpdated,
+        }
+
+        // Broadcast session-level presence update when the DM is online.
+        if (wsManager) {
+          const sessions = await listSessionsByCampaign(campaignId)
+          for (const session of sessions) {
+            const presence = await getSessionPresence(session.id as UUID)
+            if (!presence.some((entry) => entry.userId === user.userId)) continue
+            await broadcastPresenceProfileUpdate({
+              wsManager,
+              sessionIds: [session.id as UUID],
+              userId: user.userId,
+              username: user.username,
+              userRole: user.role,
+              updatedAt: Date.now(),
+            })
+          }
+        }
+      }
+    }
+
     return res.status(200).json({
       message: 'DM campaign sync completed',
-      applied: result.applied,
+      applied: { ...syncResult.applied, ...partyApplied },
     })
   } catch (err) {
     logger.error('integrations', 'Unhandled error in POST /external/dm-sync', {

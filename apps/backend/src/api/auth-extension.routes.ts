@@ -343,140 +343,140 @@ const dmLinkInitRateLimit = createRateLimit({
   message: 'Too many DM link attempts. Please try again later.',
 })
 
-router.post(
-  '/extension/dm-link-init',
-  dmLinkInitRateLimit,
-  async (req: Request, res: Response) => {
-    const {
-      username,
-      password,
-      campaignId,
-      externalSystem,
-      externalUserId,
-      externalCampaignId,
-      email,
-      displayName,
-      deviceId,
-      campaignName,
-    } = req.body || {}
+router.post('/extension/dm-link-init', dmLinkInitRateLimit, async (req: Request, res: Response) => {
+  const {
+    username,
+    password,
+    campaignId,
+    externalSystem,
+    externalUserId,
+    externalCampaignId,
+    email,
+    displayName,
+    deviceId,
+    campaignName,
+  } = req.body || {}
 
-    const identifier = String(username || email || '')
-      .trim()
-      .toLowerCase()
-    const pw = String(password || '')
-    const isEmailLogin = identifier.includes('@')
+  const identifier = String(username || email || '')
+    .trim()
+    .toLowerCase()
+  const pw = String(password || '')
+  const isEmailLogin = identifier.includes('@')
 
-    if (!identifier) {
-      return res.status(400).json({ code: 'INVALID_INPUT', message: 'username is required' })
-    }
-    if (!pw && !isPasswordlessLoginEnabled) {
-      return res.status(400).json({ code: 'INVALID_INPUT', message: 'password is required' })
-    }
-    if (isEmailLogin && isPasswordlessLoginEnabled) {
-      return res.status(400).json({
-        code: 'INVALID_LOGIN_REQUEST',
-        message: 'DEV passwordless mode only supports username (not email) login',
-      })
-    }
-    if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {
-      return res.status(400).json({ code: 'INVALID_INPUT', message: 'campaignId must be a valid UUID' })
-    }
-    if (!externalSystem || typeof externalSystem !== 'string') {
-      return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalSystem is required' })
-    }
-    if (!externalUserId || typeof externalUserId !== 'string') {
-      return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalUserId is required' })
-    }
-    if (!externalCampaignId || typeof externalCampaignId !== 'string') {
-      return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalCampaignId is required' })
-    }
-    if (!deviceId || typeof deviceId !== 'string') {
-      return res.status(400).json({ code: 'INVALID_INPUT', message: 'deviceId is required' })
-    }
-
-    // Step 1: Authenticate user.
-    const userRecord = await prisma.user.findFirst({
-      where: {
-        ...(isEmailLogin ? { email: identifier } : { username: identifier }),
-        isActive: true,
-      },
-      select: { id: true, username: true, role: true, authType: true, password: true },
+  if (!identifier) {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'username is required' })
+  }
+  if (!pw && !isPasswordlessLoginEnabled) {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'password is required' })
+  }
+  if (isEmailLogin && isPasswordlessLoginEnabled) {
+    return res.status(400).json({
+      code: 'INVALID_LOGIN_REQUEST',
+      message: 'DEV passwordless mode only supports username (not email) login',
     })
+  }
+  if (!campaignId || typeof campaignId !== 'string' || !isValidUUID(campaignId)) {
+    return res
+      .status(400)
+      .json({ code: 'INVALID_INPUT', message: 'campaignId must be a valid UUID' })
+  }
+  if (!externalSystem || typeof externalSystem !== 'string') {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalSystem is required' })
+  }
+  if (!externalUserId || typeof externalUserId !== 'string') {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'externalUserId is required' })
+  }
+  if (!externalCampaignId || typeof externalCampaignId !== 'string') {
+    return res
+      .status(400)
+      .json({ code: 'INVALID_INPUT', message: 'externalCampaignId is required' })
+  }
+  if (!deviceId || typeof deviceId !== 'string') {
+    return res.status(400).json({ code: 'INVALID_INPUT', message: 'deviceId is required' })
+  }
 
-    // DEV passwordless: auto-create DM account when it doesn't exist.
-    if (!userRecord && isPasswordlessLoginEnabled) {
-      const created = await prisma.user.create({
-        data: { username: identifier, displayName: identifier, authType: 'FULL', role: 'DM' },
-        select: { id: true, username: true, role: true },
-      })
-      const token = createToken({
-        userId: created.id as UUID,
-        username: created.username,
-        role: normalizePlayerFacingRole(created.role),
-        authType: 'FULL',
-      })
-      // Continue with the newly created user — fall through by re-entering flow
-      // via a unified helper isn't possible here, so we handle it as a special case.
-      return handleDmLinkInit({
-        res,
-        userId: created.id,
-        username: created.username,
-        role: created.role,
-        token,
-        campaignId,
-        externalSystem,
-        externalUserId,
-        externalCampaignId,
-        email: email || identifier,
-        displayName: typeof displayName === 'string' ? displayName : null,
-        deviceId,
-        campaignName: typeof campaignName === 'string' ? campaignName : undefined,
-      })
-    }
+  // Step 1: Authenticate user.
+  const userRecord = await prisma.user.findFirst({
+    where: {
+      ...(isEmailLogin ? { email: identifier } : { username: identifier }),
+      isActive: true,
+    },
+    select: { id: true, username: true, role: true, authType: true, password: true },
+  })
 
-    if (!userRecord || userRecord.authType !== 'FULL') {
-      return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
-    }
-
-    if (!isPasswordlessLoginEnabled) {
-      if (!userRecord.password) {
-        return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
-      }
-      const valid = await verifyPassword(pw, userRecord.password)
-      if (!valid) {
-        return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
-      }
-    } else if (pw && userRecord.password) {
-      const valid = await verifyPassword(pw, userRecord.password)
-      if (!valid) {
-        return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
-      }
-    }
-
+  // DEV passwordless: auto-create DM account when it doesn't exist.
+  if (!userRecord && isPasswordlessLoginEnabled) {
+    const created = await prisma.user.create({
+      data: { username: identifier, displayName: identifier, authType: 'FULL', role: 'DM' },
+      select: { id: true, username: true, role: true },
+    })
     const token = createToken({
-      userId: userRecord.id as UUID,
-      username: userRecord.username,
-      role: normalizePlayerFacingRole(userRecord.role),
+      userId: created.id as UUID,
+      username: created.username,
+      role: normalizePlayerFacingRole(created.role),
       authType: 'FULL',
     })
-
+    // Continue with the newly created user — fall through by re-entering flow
+    // via a unified helper isn't possible here, so we handle it as a special case.
     return handleDmLinkInit({
       res,
-      userId: userRecord.id,
-      username: userRecord.username,
-      role: userRecord.role,
+      userId: created.id,
+      username: created.username,
+      role: created.role,
       token,
       campaignId,
       externalSystem,
       externalUserId,
       externalCampaignId,
-      email: typeof email === 'string' ? email.trim() : identifier,
+      email: email || identifier,
       displayName: typeof displayName === 'string' ? displayName : null,
       deviceId,
       campaignName: typeof campaignName === 'string' ? campaignName : undefined,
     })
   }
-)
+
+  if (!userRecord || userRecord.authType !== 'FULL') {
+    return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
+  }
+
+  if (!isPasswordlessLoginEnabled) {
+    if (!userRecord.password) {
+      return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
+    }
+    const valid = await verifyPassword(pw, userRecord.password)
+    if (!valid) {
+      return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
+    }
+  } else if (pw && userRecord.password) {
+    const valid = await verifyPassword(pw, userRecord.password)
+    if (!valid) {
+      return res.status(401).json({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials' })
+    }
+  }
+
+  const token = createToken({
+    userId: userRecord.id as UUID,
+    username: userRecord.username,
+    role: normalizePlayerFacingRole(userRecord.role),
+    authType: 'FULL',
+  })
+
+  return handleDmLinkInit({
+    res,
+    userId: userRecord.id,
+    username: userRecord.username,
+    role: userRecord.role,
+    token,
+    campaignId,
+    externalSystem,
+    externalUserId,
+    externalCampaignId,
+    email: typeof email === 'string' ? email.trim() : identifier,
+    displayName: typeof displayName === 'string' ? displayName : null,
+    deviceId,
+    campaignName: typeof campaignName === 'string' ? campaignName : undefined,
+  })
+})
 
 /**
  * Runs steps 2–5 of the dm-link-init sequence (dm-link, dm-sync, session/ensure, response).
@@ -533,7 +533,9 @@ async function handleDmLinkInit(params: {
       return res.status(403).json({ code: 'FORBIDDEN', message: 'Full account required' })
     }
     if (message === 'INTEGRATION_NOT_AUTHORIZED') {
-      return res.status(403).json({ code: 'INTEGRATION_NOT_AUTHORIZED', message: 'External system not authorized' })
+      return res
+        .status(403)
+        .json({ code: 'INTEGRATION_NOT_AUTHORIZED', message: 'External system not authorized' })
     }
     if (message === 'CAMPAIGN_NOT_FOUND') {
       return res.status(404).json({ code: 'CAMPAIGN_NOT_FOUND', message: 'Campaign not found' })
@@ -547,7 +549,8 @@ async function handleDmLinkInit(params: {
     if (message === 'IDENTITY_CONFLICT') {
       return res.status(409).json({
         code: 'IDENTITY_CONFLICT',
-        message: 'This external account is already linked to a different vtt-chat login. Please contact support.',
+        message:
+          'This external account is already linked to a different vtt-chat login. Please contact support.',
       })
     }
     return res.status(500).json({ code: 'DM_LINK_FAILED', message: 'Failed to link DM account' })
@@ -586,7 +589,9 @@ async function handleDmLinkInit(params: {
       sessionId = session.id
     }
   } catch {
-    return res.status(500).json({ code: 'SESSION_ENSURE_FAILED', message: 'Failed to ensure session' })
+    return res
+      .status(500)
+      .json({ code: 'SESSION_ENSURE_FAILED', message: 'Failed to ensure session' })
   }
 
   return res.status(200).json({

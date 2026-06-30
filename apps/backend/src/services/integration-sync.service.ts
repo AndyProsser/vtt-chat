@@ -133,19 +133,30 @@ export async function syncExternalIntegration(params: {
   // sections (including characterUpdate/campaignUpdate) still apply and skipped sections are
   // reported via `applied.skippedReasons` (partial application).
 
-  const hasCharacterUpdate = Boolean(params.characterUpdate && typeof params.characterUpdate === 'object')
-  const hasCampaignUpdate = Boolean(params.campaignUpdate && typeof params.campaignUpdate === 'object')
+  const hasCharacterUpdate = Boolean(
+    params.characterUpdate && typeof params.characterUpdate === 'object'
+  )
+  const hasCampaignUpdate = Boolean(
+    params.campaignUpdate && typeof params.campaignUpdate === 'object'
+  )
   const hasInventory = Boolean(params.inventoryUpdate && typeof params.inventoryUpdate === 'object')
   const hasCurrency = Boolean(params.currencyUpdate && typeof params.currencyUpdate === 'object')
-  const hasPartyInventory = Boolean(params.partyInventoryUpdate && typeof params.partyInventoryUpdate === 'object')
-  const hasPartyCurrency = Boolean(params.partyCurrencyUpdate && typeof params.partyCurrencyUpdate === 'object')
+  const hasPartyInventory = Boolean(
+    params.partyInventoryUpdate && typeof params.partyInventoryUpdate === 'object'
+  )
+  const hasPartyCurrency = Boolean(
+    params.partyCurrencyUpdate && typeof params.partyCurrencyUpdate === 'object'
+  )
 
   const inventoryDisabled = !campaign.extensionInventorySyncEnabled
   const currencyDisabled = !campaign.extensionCurrencySyncEnabled
   const partyAccess = campaign.extensionPartyInventorySyncAccess
-  const partyBlocked = partyAccess === 'DISABLED' || (partyAccess === 'DM_ONLY' && params.source !== 'dm')
+  const partyBlocked =
+    partyAccess === 'DISABLED' || (partyAccess === 'DM_ONLY' && params.source !== 'dm')
 
-  const skippedReasons: Partial<Record<GatedSection, 'SYNC_POLICY_DISABLED' | 'SYNC_POLICY_PARTY_ACCESS_DENIED'>> = {}
+  const skippedReasons: Partial<
+    Record<GatedSection, 'SYNC_POLICY_DISABLED' | 'SYNC_POLICY_PARTY_ACCESS_DENIED'>
+  > = {}
   if (hasInventory && inventoryDisabled) skippedReasons.inventory = 'SYNC_POLICY_DISABLED'
   if (hasCurrency && currencyDisabled) skippedReasons.currency = 'SYNC_POLICY_DISABLED'
   if (hasPartyInventory) {
@@ -169,7 +180,9 @@ export async function syncExternalIntegration(params: {
     gatedSections.length > 0 &&
     gatedSections.every((section) => skippedReasons[section])
   ) {
-    const isDisabled = gatedSections.some((section) => skippedReasons[section] === 'SYNC_POLICY_DISABLED')
+    const isDisabled = gatedSections.some(
+      (section) => skippedReasons[section] === 'SYNC_POLICY_DISABLED'
+    )
     return {
       ok: false,
       code: isDisabled ? 'SYNC_POLICY_DISABLED' : 'SYNC_POLICY_PARTY_ACCESS_DENIED',
@@ -236,12 +249,14 @@ export async function syncExternalIntegration(params: {
       // New multiclass format takes precedence over legacy class/subclass/level flat fields.
       const incomingClasses = params.characterUpdate.classes
       if (Array.isArray(incomingClasses) && incomingClasses.length > 0) {
-        const builtClasses = (incomingClasses as Array<{
-          classExternalID?: string
-          className: string
-          classLevel: number
-          subclassName?: string
-        }>).map((entry) => ({
+        const builtClasses = (
+          incomingClasses as Array<{
+            classExternalID?: string
+            className: string
+            classLevel: number
+            subclassName?: string
+          }>
+        ).map((entry) => ({
           name: entry.subclassName?.trim()
             ? `${entry.className.trim()} / ${entry.subclassName.trim()}`
             : entry.className.trim(),
