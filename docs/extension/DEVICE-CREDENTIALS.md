@@ -80,29 +80,58 @@ if (response.deviceCredential) {
 
 ---
 
-## First-Time DM Link (postMessage handler)
+## First-Time DM Link — Receiving the Credential
 
-After the ext-launch page posts `VTT_CHAT_DM_LINK_COMPLETE` (see [DM-LINK.md §9](DM-LINK.md)):
+After dm-link completes, `/ext-launch` signals the extension on **two channels simultaneously** (see [DM-LINK.md §9](DM-LINK.md)). The extension must listen on both; it will normally receive exactly one.
+
+### Channel A — BroadcastChannel (primary, handles chrome.tabs.create)
+
+The ext-launch page broadcasts on `'vtt-chat-ext'`. A content script injected into the vtt-chat domain listens and relays to the background:
 
 ```typescript
-// { type: 'VTT_CHAT_DM_LINK_COMPLETE',
-//   payload: { campaignId, deviceCredential: { credential, deviceId }, merged } }
+// Content script — injected into the vtt-chat domain
+let handled = false // prevent double-store if both channels fire
+const channel = new BroadcastChannel('vtt-chat-ext')
+channel.onmessage = ({ data }: MessageEvent) => {
+  if (data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE' || handled) return
+  handled = true
+  chrome.runtime.sendMessage(data)
+}
 
+// Background script — receives the relay from the content script
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
+  storeDmCredential(message.payload)
+})
+```
+
+### Channel B — window.opener.postMessage (fallback, handles window.open)
+
+```typescript
+// Extension popup or background
 window.addEventListener('message', (event: MessageEvent) => {
   if (event.origin !== VTT_CHAT_ORIGIN) return
-  if (event.data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
+  if (event.data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE' || handled) return
+  handled = true
+  storeDmCredential(event.data.payload)
+})
+```
 
-  const { campaignId, deviceCredential } = event.data.payload as {
-    campaignId: string
-    deviceCredential: { credential: string; deviceId: string }
-    merged: boolean
-  }
+### Shared storage helper
 
+```typescript
+function storeDmCredential(payload: {
+  campaignId: string
+  deviceCredential: { credential: string; deviceId: string }
+  merged: boolean
+}) {
+  const { campaignId, deviceCredential } = payload
+  // externalCampaignId + externalSystem are known from when the ext-launch tab was opened
   localStorage.setItem(
     `dmlink:${externalCampaignId}:${externalSystem}`,
     JSON.stringify({ campaignId, deviceCredential } satisfies StoredCredential)
   )
-})
+}
 ```
 
 ---
@@ -189,6 +218,8 @@ async function tryPlayerReconnect(
 
 Called on page load when the DDB user is detected as the campaign DM.
 
+**No password prompt.** The device credential is exchanged for a fresh JWT, which is passed directly to `/ext-launch` via the `?token=` param. The ext-launch token path validates it silently and redirects straight to the campaign workspace — no login form is ever shown.
+
 ```typescript
 async function tryDmReconnect(
   externalCampaignId: string,
@@ -203,6 +234,7 @@ async function tryDmReconnect(
 
   try {
     const token = await exchangeCredential(stored, key, apiBase)
+    const authHeader = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
 
     // dm-sync throttle: at most once per 10 minutes per campaign
     const syncKey = `dmsync:${stored.campaignId}`
@@ -214,10 +246,7 @@ async function tryDmReconnect(
     if (sinceLastSync > 10 * 60 * 1000) {
       await fetch(`${apiBase}/api/integrations/external/dm-sync`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeader,
         body: JSON.stringify({
           campaignId: stored.campaignId,
           externalSystem,
@@ -230,14 +259,22 @@ async function tryDmReconnect(
       })
     }
 
+    // Confirm or create an IDLE session so the workspace has a sessionId on arrival.
+    const ensureRes = await fetch(`${apiBase}/api/campaigns/${stored.campaignId}/session/ensure`, {
+      method: 'POST',
+      headers: authHeader,
+    })
+    const { sessionId = '' } = ensureRes.ok ? await ensureRes.json().catch(() => ({})) : {}
+
+    // Open ext-launch with the fresh JWT — no password prompt shown.
     window.open(
-      `${VTT_CHAT_ORIGIN}/ext-launch?campaignId=${stored.campaignId}&token=${encodeURIComponent(token)}&sessionId=`,
+      `${VTT_CHAT_ORIGIN}/ext-launch?campaignId=${stored.campaignId}&token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sessionId)}`,
       '_blank'
     )
     return 'launched'
   } catch {
     localStorage.removeItem(key)
-    return 'needs-dm-link' // fall back to first-time DM link flow
+    return 'needs-dm-link' // credential invalid — fall back to first-time DM link flow
   }
 }
 ```

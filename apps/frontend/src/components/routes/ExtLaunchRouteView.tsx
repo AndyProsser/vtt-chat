@@ -16,7 +16,8 @@
  *     1. POST /api/auth/extension/dm-link   → claim DM status, get deviceCredential
  *     2. POST /api/integrations/external/dm-sync → update campaign name from DDB
  *     3. POST /api/campaigns/:id/session/ensure   → guarantee an IDLE session exists
- *     4. postMessage VTT_CHAT_DM_LINK_COMPLETE    → extension stores deviceCredential
+ *     4. Signal extension via BroadcastChannel('vtt-chat-ext') + window.opener.postMessage
+ *        (both sent; extension handles whichever arrives — see DEVICE-CREDENTIALS.md)
  *     5. Redirect to campaign workspace
  *
  * DEV mode (import.meta.env.DEV):
@@ -180,21 +181,41 @@ export function ExtLaunchRouteView({
     const ensureData = await ensureRes.json().catch(() => ({}))
     const ensuredSessionId: string | undefined = ensureData.sessionId || undefined
 
-    // Step 4: postMessage deviceCredential back to the extension
+    // Step 4: signal the extension that dm-link completed and deliver the deviceCredential.
+    //
+    // Two channels are used so the message arrives regardless of how the extension opened
+    // this tab:
+    //
+    //  a) BroadcastChannel('vtt-chat-ext') — primary. Works when the tab was opened via
+    //     chrome.tabs.create() (window.opener is null). The extension content script
+    //     listens on this channel and relays the message to the background via
+    //     chrome.runtime.sendMessage.
+    //
+    //  b) window.opener.postMessage — fallback. Works when the tab was opened via
+    //     window.open() from the extension popup (window.opener is set).
+    //
+    // The extension must handle both; it will typically receive one or the other.
     setLinkStep('done')
-    if (deviceCredential && window.opener) {
+    if (deviceCredential) {
+      const payload = {
+        type: 'VTT_CHAT_DM_LINK_COMPLETE',
+        payload: {
+          campaignId,
+          deviceCredential,
+          merged: linkData.merged ?? false,
+        },
+      }
       try {
-        window.opener.postMessage(
-          {
-            type: 'VTT_CHAT_DM_LINK_COMPLETE',
-            payload: {
-              campaignId,
-              deviceCredential,
-              merged: linkData.merged ?? false,
-            },
-          },
-          window.location.origin
-        )
+        const channel = new BroadcastChannel('vtt-chat-ext')
+        channel.postMessage(payload)
+        channel.close()
+      } catch {
+        // BroadcastChannel not available in this context — fall through to opener
+      }
+      try {
+        if (window.opener) {
+          window.opener.postMessage(payload, window.location.origin)
+        }
       } catch {
         // Non-fatal: extension will handle missing credential by re-prompting
       }

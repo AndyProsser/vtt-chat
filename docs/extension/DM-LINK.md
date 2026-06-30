@@ -119,22 +119,32 @@ _Runs once per DM per campaign. Establishes the campaign link, creates the Exter
 
 ## 5. DM Returning Launch Flow
 
-_Normal path for all subsequent DM launches. No invite code entry required._
+_Normal path for all subsequent DM launches. No invite code, no password prompt — the device credential is the sole auth mechanism._
+
+The DDB extension has already verified the DM is logged into DDB. Combined with the stored device credential, no vtt-chat password is ever required after the initial link.
 
 ```text
 1.  Extension detects DM ownership on DDB campaign page.
-2.  Extension finds stored deviceCredential for this (campaignId, externalSystem).
+2.  Extension finds stored deviceCredential in localStorage
+    (key: dmlink:<externalCampaignId>:<externalSystem>).
 3.  POST /api/auth/extension/credential/exchange { credential, deviceId }
-      → returns fresh JWT + rotated credential (store immediately)
-      → CREDENTIAL_INVALID / CREDENTIAL_EXPIRED_GUEST → fall back to first-time flow (§4)
-        (this handles the edge case where the credential was issued to a
-         now-merged guest account and the server-side credential record is gone)
+      → returns { token, credential } — fresh JWT + rotated credential
+      → Store the rotated credential immediately (old one is now invalid)
+      → On CREDENTIAL_INVALID / CREDENTIAL_EXPIRED_GUEST: clear storage,
+        fall back to first-time flow (§4)
 4.  Extension fires dm-sync (throttled: at most once per 10 minutes per campaign):
-        POST /api/integrations/external/dm-sync
-5.  POST /api/campaigns/:campaignId/session/ensure → confirm session.
+        POST /api/integrations/external/dm-sync { campaignId, externalSystem,
+          externalCampaignId, characters: [] }
+      → updates campaign name and character stubs from DDB (best-effort; non-fatal)
+5.  POST /api/campaigns/:campaignId/session/ensure
+      → creates or confirms the IDLE session
+      → returns { sessionId, sessionState, campaignDisplayState }
 6.  Open /ext-launch?campaignId=<uuid>&token=<jwt>&sessionId=<id>
-      → auto-login, redirect to campaign workspace.
+      → ext-launch validates the token silently (no password form shown)
+      → redirects straight to campaign workspace
 ```
+
+The `token` in the URL is what suppresses the password form. `/ext-launch` has two paths: the **token path** (auto-login, silent) and the **DM-link path** (first-time only, requires password). Returning DM always uses the token path.
 
 ---
 
@@ -269,9 +279,11 @@ When `campaignData.name` is present in a `POST /api/integrations/external/dm-syn
 
 ---
 
-## 9. postMessage Contract — /ext-launch → Extension
+## 9. Extension Signalling — /ext-launch → Extension
 
-After a successful `dm-link` call, the `/ext-launch` page posts a message to the opener (the extension background script) so the credential can be stored:
+After a successful `dm-link` call, `/ext-launch` signals the extension on **two channels simultaneously**. The extension must handle whichever arrives — it will normally receive one or the other depending on how the tab was opened.
+
+### Message payload (identical on both channels)
 
 ```json
 {
@@ -287,11 +299,57 @@ After a successful `dm-link` call, the `/ext-launch` page posts a message to the
 }
 ```
 
-The background script must:
+### Channel A — BroadcastChannel (primary)
 
-1. Validate `event.origin` matches the configured vtt-chat platform origin.
-2. Store `deviceCredential` in `localStorage` keyed by `dmlink:<campaignId>:<externalSystem>`.
-3. Use this credential for all future returning DM launches for this campaign.
+The ext-launch page posts to `new BroadcastChannel('vtt-chat-ext')` and immediately closes the channel. This works when the tab was opened via `chrome.tabs.create()` (the normal extension path), where `window.opener` is `null`.
+
+**Extension content script** (injected into the vtt-chat domain) must listen and relay:
+
+```typescript
+const channel = new BroadcastChannel('vtt-chat-ext')
+channel.onmessage = ({ data }: MessageEvent) => {
+  if (data?.type === 'VTT_CHAT_DM_LINK_COMPLETE') {
+    chrome.runtime.sendMessage(data)
+  }
+}
+```
+
+**Extension background script** handles the relayed message:
+
+```typescript
+chrome.runtime.onMessage.addListener((message) => {
+  if (message?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
+  const { campaignId, deviceCredential } = message.payload
+  // Store using the externalCampaignId + externalSystem from extension context
+  // (background script knows these from when it opened the ext-launch tab)
+  localStorage.setItem(
+    `dmlink:${externalCampaignId}:${externalSystem}`,
+    JSON.stringify({ campaignId, deviceCredential })
+  )
+})
+```
+
+### Channel B — window.opener.postMessage (fallback)
+
+The ext-launch page also calls `window.opener.postMessage(payload, origin)` if `window.opener` is set. This is the path when the extension popup used `window.open()` directly.
+
+The extension popup must listen:
+
+```typescript
+window.addEventListener('message', (event: MessageEvent) => {
+  if (event.origin !== VTT_CHAT_ORIGIN) return
+  if (event.data?.type !== 'VTT_CHAT_DM_LINK_COMPLETE') return
+  const { campaignId, deviceCredential } = event.data.payload
+  localStorage.setItem(
+    `dmlink:${externalCampaignId}:${externalSystem}`,
+    JSON.stringify({ campaignId, deviceCredential })
+  )
+})
+```
+
+### Deduplication
+
+The extension should track whether it has already stored the credential for this launch (e.g. a boolean flag per open ext-launch tab) so that receiving both channels doesn't trigger a double-store. A double-store is harmless but noisy.
 
 If `merged: true`, the extension may optionally surface a one-time informational toast: _"A prior guest session was merged into your account."_
 
