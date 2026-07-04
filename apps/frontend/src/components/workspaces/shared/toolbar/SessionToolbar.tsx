@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import type { SessionState, UUID } from '@shared'
+import type { UUID } from '@shared'
+import { SessionState } from '@shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { Icon } from '@/components/ui/Icon'
 import { WorkspaceToolbar } from './WorkspaceToolbar'
@@ -86,10 +87,10 @@ export const SessionToolbar = memo(function SessionToolbar({
     setThemeMode(nextTheme)
   }, [themeMode])
 
-  const pauseLabel = sessionState === 'PAUSED' ? 'Resume after break' : 'Pause for break'
-  const pauseIcon = sessionState === 'PAUSED' ? 'play' : 'pause'
-  const isEndedMode = sessionState === 'ENDED'
-  const isCooldownMode = sessionState === 'COOLDOWN'
+  const pauseLabel = sessionState === SessionState.PAUSED ? 'Resume after break' : 'Pause for break'
+  const pauseIcon = sessionState === SessionState.PAUSED ? 'play' : 'pause'
+  const isEndedMode = sessionState === SessionState.ENDED
+  const isCooldownMode = sessionState === SessionState.COOLDOWN
   const shouldShowStartAction = canStartSession && !isCooldownMode
   const startActionLabel = isEndedMode ? 'Reset' : 'Start'
   const startActionIcon = isEndedMode ? 'restart_alt' : 'play'

@@ -1,4 +1,5 @@
 import os from 'node:os'
+import { SessionState } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 import {
   findDiagnosticEventById,
@@ -68,7 +69,7 @@ export async function buildAdminTelemetryDashboardPayload(params: {
   const sessions = await getAllSessions()
   const chat = await getChatTelemetrySnapshot()
   const memory = process.memoryUsage()
-  const activeSessions = sessions.filter((session) => session.state === 'ACTIVE').length
+  const activeSessions = sessions.filter((session) => session.state === SessionState.ACTIVE).length
   const memoryUsedMb = Math.round(memory.heapUsed / 1024 / 1024)
   const memoryTotalMb = Math.max(1, Math.round(memory.heapTotal / 1024 / 1024))
   const storageUsagePercent = Math.min(99, Math.round((memoryUsedMb / memoryTotalMb) * 100))

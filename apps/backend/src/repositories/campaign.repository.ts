@@ -1,10 +1,10 @@
 import { Prisma } from '@prisma/client'
 import {
+  SessionState,
   deriveCampaignDisplayState,
   normalizeCharacterStats,
   type CampaignDisplayState,
   type NormalizedCharacterStats,
-  type SessionState,
 } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 import { DEV_MOCK_PREFIX } from '@/constants/dev-mock.constants'
@@ -14,7 +14,11 @@ const prisma = getPrismaClient()
 const PRESENCE_FLAP_GRACE_MS = 8_000
 
 function isRealtimeSessionState(state: SessionState | null): boolean {
-  return state === 'ACTIVE' || state === 'PAUSED' || state === 'COOLDOWN'
+  return (
+    state === SessionState.ACTIVE ||
+    state === SessionState.PAUSED ||
+    state === SessionState.COOLDOWN
+  )
 }
 
 function isLikelyConnectedPresence(params: {
@@ -692,7 +696,12 @@ export async function updateCharacterForCampaignMember(params: {
         ...(params.class !== undefined ? { class: params.class } : {}),
         ...(params.subclass !== undefined ? { subclass: params.subclass } : {}),
         ...(params.classes !== undefined
-          ? { classes: params.classes === null ? Prisma.JsonNull : (params.classes as Prisma.InputJsonValue) }
+          ? {
+              classes:
+                params.classes === null
+                  ? Prisma.JsonNull
+                  : (params.classes as Prisma.InputJsonValue),
+            }
           : {}),
         ...(params.avatarUrl !== undefined ? { avatarUrl: params.avatarUrl } : {}),
         ...(params.metadata !== undefined

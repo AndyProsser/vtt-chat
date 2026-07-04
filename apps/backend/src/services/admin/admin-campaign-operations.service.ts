@@ -1,3 +1,4 @@
+import { SessionState } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 import type { AdminAuthToken } from '@/types'
 import type { Prisma } from '@prisma/client'
@@ -170,7 +171,7 @@ export async function endAdminCampaignSession(params: {
     return { status: 404, body: { error: 'Session not found', code: 'NOT_FOUND' } }
   }
 
-  if (existingSession.state === 'ENDED') {
+  if (existingSession.state === SessionState.ENDED) {
     return { status: 200, body: { message: 'Session is already ended', session: existingSession } }
   }
 

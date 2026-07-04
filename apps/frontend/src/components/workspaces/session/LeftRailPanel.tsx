@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Role, SessionState, UUID } from '@shared'
-import { RoomType } from '@shared'
+import type { Role, UUID } from '@shared'
+import { RoomType, SessionState } from '@shared'
 import { isGreenroomSessionState } from '@shared'
 import type { RoomUser } from '@/types/room'
 import { getUserDMOverride, type AudioDMOverridesByUser } from '@/utils/audioOverrides'
@@ -154,7 +154,7 @@ export function LeftRailPanel({
 
   const isGreenroom = isGreenroomSessionState(sessionState)
   const [isCooldownWindowActive, setIsCooldownWindowActive] = useState(() => {
-    if (sessionState !== 'COOLDOWN') {
+    if (sessionState !== SessionState.COOLDOWN) {
       return false
     }
 
@@ -169,7 +169,7 @@ export function LeftRailPanel({
   })
 
   useEffect(() => {
-    if (sessionState !== 'COOLDOWN') {
+    if (sessionState !== SessionState.COOLDOWN) {
       setIsCooldownWindowActive(false)
       return
     }
@@ -201,7 +201,7 @@ export function LeftRailPanel({
   }, [cooldownDurationMs, sessionEndedAt, sessionState])
 
   const isEndedCooldownActive = useMemo(() => {
-    return sessionState === 'COOLDOWN' && isCooldownWindowActive
+    return sessionState === SessionState.COOLDOWN && isCooldownWindowActive
   }, [isCooldownWindowActive, sessionState])
 
   const greenroomHeaderCopy = isGreenroom && role !== 'DM' ? 'Current Group Only' : undefined
@@ -248,7 +248,9 @@ export function LeftRailPanel({
         .map((member) => {
           const isSpectator = member.role === 'SPECTATOR'
           const canShowSpectatorInRoom =
-            isGreenRoomName(room.name) && sessionState === 'COOLDOWN' && isEndedCooldownActive
+            isGreenRoomName(room.name) &&
+            sessionState === SessionState.COOLDOWN &&
+            isEndedCooldownActive
 
           if (isSpectator && !canShowSpectatorInRoom) {
             return null

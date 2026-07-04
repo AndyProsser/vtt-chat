@@ -340,11 +340,7 @@ function normalizeRoomName(value: string): string {
 
 function getBoundaryRoomIds(params: {
   boundaryType:
-    | 'SESSION_STARTED'
-    | 'SESSION_PAUSED'
-    | 'SESSION_RESUMED'
-    | 'SESSION_COOLDOWN'
-    | 'SESSION_ENDED'
+    'SESSION_STARTED' | 'SESSION_PAUSED' | 'SESSION_RESUMED' | 'SESSION_COOLDOWN' | 'SESSION_ENDED'
   mainRoomId: UUID
   greenRoomId: UUID
 }): UUID[] {
@@ -360,11 +356,7 @@ function getBoundaryRoomIds(params: {
 }
 
 type SessionBoundaryEventType =
-  | 'SESSION_STARTED'
-  | 'SESSION_PAUSED'
-  | 'SESSION_RESUMED'
-  | 'SESSION_COOLDOWN'
-  | 'SESSION_ENDED'
+  'SESSION_STARTED' | 'SESSION_PAUSED' | 'SESSION_RESUMED' | 'SESSION_COOLDOWN' | 'SESSION_ENDED'
 
 async function ensureJoinedMemberPresence(params: {
   session: Awaited<ReturnType<typeof getSession>>
@@ -1272,7 +1264,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
 
   const requestedState = normalizeSessionState(state)
 
-  if (!requestedState || requestedState === 'CLEANUP') {
+  if (!requestedState || requestedState === SessionStateEnum.CLEANUP) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: 'Invalid state',
@@ -1292,7 +1284,8 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     let transitionActorUserId = user.userId as UUID
     if (previousSession.dmId !== (user.userId as UUID)) {
       const requestingCooldownCancel =
-        previousSession.state === 'COOLDOWN' && requestedState === 'IDLE'
+        previousSession.state === SessionStateEnum.COOLDOWN &&
+        requestedState === SessionStateEnum.IDLE
 
       if (!requestingCooldownCancel) {
         return res.status(403).json({
@@ -1346,7 +1339,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     // Only clear environment for the neutral room (main or greenroom), not other groups.
     // ACTIVE, PAUSED, and COOLDOWN are all staged in Main Room.
     const neutralRoomId =
-      isSessionActiveOrPaused(requestedState) || requestedState === 'COOLDOWN'
+      isSessionActiveOrPaused(requestedState) || requestedState === SessionStateEnum.COOLDOWN
         ? transition.mainRoomId
         : transition.greenRoomId
 
@@ -1355,7 +1348,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       roomId: neutralRoomId,
     })
 
-    if (requestedState === 'COOLDOWN') {
+    if (requestedState === SessionStateEnum.COOLDOWN) {
       await deletePrivateRoomsForEndedSession(session.id)
     }
 
@@ -1379,18 +1372,23 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
 
     const movedToGreenRoom = transition.targetRoomId === transition.greenRoomId
-    const shouldClearGreenRoomContext = movedToGreenRoom && requestedState === 'ENDED'
+    const shouldClearGreenRoomContext =
+      movedToGreenRoom && requestedState === SessionStateEnum.ENDED
 
     if (shouldClearGreenRoomContext) {
       await clearRoomMessages(session.id, transition.greenRoomId)
     }
 
     const boundaryTypes: SessionBoundaryEventType[] =
-      requestedState === 'ACTIVE'
-        ? [previousSession?.state === 'PAUSED' ? 'SESSION_RESUMED' : 'SESSION_STARTED']
-        : requestedState === 'PAUSED'
+      requestedState === SessionStateEnum.ACTIVE
+        ? [
+            previousSession?.state === SessionStateEnum.PAUSED
+              ? 'SESSION_RESUMED'
+              : 'SESSION_STARTED',
+          ]
+        : requestedState === SessionStateEnum.PAUSED
           ? ['SESSION_PAUSED']
-          : requestedState === 'COOLDOWN'
+          : requestedState === SessionStateEnum.COOLDOWN
             ? ['SESSION_COOLDOWN']
             : []
 
@@ -1548,7 +1546,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
       })
 
       // Broadcast SESSION:COOLDOWN_STARTED when transitioning to COOLDOWN
-      if (requestedState === 'COOLDOWN') {
+      if (requestedState === SessionStateEnum.COOLDOWN) {
         const cooldownDurationMs = await getEffectiveCooldownDurationMs(session.id)
         const cooldownStartedAt = session.endedAt ?? Date.now()
         const cooldownExpiresAt = cooldownStartedAt + cooldownDurationMs
@@ -1984,16 +1982,19 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
       await openMainRoomMessageHistory(session.id)
 
       // Advance campaign's next session date from the recurrence rule (mirrors cleanup-job path)
-      prisma.session.findUnique({ where: { id: session.id }, select: { campaignId: true } })
+      prisma.session
+        .findUnique({ where: { id: session.id }, select: { campaignId: true } })
         .then((row) => {
           if (row?.campaignId) {
             return advanceSessionScheduleOnEnded(row.campaignId as UUID, session.dmId as UUID)
           }
         })
-        .catch((err) => console.error('[session] Failed to advance session schedule on manual cooldown end', {
-          sessionId: session.id,
-          err,
-        }))
+        .catch((err) =>
+          console.error('[session] Failed to advance session schedule on manual cooldown end', {
+            sessionId: session.id,
+            err,
+          })
+        )
     }
 
     const users = await getSessionUsers(id as UUID)

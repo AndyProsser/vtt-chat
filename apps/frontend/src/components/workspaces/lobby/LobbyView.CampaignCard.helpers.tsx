@@ -1,3 +1,4 @@
+import { SessionState } from '@shared'
 import type { CampaignSummary } from '@/types/session/campaign'
 
 export type CampaignVisualState = 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'IDLE' | 'ENDED' | 'INACTIVE'
@@ -5,19 +6,22 @@ export type CampaignVisualState = 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'IDLE' | 'E
 export function getCampaignVisualState(campaign: CampaignSummary): CampaignVisualState {
   const hasConnectedTable = Boolean(campaign.dmOnline) || (campaign.connectedPlayers ?? 0) > 0
 
-  if (!hasConnectedTable || campaign.latestSessionState === 'CLEANUP') {
+  if (!hasConnectedTable || campaign.latestSessionState === SessionState.CLEANUP) {
     return 'INACTIVE'
   }
 
-  if (campaign.latestSessionState === 'ACTIVE' || campaign.latestSessionState === 'PAUSED') {
+  if (
+    campaign.latestSessionState === SessionState.ACTIVE ||
+    campaign.latestSessionState === SessionState.PAUSED
+  ) {
     return 'ACTIVE'
   }
 
-  if (campaign.latestSessionState === 'COOLDOWN') {
+  if (campaign.latestSessionState === SessionState.COOLDOWN) {
     return 'COOLDOWN'
   }
 
-  if (campaign.latestSessionState === 'ENDED') {
+  if (campaign.latestSessionState === SessionState.ENDED) {
     return 'ENDED'
   }
 

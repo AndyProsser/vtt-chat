@@ -1,4 +1,4 @@
-import { Role, SessionState, deriveCampaignDisplayState } from '@shared'
+import { Role, SessionState, deriveCampaignDisplayState, type CampaignDisplayState } from '@shared'
 import type { UUID } from '@shared'
 import type {
   ExtensionPartyInventorySyncAccess,
@@ -30,7 +30,7 @@ export interface CampaignSummary {
   connectedPlayersLabel?: string
   connectedSpectatorsRounded?: number
   connectedSpectatorsLabel?: string
-  displayState?: 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN'
+  displayState?: CampaignDisplayState
   latestSessionState?: SessionState | null
   discoverable?: boolean
   retiredAt?: string | null
@@ -81,7 +81,7 @@ export interface CampaignExportBundle {
 
 export type CampaignSettingsPayload = {
   latestSessionId?: UUID | null
-  latestSessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | null
+  latestSessionState?: SessionState | null
   latestSessionEndedAt?: string | null
   id: UUID
   name: string
@@ -160,9 +160,7 @@ export type CampaignEntryAction =
       dimmed: true
     }
 
-export function getCampaignDisplayState(
-  campaign: CampaignSummary
-): 'IDLE' | 'GREENROOM' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' {
+export function getCampaignDisplayState(campaign: CampaignSummary): CampaignDisplayState {
   if (campaign.displayState) {
     return campaign.displayState
   }
@@ -187,7 +185,7 @@ export function getCampaignEntryAction(campaign: CampaignSummary): CampaignEntry
   if (campaign.isMember === false || campaign.memberRole === undefined) {
     const isWatchable =
       campaign.spectatorsEnabled &&
-      campaign.latestSessionState === 'ACTIVE' &&
+      campaign.latestSessionState === SessionState.ACTIVE &&
       (campaign.activeConnectedCount ?? 0) > 0
 
     if (isWatchable) {

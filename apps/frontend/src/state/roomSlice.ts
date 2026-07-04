@@ -4,10 +4,9 @@
  */
 
 import type { StateCreator } from 'zustand'
-import { PresenceState, RoomType } from '@shared'
+import { PresenceState, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import type { EventEnvelope } from '@shared'
-import type { SessionState } from '@shared'
 import { PRESENCE_TRANSIENT_REFRESH_INTERVAL_MS } from '@/constants/chatPresence.constants'
 import type { Room, RoomUser, SessionPresence, SessionTransitionNotice } from '@/types/room'
 import type { PresenceSlice } from './presenceSlice'
@@ -934,13 +933,14 @@ export const createRoomSlice: StateCreator<
             avatarUrl: previousMember?.avatarUrl ?? existingPresence?.avatarUrl,
             characterName: previousMember?.characterName ?? existingPresence?.characterName,
             characterClass: previousMember?.characterClass ?? existingPresence?.characterClass,
-            characterClasses: previousMember?.characterClasses ?? existingPresence?.characterClasses,
+            characterClasses:
+              previousMember?.characterClasses ?? existingPresence?.characterClasses,
             multiclass: previousMember?.multiclass ?? existingPresence?.multiclass,
             characterRace: previousMember?.characterRace ?? existingPresence?.characterRace,
             level: previousMember?.level ?? existingPresence?.level,
             characterStats: previousMember?.characterStats ?? existingPresence?.characterStats,
             presenceState: payload.targetState,
-            ghost: payload.nextState === 'ACTIVE' ? false : existingPresence?.ghost,
+            ghost: payload.nextState === SessionState.ACTIVE ? false : existingPresence?.ghost,
             previousGroupId:
               user.previousGroupId !== undefined
                 ? user.previousGroupId || undefined
@@ -987,7 +987,7 @@ export const createRoomSlice: StateCreator<
       targetRoomId: payload.targetRoomId,
       targetState: payload.targetState,
       changedAt: event.timestamp,
-      clearGhostForSession: payload.nextState === 'ACTIVE',
+      clearGhostForSession: payload.nextState === SessionState.ACTIVE,
     })
   },
 })

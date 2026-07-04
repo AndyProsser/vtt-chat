@@ -360,13 +360,17 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       // transport identity must be preserved so effects and environments survive
       // pause/resume cycles. Unconditional reset would break AC3/AC4 of the
       // W4-Conversation-Authority contract.
-      if (nextState === 'IDLE' || nextState === 'ENDED' || nextState === 'CLEANUP') {
+      if (
+        nextState === SessionState.IDLE ||
+        nextState === SessionState.ENDED ||
+        nextState === SessionState.CLEANUP
+      ) {
         store.resetSessionAudioState()
         store.clearActiveEffects()
         store.markMockSimulationExited(event.sessionId)
       }
 
-      if (nextState === 'ENDED') {
+      if (nextState === SessionState.ENDED) {
         store.clearMessages(event.sessionId)
       }
     })

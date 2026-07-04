@@ -1,4 +1,4 @@
-import type { CharacterClassEntry } from '@shared'
+import type { CharacterClassEntry, Role } from '@shared'
 import { PresenceState, type UUID } from '@shared'
 import type { SessionPresence } from '@/types/room'
 import type { MockPartyMember, MockPlayerStatus } from '@/types/campaignParty'
@@ -11,7 +11,7 @@ export type PartyPresenceStatus = 'HERE' | 'AWAY' | 'LOBBY' | 'NOT_HERE' | 'OFFL
 export interface PartyPresenceMemberSnapshot {
   userId: UUID
   username: string
-  role: 'DM' | 'PLAYER' | 'SPECTATOR' | 'SYSTEM'
+  role: Role
   playerName: string
   avatarUrl?: string | null
   characterName?: string | null
@@ -21,7 +21,7 @@ export interface PartyPresenceMemberSnapshot {
   level?: number | null
   characterStats?: Record<string, unknown> | null
   status: PartyPresenceStatus
-  runtimePresenceState?: 'ONLINE' | 'TYPING' | 'SPEAKING' | 'IDLE' | 'OFFLINE' | null
+  runtimePresenceState?: PresenceState | null
   lastSeenAt?: number | null
   manualAway?: boolean
 }

@@ -1,3 +1,4 @@
+import { SessionState } from '@shared'
 import type { CampaignSummary } from '@/types/campaigns'
 import { prettyState, statusClass } from '@/types/campaigns'
 
@@ -83,7 +84,7 @@ export function CampaignTable({
                         onClick={() => onEndSession(campaign)}
                         disabled={
                           !campaign.latestSession ||
-                          campaign.latestSession.state === 'ENDED' ||
+                          campaign.latestSession.state === SessionState.ENDED ||
                           isBusy
                         }
                       >

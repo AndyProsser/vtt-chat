@@ -7,7 +7,7 @@
 import type { StateCreator } from 'zustand'
 import type { UUID, SessionLifecycleState } from '@shared'
 import type { EventEnvelope } from '@shared'
-import { isGreenroomSessionState } from '@shared'
+import { SessionState, isGreenroomSessionState } from '@shared'
 import type { Session } from '@/types/session'
 
 /** Lookup helper — avoids branded-UUID index issues throughout the slice */
@@ -36,10 +36,7 @@ const sessionRecordShallowEqual = (a: Session, b: Session): boolean => {
 }
 
 /** True iff two session maps hold the same ids and shallow-equal records. */
-const sessionsMapShallowEqual = (
-  a: Record<UUID, Session>,
-  b: Record<UUID, Session>
-): boolean => {
+const sessionsMapShallowEqual = (a: Record<UUID, Session>, b: Record<UUID, Session>): boolean => {
   if (a === b) return true
   const aIds = Object.keys(a)
   if (aIds.length !== Object.keys(b).length) return false
@@ -175,7 +172,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
             0,
             Math.round(session.cooldownExtensionCount)
           )
-        } else if (session.state !== 'COOLDOWN') {
+        } else if (session.state !== SessionState.COOLDOWN) {
           nextCooldownExtensionCounts[session.id] = 0
         } else {
           nextCooldownExtensionCounts[session.id] = nextCooldownExtensionCounts[session.id] ?? 0
@@ -244,7 +241,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           0,
           Math.round(nextSession.cooldownExtensionCount)
         )
-      } else if (nextSession.state !== 'COOLDOWN') {
+      } else if (nextSession.state !== SessionState.COOLDOWN) {
         nextCooldownExtensionCounts[sessionId] = 0
       }
 
@@ -369,7 +366,7 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       // or arrived out of order. The WS client auth is updated via currentSessionId,
       // so we must not skip this when the session record is absent from the store.
       if (!state.sessions[event.sessionId]) {
-        if (payload.state === 'ACTIVE' && state.currentSessionId !== event.sessionId) {
+        if (payload.state === SessionState.ACTIVE && state.currentSessionId !== event.sessionId) {
           return {
             currentSessionId: event.sessionId as UUID,
             isGreenroom: false,
@@ -380,10 +377,10 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
       const existing = state.sessions[event.sessionId]
       const isFreshSessionStart =
-        payload.state === 'ACTIVE' &&
-        (existing.state === 'IDLE' ||
-          existing.state === 'ENDED' ||
-          existing.state === 'CLEANUP' ||
+        payload.state === SessionState.ACTIVE &&
+        (existing.state === SessionState.IDLE ||
+          existing.state === SessionState.ENDED ||
+          existing.state === SessionState.CLEANUP ||
           existing.startedAt === undefined)
 
       // Compute pause stats first so they can be mirrored into the session record.
@@ -399,10 +396,10 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
 
       if (isFreshSessionStart) {
         nextStats = { cumulativePauseMs: 0, pauseCount: 0, pauseStartedAt: undefined }
-      } else if (payload.state === 'PAUSED') {
+      } else if (payload.state === SessionState.PAUSED) {
         // Record when this pause began (server timestamp → same for all clients)
         nextStats = { ...prevStats, pauseStartedAt: event.timestamp }
-      } else if (payload.state === 'ACTIVE' && prevStats.pauseStartedAt !== undefined) {
+      } else if (payload.state === SessionState.ACTIVE && prevStats.pauseStartedAt !== undefined) {
         // Resuming from pause — accumulate using the server-provided resume timestamp
         const pauseSegmentMs = event.timestamp - prevStats.pauseStartedAt
         nextStats = {
@@ -411,9 +408,9 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           pauseStartedAt: undefined,
         }
       } else if (
-        payload.state === 'IDLE' ||
-        payload.state === 'ENDED' ||
-        payload.state === 'CLEANUP'
+        payload.state === SessionState.IDLE ||
+        payload.state === SessionState.ENDED ||
+        payload.state === SessionState.CLEANUP
       ) {
         nextStats = { ...prevStats, pauseStartedAt: undefined }
       }
@@ -425,24 +422,24 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
           state: payload.state,
           startedAt: isFreshSessionStart ? event.timestamp : existing.startedAt,
           pausedAt:
-            payload.state === 'PAUSED'
+            payload.state === SessionState.PAUSED
               ? event.timestamp
-              : payload.state === 'ACTIVE'
+              : payload.state === SessionState.ACTIVE
                 ? undefined
                 : existing.pausedAt,
           endedAt:
-            payload.state === 'COOLDOWN' || payload.state === 'ENDED'
+            payload.state === SessionState.COOLDOWN || payload.state === SessionState.ENDED
               ? event.timestamp
-              : payload.state === 'ACTIVE'
+              : payload.state === SessionState.ACTIVE
                 ? undefined
                 : existing.endedAt,
           cooldownExpiresAt:
-            payload.state === 'COOLDOWN'
+            payload.state === SessionState.COOLDOWN
               ? existing.cooldownExpiresAt
-              : payload.state === 'ACTIVE' ||
-                  payload.state === 'IDLE' ||
-                  payload.state === 'ENDED' ||
-                  payload.state === 'CLEANUP'
+              : payload.state === SessionState.ACTIVE ||
+                  payload.state === SessionState.IDLE ||
+                  payload.state === SessionState.ENDED ||
+                  payload.state === SessionState.CLEANUP
                 ? undefined
                 : existing.cooldownExpiresAt,
           // Mirror accumulated pause stats so the session record is always the
@@ -461,12 +458,12 @@ export const createSessionSlice: StateCreator<SessionSlice> = (set) => ({
       // reads it as a standalone prop), re-rendering them for nothing.
       const prevCooldownCount = state.cooldownExtensionCounts[event.sessionId]
       let nextCooldownCount = prevCooldownCount
-      if (payload.state === 'COOLDOWN') {
+      if (payload.state === SessionState.COOLDOWN) {
         nextCooldownCount = prevCooldownCount ?? 0
       } else if (
-        payload.state === 'ACTIVE' ||
-        payload.state === 'IDLE' ||
-        payload.state === 'ENDED'
+        payload.state === SessionState.ACTIVE ||
+        payload.state === SessionState.IDLE ||
+        payload.state === SessionState.ENDED
       ) {
         nextCooldownCount = 0
       }

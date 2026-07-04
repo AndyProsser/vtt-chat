@@ -170,9 +170,9 @@ export function PartyPanel({
         if (currentSessionId) {
           const store = useStore.getState()
           for (const member of payload.members) {
-            if (member.runtimePresenceState === 'IDLE') {
+            if (member.runtimePresenceState === PresenceState.IDLE) {
               const current = store.sessionPresence[currentSessionId]?.[member.userId]
-              if (current && current.state !== 'IDLE') {
+              if (current && current.state !== PresenceState.IDLE) {
                 store.applySessionPresenceStateChange({
                   sessionId: currentSessionId,
                   userId: member.userId,

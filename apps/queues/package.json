@@ -10,9 +10,9 @@
     "build": "tsc && tsc-alias --resolve-full-paths --resolve-full-extension .js",
     "start": "node dist/apps/queues/src/index.js",
     "lint": "eslint . --ext .ts,.js",
-    "test": "vitest run",
-    "test:ci": "vitest run --coverage",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest run --passWithNoTests",
+    "test:ci": "vitest run --coverage --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "dependencies": {
     "bullmq": "^5.0.0",

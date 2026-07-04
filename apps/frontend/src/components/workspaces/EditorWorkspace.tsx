@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo, useRef } from 'react'
 import type { UUID } from '@shared'
+import { SessionState } from '@shared'
 import { EditorView } from '@/components/workspaces/editor/EditorView'
 import { WorkspaceSettingsPanel } from '@/components/workspaces/shared/panels/WorkspaceSettingsPanel'
 import { DmTransferOfferBanner } from '@/components/workspaces/shared/DmTransferOfferBanner'
@@ -179,7 +180,8 @@ export const EditorWorkspace = memo(function EditorWorkspace(props: EditorWorksp
           onSessionNameBaseChange: props.onSessionNameChange,
           sessionNameContext: 'NEXT',
           isSessionActive:
-            props.currentSessionState === 'ACTIVE' || props.currentSessionState === 'PAUSED',
+            props.currentSessionState === SessionState.ACTIVE ||
+            props.currentSessionState === SessionState.PAUSED,
           isEditorContext: true,
           onCopyInviteUrl: handleCopyInviteUrl,
           onReissueInvite: handleReissueInvite,
@@ -285,57 +287,57 @@ export const EditorWorkspace = memo(function EditorWorkspace(props: EditorWorksp
         <DmTransferOfferBanner campaignId={props.selectedCampaignId as UUID} />
       )}
       <EditorView
-      campaign={props.selectedCampaign}
-      role={props.membershipRole}
-      themeMode={props.themeMode}
-      apiUrl={props.apiUrl}
-      authToken={props.token}
-      currentSessionId={props.currentSessionId}
-      currentSessionState={props.currentSessionState}
-      currentUserId={props.userId}
-      partyPresenceRefreshVersion={props.partyPresenceRefreshVersion}
-      fetchWithAuthGuard={props.fetchWithAuthGuard}
-      connectionStatus={props.connectionStatus}
-      sessionCount={props.settingsCampaignSessionsCount}
-      totalSessionDurationMs={props.settingsCampaignTotalDurationMs}
-      settingsCampaignSessions={props.settingsCampaignSessions}
-      settingsReferenceSessionId={props.settingsReferenceSessionId}
-      canEditCampaignInfo={Boolean(
-        props.selectedCampaign && props.selectedCampaign.currentDmId === props.userId
-      )}
-      isLaunchDisabled={props.isLaunchDisabled}
-      launchDisabledReason={props.launchDisabledReason}
-      showInviteWidget={Boolean(
-        props.selectedCampaign && props.selectedCampaign.currentDmId === props.userId
-      )}
-      joinUrl={
-        props.settingsData?.inviteCode
-          ? `${window.location.origin}/join/${encodeURIComponent(props.settingsData.inviteCode)}`
-          : props.selectedCampaign?.inviteCode
-            ? `${window.location.origin}/join/${encodeURIComponent(props.selectedCampaign.inviteCode)}`
+        campaign={props.selectedCampaign}
+        role={props.membershipRole}
+        themeMode={props.themeMode}
+        apiUrl={props.apiUrl}
+        authToken={props.token}
+        currentSessionId={props.currentSessionId}
+        currentSessionState={props.currentSessionState}
+        currentUserId={props.userId}
+        partyPresenceRefreshVersion={props.partyPresenceRefreshVersion}
+        fetchWithAuthGuard={props.fetchWithAuthGuard}
+        connectionStatus={props.connectionStatus}
+        sessionCount={props.settingsCampaignSessionsCount}
+        totalSessionDurationMs={props.settingsCampaignTotalDurationMs}
+        settingsCampaignSessions={props.settingsCampaignSessions}
+        settingsReferenceSessionId={props.settingsReferenceSessionId}
+        canEditCampaignInfo={Boolean(
+          props.selectedCampaign && props.selectedCampaign.currentDmId === props.userId
+        )}
+        isLaunchDisabled={props.isLaunchDisabled}
+        launchDisabledReason={props.launchDisabledReason}
+        showInviteWidget={Boolean(
+          props.selectedCampaign && props.selectedCampaign.currentDmId === props.userId
+        )}
+        joinUrl={
+          props.settingsData?.inviteCode
+            ? `${window.location.origin}/join/${encodeURIComponent(props.settingsData.inviteCode)}`
+            : props.selectedCampaign?.inviteCode
+              ? `${window.location.origin}/join/${encodeURIComponent(props.selectedCampaign.inviteCode)}`
+              : ''
+        }
+        watchUrl={
+          props.settingsData?.spectatorInviteCode || props.selectedCampaign?.spectatorInviteCode
+            ? `${window.location.origin}/watch/${encodeURIComponent(props.settingsData?.spectatorInviteCode || props.selectedCampaign?.spectatorInviteCode || '')}`
             : ''
-      }
-      watchUrl={
-        props.settingsData?.spectatorInviteCode || props.selectedCampaign?.spectatorInviteCode
-          ? `${window.location.origin}/watch/${encodeURIComponent(props.settingsData?.spectatorInviteCode || props.selectedCampaign?.spectatorInviteCode || '')}`
-          : ''
-      }
-      spectatorsEnabled={
-        props.settingsData
-          ? props.settingsData.spectatorPolicy !== 'NONE'
-          : Boolean(props.selectedCampaign?.spectatorsEnabled)
-      }
-      isInviteReissuing={props.isInviteReissuing}
-      settingsPanel={settingsPanel}
-      onBackToLobby={props.onBackToLobby}
-      onToggleTheme={props.onToggleTheme}
-      onOpenUserSettings={props.onOpenUserSettings}
-      onLaunch={props.onLaunch}
-      onCopyInviteUrl={props.onCopyInviteUrl}
-      onReissueInvite={props.onReissueInvite}
-      onSaveCampaignInfo={props.onSaveCampaignInfo}
-      onSettingsReferenceSessionChange={props.onSettingsReferenceSessionChange}
-    />
+        }
+        spectatorsEnabled={
+          props.settingsData
+            ? props.settingsData.spectatorPolicy !== 'NONE'
+            : Boolean(props.selectedCampaign?.spectatorsEnabled)
+        }
+        isInviteReissuing={props.isInviteReissuing}
+        settingsPanel={settingsPanel}
+        onBackToLobby={props.onBackToLobby}
+        onToggleTheme={props.onToggleTheme}
+        onOpenUserSettings={props.onOpenUserSettings}
+        onLaunch={props.onLaunch}
+        onCopyInviteUrl={props.onCopyInviteUrl}
+        onReissueInvite={props.onReissueInvite}
+        onSaveCampaignInfo={props.onSaveCampaignInfo}
+        onSettingsReferenceSessionChange={props.onSettingsReferenceSessionChange}
+      />
     </>
   )
 })

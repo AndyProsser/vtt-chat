@@ -17,8 +17,8 @@ import {
   MIN_DEV_MOCK_PLAYERS,
 } from '@/constants/dev-mock.constants'
 import { logger } from '@/utils/logger'
-import { Prisma } from '@prisma/client'
-import { PresenceState, Role, RoomType } from '@shared'
+import { Prisma, type SessionState as DbSessionState } from '@prisma/client'
+import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 
 const prisma = getPrismaClient()
@@ -338,9 +338,10 @@ function buildStatBlock(level: number): Prisma.InputJsonValue {
   const dexMod = Math.floor((dex - 10) / 2)
   const wis = 8 + Math.floor(Math.random() * 10)
   const wisMod = Math.floor((wis - 10) / 2)
-  const activeCondition = Math.random() < 0.25
-    ? [MOCK_CONDITIONS[Math.floor(Math.random() * MOCK_CONDITIONS.length)]]
-    : []
+  const activeCondition =
+    Math.random() < 0.25
+      ? [MOCK_CONDITIONS[Math.floor(Math.random() * MOCK_CONDITIONS.length)]]
+      : []
   return {
     level,
     proficiencyBonus,
@@ -467,7 +468,7 @@ async function ensureCampaignCharacter(params: {
 
 function pickTargetRoom(
   rooms: Array<{ id: UUID; name: string; type: RoomType }>,
-  sessionState?: 'IDLE' | 'ACTIVE' | 'PAUSED' | 'COOLDOWN' | 'ENDED' | 'CLEANUP'
+  sessionState?: DbSessionState
 ) {
   const main = rooms.find((room) => room.type === RoomType.MAIN)
   const green = rooms.find((room) => {
@@ -475,7 +476,11 @@ function pickTargetRoom(
     return normalized === 'green room' || normalized === 'green-room'
   })
 
-  if (sessionState === 'ACTIVE' || sessionState === 'PAUSED' || sessionState === 'COOLDOWN') {
+  if (
+    sessionState === SessionState.ACTIVE ||
+    sessionState === SessionState.PAUSED ||
+    sessionState === SessionState.COOLDOWN
+  ) {
     return main || green
   }
 

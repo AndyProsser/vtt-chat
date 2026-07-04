@@ -1261,8 +1261,7 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
   }
 
   // name is optional for partial updates (e.g. schedule-only); fall back to existing value
-  const effectiveName =
-    typeof name === 'string' && name.trim() ? name.trim() : campaign.name
+  const effectiveName = typeof name === 'string' && name.trim() ? name.trim() : campaign.name
 
   // Optional boolean fields — fall back to existing campaign values if not provided
   const effectiveDiscoverable =
@@ -1332,7 +1331,11 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
 
   const effectiveExtensionPartyInventorySyncAccess =
     extensionPartyInventorySyncAccess ?? campaign.extensionPartyInventorySyncAccess ?? 'DM_ONLY'
-  if (!['DISABLED', 'DM_ONLY', 'ALL_PLAYERS'].includes(String(effectiveExtensionPartyInventorySyncAccess))) {
+  if (
+    !['DISABLED', 'DM_ONLY', 'ALL_PLAYERS'].includes(
+      String(effectiveExtensionPartyInventorySyncAccess)
+    )
+  ) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: 'extensionPartyInventorySyncAccess must be DISABLED, DM_ONLY, or ALL_PLAYERS',
@@ -1342,7 +1345,9 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
 
   const effectiveExtensionSyncConflictResolution =
     extensionSyncConflictResolution ?? campaign.extensionSyncConflictResolution ?? 'OVERWRITE'
-  if (!['OVERWRITE', 'IGNORE', 'PROMPT'].includes(String(effectiveExtensionSyncConflictResolution))) {
+  if (
+    !['OVERWRITE', 'IGNORE', 'PROMPT'].includes(String(effectiveExtensionSyncConflictResolution))
+  ) {
     return res.status(400).json({
       code: ErrorCode.INVALID_INPUT,
       message: 'extensionSyncConflictResolution must be OVERWRITE, IGNORE, or PROMPT',
@@ -1645,11 +1650,17 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
   const effectiveDndRuleset = dndRuleset === '2014' ? '2014' : '2024'
 
   const effectiveAllowPlayerGive =
-    typeof allowPlayerGive === 'boolean' ? allowPlayerGive : ((campaign as any).allowPlayerGive ?? true)
+    typeof allowPlayerGive === 'boolean'
+      ? allowPlayerGive
+      : ((campaign as any).allowPlayerGive ?? true)
   const effectiveAllowPlayerTake =
-    typeof allowPlayerTake === 'boolean' ? allowPlayerTake : ((campaign as any).allowPlayerTake ?? true)
+    typeof allowPlayerTake === 'boolean'
+      ? allowPlayerTake
+      : ((campaign as any).allowPlayerTake ?? true)
   const effectiveAllowPlayerLoot =
-    typeof allowPlayerLoot === 'boolean' ? allowPlayerLoot : ((campaign as any).allowPlayerLoot ?? false)
+    typeof allowPlayerLoot === 'boolean'
+      ? allowPlayerLoot
+      : ((campaign as any).allowPlayerLoot ?? false)
 
   const updated = await prisma.campaign.update({
     where: { id: campaignId as UUID },
@@ -1730,8 +1741,10 @@ router.patch('/:campaignId/settings', requireAuth, async (req: Request, res: Res
   // Broadcast schedule change to all campaign members when the schedule was touched
   if (scheduleUpdateData !== null) {
     const schedLabel =
-      updated.sessionScheduleType && updated.sessionScheduleDay != null &&
-      updated.sessionScheduleHour != null && updated.sessionScheduleMinute != null &&
+      updated.sessionScheduleType &&
+      updated.sessionScheduleDay != null &&
+      updated.sessionScheduleHour != null &&
+      updated.sessionScheduleMinute != null &&
       updated.sessionScheduleTz
         ? formatScheduleLabel({
             type: updated.sessionScheduleType as SessionScheduleType,
@@ -1780,16 +1793,20 @@ router.put('/:campaignId/next-session-date', requireAuth, async (req: Request, r
   }
 
   if (typeof date !== 'string' || !date.trim()) {
-    return res
-      .status(400)
-      .json({ code: ErrorCode.INVALID_INPUT, message: 'date must be an ISO 8601 string', field: 'date' })
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'date must be an ISO 8601 string',
+      field: 'date',
+    })
   }
 
   const parsedDate = new Date(date)
   if (isNaN(parsedDate.getTime())) {
-    return res
-      .status(400)
-      .json({ code: ErrorCode.INVALID_INPUT, message: 'date is not a valid ISO 8601 string', field: 'date' })
+    return res.status(400).json({
+      code: ErrorCode.INVALID_INPUT,
+      message: 'date is not a valid ISO 8601 string',
+      field: 'date',
+    })
   }
 
   const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
@@ -1797,9 +1814,10 @@ router.put('/:campaignId/next-session-date', requireAuth, async (req: Request, r
     return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
   }
   if (campaign.currentDmId !== (user.userId as UUID)) {
-    return res
-      .status(403)
-      .json({ code: ErrorCode.FORBIDDEN, message: 'Only the campaign DM can override the next session date' })
+    return res.status(403).json({
+      code: ErrorCode.FORBIDDEN,
+      message: 'Only the campaign DM can override the next session date',
+    })
   }
 
   const updated = await prisma.campaign.update({
@@ -1818,8 +1836,10 @@ router.put('/:campaignId/next-session-date', requireAuth, async (req: Request, r
   })
 
   const schedLabel =
-    updated.sessionScheduleType && updated.sessionScheduleDay != null &&
-    updated.sessionScheduleHour != null && updated.sessionScheduleMinute != null &&
+    updated.sessionScheduleType &&
+    updated.sessionScheduleDay != null &&
+    updated.sessionScheduleHour != null &&
+    updated.sessionScheduleMinute != null &&
     updated.sessionScheduleTz
       ? formatScheduleLabel({
           type: updated.sessionScheduleType as SessionScheduleType,
@@ -1857,73 +1877,78 @@ router.put('/:campaignId/next-session-date', requireAuth, async (req: Request, r
 // ---------------------------------------------------------------------------
 // DELETE /:campaignId/next-session-date — Revert manual override; recalculates nextSessionDate from the schedule rule
 // ---------------------------------------------------------------------------
-router.delete('/:campaignId/next-session-date', requireAuth, async (req: Request, res: Response) => {
-  const user = (req as any).user
-  const { campaignId } = req.params
+router.delete(
+  '/:campaignId/next-session-date',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const user = (req as any).user
+    const { campaignId } = req.params
 
-  if (!isValidUUID(campaignId)) {
-    return res
-      .status(400)
-      .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
-  }
-
-  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
-  if (!campaign) {
-    return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
-  }
-  if (campaign.currentDmId !== (user.userId as UUID)) {
-    return res
-      .status(403)
-      .json({ code: ErrorCode.FORBIDDEN, message: 'Only the campaign DM can revert the date override' })
-  }
-
-  // Recalculate from schedule if one exists; otherwise clear nextSessionDate entirely
-  let nextDate: Date | null = null
-  let schedLabel: string | null = null
-
-  if (
-    campaign.sessionScheduleType &&
-    campaign.sessionScheduleDay != null &&
-    campaign.sessionScheduleHour != null &&
-    campaign.sessionScheduleMinute != null &&
-    campaign.sessionScheduleTz
-  ) {
-    const schedule: SessionSchedule = {
-      type: campaign.sessionScheduleType as SessionScheduleType,
-      dayOfWeek: campaign.sessionScheduleDay,
-      nth: campaign.sessionScheduleNth ?? undefined,
-      hour: campaign.sessionScheduleHour,
-      minute: campaign.sessionScheduleMinute,
-      timezone: campaign.sessionScheduleTz,
+    if (!isValidUUID(campaignId)) {
+      return res
+        .status(400)
+        .json({ code: ErrorCode.INVALID_INPUT, message: 'Invalid campaignId', field: 'campaignId' })
     }
-    nextDate = calculateNextOccurrence(schedule, new Date())
-    schedLabel = formatScheduleLabel(schedule)
+
+    const campaign = await prisma.campaign.findUnique({ where: { id: campaignId as UUID } })
+    if (!campaign) {
+      return res.status(404).json({ code: ErrorCode.NOT_FOUND, message: 'Campaign not found' })
+    }
+    if (campaign.currentDmId !== (user.userId as UUID)) {
+      return res.status(403).json({
+        code: ErrorCode.FORBIDDEN,
+        message: 'Only the campaign DM can revert the date override',
+      })
+    }
+
+    // Recalculate from schedule if one exists; otherwise clear nextSessionDate entirely
+    let nextDate: Date | null = null
+    let schedLabel: string | null = null
+
+    if (
+      campaign.sessionScheduleType &&
+      campaign.sessionScheduleDay != null &&
+      campaign.sessionScheduleHour != null &&
+      campaign.sessionScheduleMinute != null &&
+      campaign.sessionScheduleTz
+    ) {
+      const schedule: SessionSchedule = {
+        type: campaign.sessionScheduleType as SessionScheduleType,
+        dayOfWeek: campaign.sessionScheduleDay,
+        nth: campaign.sessionScheduleNth ?? undefined,
+        hour: campaign.sessionScheduleHour,
+        minute: campaign.sessionScheduleMinute,
+        timezone: campaign.sessionScheduleTz,
+      }
+      nextDate = calculateNextOccurrence(schedule, new Date())
+      schedLabel = formatScheduleLabel(schedule)
+    }
+
+    await prisma.campaign.update({
+      where: { id: campaignId as UUID },
+      data: { nextSessionDate: nextDate, nextSessionIsManual: false },
+    })
+
+    await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
+      id: randomUUID() as UUID,
+      type: 'CAMPAIGN:SCHEDULE_UPDATED',
+      version: 1,
+      userId: user.userId as UUID,
+      userRole: Role.DM,
+      sessionId: null as unknown as UUID,
+      roomId: null,
+      timestamp: Date.now(),
+      payload: {
+        campaignId: campaignId as UUID,
+        nextSessionDate: nextDate?.toISOString() ?? null,
+        scheduleLabel: schedLabel,
+        nextSessionIsManual: false,
+      },
+    })
+
+    return res.status(204).send()
   }
-
-  await prisma.campaign.update({
-    where: { id: campaignId as UUID },
-    data: { nextSessionDate: nextDate, nextSessionIsManual: false },
-  })
-
-  await eventBroadcaster.broadcastToCampaignMembers(campaignId as UUID, {
-    id: randomUUID() as UUID,
-    type: 'CAMPAIGN:SCHEDULE_UPDATED',
-    version: 1,
-    userId: user.userId as UUID,
-    userRole: Role.DM,
-    sessionId: null as unknown as UUID,
-    roomId: null,
-    timestamp: Date.now(),
-    payload: {
-      campaignId: campaignId as UUID,
-      nextSessionDate: nextDate?.toISOString() ?? null,
-      scheduleLabel: schedLabel,
-      nextSessionIsManual: false,
-    },
-  })
-
-  return res.status(204).send()
-})
+)
 
 // ---------------------------------------------------------------------------
 // DELETE /:campaignId/schedule — DM clears the entire recurrence schedule
@@ -2901,7 +2926,7 @@ router.post('/:campaignId/sessions/start', requireAuth, async (req: Request, res
   }
 
   if (
-    campaign.latestSessionState === 'COOLDOWN' &&
+    campaign.latestSessionState === SessionState.COOLDOWN &&
     campaign.postSessionChatEnabled &&
     campaign.latestSessionEndedAt
   ) {
@@ -2949,8 +2974,12 @@ router.get('/:campaignId/sessions', requireAuth, async (req: Request, res: Respo
   const sessions = await listSessionsByCampaign(campaignId as UUID)
   let effectiveSessions = sessions
 
-  const hasLiveSession = effectiveSessions.some((session) =>
-    ['IDLE', 'ACTIVE', 'PAUSED', 'COOLDOWN'].includes(session.state)
+  const hasLiveSession = effectiveSessions.some(
+    (session) =>
+      session.state === SessionState.IDLE ||
+      session.state === SessionState.ACTIVE ||
+      session.state === SessionState.PAUSED ||
+      session.state === SessionState.COOLDOWN
   )
   if (
     effectiveSessions.length > 0 &&
@@ -2978,11 +3007,11 @@ router.get('/:campaignId/sessions', requireAuth, async (req: Request, res: Respo
   const sessionsWithCooldownExtensionCount = await Promise.all(
     effectiveSessions.map(async (session) => {
       const cooldownExpiresAt =
-        session.state === 'COOLDOWN' && Number.isFinite(Number(session.endedAt))
+        session.state === SessionState.COOLDOWN && Number.isFinite(Number(session.endedAt))
           ? Number(session.endedAt) + cooldownDurationMs
           : undefined
 
-      if (session.state !== 'COOLDOWN') {
+      if (session.state !== SessionState.COOLDOWN) {
         return {
           ...session,
           cooldownExpiresAt,

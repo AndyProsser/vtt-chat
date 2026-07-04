@@ -1,4 +1,4 @@
-import { Role, type UUID } from '@shared'
+import { Role, SessionState, type UUID } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 import { getSession, getSessionUsers } from '@/services/session/core.service'
 
@@ -87,7 +87,8 @@ export async function resolveEffectiveSessionRole(params: {
 
     // ENDED/CLEANUP sessions are historical records — campaign membership is sufficient.
     // Session membership is only required for live routing/presence during active sessions.
-    const isArchivedSession = session.state === 'ENDED' || session.state === 'CLEANUP'
+    const isArchivedSession =
+      session.state === SessionState.ENDED || session.state === SessionState.CLEANUP
     if (isArchivedSession) {
       const isDm = session.dmId === params.userId || campaignRole === Role.DM
       return { ok: true, session, role: isDm ? Role.DM : campaignRole }
