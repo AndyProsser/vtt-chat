@@ -26,15 +26,33 @@
 }
 
 /* Per-type accent colors */
-.dmdx-block--npc       { --dmdx-accent: #818cf8; } /* indigo */
-.dmdx-block--monster   { --dmdx-accent: #f87171; } /* red */
-.dmdx-block--encounter { --dmdx-accent: #fb923c; } /* orange */
-.dmdx-block--loot      { --dmdx-accent: #facc15; } /* gold */
-.dmdx-block--spell     { --dmdx-accent: #a78bfa; } /* violet */
-.dmdx-block--session   { --dmdx-accent: #34d399; } /* emerald */
-.dmdx-block--roll      { --dmdx-accent: #f472b6; } /* pink */
-.dmdx-block--map       { --dmdx-accent: #38bdf8; } /* sky */
-.dmdx-block--timeline  { --dmdx-accent: #a3e635; } /* lime */
+.dmdx-block--npc {
+  --dmdx-accent: #818cf8;
+} /* indigo */
+.dmdx-block--monster {
+  --dmdx-accent: #f87171;
+} /* red */
+.dmdx-block--encounter {
+  --dmdx-accent: #fb923c;
+} /* orange */
+.dmdx-block--loot {
+  --dmdx-accent: #facc15;
+} /* gold */
+.dmdx-block--spell {
+  --dmdx-accent: #a78bfa;
+} /* violet */
+.dmdx-block--session {
+  --dmdx-accent: #34d399;
+} /* emerald */
+.dmdx-block--roll {
+  --dmdx-accent: #f472b6;
+} /* pink */
+.dmdx-block--map {
+  --dmdx-accent: #38bdf8;
+} /* sky */
+.dmdx-block--timeline {
+  --dmdx-accent: #a3e635;
+} /* lime */
 
 /* ── Header banner ───────────────────────────────────────── */
 /* Negative horizontal margins break the header out to the card
@@ -283,11 +301,21 @@
   font-weight: 600;
 }
 
-.dmdx-encounter__difficulty--trivial  { color: var(--color-text-secondary); }
-.dmdx-encounter__difficulty--easy     { color: #34d399; }
-.dmdx-encounter__difficulty--medium   { color: #facc15; }
-.dmdx-encounter__difficulty--hard     { color: #fb923c; }
-.dmdx-encounter__difficulty--deadly   { color: #f87171; }
+.dmdx-encounter__difficulty--trivial {
+  color: var(--color-text-secondary);
+}
+.dmdx-encounter__difficulty--easy {
+  color: #34d399;
+}
+.dmdx-encounter__difficulty--medium {
+  color: #facc15;
+}
+.dmdx-encounter__difficulty--hard {
+  color: #fb923c;
+}
+.dmdx-encounter__difficulty--deadly {
+  color: #f87171;
+}
 
 /* ── Loot ────────────────────────────────────────────── */
 

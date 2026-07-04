@@ -13,7 +13,10 @@ import {
   getLateJoinPolicyLabel,
   LATE_JOIN_POLICY_OPTIONS,
 } from '@/constants/sessionUi.constants'
-import type { ExtensionPartyInventorySyncAccess, ExtensionSyncConflictResolution } from '@/types/sessionUi'
+import type {
+  ExtensionPartyInventorySyncAccess,
+  ExtensionSyncConflictResolution,
+} from '@/types/sessionUi'
 import type { ModalsProps } from '@/types/modals'
 import { Icon } from '@/components/ui/Icon'
 
@@ -431,11 +434,7 @@ export function CampaignSettingsHomeContent(props: CampaignSettingsHomeContentPr
             <label className="session-label" htmlFor="campaign-settings-party-inventory-access">
               Party inventory access
             </label>
-            <div
-              className="session-toggle-group"
-              role="group"
-              aria-label="Party inventory access"
-            >
+            <div className="session-toggle-group" role="group" aria-label="Party inventory access">
               {EXTENSION_PARTY_ACCESS_OPTIONS.map((access: ExtensionPartyInventorySyncAccess) => (
                 <button
                   key={access}

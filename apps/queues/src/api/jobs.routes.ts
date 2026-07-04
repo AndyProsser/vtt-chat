@@ -4,7 +4,8 @@ import type { QueueRegistry } from '@/queues/index'
 import { config } from '@/config'
 import { logger } from '@/logger'
 
-type JobState = 'active' | 'waiting' | 'waiting-children' | 'delayed' | 'completed' | 'failed' | 'paused'
+type JobState =
+  'active' | 'waiting' | 'waiting-children' | 'delayed' | 'completed' | 'failed' | 'paused'
 
 function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   if (!config.adminSecret) {
@@ -47,7 +48,14 @@ export function createJobsRouter(queues: QueueRegistry): Router {
           recording: queues.recording,
           dlq: queues.dlq,
         }).map(async ([name, q]) => {
-          const counts = await q.getJobCounts('active', 'waiting', 'delayed', 'completed', 'failed', 'paused')
+          const counts = await q.getJobCounts(
+            'active',
+            'waiting',
+            'delayed',
+            'completed',
+            'failed',
+            'paused'
+          )
           return { name, counts }
         })
       )
@@ -61,7 +69,10 @@ export function createJobsRouter(queues: QueueRegistry): Router {
   /** GET /queues/:queue/jobs?state=failed&start=0&end=24 */
   router.get('/:queue/jobs', async (req, res) => {
     const queue = getQueue(queues, req.params.queue)
-    if (!queue) { res.status(404).json({ error: 'Queue not found' }); return }
+    if (!queue) {
+      res.status(404).json({ error: 'Queue not found' })
+      return
+    }
 
     const state = (req.query['state'] as JobState | undefined) ?? 'failed'
     const start = parseInt((req.query['start'] as string | undefined) ?? '0', 10)
@@ -92,16 +103,26 @@ export function createJobsRouter(queues: QueueRegistry): Router {
   /** POST /queues/:queue/jobs/:id/retry */
   router.post('/:queue/jobs/:id/retry', async (req, res) => {
     const queue = getQueue(queues, req.params.queue)
-    if (!queue) { res.status(404).json({ error: 'Queue not found' }); return }
+    if (!queue) {
+      res.status(404).json({ error: 'Queue not found' })
+      return
+    }
 
     try {
       const job = await queue.getJob(req.params.id)
-      if (!job) { res.status(404).json({ error: 'Job not found' }); return }
+      if (!job) {
+        res.status(404).json({ error: 'Job not found' })
+        return
+      }
       await job.retry()
       logger.info('api', 'Job retried', { queue: req.params.queue, jobId: req.params.id })
       res.json({ ok: true })
     } catch (err) {
-      logger.error('api', 'Failed to retry job', { queue: req.params.queue, jobId: req.params.id, error: String(err) })
+      logger.error('api', 'Failed to retry job', {
+        queue: req.params.queue,
+        jobId: req.params.id,
+        error: String(err),
+      })
       res.status(500).json({ error: 'Internal error' })
     }
   })
@@ -109,16 +130,26 @@ export function createJobsRouter(queues: QueueRegistry): Router {
   /** DELETE /queues/:queue/jobs/:id */
   router.delete('/:queue/jobs/:id', async (req, res) => {
     const queue = getQueue(queues, req.params.queue)
-    if (!queue) { res.status(404).json({ error: 'Queue not found' }); return }
+    if (!queue) {
+      res.status(404).json({ error: 'Queue not found' })
+      return
+    }
 
     try {
       const job = await queue.getJob(req.params.id)
-      if (!job) { res.status(404).json({ error: 'Job not found' }); return }
+      if (!job) {
+        res.status(404).json({ error: 'Job not found' })
+        return
+      }
       await job.remove()
       logger.info('api', 'Job removed', { queue: req.params.queue, jobId: req.params.id })
       res.json({ ok: true })
     } catch (err) {
-      logger.error('api', 'Failed to remove job', { queue: req.params.queue, jobId: req.params.id, error: String(err) })
+      logger.error('api', 'Failed to remove job', {
+        queue: req.params.queue,
+        jobId: req.params.id,
+        error: String(err),
+      })
       res.status(500).json({ error: 'Internal error' })
     }
   })
@@ -126,14 +157,20 @@ export function createJobsRouter(queues: QueueRegistry): Router {
   /** POST /queues/:queue/obliterate — clear ALL jobs from a queue (danger). */
   router.post('/:queue/obliterate', async (req, res) => {
     const queue = getQueue(queues, req.params.queue)
-    if (!queue) { res.status(404).json({ error: 'Queue not found' }); return }
+    if (!queue) {
+      res.status(404).json({ error: 'Queue not found' })
+      return
+    }
 
     try {
       await queue.obliterate({ force: true })
       logger.warn('api', 'Queue obliterated', { queue: req.params.queue })
       res.json({ ok: true })
     } catch (err) {
-      logger.error('api', 'Failed to obliterate queue', { queue: req.params.queue, error: String(err) })
+      logger.error('api', 'Failed to obliterate queue', {
+        queue: req.params.queue,
+        error: String(err),
+      })
       res.status(500).json({ error: 'Internal error' })
     }
   })

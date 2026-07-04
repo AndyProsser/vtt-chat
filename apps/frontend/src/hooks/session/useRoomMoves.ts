@@ -207,8 +207,7 @@ export function useRoomMoves({
 
       event.preventDefault()
       const droppedUserId = (event.dataTransfer.getData('text/plain') || draggedUserId || '') as
-        | UUID
-        | ''
+        UUID | ''
 
       if (droppedUserId) {
         void handleMoveParticipant(droppedUserId, roomId)

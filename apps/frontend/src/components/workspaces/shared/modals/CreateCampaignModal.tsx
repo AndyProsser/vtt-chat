@@ -15,7 +15,9 @@ type CreateCampaignModalProps = Pick<
   | 'conflictCampaign'
 >
 
-export const CreateCampaignModal = memo(function CreateCampaignModal(props: CreateCampaignModalProps) {
+export const CreateCampaignModal = memo(function CreateCampaignModal(
+  props: CreateCampaignModalProps
+) {
   const [importedBundle, setImportedBundle] = useState<CampaignExportBundle | null>(null)
   const [importConflictMode, setImportConflictMode] = useState<'replace' | 'duplicate'>('replace')
 

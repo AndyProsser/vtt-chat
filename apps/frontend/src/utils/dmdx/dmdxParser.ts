@@ -13,15 +13,7 @@
  */
 
 export type DmdxBlockType =
-  | 'npc'
-  | 'monster'
-  | 'encounter'
-  | 'loot'
-  | 'spell'
-  | 'session'
-  | 'roll'
-  | 'map'
-  | 'timeline'
+  'npc' | 'monster' | 'encounter' | 'loot' | 'spell' | 'session' | 'roll' | 'map' | 'timeline'
 
 export const DMDX_BLOCK_TYPES = new Set<string>([
   'npc',

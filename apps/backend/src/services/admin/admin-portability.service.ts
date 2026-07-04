@@ -615,9 +615,7 @@ export async function importCampaignBundle(
       await tx.character.createMany({
         data: bundle.characters.map((character) => ({
           campaignId: campaign.id,
-          userId: character.userId
-            ? userIdMap.get(character.userId) || actorUserId
-            : null,
+          userId: character.userId ? userIdMap.get(character.userId) || actorUserId : null,
           name: character.name,
           status: character.status as any,
           race: character.race,

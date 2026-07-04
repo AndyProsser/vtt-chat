@@ -124,10 +124,8 @@ export function useCampaignSettings(): [UseCampaignSettingsState, UseCampaignSet
     useState(true)
   const [settingsExtensionCurrencySyncEnabled, setSettingsExtensionCurrencySyncEnabled] =
     useState(true)
-  const [
-    settingsExtensionPartyInventorySyncAccess,
-    setSettingsExtensionPartyInventorySyncAccess,
-  ] = useState<ExtensionPartyInventorySyncAccess>('DM_ONLY')
+  const [settingsExtensionPartyInventorySyncAccess, setSettingsExtensionPartyInventorySyncAccess] =
+    useState<ExtensionPartyInventorySyncAccess>('DM_ONLY')
   const [settingsExtensionSyncConflictResolution, setSettingsExtensionSyncConflictResolution] =
     useState<ExtensionSyncConflictResolution>('OVERWRITE')
   const [settingsPostSessionChatEnabled, setSettingsPostSessionChatEnabled] = useState(true)

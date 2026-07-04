@@ -111,7 +111,13 @@ describe('POST /api/chat/command', () => {
       isOffTheRecord: false,
       visibleTo: [VALID_USER_ID, VALID_DM_ID],
       metadata: {
-        rollResult: { kind: 'ROLL_RESULT', expression: '1d20', rolls: [15], modifier: 0, total: 15 },
+        rollResult: {
+          kind: 'ROLL_RESULT',
+          expression: '1d20',
+          rolls: [15],
+          modifier: 0,
+          total: 15,
+        },
       },
       createdAt: Date.now(),
     })
@@ -178,15 +184,12 @@ describe('POST /api/chat/command', () => {
   })
 
   it('returns 400 for unknown command', async () => {
-    const res = await request(app)
-      .post('/')
-      .set(authHeader())
-      .send({
-        command: 'unknownCommand',
-        args: '',
-        sessionId: VALID_SESSION_ID,
-        roomId: VALID_ROOM_ID,
-      })
+    const res = await request(app).post('/').set(authHeader()).send({
+      command: 'unknownCommand',
+      args: '',
+      sessionId: VALID_SESSION_ID,
+      roomId: VALID_ROOM_ID,
+    })
     expect(res.status).toBe(400)
     expect(res.body.message).toMatch(/unknown command/i)
   })
@@ -202,15 +205,12 @@ describe('POST /api/chat/command', () => {
     })
 
     it('returns 400 for invalid dice expression', async () => {
-      const res = await request(app)
-        .post('/')
-        .set(authHeader())
-        .send({
-          command: 'roll',
-          args: 'notdice',
-          sessionId: VALID_SESSION_ID,
-          roomId: VALID_ROOM_ID,
-        })
+      const res = await request(app).post('/').set(authHeader()).send({
+        command: 'roll',
+        args: 'notdice',
+        sessionId: VALID_SESSION_ID,
+        roomId: VALID_ROOM_ID,
+      })
       expect(res.status).toBe(400)
       expect(res.body.message).toMatch(/invalid dice expression/i)
     })
@@ -226,15 +226,12 @@ describe('POST /api/chat/command', () => {
     })
 
     it('accepts /roll with leading slash', async () => {
-      const res = await request(app)
-        .post('/')
-        .set(authHeader())
-        .send({
-          command: '/roll',
-          args: '2d6+3',
-          sessionId: VALID_SESSION_ID,
-          roomId: VALID_ROOM_ID,
-        })
+      const res = await request(app).post('/').set(authHeader()).send({
+        command: '/roll',
+        args: '2d6+3',
+        sessionId: VALID_SESSION_ID,
+        roomId: VALID_ROOM_ID,
+      })
       expect(res.status).toBe(201)
     })
 

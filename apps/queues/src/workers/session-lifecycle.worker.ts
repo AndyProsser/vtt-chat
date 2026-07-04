@@ -58,11 +58,15 @@ export function startSessionLifecycleWorker(connection: IORedis, dlq: Queue): Wo
 
   worker.on('failed', (job, err) => {
     const exhausted = (job?.attemptsMade ?? 0) >= config.retry.maxAttempts
-    logger.warn('session-lifecycle-worker', exhausted ? 'Job moved to DLQ' : 'Job failed — will retry', {
-      jobId: job?.id,
-      attemptsMade: job?.attemptsMade,
-      error: err.message,
-    })
+    logger.warn(
+      'session-lifecycle-worker',
+      exhausted ? 'Job moved to DLQ' : 'Job failed — will retry',
+      {
+        jobId: job?.id,
+        attemptsMade: job?.attemptsMade,
+        error: err.message,
+      }
+    )
 
     if (exhausted && job) {
       const dlqPayload: DlqEntryPayload = {

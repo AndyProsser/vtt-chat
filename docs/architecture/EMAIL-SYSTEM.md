@@ -364,15 +364,15 @@ On each fire:
 
 Shared handout and session summary emails may contain DMDX-flavoured markdown from notes or journal entries. The `EmailMarkdown` component in the base template handles a safe subset:
 
-| Markdown element | Email rendering |
-| ---------------- | --------------- |
-| `**bold**`       | `<strong>` |
-| `_italic_`       | `<em>` |
-| `# Heading`      | Inline bold, larger font-size (no `<h1>` — poor email support) |
-| `- list item`    | `•` bullet with table layout |
-| `` `code` ``     | Monospace span, background tint |
+| Markdown element | Email rendering                                                           |
+| ---------------- | ------------------------------------------------------------------------- |
+| `**bold**`       | `<strong>`                                                                |
+| `_italic_`       | `<em>`                                                                    |
+| `# Heading`      | Inline bold, larger font-size (no `<h1>` — poor email support)            |
+| `- list item`    | `•` bullet with table layout                                              |
+| `` `code` ``     | Monospace span, background tint                                           |
 | `[text](url)`    | `<a>` with `APP_URL`-origin check (external links rendered as plain text) |
-| DMDX block tags  | Stripped — rendered as their plain-text fallback only |
+| DMDX block tags  | Stripped — rendered as their plain-text fallback only                     |
 
 Images from note attachments are not embedded — the email links to the note in the app instead.
 

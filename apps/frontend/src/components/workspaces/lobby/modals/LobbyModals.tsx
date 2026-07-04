@@ -153,9 +153,7 @@ export const LobbyModals = memo(function LobbyModals(props: LobbyModalsProps) {
         onSettingsExtensionCurrencySyncEnabledChange={
           props.onSettingsExtensionCurrencySyncEnabledChange
         }
-        settingsExtensionPartyInventorySyncAccess={
-          props.settingsExtensionPartyInventorySyncAccess
-        }
+        settingsExtensionPartyInventorySyncAccess={props.settingsExtensionPartyInventorySyncAccess}
         onSettingsExtensionPartyInventorySyncAccessChange={
           props.onSettingsExtensionPartyInventorySyncAccessChange
         }

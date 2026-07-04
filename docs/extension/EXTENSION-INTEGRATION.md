@@ -184,22 +184,22 @@ The extension communicates with the backend via the **background script**.
 
 ### 5a. API Endpoints
 
-| Endpoint                                            | Auth required     | Purpose                                                               |
-| --------------------------------------------------- | ----------------- | --------------------------------------------------------------------- |
-| `GET /api/platform/status`                          | None              | Pre-flight: platform online + activity stats                          |
-| `GET /api/campaigns/invite/:code/validate`          | None              | Pre-flight: invite validity + campaign name (first-time join only)    |
-| `GET /api/campaigns/:campaignId/session-status`     | None              | Session state for popup display; campaignId acts as the access gate   |
-| `POST /api/auth/extension/preflight`                | None              | Pre-flight: existing account check for email                          |
-| `POST /api/auth/extension/guest-login`              | None              | Guest auth: create or resume guest session (issues device credential) |
-| `POST /api/auth/extension/credential/exchange`      | None              | Returning user: exchange device credential for a fresh JWT            |
-| `POST /api/auth/login`                              | None              | Full account auth (if user has password)                              |
-| `POST /api/auth/upgrade`                            | Guest token       | Upgrade guest → full account                                          |
-| `POST /api/campaigns/:campaignId/session/ensure`    | Extension token   | Create IDLE session if none exists; returns existing session if any   |
-| `POST /api/integrations/external/avatar-upload`     | Token             | Upload avatar image; returns hosted `avatarUrl`                       |
-| `POST /api/integrations/external/sync`              | Token             | Push character/campaign updates per sync policy                       |
-| `POST /api/integrations/external/dm-sync`           | DM token          | DM-triggered full sync; provisions party character stubs              |
-| `POST /api/integrations/logs/ingest`                | Token             | External log ingestion (rolls, attacks, etc.)                         |
-| `POST /api/livekit/token`                           | Token             | LiveKit room token                                                    |
+| Endpoint                                         | Auth required   | Purpose                                                               |
+| ------------------------------------------------ | --------------- | --------------------------------------------------------------------- |
+| `GET /api/platform/status`                       | None            | Pre-flight: platform online + activity stats                          |
+| `GET /api/campaigns/invite/:code/validate`       | None            | Pre-flight: invite validity + campaign name (first-time join only)    |
+| `GET /api/campaigns/:campaignId/session-status`  | None            | Session state for popup display; campaignId acts as the access gate   |
+| `POST /api/auth/extension/preflight`             | None            | Pre-flight: existing account check for email                          |
+| `POST /api/auth/extension/guest-login`           | None            | Guest auth: create or resume guest session (issues device credential) |
+| `POST /api/auth/extension/credential/exchange`   | None            | Returning user: exchange device credential for a fresh JWT            |
+| `POST /api/auth/login`                           | None            | Full account auth (if user has password)                              |
+| `POST /api/auth/upgrade`                         | Guest token     | Upgrade guest → full account                                          |
+| `POST /api/campaigns/:campaignId/session/ensure` | Extension token | Create IDLE session if none exists; returns existing session if any   |
+| `POST /api/integrations/external/avatar-upload`  | Token           | Upload avatar image; returns hosted `avatarUrl`                       |
+| `POST /api/integrations/external/sync`           | Token           | Push character/campaign updates per sync policy                       |
+| `POST /api/integrations/external/dm-sync`        | DM token        | DM-triggered full sync; provisions party character stubs              |
+| `POST /api/integrations/logs/ingest`             | Token           | External log ingestion (rolls, attacks, etc.)                         |
+| `POST /api/livekit/token`                        | Token           | LiveKit room token                                                    |
 
 ### Message Flow
 
@@ -240,8 +240,18 @@ Use this format for multiclassed characters, or for any new extension work. The 
     "race": "string",
     "multiclass": true,
     "classes": [
-      { "classExternalID": "1", "className": "Warlock", "classLevel": 4, "subclassName": "Archfey Patron" },
-      { "classExternalID": "2", "className": "Fighter", "classLevel": 3, "subclassName": "Battle Master" }
+      {
+        "classExternalID": "1",
+        "className": "Warlock",
+        "classLevel": 4,
+        "subclassName": "Archfey Patron"
+      },
+      {
+        "classExternalID": "2",
+        "className": "Fighter",
+        "classLevel": 3,
+        "subclassName": "Battle Master"
+      }
     ],
     "avatarUrl": "string (URL returned from avatar-upload, or existing URL)",
     "characterUrl": "string (link back to DDB character sheet)",
@@ -291,7 +301,7 @@ Use this only for existing extension clients that have not yet adopted the `clas
     "level": 5,
     "avatarUrl": "string",
     "characterUrl": "string",
-    "stats": { "..." : "..." },
+    "stats": { "...": "..." },
     "conditions": [],
     "features": []
   }
@@ -490,30 +500,30 @@ Inventory and currency sync is governed by two layers of campaign policy. The ba
 
 The existing `extensionSyncPolicy` field (documented in [GUEST-AUTH.md](GUEST-AUTH.md)) acts as the top-level gate for **all** extension sync — character, inventory, and currency. When `extensionSyncPolicy` is `NONE`, no part of the sync payload is processed regardless of the Layer 2 settings below.
 
-| `extensionSyncPolicy` | Effect |
-| --- | --- |
-| `NONE` | All sync payloads rejected (`SYNC_POLICY_VIOLATION`) |
-| `DM_ONLY` | Only DM sync requests are processed |
-| `DM_AND_PLAYERS` | DM and player sync requests are processed |
+| `extensionSyncPolicy` | Effect                                               |
+| --------------------- | ---------------------------------------------------- |
+| `NONE`                | All sync payloads rejected (`SYNC_POLICY_VIOLATION`) |
+| `DM_ONLY`             | Only DM sync requests are processed                  |
+| `DM_AND_PLAYERS`      | DM and player sync requests are processed            |
 
 #### Layer 2 — Inventory-Specific Controls
 
 When the caller is permitted by Layer 1, four additional campaign settings control inventory and currency sync specifically:
 
-| Field | Type | Default | Description |
-| --- | --- | --- | --- |
-| `extensionInventorySyncEnabled` | `boolean` | `true` | When `false`, all `inventoryUpdate` payloads are rejected even if the caller passes Layer 1. |
-| `extensionCurrencySyncEnabled` | `boolean` | `true` | When `false`, all `currencyUpdate` payloads are rejected. |
-| `extensionPartyInventorySyncAccess` | `'DISABLED' \| 'DM_ONLY' \| 'ALL_PLAYERS'` | `'DM_ONLY'` | Who may write to the shared party inventory and party purse via extension sync. Character inventory is unaffected by this setting. |
-| `extensionSyncConflictResolution` | `'OVERWRITE' \| 'IGNORE' \| 'PROMPT'` | `'OVERWRITE'` | How conflicting incoming values are resolved against the current persisted state. |
+| Field                               | Type                                       | Default       | Description                                                                                                                        |
+| ----------------------------------- | ------------------------------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `extensionInventorySyncEnabled`     | `boolean`                                  | `true`        | When `false`, all `inventoryUpdate` payloads are rejected even if the caller passes Layer 1.                                       |
+| `extensionCurrencySyncEnabled`      | `boolean`                                  | `true`        | When `false`, all `currencyUpdate` payloads are rejected.                                                                          |
+| `extensionPartyInventorySyncAccess` | `'DISABLED' \| 'DM_ONLY' \| 'ALL_PLAYERS'` | `'DM_ONLY'`   | Who may write to the shared party inventory and party purse via extension sync. Character inventory is unaffected by this setting. |
+| `extensionSyncConflictResolution`   | `'OVERWRITE' \| 'IGNORE' \| 'PROMPT'`      | `'OVERWRITE'` | How conflicting incoming values are resolved against the current persisted state.                                                  |
 
 #### `extensionPartyInventorySyncAccess` Values
 
-| Value | Behaviour |
-| --- | --- |
-| `DISABLED` | Extension sync cannot write to party inventory or party purse at all. Party-targeted items/currency in the payload are silently skipped. |
-| `DM_ONLY` | Only sync requests sourced from the DM (`source: 'dm'`) may write to party inventory/currency. Player requests skip party items silently. |
-| `ALL_PLAYERS` | Any campaign member's sync request may write to party inventory/currency. |
+| Value         | Behaviour                                                                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `DISABLED`    | Extension sync cannot write to party inventory or party purse at all. Party-targeted items/currency in the payload are silently skipped.  |
+| `DM_ONLY`     | Only sync requests sourced from the DM (`source: 'dm'`) may write to party inventory/currency. Player requests skip party items silently. |
+| `ALL_PLAYERS` | Any campaign member's sync request may write to party inventory/currency.                                                                 |
 
 Character inventory is always writable by the character's owner (subject to `extensionInventorySyncEnabled`). `extensionPartyInventorySyncAccess` applies only to items and currency with `ownerType: 'PARTY'`.
 
@@ -521,11 +531,11 @@ Character inventory is always writable by the character's owner (subject to `ext
 
 A **conflict** is: an incoming sync value for a record that already exists in the campaign inventory and differs from the persisted value.
 
-| Value | Behaviour |
-| --- | --- |
-| `OVERWRITE` | Incoming value always wins. Matches the historical upsert semantics of the endpoint and treats DDB as the source of truth. |
-| `IGNORE` | If the item (matched by `externalSource` + `externalId`) already exists, the incoming payload for that item is discarded and the existing record is left untouched. Net-new items (no existing record) are created normally. For currency: if the character wallet already has a non-zero balance for any denomination being sent, the entire `currencyUpdate` is discarded. |
-| `PROMPT` | Conflicting changes are held in a pending sync queue for DM review rather than being applied immediately. Non-conflicting items (brand-new items, zero-balance denominations) are applied immediately as normal. |
+| Value       | Behaviour                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OVERWRITE` | Incoming value always wins. Matches the historical upsert semantics of the endpoint and treats DDB as the source of truth.                                                                                                                                                                                                                                                   |
+| `IGNORE`    | If the item (matched by `externalSource` + `externalId`) already exists, the incoming payload for that item is discarded and the existing record is left untouched. Net-new items (no existing record) are created normally. For currency: if the character wallet already has a non-zero balance for any denomination being sent, the entire `currencyUpdate` is discarded. |
+| `PROMPT`    | Conflicting changes are held in a pending sync queue for DM review rather than being applied immediately. Non-conflicting items (brand-new items, zero-balance denominations) are applied immediately as normal.                                                                                                                                                             |
 
 ##### PROMPT mode — Pending Sync Queue
 
@@ -559,10 +569,10 @@ When a policy blocks only part of a combined sync request (e.g. inventory enable
 
 #### Error Responses
 
-| Status | Code | Cause |
-| --- | --- | --- |
-| 403 | `SYNC_POLICY_DISABLED` | `extensionInventorySyncEnabled` is `false` and the request contains only `inventoryUpdate`; or `extensionCurrencySyncEnabled` is `false` and the request contains only `currencyUpdate`. |
-| 403 | `SYNC_POLICY_PARTY_ACCESS_DENIED` | Caller is a player and `extensionPartyInventorySyncAccess` is `DM_ONLY` or `DISABLED`, and the request targets only party inventory. |
+| Status | Code                              | Cause                                                                                                                                                                                    |
+| ------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 403    | `SYNC_POLICY_DISABLED`            | `extensionInventorySyncEnabled` is `false` and the request contains only `inventoryUpdate`; or `extensionCurrencySyncEnabled` is `false` and the request contains only `currencyUpdate`. |
+| 403    | `SYNC_POLICY_PARTY_ACCESS_DENIED` | Caller is a player and `extensionPartyInventorySyncAccess` is `DM_ONLY` or `DISABLED`, and the request targets only party inventory.                                                     |
 
 Requests containing both character and party targets are never rejected wholesale on a party policy violation — character items are applied and the party portions are skipped (see Partial Application above).
 
@@ -703,12 +713,12 @@ The `avatarUrl` values in the DM sync payload are raw DDB CDN URLs. The backend 
 
 #### Error responses
 
-| Status | Code                          | Cause                                                              |
-| ------ | ----------------------------- | ------------------------------------------------------------------ |
-| 400    | `INVALID_INPUT`               | Missing `campaignId`, `externalSystem`, or malformed body          |
-| 401    | `UNAUTHORIZED`                | Missing or invalid token                                           |
-| 403    | `FORBIDDEN`                   | Caller is not the DM of the specified campaign                     |
-| 403    | `INTEGRATION_NOT_AUTHORIZED`  | External system is blocked or not authorized by the platform admin |
+| Status | Code                         | Cause                                                              |
+| ------ | ---------------------------- | ------------------------------------------------------------------ |
+| 400    | `INVALID_INPUT`              | Missing `campaignId`, `externalSystem`, or malformed body          |
+| 401    | `UNAUTHORIZED`               | Missing or invalid token                                           |
+| 403    | `FORBIDDEN`                  | Caller is not the DM of the specified campaign                     |
+| 403    | `INTEGRATION_NOT_AUTHORIZED` | External system is blocked or not authorized by the platform admin |
 
 ---
 
@@ -858,11 +868,11 @@ This path is the normal path for all subsequent launches. No invite code is need
 
 `/ext-launch` is a dedicated, minimal SPA route — not the player join page (`/join/:code`). Its only purpose is to complete authentication for extension-triggered launches and then navigate to the campaign workspace. It must never ask for an invite code.
 
-| Scenario | What the page does |
-| --- | --- |
-| `token` param present and valid | Auto-authenticate, redirect to campaign workspace |
-| `hint` param present, no `token` | Show password field (email pre-filled), authenticate on submit |
-| Auth fails | Show error with "Try again" — do not fall back to the join flow |
+| Scenario                         | What the page does                                              |
+| -------------------------------- | --------------------------------------------------------------- |
+| `token` param present and valid  | Auto-authenticate, redirect to campaign workspace               |
+| `hint` param present, no `token` | Show password field (email pre-filled), authenticate on submit  |
+| Auth fails                       | Show error with "Try again" — do not fall back to the join flow |
 
 The campaign workspace is opened as `/campaigns/:campaignId` (or the session view if the session is ACTIVE/PAUSED/COOLDOWN).
 

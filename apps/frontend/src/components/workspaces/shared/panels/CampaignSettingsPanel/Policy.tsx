@@ -342,15 +342,11 @@ export function CampaignSettingsPanelPolicy(props: CampaignSettingsPanelPolicyPr
 
             {props.settingsExtensionSyncPolicy !== 'NONE' && (
               <ExtensionInventorySync
-                settingsExtensionInventorySyncEnabled={
-                  props.settingsExtensionInventorySyncEnabled
-                }
+                settingsExtensionInventorySyncEnabled={props.settingsExtensionInventorySyncEnabled}
                 onSettingsExtensionInventorySyncEnabledChange={
                   props.onSettingsExtensionInventorySyncEnabledChange
                 }
-                settingsExtensionCurrencySyncEnabled={
-                  props.settingsExtensionCurrencySyncEnabled
-                }
+                settingsExtensionCurrencySyncEnabled={props.settingsExtensionCurrencySyncEnabled}
                 onSettingsExtensionCurrencySyncEnabledChange={
                   props.onSettingsExtensionCurrencySyncEnabledChange
                 }

@@ -21,10 +21,7 @@ const prisma = getPrismaClient()
  * - Broadcasts CAMPAIGN:SCHEDULE_UPDATED to all campaign members.
  * - No-ops silently if the campaign has no schedule.
  */
-export async function advanceSessionScheduleOnEnded(
-  campaignId: UUID,
-  dmId: UUID,
-): Promise<void> {
+export async function advanceSessionScheduleOnEnded(campaignId: UUID, dmId: UUID): Promise<void> {
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
     select: {
@@ -74,7 +71,7 @@ export async function advanceSessionScheduleOnEnded(
         minute: sessionScheduleMinute,
         timezone: sessionScheduleTz,
       },
-      new Date(),
+      new Date()
     )
   } catch (err) {
     logger.warn('campaign-schedule', 'Failed to calculate next occurrence during auto-advance', {

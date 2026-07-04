@@ -21,9 +21,6 @@
       "@shared/*": ["../../packages/shared/*"]
     }
   },
-  "include": [
-    "src/**/*.ts",
-    "../../packages/shared/**/*.ts"
-  ],
+  "include": ["src/**/*.ts", "../../packages/shared/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

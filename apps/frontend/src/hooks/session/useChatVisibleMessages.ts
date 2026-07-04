@@ -58,8 +58,7 @@ export function useChatVisibleMessages({
   const sessionRooms = useStore(
     (state) =>
       ((state.rooms as Record<UUID, Record<UUID, { id: UUID; name: string }>>)[sessionId] as
-        | Record<UUID, { id: UUID; name: string }>
-        | undefined) ?? EMPTY_SESSION_ROOMS
+        Record<UUID, { id: UUID; name: string }> | undefined) ?? EMPTY_SESSION_ROOMS
   )
 
   const roomDirectory = useMemo(() => {

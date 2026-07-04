@@ -1279,12 +1279,12 @@ stats-less packet never wipes stats). The metadata read+write runs under a row l
 
 Four `Campaign` fields, evaluated independently once Layer 1 permits the caller:
 
-| Field | Type | Default |
-| --- | --- | --- |
-| `extensionInventorySyncEnabled` | `boolean` | `true` |
-| `extensionCurrencySyncEnabled` | `boolean` | `true` |
-| `extensionPartyInventorySyncAccess` | `DISABLED \| DM_ONLY \| ALL_PLAYERS` | `DM_ONLY` |
-| `extensionSyncConflictResolution` | `OVERWRITE \| IGNORE \| PROMPT` | `OVERWRITE` |
+| Field                               | Type                                 | Default     |
+| ----------------------------------- | ------------------------------------ | ----------- |
+| `extensionInventorySyncEnabled`     | `boolean`                            | `true`      |
+| `extensionCurrencySyncEnabled`      | `boolean`                            | `true`      |
+| `extensionPartyInventorySyncAccess` | `DISABLED \| DM_ONLY \| ALL_PLAYERS` | `DM_ONLY`   |
+| `extensionSyncConflictResolution`   | `OVERWRITE \| IGNORE \| PROMPT`      | `OVERWRITE` |
 
 Managed via `GET`/`PATCH /api/campaigns/:campaignId/settings` (DM-only); locked while a session is
 `ACTIVE`/`PAUSED`, same as `extensionSyncPolicy`.
@@ -1300,7 +1300,9 @@ Party-targeted sync uses **separate top-level payload keys** — `partyInventory
   "campaignId": "uuid",
   "externalSystem": "DDB",
   "source": "dm",
-  "partyInventoryUpdate": { "items": [{ "externalId": "ddb-item-999", "name": "Bag of Holding", "quantity": 1 }] },
+  "partyInventoryUpdate": {
+    "items": [{ "externalId": "ddb-item-999", "name": "Bag of Holding", "quantity": 1 }]
+  },
   "partyCurrencyUpdate": { "wallet": { "gp": 200 } }
 }
 ```
@@ -1316,11 +1318,11 @@ A conflict is an incoming item/wallet value that differs from an existing persis
 (matched by `externalSource`+`externalId` for items; any non-zero requested denomination for
 currency). Net-new items and zero-balance wallets are never conflicts and always apply immediately.
 
-| Value | Behaviour |
-| --- | --- |
-| `OVERWRITE` | Incoming value always wins (historical default behaviour). |
-| `IGNORE` | Conflicting item discarded, existing record untouched; conflicting currency update discarded in full. |
-| `PROMPT` | Conflicting change written to `PendingExtensionSync` (campaign+characterId-scoped, see INVENTORY-SYSTEM.md §2.3); `INVENTORY:EXTENSION_SYNC_PENDING` sent to the DM only (`eventBroadcaster.sendToUser`). |
+| Value       | Behaviour                                                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OVERWRITE` | Incoming value always wins (historical default behaviour).                                                                                                                                                |
+| `IGNORE`    | Conflicting item discarded, existing record untouched; conflicting currency update discarded in full.                                                                                                     |
+| `PROMPT`    | Conflicting change written to `PendingExtensionSync` (campaign+characterId-scoped, see INVENTORY-SYSTEM.md §2.3); `INVENTORY:EXTENSION_SYNC_PENDING` sent to the DM only (`eventBroadcaster.sendToUser`). |
 
 **Party-owned conflicts under `PROMPT` fall back to `OVERWRITE`.** `PendingExtensionSync` is
 schema-locked to a single `characterId` — there is no DM-review queue shape for party-owned
@@ -1338,10 +1340,10 @@ the request. `skippedReasons` maps a blocked section name to `SYNC_POLICY_DISABL
 
 ### Error responses
 
-| Status | Code | Cause |
-| --- | --- | --- |
-| 403 | `SYNC_POLICY_DISABLED` | Request contains only sections blocked by a Layer 2 master toggle (no other section present). |
-| 403 | `SYNC_POLICY_PARTY_ACCESS_DENIED` | Request contains only party sections blocked by `extensionPartyInventorySyncAccess`. |
+| Status | Code                              | Cause                                                                                         |
+| ------ | --------------------------------- | --------------------------------------------------------------------------------------------- |
+| 403    | `SYNC_POLICY_DISABLED`            | Request contains only sections blocked by a Layer 2 master toggle (no other section present). |
+| 403    | `SYNC_POLICY_PARTY_ACCESS_DENIED` | Request contains only party sections blocked by `extensionPartyInventorySyncAccess`.          |
 
 A request that mixes blocked and allowed sections is never rejected wholesale — allowed sections
 apply and blocked ones are reported via `applied.skippedReasons` (HTTP 200).
@@ -1351,11 +1353,11 @@ apply and blocked ones are reported via `applied.skippedReasons` (HTTP 200).
 Mounted alongside the existing inventory routes at `/api/inventory/:campaignId/...` (the real
 runtime prefix — see the corrective note in INVENTORY-SYSTEM.md §8):
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/inventory/:campaignId/sync/pending` | List non-expired pending syncs (DM only) |
+| Method | Path                                                         | Description                                                                                                                                       |
+| ------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/inventory/:campaignId/sync/pending`                    | List non-expired pending syncs (DM only)                                                                                                          |
 | `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/approve` | Apply the change via the standard 4-layer contract; broadcasts the normal `INVENTORY:ITEM_ADDED`/`ITEM_EDITED`/`CURRENCY_CHANGED` event (DM only) |
-| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/reject` | Discard the pending change (DM only) |
+| `POST` | `/api/inventory/:campaignId/sync/pending/:pendingId/reject`  | Discard the pending change (DM only)                                                                                                              |
 
 Pending syncs expire 24h after creation (TTL field, checked on read — same convention as
 `DeviceCredential`; no separate sweep job). Expired or missing rows return `404 NOT_FOUND` from
@@ -1371,16 +1373,16 @@ DMs can configure a repeating session schedule on a campaign. The schedule drive
 
 Four fields on Campaign (all nullable; absence means no schedule configured):
 
-| Field | Type | Description |
-| ----- | ---- | ----------- |
-| `sessionScheduleType` | `SessionScheduleType` enum | `WEEKLY`, `BIWEEKLY`, or `MONTHLY_NTH` |
-| `sessionScheduleDay` | `Int` (0–6) | Day of week (0 = Sunday) |
-| `sessionScheduleNth` | `Int` (1–4) | Nth occurrence of the day; `MONTHLY_NTH` only |
-| `sessionScheduleHour` | `Int` (0–23) | Hour component of session start time |
-| `sessionScheduleMinute` | `Int` (0–59) | Minute component of session start time |
-| `sessionScheduleTz` | `String` | IANA timezone (e.g. `"America/New_York"`) |
-| `nextSessionDate` | `DateTime?` | Authoritative next session datetime |
-| `nextSessionIsManual` | `Boolean` | `true` when DM has overridden auto-calc for this one session |
+| Field                   | Type                       | Description                                                  |
+| ----------------------- | -------------------------- | ------------------------------------------------------------ |
+| `sessionScheduleType`   | `SessionScheduleType` enum | `WEEKLY`, `BIWEEKLY`, or `MONTHLY_NTH`                       |
+| `sessionScheduleDay`    | `Int` (0–6)                | Day of week (0 = Sunday)                                     |
+| `sessionScheduleNth`    | `Int` (1–4)                | Nth occurrence of the day; `MONTHLY_NTH` only                |
+| `sessionScheduleHour`   | `Int` (0–23)               | Hour component of session start time                         |
+| `sessionScheduleMinute` | `Int` (0–59)               | Minute component of session start time                       |
+| `sessionScheduleTz`     | `String`                   | IANA timezone (e.g. `"America/New_York"`)                    |
+| `nextSessionDate`       | `DateTime?`                | Authoritative next session datetime                          |
+| `nextSessionIsManual`   | `Boolean`                  | `true` when DM has overridden auto-calc for this one session |
 
 ### Endpoints
 
@@ -1435,17 +1437,17 @@ The DM's manual override therefore applies to exactly one session. After that se
 ### WS Event
 
 ```ts
-CAMPAIGN:SCHEDULE_UPDATED
+CAMPAIGN: SCHEDULE_UPDATED
 {
-  campaignId:          string
-  scheduleType:        SessionScheduleType | null
-  scheduleDay:         number | null
-  scheduleNth:         number | null
-  scheduleHour:        number | null
-  scheduleMinute:      number | null
-  scheduleTz:          string | null
-  nextSessionDate:     string | null   // ISO8601
-  scheduleLabel:       string | null   // e.g. "Every 2nd Sunday of the month at 1:00 PM"
+  campaignId: string
+  scheduleType: SessionScheduleType | null
+  scheduleDay: number | null
+  scheduleNth: number | null
+  scheduleHour: number | null
+  scheduleMinute: number | null
+  scheduleTz: string | null
+  nextSessionDate: string | null // ISO8601
+  scheduleLabel: string | null // e.g. "Every 2nd Sunday of the month at 1:00 PM"
   nextSessionIsManual: boolean
 }
 ```
@@ -1491,10 +1493,10 @@ A new `classes` JSONB column is added to the `Character` table. Each element rep
 
 ### UI rules
 
-| Character type | Class/level display | Per-class editor |
-| --- | --- | --- |
-| Single-class (1 entry in `classes`) | Merged class string + total level, same as today | Hidden |
-| Multiclassed (2+ entries in `classes`) | Per-class breakdown visible | Shown per class; total level is auto-computed (read-only) |
+| Character type                         | Class/level display                              | Per-class editor                                          |
+| -------------------------------------- | ------------------------------------------------ | --------------------------------------------------------- |
+| Single-class (1 entry in `classes`)    | Merged class string + total level, same as today | Hidden                                                    |
+| Multiclassed (2+ entries in `classes`) | Per-class breakdown visible                      | Shown per class; total level is auto-computed (read-only) |
 
 - The class input in PlayerSettingsPanel is a **single free-text field** combining class and subclass (e.g. `"Fighter / Battle Master"`), not two separate fields.
 - Players can add secondary classes; they can never remove the primary class (`classes[0]`).
@@ -1512,8 +1514,18 @@ A new `classes` JSONB column is added to the `Character` table. Each element rep
     "externalCharacterId": "...",
     "multiclass": true,
     "classes": [
-      { "classExternalID": "1", "className": "Warlock", "classLevel": 4, "subclassName": "Archfey Patron" },
-      { "classExternalID": "2", "className": "Fighter", "classLevel": 3, "subclassName": "Battle Master" }
+      {
+        "classExternalID": "1",
+        "className": "Warlock",
+        "classLevel": 4,
+        "subclassName": "Archfey Patron"
+      },
+      {
+        "classExternalID": "2",
+        "className": "Fighter",
+        "classLevel": 3,
+        "subclassName": "Battle Master"
+      }
     ]
   }
 }
@@ -1542,12 +1554,12 @@ Backend processing of the new format:
 
 ### `PRESENCE:PROFILE_UPDATED` payload additions
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `class` | `string \| null` | Merged primary class string (e.g. `"Warlock / Archfey Patron"`) |
-| `classes` | `Array<{ name: string, level: number }>` | Full class array; single-element for non-multiclassed characters |
-| `multiclass` | `boolean` | `true` when `classes.length > 1` |
-| `subclass` | — | **Deprecated — removed from payload** |
+| Field        | Type                                     | Notes                                                            |
+| ------------ | ---------------------------------------- | ---------------------------------------------------------------- |
+| `class`      | `string \| null`                         | Merged primary class string (e.g. `"Warlock / Archfey Patron"`)  |
+| `classes`    | `Array<{ name: string, level: number }>` | Full class array; single-element for non-multiclassed characters |
+| `multiclass` | `boolean`                                | `true` when `classes.length > 1`                                 |
+| `subclass`   | —                                        | **Deprecated — removed from payload**                            |
 
 ---
 
@@ -1592,12 +1604,12 @@ Backend processing of the new format:
 }
 ```
 
-| Field | Meaning |
-| --- | --- |
-| `campaignUpdated` | `CampaignExternalLink` was created or updated |
-| `charactersProvisioned` | Stub records created/updated (no ExternalIdentity match) |
-| `charactersLinked` | Characters upserted against an existing VTT-Chat user |
-| `charactersSkipped` | Entries missing `externalCharacterId` or `externalUserId` |
+| Field                   | Meaning                                                   |
+| ----------------------- | --------------------------------------------------------- |
+| `campaignUpdated`       | `CampaignExternalLink` was created or updated             |
+| `charactersProvisioned` | Stub records created/updated (no ExternalIdentity match)  |
+| `charactersLinked`      | Characters upserted against an existing VTT-Chat user     |
+| `charactersSkipped`     | Entries missing `externalCharacterId` or `externalUserId` |
 
 **Character stub schema change:** `Character.userId` is now nullable. Stubs have `userId = null` until the player connects via the extension — at which point `loginGuestViaExtension` promotes the stub by setting `userId` and creating the `CampaignMembership`.
 

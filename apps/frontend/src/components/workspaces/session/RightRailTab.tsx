@@ -233,7 +233,16 @@ export const SessionWorkspaceRightRailTab = memo(function SessionWorkspaceRightR
           ]}
         />
       ),
-    [campaignId, currentSessionId, currentSessionState, effectiveSessionUserId, effectiveSessionRole, apiUrl, token, dndRuleset]
+    [
+      campaignId,
+      currentSessionId,
+      currentSessionState,
+      effectiveSessionUserId,
+      effectiveSessionRole,
+      apiUrl,
+      token,
+      dndRuleset,
+    ]
   )
 
   const roomsPanel = useMemo(

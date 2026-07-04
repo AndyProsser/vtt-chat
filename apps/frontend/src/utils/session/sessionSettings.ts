@@ -1,10 +1,7 @@
 import type { UseCampaignSettingsActions } from '../../hooks/useCampaignSettings'
 import type { UseCharacterSettingsActions } from '../../hooks/useCharacterSettings'
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
-import {
-  normalizeExtensionSyncPolicy,
-  serializeExtensionSyncPolicy,
-} from '@/utils/sessionUi'
+import { normalizeExtensionSyncPolicy, serializeExtensionSyncPolicy } from '@/utils/sessionUi'
 import type {
   CampaignVisibility,
   ExtensionPartyInventorySyncAccess,

@@ -117,9 +117,15 @@ type BuildEditorWorkspacePropsParams = {
     typeof EditorWorkspace
   >['onSettingsSupportedPlatformsChange']
   onSettingsDndRulesetChange: ComponentProps<typeof EditorWorkspace>['onSettingsDndRulesetChange']
-  onSettingsAllowPlayerGiveChange: ComponentProps<typeof EditorWorkspace>['onSettingsAllowPlayerGiveChange']
-  onSettingsAllowPlayerTakeChange: ComponentProps<typeof EditorWorkspace>['onSettingsAllowPlayerTakeChange']
-  onSettingsAllowPlayerLootChange: ComponentProps<typeof EditorWorkspace>['onSettingsAllowPlayerLootChange']
+  onSettingsAllowPlayerGiveChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsAllowPlayerGiveChange']
+  onSettingsAllowPlayerTakeChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsAllowPlayerTakeChange']
+  onSettingsAllowPlayerLootChange: ComponentProps<
+    typeof EditorWorkspace
+  >['onSettingsAllowPlayerLootChange']
   onSessionNameChange: ComponentProps<typeof EditorWorkspace>['onSessionNameChange']
   onCopyInviteUrl: ComponentProps<typeof EditorWorkspace>['onCopyInviteUrl']
   onReissueInvite: ComponentProps<typeof EditorWorkspace>['onReissueInvite']

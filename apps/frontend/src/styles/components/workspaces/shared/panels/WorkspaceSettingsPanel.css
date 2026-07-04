@@ -228,7 +228,10 @@
   background: var(--color-surface-subtle);
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: background-color 120ms, color 120ms, border-color 120ms;
+  transition:
+    background-color 120ms,
+    color 120ms,
+    border-color 120ms;
 }
 
 .crbs-class-action-btn:hover:not(:disabled) {

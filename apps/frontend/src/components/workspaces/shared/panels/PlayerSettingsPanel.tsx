@@ -65,7 +65,9 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
     nameInputRef.current?.select()
   }, [props.focusRequestKey])
 
-  const classes = props.characterDraft.classes?.length ? props.characterDraft.classes : EMPTY_CLASSES
+  const classes = props.characterDraft.classes?.length
+    ? props.characterDraft.classes
+    : EMPTY_CLASSES
   const isMulticlass = classes.length > 1
   const primaryClass = classes[0]
 
@@ -189,7 +191,9 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                     disabled={disabled}
                     onClick={handleAddClass}
                   >
-                    <span className="material-symbols-outlined" aria-hidden="true">add</span>
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      add
+                    </span>
                   </button>
                 </div>
               ) : (
@@ -224,7 +228,9 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                       disabled={disabled || classes.length >= 5}
                       onClick={handleAddClass}
                     >
-                      <span className="material-symbols-outlined" aria-hidden="true">add</span>
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        add
+                      </span>
                     </button>
                   </div>
                   {classes.slice(1).map((entry, sliceIndex) => {
@@ -256,7 +262,9 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
                           disabled={disabled}
                           onClick={() => handleRemoveClass(index)}
                         >
-                          <span className="material-symbols-outlined" aria-hidden="true">remove</span>
+                          <span className="material-symbols-outlined" aria-hidden="true">
+                            remove
+                          </span>
                         </button>
                       </div>
                     )
@@ -318,7 +326,6 @@ export function PlayerSettingsPanel(props: PlayerSettingsPanelProps) {
               ))}
             </div>
           </div>
-
         </div>
 
         <span className="crbs-field-label">Combat Stats</span>

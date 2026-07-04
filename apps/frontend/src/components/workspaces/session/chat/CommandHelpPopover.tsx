@@ -83,7 +83,9 @@ function CommandHelpPopoverComponent({ role, onInsert }: CommandHelpPopoverProps
 
           <div className="chat-command-help__body">
             {commands.length === 0 ? (
-              <p className="chat-command-help__empty">No commands available in your current role.</p>
+              <p className="chat-command-help__empty">
+                No commands available in your current role.
+              </p>
             ) : (
               <table className="chat-command-help__table">
                 <thead>

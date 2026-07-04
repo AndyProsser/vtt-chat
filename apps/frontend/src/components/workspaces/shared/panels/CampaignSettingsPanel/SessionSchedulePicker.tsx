@@ -60,9 +60,7 @@ export function SessionSchedulePicker({ campaignId }: SessionSchedulePickerProps
   const scheduleState = useStore((s) => s.campaignSchedules[campaignId])
 
   // Derive initial values from Zustand or fallback defaults
-  const [scheduleType, setScheduleType] = useState<SessionScheduleType>(
-    SessionScheduleType.WEEKLY,
-  )
+  const [scheduleType, setScheduleType] = useState<SessionScheduleType>(SessionScheduleType.WEEKLY)
   const [dayOfWeek, setDayOfWeek] = useState(6) // Saturday
   const [nth, setNth] = useState(1)
   const [hour, setHour] = useState(19) // 7 PM
@@ -79,14 +77,17 @@ export function SessionSchedulePicker({ campaignId }: SessionSchedulePickerProps
     }
   }, [scheduleState])
 
-  const buildSchedule = useCallback((): SessionSchedule => ({
-    type: scheduleType,
-    dayOfWeek,
-    nth: scheduleType === SessionScheduleType.MONTHLY_NTH ? nth : undefined,
-    hour,
-    minute,
-    timezone,
-  }), [scheduleType, dayOfWeek, nth, hour, minute, timezone])
+  const buildSchedule = useCallback(
+    (): SessionSchedule => ({
+      type: scheduleType,
+      dayOfWeek,
+      nth: scheduleType === SessionScheduleType.MONTHLY_NTH ? nth : undefined,
+      hour,
+      minute,
+      timezone,
+    }),
+    [scheduleType, dayOfWeek, nth, hour, minute, timezone]
+  )
 
   const previewLabel = formatScheduleLabel(buildSchedule())
 
@@ -144,7 +145,9 @@ export function SessionSchedulePicker({ campaignId }: SessionSchedulePickerProps
   return (
     <div className="ssp-container">
       <div className="ssp-row">
-        <label className="ssp-label" htmlFor="ssp-type">Repeats</label>
+        <label className="ssp-label" htmlFor="ssp-type">
+          Repeats
+        </label>
         <select
           id="ssp-type"
           className="ssp-select"
@@ -160,7 +163,9 @@ export function SessionSchedulePicker({ campaignId }: SessionSchedulePickerProps
 
       {scheduleType === SessionScheduleType.MONTHLY_NTH && (
         <div className="ssp-row">
-          <label className="ssp-label" htmlFor="ssp-nth">Week</label>
+          <label className="ssp-label" htmlFor="ssp-nth">
+            Week
+          </label>
           <select
             id="ssp-nth"
             className="ssp-select"
@@ -169,14 +174,18 @@ export function SessionSchedulePicker({ campaignId }: SessionSchedulePickerProps
             disabled={isSaving}
           >
             {NTH_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
         </div>
       )}
 
       <div className="ssp-row">
-        <label className="ssp-label" htmlFor="ssp-day">Day</label>
+        <label className="ssp-label" htmlFor="ssp-day">
+          Day
+        </label>
         <select
           id="ssp-day"
           className="ssp-select"
@@ -185,13 +194,17 @@ export function SessionSchedulePicker({ campaignId }: SessionSchedulePickerProps
           disabled={isSaving}
         >
           {DAY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
       </div>
 
       <div className="ssp-row">
-        <label className="ssp-label" htmlFor="ssp-hour">Time</label>
+        <label className="ssp-label" htmlFor="ssp-hour">
+          Time
+        </label>
         <div className="ssp-time-group">
           <select
             id="ssp-hour"
@@ -201,7 +214,9 @@ export function SessionSchedulePicker({ campaignId }: SessionSchedulePickerProps
             disabled={isSaving}
           >
             {HOURS.map((h) => (
-              <option key={h} value={h}>{formatHour(h)}</option>
+              <option key={h} value={h}>
+                {formatHour(h)}
+              </option>
             ))}
           </select>
           <select
@@ -213,14 +228,18 @@ export function SessionSchedulePicker({ campaignId }: SessionSchedulePickerProps
             aria-label="Minutes"
           >
             {MINUTES.map((m) => (
-              <option key={m} value={m}>:{String(m).padStart(2, '0')}</option>
+              <option key={m} value={m}>
+                :{String(m).padStart(2, '0')}
+              </option>
             ))}
           </select>
         </div>
       </div>
 
       <div className="ssp-row">
-        <label className="ssp-label" htmlFor="ssp-tz">Timezone</label>
+        <label className="ssp-label" htmlFor="ssp-tz">
+          Timezone
+        </label>
         <input
           id="ssp-tz"
           className="ssp-input"

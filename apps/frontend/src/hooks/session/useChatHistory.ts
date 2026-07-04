@@ -84,8 +84,7 @@ export function useChatHistory({
 
   const addMessages = useStore((state) => state.addMessages)
   const sessionRecord = useStore((state) => (state.sessions as any)[sessionId]) as
-    | { dmId?: UUID; state?: SessionState }
-    | undefined
+    { dmId?: UUID; state?: SessionState } | undefined
 
   const visibleMessageCount = useStore((state) => {
     const messages = (state.messages as any)[sessionId]

@@ -19,7 +19,11 @@ import { WhisperMentionPicker } from './WhisperMentionPicker'
 import { useWhisperRecipients } from '@/hooks/session/useWhisperRecipients'
 import { useTypingEmitter } from '@/hooks/session/useTypingEmitter'
 import { MESSAGE_TYPE_ORDER, ROLE_ALLOWED_TYPES } from '@/constants/chatComposer.constants'
-import { parseChatInput, filterCommandsForAutocomplete, getArgSuggestions } from '@/utils/chatCommandParser'
+import {
+  parseChatInput,
+  filterCommandsForAutocomplete,
+  getArgSuggestions,
+} from '@/utils/chatCommandParser'
 import type { ArgSuggestionResult } from '@/utils/chatCommandParser'
 import type { ComposerMode } from '@/types/chat'
 
@@ -324,7 +328,9 @@ function MessageInputComponent({
           }
           const parts = command.args.trim().split(/\s+/)
           if (parts.length < 2) {
-            onCommandError?.('Usage: /condition {player} [condition] — e.g. /condition Brom Poisoned')
+            onCommandError?.(
+              'Usage: /condition {player} [condition] — e.g. /condition Brom Poisoned'
+            )
             return
           }
           const conditionName = parts[parts.length - 1]
@@ -429,7 +435,10 @@ function MessageInputComponent({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (isMentionPickerVisible && (e.key === 'Tab' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    if (
+      isMentionPickerVisible &&
+      (e.key === 'Tab' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')
+    ) {
       return // WhisperMentionPicker handles these via capture listener
     }
     if (isMentionPickerVisible && e.key === 'Escape') {
@@ -437,7 +446,10 @@ function MessageInputComponent({
       setMentionSuggestions([])
       return
     }
-    if (isArgSuggestionsVisible && (e.key === 'Tab' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    if (
+      isArgSuggestionsVisible &&
+      (e.key === 'Tab' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')
+    ) {
       return // WhisperMentionPicker (used for arg suggestions) handles these
     }
     if (isArgSuggestionsVisible && e.key === 'Escape') {
@@ -446,7 +458,10 @@ function MessageInputComponent({
       return
     }
     // Let the CommandPalette handle Tab/Enter/ArrowUp/ArrowDown when visible
-    if (isPaletteVisible && (e.key === 'Tab' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    if (
+      isPaletteVisible &&
+      (e.key === 'Tab' || e.key === 'Enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown')
+    ) {
       return
     }
     if (isPaletteVisible && e.key === 'Escape') {
@@ -539,7 +554,9 @@ function MessageInputComponent({
             onChange={(e) => {
               const nextValue = e.target.value
               setContent(nextValue)
-              setPaletteCommands(filterCommandsForAutocomplete(nextValue, role, sessionState, isWhisperGroupMode))
+              setPaletteCommands(
+                filterCommandsForAutocomplete(nextValue, role, sessionState, isWhisperGroupMode)
+              )
 
               // Arg-level autocomplete for /voice and /env
               const newArgSuggestions = getArgSuggestions(nextValue)

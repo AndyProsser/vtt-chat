@@ -46,8 +46,7 @@ export function NotesPanel({
   user,
 }: NotesPanelProps) {
   const notesByCampaign = useStore((state) => (state.notes as any)[campaignId]) as
-    | Record<UUID, Note>
-    | undefined
+    Record<UUID, Note> | undefined
   const addNote = useStore((state) => state.addNote)
   const clearNotes = useStore((state) => state.clearNotes)
   const updateNote = useStore((state) => state.updateNote)

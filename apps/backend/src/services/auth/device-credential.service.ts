@@ -107,7 +107,9 @@ export async function exchangeDeviceCredential(params: {
   }
 
   if (record.expiresAt.getTime() < Date.now()) {
-    throw new Error(record.user.authType === 'FULL' ? 'CREDENTIAL_EXPIRED_FULL' : 'CREDENTIAL_EXPIRED_GUEST')
+    throw new Error(
+      record.user.authType === 'FULL' ? 'CREDENTIAL_EXPIRED_FULL' : 'CREDENTIAL_EXPIRED_GUEST'
+    )
   }
 
   const rotated = await issueDeviceCredential({

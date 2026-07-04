@@ -191,7 +191,10 @@ describe('external integration endpoints', () => {
       ...data,
     }))
     mocks.mockInventoryHistoryEntryCreate.mockResolvedValue({})
-    mocks.mockPendingExtensionSyncCreate.mockImplementation(async ({ data }: any) => ({ id: 'pending-1', ...data }))
+    mocks.mockPendingExtensionSyncCreate.mockImplementation(async ({ data }: any) => ({
+      id: 'pending-1',
+      ...data,
+    }))
   })
 
   it('returns 400 for invalid campaignId on sync', async () => {

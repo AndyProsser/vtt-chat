@@ -19,7 +19,9 @@ type SyncOutcome = {
   partyInventoryItemsUpserted?: number
   partyCurrencyUpdated?: boolean
   pendingConflicts?: number
-  skippedReasons?: Partial<Record<'inventory' | 'currency' | 'partyInventory' | 'partyCurrency', SyncSkipReason>>
+  skippedReasons?: Partial<
+    Record<'inventory' | 'currency' | 'partyInventory' | 'partyCurrency', SyncSkipReason>
+  >
 }
 
 export type ExternalSyncResult =

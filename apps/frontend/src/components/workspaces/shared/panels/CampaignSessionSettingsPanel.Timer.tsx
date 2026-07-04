@@ -34,8 +34,7 @@ export const SessionTimerCard = memo(function SessionTimerCard({
   const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now())
 
   const isVisible =
-    Boolean(sessionStartedAt) &&
-    TIMER_VISIBLE_STATES.has(sessionStateLabel as SessionState)
+    Boolean(sessionStartedAt) && TIMER_VISIBLE_STATES.has(sessionStateLabel as SessionState)
 
   useEffect(() => {
     if (!isVisible) return
@@ -72,9 +71,7 @@ export const SessionTimerCard = memo(function SessionTimerCard({
         </span>
       </div>
       {timerColor === 'warning' && <p className="csp-timer-warning">15 minutes remaining</p>}
-      {timerColor === 'critical' && (
-        <p className="csp-timer-critical">Session duration exceeded</p>
-      )}
+      {timerColor === 'critical' && <p className="csp-timer-critical">Session duration exceeded</p>}
     </div>
   )
 })

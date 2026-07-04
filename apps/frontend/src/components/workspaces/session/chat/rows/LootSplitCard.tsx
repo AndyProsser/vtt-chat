@@ -32,7 +32,10 @@ export function LootSplitCard({ metadata, participantDirectory }: LootSplitCardP
           const profile = participantDirectory[share.userId as UUID]
           const displayName = profile?.displayName ?? share.userId
           return (
-            <li key={share.userId} className="loot-split-card__share loot-split-card__share--accepted">
+            <li
+              key={share.userId}
+              className="loot-split-card__share loot-split-card__share--accepted"
+            >
               <span className="loot-split-card__share-name">{displayName}</span>
               <span className="loot-split-card__share-qty">×{share.quantity}</span>
               <Icon name="check" className="loot-split-card__share-check" />

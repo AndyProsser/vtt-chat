@@ -132,9 +132,7 @@ router.post(
       return res.status(200).json({
         sessionId: existing.id,
         sessionState: existing.state,
-        campaignDisplayState: deriveCampaignDisplayState(
-          existing.state as SessionLifecycleState
-        ),
+        campaignDisplayState: deriveCampaignDisplayState(existing.state as SessionLifecycleState),
       })
     }
 

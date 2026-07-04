@@ -16,7 +16,7 @@ The Admin console is a **mini command centre for a sysadmin with a D&D flavour**
 - **Clarity first**: every control has an obvious effect. No mystery meat, no ambiguous icons without labels.
 - **Safe defaults**: all configuration ships with sensible values. Admins can change things as needed, but the system should work well without touching Settings.
 - **Progressive disclosure**: the common 80% of actions are immediate and prominent; destructive or rare operations are one extra step away.
-- **Moderate D&D flavour**: nav items use functional English labels; page headers use fantasy-titled subtitles (e.g. "Dashboard — *The Scrying Pool*"). Section headings within pages may lean further into the theme. Icons draw on the D&D aesthetic (scrolls, tomes, dice, crystal ball, shield). Colour palette favours deep dungeon blues, amber for warnings, crimson for danger, and aged parchment tones in dark mode.
+- **Moderate D&D flavour**: nav items use functional English labels; page headers use fantasy-titled subtitles (e.g. "Dashboard — _The Scrying Pool_"). Section headings within pages may lean further into the theme. Icons draw on the D&D aesthetic (scrolls, tomes, dice, crystal ball, shield). Colour palette favours deep dungeon blues, amber for warnings, crimson for danger, and aged parchment tones in dark mode.
 
 ---
 
@@ -24,16 +24,16 @@ The Admin console is a **mini command centre for a sysadmin with a D&D flavour**
 
 ### Current → New (consolidation map)
 
-| Current nav item | New nav item | Change |
-|---|---|---|
-| Dashboard | **Dashboard** | Absorbs Analytics + System Health |
-| Analytics | *(removed)* | Merged into Dashboard |
-| System Health | *(removed)* | Merged into Dashboard |
-| Rooms & Campaigns | **Campaigns** | Renamed, spec expanded |
-| Users | **Users** | No change in position |
-| Logs & Activity | **Logs** | Renamed, scope clarified |
-| Settings | **Settings** | Absorbs Integrations, major expansion |
-| Integrations | *(removed)* | Folded into Settings → External Systems |
+| Current nav item  | New nav item  | Change                                  |
+| ----------------- | ------------- | --------------------------------------- |
+| Dashboard         | **Dashboard** | Absorbs Analytics + System Health       |
+| Analytics         | _(removed)_   | Merged into Dashboard                   |
+| System Health     | _(removed)_   | Merged into Dashboard                   |
+| Rooms & Campaigns | **Campaigns** | Renamed, spec expanded                  |
+| Users             | **Users**     | No change in position                   |
+| Logs & Activity   | **Logs**      | Renamed, scope clarified                |
+| Settings          | **Settings**  | Absorbs Integrations, major expansion   |
+| Integrations      | _(removed)_   | Folded into Settings → External Systems |
 
 ### Final Top-Level Nav (5 items)
 
@@ -49,7 +49,7 @@ Nav items display a short functional label and a small themed icon. The fantasy 
 
 ---
 
-### 3.1 Dashboard — *The Scrying Pool*
+### 3.1 Dashboard — _The Scrying Pool_
 
 **Purpose**: Instant operational awareness. One glance tells the admin whether everything is healthy, who is online, and whether any jobs are stuck.
 
@@ -59,21 +59,23 @@ Three zones, top-to-bottom:
 
 **Zone A — Status Strip** (always-visible, auto-refreshes every 15s)
 
-| Metric | Detail |
-|---|---|
-| Active Sessions | Campaigns currently in ACTIVE state |
-| Connected Users | Live WebSocket connections |
-| System Status | Aggregate health pill: Healthy / Degraded / Critical |
-| Last Backup | Time since last successful backup (amber if > 24h, red if > 72h) |
-| Error Rate (1h) | Errors in the last hour |
+| Metric          | Detail                                                           |
+| --------------- | ---------------------------------------------------------------- |
+| Active Sessions | Campaigns currently in ACTIVE state                              |
+| Connected Users | Live WebSocket connections                                       |
+| System Status   | Aggregate health pill: Healthy / Degraded / Critical             |
+| Last Backup     | Time since last successful backup (amber if > 24h, red if > 72h) |
+| Error Rate (1h) | Errors in the last hour                                          |
 
 **Zone B — Activity Charts** (time range selector: 1h / 24h / 7d)
 
 Two charts side-by-side:
+
 - **Message Throughput** (messages/min over time) — colour: `#22c55e`
 - **Connected Users** (concurrent connections over time) — colour: `#60a5fa`
 
 Below the charts, a second row:
+
 - **CPU Load (%)** — colour: `#f59e0b`
 - **Memory Usage (%)** — colour: `#a78bfa`
 - **Disk Usage (%)** — colour: `#fb923c`
@@ -85,10 +87,10 @@ All charts share the same time axis. Values are sourced from `/telemetry/status`
 
 A compact table of active and recently-failed jobs, grouped by queue:
 
-| Queue | Active | Waiting | Failed (24h) | Actions |
-|---|---|---|---|---|
-| backup | 0 | 1 | 0 | — |
-| transcription | 1 | 0 | 2 | Retry Failed |
+| Queue         | Active | Waiting | Failed (24h) | Actions      |
+| ------------- | ------ | ------- | ------------ | ------------ |
+| backup        | 0      | 1       | 0            | —            |
+| transcription | 1      | 0       | 2            | Retry Failed |
 
 Clicking a queue name navigates to the full job inspector in Settings → Job Queues.
 
@@ -98,13 +100,13 @@ Clicking a queue name navigates to the full job inspector in Settings → Job Qu
 - [ ] Time-range selector persists in session storage (doesn't reset on page nav)
 - [ ] System Status pill turns amber at ≥ 70% CPU or memory; red at ≥ 85%
 - [ ] Last Backup time is sourced from job history, not Settings — it reflects the actual last successful completion
-- [ ] Running Jobs panel shows a zero-state ("All queues clear — *the roads are safe*") when nothing is active or failed
+- [ ] Running Jobs panel shows a zero-state ("All queues clear — _the roads are safe_") when nothing is active or failed
 - [ ] Charts support empty-state gracefully (no data → dashed empty area, not an error)
 - [ ] Auto-refresh does not cause scroll-jump or layout shift
 
 ---
 
-### 3.2 Campaigns — *The Chronicle*
+### 3.2 Campaigns — _The Chronicle_
 
 **Purpose**: Full lifecycle management of every campaign. Read-heavy; most operations are triggered via contextual actions on a campaign row or detail panel. Admins cannot edit campaign content — only manage its lifecycle and metadata.
 
@@ -125,6 +127,7 @@ Left-side filtered list + right-side detail panel (master-detail).
 Tabs within the detail panel:
 
 **Overview tab**
+
 - Campaign name (display only) + Edit Name action (Super Admin / Admin only)
 - DM name + Reassign DM button (opens a player picker — only existing players in the campaign)
 - Status badge + status history (last 5 transitions)
@@ -134,30 +137,34 @@ Tabs within the detail panel:
 - Campaign tags / notes (admin-only annotation field, not visible to players)
 
 **Sessions tab**
+
 - Table of all sessions: date, state at end, duration, player count, DM
 - Each row expandable: shows rooms active, conditions in play, message count
 - For ENDED sessions: link to session log (chat history) and recordings (if any)
 - Filter by date range, state
 
 **Players tab**
+
 - Table: username, role (DM / Player), characters, join date, last seen
 - Action per row: Remove from Campaign (with confirmation)
 - No editing of character details — read-only
 
 **Recordings tab**
+
 - Table: session date, duration, file size, status (available / processing / failed)
 - Download link per recording (Super Admin only)
 - Status reflects the transcription pipeline if enabled
 - Zero-state: "Recording pipeline not yet enabled — see ROADMAP for W-Recording-Transcription-Summary"
 
 **Danger Zone tab** (collapsible, red border)
+
 - Lock Campaign (freezes the campaign, prevents new sessions, reversible)
 - Archive Campaign (soft-delete; campaign is hidden from DM; recoverable)
 - Export Campaign (generates a portable bundle: JSON + assets)
 - Restore Campaign (from a previously exported bundle — file upload)
 - Backup Campaign (triggers an immediate backup job)
 - Import Campaign (import from external bundle — creates a new campaign, does not overwrite)
-- *Delete Campaign (Super Admin only; permanent; requires typing campaign name to confirm)*
+- _Delete Campaign (Super Admin only; permanent; requires typing campaign name to confirm)_
 
 #### Acceptance Criteria
 
@@ -173,7 +180,7 @@ Tabs within the detail panel:
 
 ---
 
-### 3.3 Users — *Guild Roster*
+### 3.3 Users — _Guild Roster_
 
 **Purpose**: Visibility into every account; moderation and access control.
 
@@ -197,18 +204,19 @@ Filters: Status / Role / Campaign membership / Search (username, email)
 
 **Actions** (contextual, role-gated):
 
-| Action | Who can perform | Notes |
-|---|---|---|
-| Reset Password | Admin, Super Admin | Sends a reset email; does not expose new password |
-| Ban (Temporary) | Admin, Super Admin | Duration selector: hours / days / permanent; shows in user status |
-| Kick (Session Only) | Admin, Super Admin | Forces disconnection; does not ban |
-| Archive User | Super Admin | Soft-delete; preserves all data |
-| Restore User | Super Admin | Restores archived user |
-| Promote to Admin | Super Admin | Opens role selector: Admin / Read-only |
-| Demote from Admin | Super Admin | Removes admin role; user remains a regular member |
-| Invite via Email | Admin, Super Admin | Sends an invite email; new users land on onboarding |
+| Action              | Who can perform    | Notes                                                             |
+| ------------------- | ------------------ | ----------------------------------------------------------------- |
+| Reset Password      | Admin, Super Admin | Sends a reset email; does not expose new password                 |
+| Ban (Temporary)     | Admin, Super Admin | Duration selector: hours / days / permanent; shows in user status |
+| Kick (Session Only) | Admin, Super Admin | Forces disconnection; does not ban                                |
+| Archive User        | Super Admin        | Soft-delete; preserves all data                                   |
+| Restore User        | Super Admin        | Restores archived user                                            |
+| Promote to Admin    | Super Admin        | Opens role selector: Admin / Read-only                            |
+| Demote from Admin   | Super Admin        | Removes admin role; user remains a regular member                 |
+| Invite via Email    | Admin, Super Admin | Sends an invite email; new users land on onboarding               |
 
 **Ban Configuration Modal** (when banning):
+
 - Reason (required — stored in audit log and shown to user on login)
 - Duration: 1h / 6h / 24h / 3 days / 7 days / 30 days / Permanent
 - Notify by email (toggle, default on)
@@ -226,7 +234,7 @@ Filters: Status / Role / Campaign membership / Search (username, email)
 
 ---
 
-### 3.4 Settings — *The Tome*
+### 3.4 Settings — _The Tome_
 
 **Purpose**: Configure all system-level behaviour. Sensible defaults mean most sections can be ignored during normal operation. Sections are grouped thematically; each section is independently saveable.
 
@@ -290,6 +298,7 @@ External Systems
 #### 3.4.4 SMTP Configuration
 
 Fields:
+
 - Host, Port
 - Username, Password (masked)
 - Encryption: None / STARTTLS / TLS
@@ -305,16 +314,17 @@ A list of all system email templates with a preview + edit panel.
 
 Templates:
 
-| Template | Trigger |
-|---|---|
-| User Invite | Admin invites a new user |
-| Password Reset | User requests a password reset |
-| Campaign Invite | DM invites a player to a campaign |
-| Ban Notice | User is banned (when "notify by email" is on) |
+| Template        | Trigger                                                       |
+| --------------- | ------------------------------------------------------------- |
+| User Invite     | Admin invites a new user                                      |
+| Password Reset  | User requests a password reset                                |
+| Campaign Invite | DM invites a player to a campaign                             |
+| Ban Notice      | User is banned (when "notify by email" is on)                 |
 | Session Summary | Post-session summary delivery (when recording pipeline is on) |
-| Admin Alert | System alert email to admins |
+| Admin Alert     | System alert email to admins                                  |
 
 Each template has:
+
 - Subject line (with `{{variable}}` tokens)
 - Body (Markdown + HTML; preview renders both)
 - Available variables listed alongside the editor
@@ -330,16 +340,17 @@ The AI subsystem is optional. When disabled, features fall back to static tables
 
 **Provider Mode selector** (radio/card UI):
 
-| Mode | Description |
-|---|---|
-| **Disabled** | No AI features. DM Quick Generate uses static D&D 5e tables. Writing Assistant is hidden. |
-| **Local (Ollama)** | Ollama running in Docker on this machine. Base URL defaults to `http://ollama:11434`. |
-| **Remote GPU** | Ollama or compatible server on another machine on the same network (e.g. gaming PC). Custom base URL + optional bearer token. |
-| **Cloud API** | OpenAI or Anthropic. API key + model selection. Data leaves the server; per-campaign consent required. |
+| Mode               | Description                                                                                                                   |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Disabled**       | No AI features. DM Quick Generate uses static D&D 5e tables. Writing Assistant is hidden.                                     |
+| **Local (Ollama)** | Ollama running in Docker on this machine. Base URL defaults to `http://ollama:11434`.                                         |
+| **Remote GPU**     | Ollama or compatible server on another machine on the same network (e.g. gaming PC). Custom base URL + optional bearer token. |
+| **Cloud API**      | OpenAI or Anthropic. API key + model selection. Data leaves the server; per-campaign consent required.                        |
 
 When a mode is selected, only the relevant fields are shown (no dead fields).
 
 **Local / Remote GPU fields:**
+
 - Base URL (default `http://ollama:11434` for local)
 - Bearer token (optional, for remote)
 - Test Connection button (pings `/api/tags` on the Ollama endpoint)
@@ -348,6 +359,7 @@ When a mode is selected, only the relevant fields are shown (no dead fields).
 - Assistant model selector (dropdown from available models)
 
 **Cloud API fields:**
+
 - Provider: OpenAI / Anthropic
 - API Key (masked after save)
 - Summary model (e.g. `claude-opus-4-8`, `gpt-4o`)
@@ -374,6 +386,7 @@ See [`docs/ai/LOCAL-AI-PROVIDER.md`](../ai/LOCAL-AI-PROVIDER.md) for the full tw
 #### 3.4.8 Backup History
 
 Table of past backup jobs:
+
 - Started at, Completed at, Duration
 - Status: Success / Failed / In Progress
 - Size (compressed)
@@ -387,12 +400,12 @@ Table of past backup jobs:
 
 Per-queue schedule configuration:
 
-| Queue | Description | Default schedule |
-|---|---|---|
-| backup | Database backup | Daily 02:00 |
-| transcription | Audio transcription (if enabled) | After each session |
-| summary | Session summary generation (if enabled) | After transcription |
-| cleanup | Purge expired data, temp files | Weekly Sunday 03:00 |
+| Queue         | Description                             | Default schedule    |
+| ------------- | --------------------------------------- | ------------------- |
+| backup        | Database backup                         | Daily 02:00         |
+| transcription | Audio transcription (if enabled)        | After each session  |
+| summary       | Session summary generation (if enabled) | After transcription |
+| cleanup       | Purge expired data, temp files          | Weekly Sunday 03:00 |
 
 Each queue shows its current schedule (cron) with an editable field and human-readable preview.
 
@@ -403,6 +416,7 @@ Changes save immediately; a confirmation toast confirms the new schedule.
 A live view of the job queue system (data from `GET /api/admin/queues`).
 
 Per queue:
+
 - Active count, Waiting count, Failed count, Completed (24h)
 - Expandable failed jobs table: job ID, error message, attempts, last attempted at
 - Per-job actions: Retry, Delete
@@ -426,7 +440,7 @@ Auto-refreshes every 10 seconds when the Queue Inspector sub-section is open.
 
 The existing Integrations table is relocated here. No functional change to the table itself.
 
-Title: "External Systems — *Authorized Guilds*"  
+Title: "External Systems — _Authorized Guilds_"  
 Subtitle: "Third-party systems permitted to authenticate players or push event logs."
 
 The same Authorize / Log Only / Block actions from the current page are preserved.
@@ -446,19 +460,19 @@ The same Authorize / Log Only / Block actions from the current page are preserve
 
 ---
 
-### 3.5 Logs — *Hall of Records*
+### 3.5 Logs — _Hall of Records_
 
 **Purpose**: Unified, searchable log viewer for every event type. Single place to go when something breaks.
 
 #### Log Types (tabs)
 
-| Tab | Source | Retention |
-|---|---|---|
-| **Events** | WS event stream, session lifecycle events | Configured in Settings |
-| **Errors** | Application errors, unhandled exceptions | Configured in Settings |
-| **Email** | Outbound email delivery results | Configured in Settings |
-| **Trace** | Diagnostic/verbose backend traces | Configured in Settings |
-| **Audit** | Admin action log (from ADMIN-ARCHITECTURE.md §8) | Immutable; Super Admin only for export |
+| Tab        | Source                                           | Retention                              |
+| ---------- | ------------------------------------------------ | -------------------------------------- |
+| **Events** | WS event stream, session lifecycle events        | Configured in Settings                 |
+| **Errors** | Application errors, unhandled exceptions         | Configured in Settings                 |
+| **Email**  | Outbound email delivery results                  | Configured in Settings                 |
+| **Trace**  | Diagnostic/verbose backend traces                | Configured in Settings                 |
+| **Audit**  | Admin action log (from ADMIN-ARCHITECTURE.md §8) | Immutable; Super Admin only for export |
 
 #### Shared Controls (all tabs)
 
@@ -512,40 +526,40 @@ The same Authorize / Log Only / Block actions from the current page are preserve
 
 ### Icons (themed, not literal)
 
-| Concept | Icon style |
-|---|---|
-| Dashboard / status | Crystal ball / scrying orb |
-| Campaigns | Open book / chronicle |
-| Users | Shield with crest / guild sigil |
-| Settings | Tome / grimoire |
-| Logs | Scroll / parchment roll |
-| AI integration | Rune / arcane sigil |
-| Jobs / queues | Clockwork gear with a D20 |
+| Concept             | Icon style                            |
+| ------------------- | ------------------------------------- |
+| Dashboard / status  | Crystal ball / scrying orb            |
+| Campaigns           | Open book / chronicle                 |
+| Users               | Shield with crest / guild sigil       |
+| Settings            | Tome / grimoire                       |
+| Logs                | Scroll / parchment roll               |
+| AI integration      | Rune / arcane sigil                   |
+| Jobs / queues       | Clockwork gear with a D20             |
 | Danger Zone actions | Red sigil / wax-seal-with-skull motif |
-| Success states | Green lantern / lit torch |
-| Warning states | Amber hourglass |
-| Error / critical | Crimson sword-cross |
+| Success states      | Green lantern / lit torch             |
+| Warning states      | Amber hourglass                       |
+| Error / critical    | Crimson sword-cross                   |
 
 Icons must always have a visible text label or aria-label. Never icon-only controls for non-obvious actions.
 
 ### Colour Palette (dark mode primary)
 
-| Role | Hex |
-|---|---|
-| Background (deep) | `#0e1117` |
-| Surface (cards, panels) | `#161b27` |
-| Border | `#2a3147` |
-| Text primary | `#e8e6e0` (warm white, parchment tint) |
-| Text secondary | `#7e8698` |
-| Accent (interactive) | `#5865d4` (arcane blue) |
-| Success | `#22c55e` |
-| Warning | `#f59e0b` |
-| Danger | `#ef4444` |
-| AI / magic | `#a78bfa` (arcane purple) |
+| Role                    | Hex                                    |
+| ----------------------- | -------------------------------------- |
+| Background (deep)       | `#0e1117`                              |
+| Surface (cards, panels) | `#161b27`                              |
+| Border                  | `#2a3147`                              |
+| Text primary            | `#e8e6e0` (warm white, parchment tint) |
+| Text secondary          | `#7e8698`                              |
+| Accent (interactive)    | `#5865d4` (arcane blue)                |
+| Success                 | `#22c55e`                              |
+| Warning                 | `#f59e0b`                              |
+| Danger                  | `#ef4444`                              |
+| AI / magic              | `#a78bfa` (arcane purple)              |
 
 ### Copy Tone
 
-- Section headers may use fantasy language ("*The Scrying Pool*", "*Guild Roster*") as subtitles only — primary headings remain functional.
+- Section headers may use fantasy language ("_The Scrying Pool_", "_Guild Roster_") as subtitles only — primary headings remain functional.
 - Zero-states use brief atmospheric flavour text followed by a clear action CTA.
 - Destructive confirmation dialogs: plain language, no thematic fluff. Clarity over atmosphere when the stakes are high.
 - Error messages: plain English, no jargon, no fantasy framing.
@@ -556,11 +570,11 @@ Icons must always have a visible text label or aria-label. Never icon-only contr
 
 ### Pages being removed
 
-| Removed page | Reason | Content moved to |
-|---|---|---|
-| `Analytics` | Redundant with Dashboard | Dashboard Zone B (charts) |
-| `PlatformStatus` / System Health | Redundant with Dashboard | Dashboard Zone A (status strip) + Zone B |
-| `Integrations` | Too thin for a top-level nav slot | Settings → External Systems |
+| Removed page                     | Reason                            | Content moved to                         |
+| -------------------------------- | --------------------------------- | ---------------------------------------- |
+| `Analytics`                      | Redundant with Dashboard          | Dashboard Zone B (charts)                |
+| `PlatformStatus` / System Health | Redundant with Dashboard          | Dashboard Zone A (status strip) + Zone B |
+| `Integrations`                   | Too thin for a top-level nav slot | Settings → External Systems              |
 
 ### Settings scope expansion
 

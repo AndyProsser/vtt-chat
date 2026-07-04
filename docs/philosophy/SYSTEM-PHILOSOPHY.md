@@ -326,6 +326,7 @@ VTT‑Chat is not a generic voice chat tool. It is a storytelling instrument.
 Discord gives players a voice. VTT‑Chat gives the DM a world.
 
 A DM can:
+
 - Move players between voice groups mid-combat with a drag
 - Apply audio conditions that make a player sound drunk, confused, or silenced
 - Set environmental ambiance per group so a cave sounds like a cave
@@ -366,4 +367,3 @@ Persistence is not a technical detail — it is part of the experience.
 ### **9.5 Players Must Understand Their World**
 
 Players should always know WHY their audio sounds different, WHY they cannot speak, WHY a room sounds different. The system surfaces this information clearly in the AudioPanel with icons and descriptions — not as a mystery, but as part of the fiction made tangible.
-

@@ -28,7 +28,7 @@ describe('campaignScheduleSlice', () => {
         nextSessionDate: '2025-06-15T00:00:00.000Z',
         scheduleLabel: 'Every Saturday at 7:00 PM (UTC)',
         nextSessionIsManual: false,
-      }),
+      })
     )
 
     const state = useStore.getState().campaignSchedules[CAMPAIGN_ID]
@@ -45,7 +45,7 @@ describe('campaignScheduleSlice', () => {
         nextSessionDate: '2025-07-04T18:00:00.000Z',
         scheduleLabel: 'Every Saturday at 7:00 PM (UTC)',
         nextSessionIsManual: true,
-      }),
+      })
     )
 
     expect(useStore.getState().campaignSchedules[CAMPAIGN_ID]?.nextSessionIsManual).toBe(true)
@@ -69,7 +69,7 @@ describe('campaignScheduleSlice', () => {
         nextSessionDate: null,
         scheduleLabel: null,
         nextSessionIsManual: false,
-      }),
+      })
     )
 
     const state = useStore.getState().campaignSchedules[CAMPAIGN_ID]
@@ -90,7 +90,7 @@ describe('campaignScheduleSlice', () => {
     })
 
     expect(useStore.getState().campaignSchedules[CAMPAIGN_ID]?.scheduleLabel).toBe(
-      'Every Friday at 8:00 PM (UTC)',
+      'Every Friday at 8:00 PM (UTC)'
     )
   })
 

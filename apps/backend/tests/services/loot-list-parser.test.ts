@@ -5,7 +5,11 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { splitLootList, parseLootItemToken, parseLootList } from '@/services/inventory/loot-list-parser'
+import {
+  splitLootList,
+  parseLootItemToken,
+  parseLootList,
+} from '@/services/inventory/loot-list-parser'
 import { matchSrdItem } from '@/services/inventory/loot-tables'
 
 // ─── splitLootList ────────────────────────────────────────────────────────────
@@ -40,7 +44,10 @@ describe('parseLootItemToken', () => {
   })
 
   it('handles multi-word name', () => {
-    expect(parseLootItemToken('Potion of Healing')).toEqual({ rawName: 'Potion of Healing', quantity: 1 })
+    expect(parseLootItemToken('Potion of Healing')).toEqual({
+      rawName: 'Potion of Healing',
+      quantity: 1,
+    })
   })
 
   it('parses leading Nx quantity', () => {
@@ -60,7 +67,10 @@ describe('parseLootItemToken', () => {
   })
 
   it('parses legacy trailing integer (backward compat)', () => {
-    expect(parseLootItemToken('Potion of Healing 2')).toEqual({ rawName: 'Potion of Healing', quantity: 2 })
+    expect(parseLootItemToken('Potion of Healing 2')).toEqual({
+      rawName: 'Potion of Healing',
+      quantity: 2,
+    })
   })
 
   it('preserves parenthetical notes in name', () => {
@@ -80,7 +90,9 @@ describe('parseLootItemToken', () => {
 
 describe('parseLootList', () => {
   it('parses the full example from the feature spec', () => {
-    const result = parseLootList('25sp,6sp,1cp,1x shortsword, 5x daggers, 2x gems (25gp), dart x5, Circlet of Blasting')
+    const result = parseLootList(
+      '25sp,6sp,1cp,1x shortsword, 5x daggers, 2x gems (25gp), dart x5, Circlet of Blasting'
+    )
 
     // Currency: 25sp + 6sp = 31sp, 1cp
     expect(result.currencies.sp).toBe(31)

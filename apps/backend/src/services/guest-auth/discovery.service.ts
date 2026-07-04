@@ -366,8 +366,7 @@ export async function getExtensionPreflight(params: {
   const platformKey = externalSystemToPlatform(params.externalSystem)
   const campaignAllowsPlatform =
     campaignForPlatform?.supportedPlatforms.includes('ANY' as never) ||
-    (platformKey !== null &&
-      campaignForPlatform?.supportedPlatforms.includes(platformKey as never))
+    (platformKey !== null && campaignForPlatform?.supportedPlatforms.includes(platformKey as never))
   if (!campaignAllowsPlatform) {
     throw new Error('PLATFORM_NOT_AUTHORIZED')
   }

@@ -17,7 +17,10 @@ export function startRecordingWorker(connection: IORedis, dlq: Queue): Worker {
     QUEUE_NAMES.RECORDING,
     async (job: Job) => {
       if (job.name !== JOB_TYPES.PROCESS_RECORDING) {
-        logger.warn('recording-worker', 'Unknown job type — discarding', { jobName: job.name, jobId: job.id })
+        logger.warn('recording-worker', 'Unknown job type — discarding', {
+          jobName: job.name,
+          jobId: job.id,
+        })
         return
       }
 
@@ -25,11 +28,15 @@ export function startRecordingWorker(connection: IORedis, dlq: Queue): Worker {
       const processorUrl = config.integrations.recordingProcessorUrl
 
       if (!processorUrl) {
-        logger.info('recording-worker', 'RECORDING_PROCESSOR_URL not configured — job skipped (will activate on deploy)', {
-          jobId: job.id,
-          sessionId: payload.sessionId,
-          recordingId: payload.recordingId,
-        })
+        logger.info(
+          'recording-worker',
+          'RECORDING_PROCESSOR_URL not configured — job skipped (will activate on deploy)',
+          {
+            jobId: job.id,
+            sessionId: payload.sessionId,
+            recordingId: payload.recordingId,
+          }
+        )
         return
       }
 

@@ -410,16 +410,16 @@ export function WorkspaceInitialization({
     handleSrdFieldFocus,
     handleSrdFieldBlur,
   } = useWorkspacesCharacterSettingsOrchestration({
-      characterSettingsController,
-      characterSettingsActions,
-      selectedCampaignId,
-      selectedCharacterId,
-      characterSettingsPanel,
-      isCharacterSettingsLoading,
-      isCharacterSettingsSaving,
-      setError,
-      setLobbyNotice,
-    })
+    characterSettingsController,
+    characterSettingsActions,
+    selectedCampaignId,
+    selectedCharacterId,
+    characterSettingsPanel,
+    isCharacterSettingsLoading,
+    isCharacterSettingsSaving,
+    setError,
+    setLobbyNotice,
+  })
 
   // Keep the ref in sync so onOwnProfileUpdated (passed to useWebSocket above)
   // always calls the latest loadUserCharacters without being re-created.
@@ -875,10 +875,14 @@ export function WorkspaceInitialization({
     onSettingsVisibilityChange: campaignSettingsActions.setSettingsVisibility,
     onSettingsSpectatorsEnabledChange: campaignSettingsActions.setSettingsSpectatorsEnabled,
     onSettingsSpectatorMaxChange: campaignSettingsActions.setSettingsSpectatorMax,
-    onSettingsSpectatorWaitlistEnabledChange: campaignSettingsActions.setSettingsSpectatorWaitlistEnabled,
-    onSettingsSpectatorReconnectGraceSecsChange: campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs,
-    onSettingsPostSessionChatEnabledChange: campaignSettingsActions.setSettingsPostSessionChatEnabled,
-    onSettingsPostSessionChatDurationMinutesChange: campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
+    onSettingsSpectatorWaitlistEnabledChange:
+      campaignSettingsActions.setSettingsSpectatorWaitlistEnabled,
+    onSettingsSpectatorReconnectGraceSecsChange:
+      campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs,
+    onSettingsPostSessionChatEnabledChange:
+      campaignSettingsActions.setSettingsPostSessionChatEnabled,
+    onSettingsPostSessionChatDurationMinutesChange:
+      campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
     onSettingsExtensionSyncPolicyChange: campaignSettingsActions.setSettingsExtensionSyncPolicy,
     onSettingsExtensionInventorySyncEnabledChange:
       campaignSettingsActions.setSettingsExtensionInventorySyncEnabled,
@@ -890,8 +894,10 @@ export function WorkspaceInitialization({
       campaignSettingsActions.setSettingsExtensionSyncConflictResolution,
     onSettingsLateJoinPolicyChange: campaignSettingsActions.setSettingsLateJoinPolicy,
     onSettingsLateJoinGraceMinutesChange: campaignSettingsActions.setSettingsLateJoinGraceMinutes,
-    onSettingsDmAutoTargetOnFirstPlayerJoinChange: campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin,
-    onSettingsDefaultSessionDurationMinsChange: campaignSettingsActions.setSettingsDefaultSessionDurationMins,
+    onSettingsDmAutoTargetOnFirstPlayerJoinChange:
+      campaignSettingsActions.setSettingsDmAutoTargetOnFirstPlayerJoin,
+    onSettingsDefaultSessionDurationMinsChange:
+      campaignSettingsActions.setSettingsDefaultSessionDurationMins,
     onSettingsSupportedPlatformsChange: campaignSettingsActions.setSettingsSupportedPlatforms,
     settingsDndRuleset,
     onSettingsDndRulesetChange: campaignSettingsActions.setSettingsDndRuleset,
@@ -1203,13 +1209,17 @@ export function WorkspaceInitialization({
     settingsSpectatorMax,
     onSettingsSpectatorMaxChange: campaignSettingsActions.setSettingsSpectatorMax,
     settingsSpectatorWaitlistEnabled,
-    onSettingsSpectatorWaitlistEnabledChange: campaignSettingsActions.setSettingsSpectatorWaitlistEnabled,
+    onSettingsSpectatorWaitlistEnabledChange:
+      campaignSettingsActions.setSettingsSpectatorWaitlistEnabled,
     settingsSpectatorReconnectGraceSecs,
-    onSettingsSpectatorReconnectGraceSecsChange: campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs,
+    onSettingsSpectatorReconnectGraceSecsChange:
+      campaignSettingsActions.setSettingsSpectatorReconnectGraceSecs,
     settingsPostSessionChatEnabled,
-    onSettingsPostSessionChatEnabledChange: campaignSettingsActions.setSettingsPostSessionChatEnabled,
+    onSettingsPostSessionChatEnabledChange:
+      campaignSettingsActions.setSettingsPostSessionChatEnabled,
     settingsPostSessionChatDurationMinutes,
-    onSettingsPostSessionChatDurationMinutesChange: campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
+    onSettingsPostSessionChatDurationMinutesChange:
+      campaignSettingsActions.setSettingsPostSessionChatDurationMinutes,
     settingsExtensionSyncPolicy,
     onSettingsExtensionSyncPolicyChange: campaignSettingsActions.setSettingsExtensionSyncPolicy,
     settingsExtensionInventorySyncEnabled,

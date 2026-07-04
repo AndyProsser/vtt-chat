@@ -34,7 +34,8 @@ vi.mock('@/services/chat.service', () => ({
 }))
 
 vi.mock('@/services/inventory/pending-extension-sync.service', () => ({
-  listPendingSyncsForCampaign: (...args: unknown[]) => mocks.mockListPendingSyncsForCampaign(...args),
+  listPendingSyncsForCampaign: (...args: unknown[]) =>
+    mocks.mockListPendingSyncsForCampaign(...args),
   approvePendingSync: (...args: unknown[]) => mocks.mockApprovePendingSync(...args),
   rejectPendingSync: (...args: unknown[]) => mocks.mockRejectPendingSync(...args),
 }))
@@ -54,7 +55,14 @@ describe('inventory extension sync review routes', () => {
     vi.resetAllMocks()
     mocks.mockVerifyToken.mockReturnValue({ userId: DM_ID, username: 'dm-one' })
     mocks.mockListSessionsByCampaign.mockResolvedValue([])
-    mocks.mockSendMessage.mockResolvedValue({ id: 'msg-1', createdAt: Date.now(), authorId: DM_ID, authorUsername: 'SYSTEM', content: '', type: 'SYSTEM' })
+    mocks.mockSendMessage.mockResolvedValue({
+      id: 'msg-1',
+      createdAt: Date.now(),
+      authorId: DM_ID,
+      authorUsername: 'SYSTEM',
+      content: '',
+      type: 'SYSTEM',
+    })
   })
 
   function asDm() {
@@ -81,7 +89,9 @@ describe('inventory extension sync review routes', () => {
 
     it('returns the pending list for the DM', async () => {
       asDm()
-      mocks.mockListPendingSyncsForCampaign.mockResolvedValueOnce([{ id: PENDING_ID, kind: 'ITEM' }])
+      mocks.mockListPendingSyncsForCampaign.mockResolvedValueOnce([
+        { id: PENDING_ID, kind: 'ITEM' },
+      ])
       const app = buildApp()
 
       const response = await request(app)

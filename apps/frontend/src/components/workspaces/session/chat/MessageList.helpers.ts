@@ -3,7 +3,10 @@ import { MessageType, findDistancePreset } from '@shared'
 import type { SessionBookendState, SessionSummaryStats } from '@/types/chat'
 import { SESSION_SUMMARY_PREFIX } from '@/constants/workspaces.constants'
 
-export const TYPE_LABEL_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system' | 'roll', string> = {
+export const TYPE_LABEL_BY_VARIANT: Record<
+  'ic' | 'ooc' | 'whisper' | 'dm' | 'system' | 'roll',
+  string
+> = {
   ic: 'In Character',
   ooc: 'Out of Character',
   whisper: 'Whisper',
@@ -72,7 +75,10 @@ export const TYPE_VARIANTS: Record<string, 'ic' | 'ooc' | 'whisper' | 'dm' | 'sy
   [MessageType.ROLL]: 'roll',
 }
 
-export const TYPE_ICON_BY_VARIANT: Record<'ic' | 'ooc' | 'whisper' | 'dm' | 'system' | 'roll', string> = {
+export const TYPE_ICON_BY_VARIANT: Record<
+  'ic' | 'ooc' | 'whisper' | 'dm' | 'system' | 'roll',
+  string
+> = {
   ic: 'swords',
   ooc: 'chat_bubble',
   whisper: 'visibility_off',

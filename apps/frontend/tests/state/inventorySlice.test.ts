@@ -139,9 +139,11 @@ describe('inventorySlice — handleInventoryItemRemoved', () => {
   })
 
   it('removes an existing item from the bucket', () => {
-    useStore.getState().handleInventoryItemRemoved(
-      makeEnvelope('INVENTORY:ITEM_REMOVED', { campaignId: CAMPAIGN_ID, itemId: ITEM_ID })
-    )
+    useStore
+      .getState()
+      .handleInventoryItemRemoved(
+        makeEnvelope('INVENTORY:ITEM_REMOVED', { campaignId: CAMPAIGN_ID, itemId: ITEM_ID })
+      )
 
     expect(useStore.getState().inventoryItems[CAMPAIGN_ID]?.[ITEM_ID]).toBeUndefined()
   })
@@ -203,7 +205,7 @@ describe('inventorySlice — handleInventoryItemEdited', () => {
       inventoryItems: {
         [CAMPAIGN_ID]: {
           [ITEM_ID]: {
-            ...(useStore.getState().inventoryItems[CAMPAIGN_ID]?.[ITEM_ID]!),
+            ...useStore.getState().inventoryItems[CAMPAIGN_ID]?.[ITEM_ID]!,
             notes: 'Pre-existing note',
           },
         },
@@ -220,7 +222,9 @@ describe('inventorySlice — handleInventoryItemEdited', () => {
       })
     )
 
-    expect(useStore.getState().inventoryItems[CAMPAIGN_ID]?.[ITEM_ID]?.notes).toBe('Pre-existing note')
+    expect(useStore.getState().inventoryItems[CAMPAIGN_ID]?.[ITEM_ID]?.notes).toBe(
+      'Pre-existing note'
+    )
   })
 
   it('is a no-op for an unknown itemId', () => {

@@ -71,7 +71,15 @@ export function InviteJoinPage({
     setFullAccountPassword,
     isFullUserEmail,
     canEditJoinFields,
-  } = useEmailPrecheck({ apiUrl, inviteCode, campaign, initialEmail, setError, setErrorCode, onPrecheckSuccess })
+  } = useEmailPrecheck({
+    apiUrl,
+    inviteCode,
+    campaign,
+    initialEmail,
+    setError,
+    setErrorCode,
+    onPrecheckSuccess,
+  })
 
   const handleAvatarSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -129,13 +137,22 @@ export function InviteJoinPage({
   const submitJoin: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault()
     if (!campaign) return
-    if (!emailChecked) { setError('Check email before continuing.'); return }
-    if (!email.trim()) { setError('Email is required.'); return }
+    if (!emailChecked) {
+      setError('Check email before continuing.')
+      return
+    }
+    if (!email.trim()) {
+      setError('Email is required.')
+      return
+    }
     if (isFullUserEmail && !fullAccountPassword.trim()) {
       setError('Password is required for full account sign in.')
       return
     }
-    if (!isFullUserEmail && !playerName.trim()) { setError('Player name is required.'); return }
+    if (!isFullUserEmail && !playerName.trim()) {
+      setError('Player name is required.')
+      return
+    }
 
     setJoining(true)
     setError(null)
@@ -201,7 +218,9 @@ export function InviteJoinPage({
           title="Invite unavailable"
           tone="danger"
           actionLabel="Check Invite Again"
-          onAction={() => { void validateInvite() }}
+          onAction={() => {
+            void validateInvite()
+          }}
         >
           <p>Ask the DM for a new player invite code, then try again.</p>
         </PolicyNotice>
@@ -306,7 +325,10 @@ export function InviteJoinPage({
                     characterLevel={characterLevel}
                     characterAvatarUrl={characterAvatarUrl}
                     showCharacterDetails={showCharacterDetails}
-                    onCharacterNameChange={(v) => { setCharacterName(v); setCharacterNameTouched(true) }}
+                    onCharacterNameChange={(v) => {
+                      setCharacterName(v)
+                      setCharacterNameTouched(true)
+                    }}
                     onCharacterRaceChange={setCharacterRace}
                     onCharacterClassChange={setCharacterClass}
                     onCharacterLevelChange={setCharacterLevel}

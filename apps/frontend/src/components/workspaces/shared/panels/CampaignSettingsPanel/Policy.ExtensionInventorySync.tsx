@@ -116,18 +116,20 @@ export function ExtensionInventorySync(props: ExtensionInventorySyncProps) {
         role="group"
         aria-labelledby="label-sync-conflict-resolution"
       >
-        {EXTENSION_CONFLICT_RESOLUTION_OPTIONS.map((resolution: ExtensionSyncConflictResolution) => (
-          <button
-            key={resolution}
-            type="button"
-            className={`session-toggle-button ${props.settingsExtensionSyncConflictResolution === resolution ? 'is-active' : ''}`}
-            aria-pressed={props.settingsExtensionSyncConflictResolution === resolution}
-            onClick={() => props.onSettingsExtensionSyncConflictResolutionChange(resolution)}
-            disabled={props.disabled}
-          >
-            {getExtensionConflictResolutionLabel(resolution)}
-          </button>
-        ))}
+        {EXTENSION_CONFLICT_RESOLUTION_OPTIONS.map(
+          (resolution: ExtensionSyncConflictResolution) => (
+            <button
+              key={resolution}
+              type="button"
+              className={`session-toggle-button ${props.settingsExtensionSyncConflictResolution === resolution ? 'is-active' : ''}`}
+              aria-pressed={props.settingsExtensionSyncConflictResolution === resolution}
+              onClick={() => props.onSettingsExtensionSyncConflictResolutionChange(resolution)}
+              disabled={props.disabled}
+            >
+              {getExtensionConflictResolutionLabel(resolution)}
+            </button>
+          )
+        )}
       </div>
     </>
   )

@@ -44,7 +44,11 @@ export function createEnqueueRouter(queues: QueueRegistry): Router {
       return
     }
 
-    const { name, data, opts } = req.body as { name?: string; data?: unknown; opts?: Record<string, unknown> }
+    const { name, data, opts } = req.body as {
+      name?: string
+      data?: unknown
+      opts?: Record<string, unknown>
+    }
     if (!name) {
       res.status(400).json({ error: 'Missing required field: name' })
       return

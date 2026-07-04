@@ -27,14 +27,7 @@ interface UseDMAudioActionsParams {
 }
 
 type OverrideType =
-  | 'MUTE'
-  | 'UNMUTE'
-  | 'GAIN'
-  | 'GATE'
-  | 'FILTER'
-  | 'DISTANCE'
-  | 'CONDITION'
-  | 'VOICE'
+  'MUTE' | 'UNMUTE' | 'GAIN' | 'GATE' | 'FILTER' | 'DISTANCE' | 'CONDITION' | 'VOICE'
 type RemovableOverrideType = Exclude<OverrideType, 'UNMUTE'>
 
 /**

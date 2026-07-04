@@ -65,16 +65,16 @@ export function InventoryAddItemForm({
 
           const equipItems: SrdResult[] =
             equipRes.status === 'fulfilled' && equipRes.value.ok
-              ? ((await equipRes.value.json()) as { results: { index: string; name: string }[] }).results.map(
-                  (r) => ({ ...r, category: InventoryItemCategory.EQUIPMENT })
-                )
+              ? (
+                  (await equipRes.value.json()) as { results: { index: string; name: string }[] }
+                ).results.map((r) => ({ ...r, category: InventoryItemCategory.EQUIPMENT }))
               : []
 
           const magicItems: SrdResult[] =
             magicRes.status === 'fulfilled' && magicRes.value.ok
-              ? ((await magicRes.value.json()) as { results: { index: string; name: string }[] }).results.map(
-                  (r) => ({ ...r, category: InventoryItemCategory.MAGIC_ITEM })
-                )
+              ? (
+                  (await magicRes.value.json()) as { results: { index: string; name: string }[] }
+                ).results.map((r) => ({ ...r, category: InventoryItemCategory.MAGIC_ITEM }))
               : []
 
           const combined = [...magicItems, ...equipItems]
@@ -178,11 +178,7 @@ export function InventoryAddItemForm({
       </div>
 
       {/* Category chips — auto-set by SRD pick; editable for custom items */}
-      <div
-        className="inventory-add-form__category-row"
-        role="group"
-        aria-label="Item category"
-      >
+      <div className="inventory-add-form__category-row" role="group" aria-label="Item category">
         {(Object.values(InventoryItemCategory) as InventoryItemCategory[]).map((cat) => (
           <button
             key={cat}

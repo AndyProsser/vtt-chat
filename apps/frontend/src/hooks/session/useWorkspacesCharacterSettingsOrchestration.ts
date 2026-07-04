@@ -10,7 +10,6 @@ import {
 import type { PlayerSettingsPanel } from '@/components/workspaces/shared/panels/PlayerSettingsPanel'
 import { createCharacterSettingsController } from '@/utils/session/sessionController'
 
-
 type UseWorkspacesCharacterSettingsOrchestrationParams = {
   characterSettingsController: ReturnType<typeof createCharacterSettingsController>
   characterSettingsActions: UseCharacterSettingsActions

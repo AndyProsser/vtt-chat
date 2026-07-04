@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { EmailCheckStatus, InviteCampaign, PlayerPrecheckResult, PolicyCode } from '@/types/invite'
+import type {
+  EmailCheckStatus,
+  InviteCampaign,
+  PlayerPrecheckResult,
+  PolicyCode,
+} from '@/types/invite'
 import { isValidEmailFormat } from '@/utils/inviteJoin'
 
 interface UseEmailPrecheckParams {
@@ -35,22 +40,19 @@ export function useEmailPrecheck({
   onPrecheckSuccessRef.current = onPrecheckSuccess
 
   // Wrap setEmail so that any email change immediately resets precheck state.
-  const setEmail = useCallback(
-    (nextEmail: string) => {
-      setEmailRaw(nextEmail)
-      setEmailChecked(false)
-      setPrecheckResult(null)
-      setFullAccountPassword('')
-      setPrecheckLoading(false)
-      const trimmed = nextEmail.trim()
-      if (!trimmed) {
-        setEmailCheckStatus('idle')
-      } else if (!isValidEmailFormat(trimmed)) {
-        setEmailCheckStatus('invalid')
-      }
-    },
-    []
-  )
+  const setEmail = useCallback((nextEmail: string) => {
+    setEmailRaw(nextEmail)
+    setEmailChecked(false)
+    setPrecheckResult(null)
+    setFullAccountPassword('')
+    setPrecheckLoading(false)
+    const trimmed = nextEmail.trim()
+    if (!trimmed) {
+      setEmailCheckStatus('idle')
+    } else if (!isValidEmailFormat(trimmed)) {
+      setEmailCheckStatus('invalid')
+    }
+  }, [])
 
   const runEmailPrecheck = useCallback(
     async (params: { requestId: number; emailValue: string }) => {

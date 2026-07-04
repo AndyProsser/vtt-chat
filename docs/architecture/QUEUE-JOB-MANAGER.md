@@ -91,14 +91,14 @@ Workers call `LLM_SUMMARY_URL` / `RECORDING_PROCESSOR_URL` directly. When the en
 
 ## 4. Queues and Job Types
 
-| Queue name                  | Job type               | Trigger                   | Worker action                    |
-|-----------------------------|------------------------|---------------------------|----------------------------------|
-| `vttchat:session-lifecycle` | `cleanup-old-sessions` | Scheduler (cron, 5 min)   | POST backend lifecycle-sweep     |
-| `vttchat:cleanup`           | _(future types)_       | On-demand                 | POST backend archive-verify      |
-| `vttchat:email`             | `send-email`           | Backend enqueue           | SMTP delivery via nodemailer     |
-| `vttchat:summary`           | `generate-summary`     | Backend enqueue (future)  | POST LLM_SUMMARY_URL             |
-| `vttchat:recording`         | `process-recording`    | Backend enqueue (future)  | POST RECORDING_PROCESSOR_URL     |
-| `vttchat:dlq`               | `dlq-entry`            | Automatic on exhaustion   | Holds failed job metadata        |
+| Queue name                  | Job type               | Trigger                  | Worker action                |
+| --------------------------- | ---------------------- | ------------------------ | ---------------------------- |
+| `vttchat:session-lifecycle` | `cleanup-old-sessions` | Scheduler (cron, 5 min)  | POST backend lifecycle-sweep |
+| `vttchat:cleanup`           | _(future types)_       | On-demand                | POST backend archive-verify  |
+| `vttchat:email`             | `send-email`           | Backend enqueue          | SMTP delivery via nodemailer |
+| `vttchat:summary`           | `generate-summary`     | Backend enqueue (future) | POST LLM_SUMMARY_URL         |
+| `vttchat:recording`         | `process-recording`    | Backend enqueue (future) | POST RECORDING_PROCESSOR_URL |
+| `vttchat:dlq`               | `dlq-entry`            | Automatic on exhaustion  | Holds failed job metadata    |
 
 Job type constants: `packages/shared/jobs/names.ts`  
 Payload interfaces: `packages/shared/jobs/types.ts`
@@ -119,13 +119,13 @@ Payload interfaces: `packages/shared/jobs/types.ts`
 
 Default (all queues except DLQ):
 
-| Setting          | Default  | Env override          |
-|------------------|----------|-----------------------|
-| Max attempts     | 5        | `QUEUE_MAX_ATTEMPTS`  |
-| Backoff type     | exponential | —                  |
-| Initial delay    | 5 000 ms | `QUEUE_BASE_DELAY_MS` |
-| Completed kept   | 500 jobs or 7 days | —         |
-| Failed kept      | indefinite (for DLQ promotion) | — |
+| Setting        | Default                        | Env override          |
+| -------------- | ------------------------------ | --------------------- |
+| Max attempts   | 5                              | `QUEUE_MAX_ATTEMPTS`  |
+| Backoff type   | exponential                    | —                     |
+| Initial delay  | 5 000 ms                       | `QUEUE_BASE_DELAY_MS` |
+| Completed kept | 500 jobs or 7 days             | —                     |
+| Failed kept    | indefinite (for DLQ promotion) | —                     |
 
 ---
 

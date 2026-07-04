@@ -265,14 +265,14 @@ AI provider configuration and model management. Only visible when `VTTCHAT_SUMMA
 
 #### **Summary Model Card**
 
-| Control | Description |
-| ------- | ----------- |
-| Model tag input | Ollama model tag, e.g. `mistral:7b-instruct-q4_K_M` |
-| Pull model button | Downloads model to the Ollama volume |
-| Pull progress bar | Live progress during download |
-| Delete button | Removes model; requires confirmation |
-| Status badge | Available / Downloading / Not found / Error |
-| Model size label | Populated after pull |
+| Control           | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| Model tag input   | Ollama model tag, e.g. `mistral:7b-instruct-q4_K_M` |
+| Pull model button | Downloads model to the Ollama volume                |
+| Pull progress bar | Live progress during download                       |
+| Delete button     | Removes model; requires confirmation                |
+| Status badge      | Available / Downloading / Not found / Error         |
+| Model size label  | Populated after pull                                |
 
 #### **Assistant Model Card**
 
@@ -282,24 +282,24 @@ A note beneath the card explains the two-model split: "The assistant model prior
 
 #### **Transcription (Whisper) Card**
 
-| Control | Description |
-| ------- | ----------- |
-| Model size select | tiny / base / small / medium / large-v3 |
-| Compute type select | int8 (CPU) / float16 (GPU) / float32 |
-| Language input | Language code or `auto` for auto-detection |
-| Status badge | Available / Not found |
+| Control             | Description                                |
+| ------------------- | ------------------------------------------ |
+| Model size select   | tiny / base / small / medium / large-v3    |
+| Compute type select | int8 (CPU) / float16 (GPU) / float32       |
+| Language input      | Language code or `auto` for auto-detection |
+| Status badge        | Available / Not found                      |
 
 #### **Cloud AI Card** (collapsed by default)
 
-| Control | Description |
-| ------- | ----------- |
-| Enable cloud AI toggle | Off by default; enables cloud as an enhancement layer |
-| Provider select | Anthropic / OpenAI / Custom |
-| API key input | Write-only; displayed as `••••••••` after save |
-| Summary model input | Cloud model name for post-session summarization |
-| Assistant model input | Cloud model name for writing assistant |
-| Test connection button | Sends a minimal test completion to verify credentials |
-| Info text | "Individual campaigns can opt out of cloud AI in their campaign settings." |
+| Control                | Description                                                                |
+| ---------------------- | -------------------------------------------------------------------------- |
+| Enable cloud AI toggle | Off by default; enables cloud as an enhancement layer                      |
+| Provider select        | Anthropic / OpenAI / Custom                                                |
+| API key input          | Write-only; displayed as `••••••••` after save                             |
+| Summary model input    | Cloud model name for post-session summarization                            |
+| Assistant model input  | Cloud model name for writing assistant                                     |
+| Test connection button | Sends a minimal test completion to verify credentials                      |
+| Info text              | "Individual campaigns can opt out of cloud AI in their campaign settings." |
 
 When cloud AI is disabled: card shows a single greyed toggle with explanatory text. No API key input is visible.
 

@@ -35,7 +35,9 @@ async function waitForDatabase() {
       return
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      console.log(`[startup] Database not ready yet (attempt ${attempt}/${maxAttempts}): ${message}`)
+      console.log(
+        `[startup] Database not ready yet (attempt ${attempt}/${maxAttempts}): ${message}`
+      )
 
       if (attempt === maxAttempts) {
         throw new Error(`Database did not become ready after ${maxAttempts} attempts`)
@@ -97,7 +99,9 @@ async function runPrismaCommand() {
 }
 
 async function runPrismaGenerate() {
-  console.log('[startup] Running Prisma client generation: npx prisma generate --config prisma.config.ts')
+  console.log(
+    '[startup] Running Prisma client generation: npx prisma generate --config prisma.config.ts'
+  )
 
   await new Promise((resolve, reject) => {
     const child = spawn('npx', ['prisma', 'generate', '--config', 'prisma.config.ts'], {

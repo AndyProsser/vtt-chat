@@ -18,6 +18,15 @@ export function getTabLabel(tab: WorkspaceTab): string {
 
 export function getTabIcon(
   tab: WorkspaceTab
-): 'panel' | 'party' | 'inventory' | 'rooms' | 'journal' | 'notes' | 'history' | 'voice' | 'settings' {
+):
+  | 'panel'
+  | 'party'
+  | 'inventory'
+  | 'rooms'
+  | 'journal'
+  | 'notes'
+  | 'history'
+  | 'voice'
+  | 'settings' {
   return getWorkspacePanelIcon(tab)
 }

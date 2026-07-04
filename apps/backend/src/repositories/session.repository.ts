@@ -561,11 +561,17 @@ export async function getSessionParticipantProfiles(
 
       // Prefer the new classes column; fall back to legacy class/subclass columns.
       const rawClasses = character?.classes
-      const characterClasses = Array.isArray(rawClasses) && rawClasses.length > 0
-        ? (rawClasses as unknown as CharacterClassEntry[])
-        : character?.class
-          ? [{ name: [character.class, character.subclass].filter(Boolean).join(' / '), level: typeof levelValue === 'number' ? levelValue : 1 }]
-          : null
+      const characterClasses =
+        Array.isArray(rawClasses) && rawClasses.length > 0
+          ? (rawClasses as unknown as CharacterClassEntry[])
+          : character?.class
+            ? [
+                {
+                  name: [character.class, character.subclass].filter(Boolean).join(' / '),
+                  level: typeof levelValue === 'number' ? levelValue : 1,
+                },
+              ]
+            : null
       const multiclass = (characterClasses?.length ?? 0) > 1
 
       acc[member.userId] = {

@@ -110,7 +110,9 @@ function computeTimerDurations(
   const pausedAtMs = toFiniteTimestamp(anchor.pausedAt)
   const endedAtMs = toFiniteTimestamp(anchor.endedAt)
   const cooldownEndsAtMs = toFiniteTimestamp(anchor.cooldownExpiresAt)
-  const safeDuration = Number.isFinite(cooldownDurationMs) ? cooldownDurationMs : DEFAULT_COOLDOWN_MS
+  const safeDuration = Number.isFinite(cooldownDurationMs)
+    ? cooldownDurationMs
+    : DEFAULT_COOLDOWN_MS
 
   /** Active session time (pauses excluded). Backend-synced via cumulativePauseMs. */
   const activeElapsedSeconds = (() => {
@@ -261,9 +263,12 @@ function SessionTimerLeafInner({
   const writeDisplay = (nowMs: number) => {
     const d = computeTimerDurations(anchor, nowMs, cooldownDurationMs)
     if (primaryRef.current) primaryRef.current.textContent = d.primaryLabel
-    if (activeTimeRef.current) activeTimeRef.current.textContent = formatDuration(d.activeElapsedSeconds)
-    if (pausedForRef.current) pausedForRef.current.textContent = formatDuration(d.pausedElapsedSeconds)
-    if (totalPauseRef.current) totalPauseRef.current.textContent = formatDuration(d.totalPauseSeconds)
+    if (activeTimeRef.current)
+      activeTimeRef.current.textContent = formatDuration(d.activeElapsedSeconds)
+    if (pausedForRef.current)
+      pausedForRef.current.textContent = formatDuration(d.pausedElapsedSeconds)
+    if (totalPauseRef.current)
+      totalPauseRef.current.textContent = formatDuration(d.totalPauseSeconds)
     if (cooldownLeftRef.current)
       cooldownLeftRef.current.textContent = formatDuration(d.cooldownRemainingSeconds)
   }

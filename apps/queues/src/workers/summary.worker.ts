@@ -20,7 +20,10 @@ export function startSummaryWorker(connection: IORedis, dlq: Queue): Worker {
     QUEUE_NAMES.SUMMARY,
     async (job: Job) => {
       if (job.name !== JOB_TYPES.GENERATE_SUMMARY) {
-        logger.warn('summary-worker', 'Unknown job type — discarding', { jobName: job.name, jobId: job.id })
+        logger.warn('summary-worker', 'Unknown job type — discarding', {
+          jobName: job.name,
+          jobId: job.id,
+        })
         return
       }
 
@@ -28,10 +31,14 @@ export function startSummaryWorker(connection: IORedis, dlq: Queue): Worker {
       const llmUrl = config.integrations.llmSummaryUrl
 
       if (!llmUrl) {
-        logger.info('summary-worker', 'LLM_SUMMARY_URL not configured — job skipped (will activate on deploy)', {
-          jobId: job.id,
-          sessionId: payload.sessionId,
-        })
+        logger.info(
+          'summary-worker',
+          'LLM_SUMMARY_URL not configured — job skipped (will activate on deploy)',
+          {
+            jobId: job.id,
+            sessionId: payload.sessionId,
+          }
+        )
         return
       }
 

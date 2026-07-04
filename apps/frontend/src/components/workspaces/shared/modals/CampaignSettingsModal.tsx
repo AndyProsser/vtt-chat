@@ -59,7 +59,9 @@ type CampaignSettingsModalProps = Pick<
   | 'onSettingsLateJoinGraceMinutesChange'
 >
 
-export const CampaignSettingsModal = memo(function CampaignSettingsModal(props: CampaignSettingsModalProps) {
+export const CampaignSettingsModal = memo(function CampaignSettingsModal(
+  props: CampaignSettingsModalProps
+) {
   if (!props.showCampaignSettingsModal) {
     return null
   }

@@ -20,7 +20,12 @@ interface WhisperMentionPickerProps {
   prefix?: string
 }
 
-function WhisperMentionPickerComponent({ options, onSelect, onDismiss, prefix = '@' }: WhisperMentionPickerProps) {
+function WhisperMentionPickerComponent({
+  options,
+  onSelect,
+  onDismiss,
+  prefix = '@',
+}: WhisperMentionPickerProps) {
   const [activeIndex, setActiveIndex] = useState(0)
 
   useEffect(() => setActiveIndex(0), [options])
@@ -62,7 +67,10 @@ function WhisperMentionPickerComponent({ options, onSelect, onDismiss, prefix = 
               onSelect(opt.label)
             }}
           >
-            <span className="chat-command-palette__item-slash">{prefix}{opt.label}</span>
+            <span className="chat-command-palette__item-slash">
+              {prefix}
+              {opt.label}
+            </span>
           </li>
         ))}
       </ul>

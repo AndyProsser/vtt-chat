@@ -5,7 +5,10 @@ import tsParser from '@typescript-eslint/parser'
 import prettierPlugin from 'eslint-plugin-prettier'
 
 const ALL_SOURCE_FILES = ['**/*.{js,jsx,ts,tsx}']
-const ROOT_REACT_APP_FILES = ['apps/frontend/**/*.{js,jsx,ts,tsx}', 'apps/admin/**/*.{js,jsx,ts,tsx}']
+const ROOT_REACT_APP_FILES = [
+  'apps/frontend/**/*.{js,jsx,ts,tsx}',
+  'apps/admin/**/*.{js,jsx,ts,tsx}',
+]
 const REACT_EXCEPTION_FILES = [
   '**/src/components/workspaces/index.tsx',
   '**/src/components/workspaces/session/WorkspaceFrame.tsx',
@@ -25,7 +28,13 @@ const REACT_RULE_OVERRIDES = {
 
 export default defineConfig([
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/*.d.ts', 'packages/shared/**/*.js', 'packages/shared/index.js'],
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/*.d.ts',
+      'packages/shared/**/*.js',
+      'packages/shared/index.js',
+    ],
   },
   {
     files: ALL_SOURCE_FILES,

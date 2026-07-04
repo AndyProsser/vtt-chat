@@ -1,10 +1,6 @@
 {
   "language": "en,en-AU",
-  "ignorePaths": [
-    "dist/**",
-    "node_modules/**",
-    "vtt-chat.code-workspace"
-  ],
+  "ignorePaths": ["dist/**", "node_modules/**", "vtt-chat.code-workspace"],
   "words": [
     "cooldowns",
     "dismissable",

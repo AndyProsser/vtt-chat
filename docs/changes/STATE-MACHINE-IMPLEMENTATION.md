@@ -14,13 +14,13 @@
 
 **Current Codebase:**
 
-| Component           | Location                                          | Current                                                                  | Contract Required                                                                          |
-| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| **Backend DB**      | `backend/src/db/schema.prisma`                    | `SessionState` enum with IDLE, ACTIVE, PAUSED, ENDED, CLEANUP            | Keep IDLE (canonical), ensure CLEANUP state ready for use                                  |
-| **Backend API**     | `backend/src/api/session.routes.ts`               | Transitions: IDLE→ACTIVE, ACTIVE→(PAUSED\|ENDED), PAUSED→(ACTIVE\|ENDED) | Implement backend detection of ENDED + all users → CLEANUP                                 |
-| **Backend Service** | `backend/src/services/session.service.ts`         | `updateSessionState()` validates transitions                             | Implement scheduled job for CLEANUP detection/transition                                   |
-| **Cleanup Job**     | `backend/src/jobs/session-cleanup.job.ts`         | Scheduled job runs periodically                                          | Detect ENDED sessions with no connected users; transition to CLEANUP; purge greenroom chat |
-| **Frontend Store**  | `frontend/src/state/sessionSlice.ts`              | Zustand store caches session state                                       | Handle CLEANUP state on hydration and WS events                                            |
+| Component           | Location                                         | Current                                                                  | Contract Required                                                                          |
+| ------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| **Backend DB**      | `backend/src/db/schema.prisma`                   | `SessionState` enum with IDLE, ACTIVE, PAUSED, ENDED, CLEANUP            | Keep IDLE (canonical), ensure CLEANUP state ready for use                                  |
+| **Backend API**     | `backend/src/api/session.routes.ts`              | Transitions: IDLE→ACTIVE, ACTIVE→(PAUSED\|ENDED), PAUSED→(ACTIVE\|ENDED) | Implement backend detection of ENDED + all users → CLEANUP                                 |
+| **Backend Service** | `backend/src/services/session.service.ts`        | `updateSessionState()` validates transitions                             | Implement scheduled job for CLEANUP detection/transition                                   |
+| **Cleanup Job**     | `backend/src/jobs/session-cleanup.job.ts`        | Scheduled job runs periodically                                          | Detect ENDED sessions with no connected users; transition to CLEANUP; purge greenroom chat |
+| **Frontend Store**  | `frontend/src/state/sessionSlice.ts`             | Zustand store caches session state                                       | Handle CLEANUP state on hydration and WS events                                            |
 | **Frontend API**    | `frontend/src/components/session/Workspaces.tsx` | Calls `PUT /api/session/:id/state`                                       | No change (endpoint stays same)                                                            |
 
 **Action Items:**
@@ -117,12 +117,12 @@
 
 **Current Codebase:**
 
-| Component              | Location                                         | Current                          | Contract Required                              |
+| Component | Location | Current | Contract Required |
 | ---------------------- | ------------------------------------------------ | -------------------------------- | ---------------------------------------------- | --- | ----------------------------------------- |
-| **Frontend Mute**      | `frontend/src/state/audioSlice.ts`               | `mutedBySelf`, `mutedByDM` flags | Already exists ✓                               |
-| **Frontend UI**        | `frontend/src/components/session/AudioPanel.tsx` | Shows mute state                 | Already renders ✓                              |
-| **Backend Validation** | `backend/src/services/audio.service.ts`          | Missing server-side mute check   | Add mute validation before audio packet accept |
-| **LiveKit Token**      | `backend/src/services/livekit.service.ts`        | Token claims                     | Add `mutedBySelf                               |     | mutedByDM` to token (optional info field) |
+| **Frontend Mute** | `frontend/src/state/audioSlice.ts` | `mutedBySelf`, `mutedByDM` flags | Already exists ✓ |
+| **Frontend UI** | `frontend/src/components/session/AudioPanel.tsx` | Shows mute state | Already renders ✓ |
+| **Backend Validation** | `backend/src/services/audio.service.ts` | Missing server-side mute check | Add mute validation before audio packet accept |
+| **LiveKit Token** | `backend/src/services/livekit.service.ts` | Token claims | Add `mutedBySelf                               |     | mutedByDM` to token (optional info field) |
 
 **Action Items:**
 
@@ -185,11 +185,11 @@
 
 **Current Codebase:**
 
-| Component             | Location                                          | Current                                | Contract Required                                  |
-| --------------------- | ------------------------------------------------- | -------------------------------------- | -------------------------------------------------- |
-| **Backend Chat**      | `backend/src/services/chat.service.ts`            | Message creation exists                | Ensure SYSTEM messages created on state transition |
-| **Session State**     | `backend/src/services/session.service.ts`         | On updateSessionState()                | Call `createSystemMessage()` for each transition   |
-| **Frontend Chat**     | `frontend/src/state/chatSlice.ts`                 | Chat timeline                          | Renders SYSTEM messages (if already implemented)   |
+| Component             | Location                                         | Current                                | Contract Required                                  |
+| --------------------- | ------------------------------------------------ | -------------------------------------- | -------------------------------------------------- |
+| **Backend Chat**      | `backend/src/services/chat.service.ts`           | Message creation exists                | Ensure SYSTEM messages created on state transition |
+| **Session State**     | `backend/src/services/session.service.ts`        | On updateSessionState()                | Call `createSystemMessage()` for each transition   |
+| **Frontend Chat**     | `frontend/src/state/chatSlice.ts`                | Chat timeline                          | Renders SYSTEM messages (if already implemented)   |
 | **Frontend Bookends** | `frontend/src/components/session/Workspaces.tsx` | Calls `appendSessionBookendMessages()` | Remove client-side creation; rely on WS event      |
 
 **Action Items:**

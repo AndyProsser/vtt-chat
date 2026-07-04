@@ -141,7 +141,10 @@ describe('integration-sync.service', () => {
       buildWalletRow({ id: where.id, ...data })
     )
     mocks.mockInventoryHistoryEntryCreate.mockResolvedValue({})
-    mocks.mockPendingExtensionSyncCreate.mockImplementation(async ({ data }: any) => ({ id: 'pending-1', ...data }))
+    mocks.mockPendingExtensionSyncCreate.mockImplementation(async ({ data }: any) => ({
+      id: 'pending-1',
+      ...data,
+    }))
     mocks.mockAdminAuditLogCreate.mockResolvedValue({ id: 'audit-1' })
   })
 
@@ -480,7 +483,9 @@ describe('integration-sync.service', () => {
         externalSystem: 'dndbeyond',
         source: 'player',
         user: baseUser,
-        partyInventoryUpdate: { items: [{ externalId: 'p1', name: 'Bag of Holding', quantity: 1 }] },
+        partyInventoryUpdate: {
+          items: [{ externalId: 'p1', name: 'Bag of Holding', quantity: 1 }],
+        },
       })
 
       expect(result).toEqual({
@@ -500,7 +505,9 @@ describe('integration-sync.service', () => {
         externalSystem: 'dndbeyond',
         source: 'dm',
         user: { userId: DM_ID, username: 'dm-one', role: 'DM' },
-        partyInventoryUpdate: { items: [{ externalId: 'p1', name: 'Bag of Holding', quantity: 1 }] },
+        partyInventoryUpdate: {
+          items: [{ externalId: 'p1', name: 'Bag of Holding', quantity: 1 }],
+        },
       })
 
       expect(result.ok).toBe(true)
@@ -508,7 +515,9 @@ describe('integration-sync.service', () => {
         expect(result.applied.partyInventoryItemsUpserted).toBe(1)
       }
       expect(mocks.mockInventoryItemCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ ownerType: 'party', ownerId: null }) })
+        expect.objectContaining({
+          data: expect.objectContaining({ ownerType: 'party', ownerId: null }),
+        })
       )
     })
 
@@ -660,7 +669,13 @@ describe('integration-sync.service', () => {
         }),
       })
       mocks.mockInventoryItemFindFirst.mockResolvedValue(
-        buildItemRow({ ownerType: 'party', ownerId: null, externalId: 'p1', name: 'Old Name', quantity: 1 })
+        buildItemRow({
+          ownerType: 'party',
+          ownerId: null,
+          externalId: 'p1',
+          name: 'Old Name',
+          quantity: 1,
+        })
       )
 
       const result = await syncExternalIntegration({

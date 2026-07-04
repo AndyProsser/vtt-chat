@@ -6,10 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import {
-  DND_5_5E_SRD_CLASSES,
-  DND_5_5E_SRD_SPECIES,
-} from '@/constants/characterSrd.constants'
+import { DND_5_5E_SRD_CLASSES, DND_5_5E_SRD_SPECIES } from '@/constants/characterSrd.constants'
 
 type SrdRuleset = '2014' | '2024'
 
@@ -30,10 +27,7 @@ interface UseSrdOptionsParams {
 const FALLBACK_RACES = DND_5_5E_SRD_SPECIES as unknown as string[]
 const FALLBACK_CLASSES = DND_5_5E_SRD_CLASSES as unknown as string[]
 
-async function fetchSrdList(
-  url: string,
-  token: string
-): Promise<string[]> {
+async function fetchSrdList(url: string, token: string): Promise<string[]> {
   try {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },

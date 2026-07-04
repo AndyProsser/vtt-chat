@@ -39,7 +39,9 @@ router.get('/:campaignId/sync/pending', requireAuth, async (req: Request, res: R
 
   const role = await resolveCampaignRole(campaignId as UUID, user.userId as UUID)
   if (role !== 'DM') {
-    return res.status(403).json({ code: 'FORBIDDEN', message: 'Only the campaign DM can review pending syncs' })
+    return res
+      .status(403)
+      .json({ code: 'FORBIDDEN', message: 'Only the campaign DM can review pending syncs' })
   }
 
   try {
@@ -61,12 +63,16 @@ router.post(
     const user = (req as any).user
 
     if (!isValidUUID(campaignId) || !isValidUUID(pendingId)) {
-      return res.status(400).json({ code: 'INVALID_INPUT', message: 'Invalid campaignId or pendingId' })
+      return res
+        .status(400)
+        .json({ code: 'INVALID_INPUT', message: 'Invalid campaignId or pendingId' })
     }
 
     const role = await resolveCampaignRole(campaignId as UUID, user.userId as UUID)
     if (role !== 'DM') {
-      return res.status(403).json({ code: 'FORBIDDEN', message: 'Only the campaign DM can approve pending syncs' })
+      return res
+        .status(403)
+        .json({ code: 'FORBIDDEN', message: 'Only the campaign DM can approve pending syncs' })
     }
 
     try {
@@ -79,7 +85,9 @@ router.post(
       })
 
       if (!result.ok) {
-        return res.status(404).json({ code: 'NOT_FOUND', message: 'Pending sync not found or expired' })
+        return res
+          .status(404)
+          .json({ code: 'NOT_FOUND', message: 'Pending sync not found or expired' })
       }
 
       const wsManager: WebSocketManager | undefined = req.app.locals.wsManager
@@ -168,8 +176,14 @@ router.post(
 
       return res.json(result.kind === 'ITEM' ? { item: result.item } : { wallet: result.wallet })
     } catch (err) {
-      logger.error('inventory-sync.routes', 'Failed to approve pending sync', { campaignId, pendingId, err })
-      return res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to approve pending sync' })
+      logger.error('inventory-sync.routes', 'Failed to approve pending sync', {
+        campaignId,
+        pendingId,
+        err,
+      })
+      return res
+        .status(500)
+        .json({ code: 'INTERNAL_ERROR', message: 'Failed to approve pending sync' })
     }
   }
 )
@@ -184,23 +198,38 @@ router.post(
     const user = (req as any).user
 
     if (!isValidUUID(campaignId) || !isValidUUID(pendingId)) {
-      return res.status(400).json({ code: 'INVALID_INPUT', message: 'Invalid campaignId or pendingId' })
+      return res
+        .status(400)
+        .json({ code: 'INVALID_INPUT', message: 'Invalid campaignId or pendingId' })
     }
 
     const role = await resolveCampaignRole(campaignId as UUID, user.userId as UUID)
     if (role !== 'DM') {
-      return res.status(403).json({ code: 'FORBIDDEN', message: 'Only the campaign DM can reject pending syncs' })
+      return res
+        .status(403)
+        .json({ code: 'FORBIDDEN', message: 'Only the campaign DM can reject pending syncs' })
     }
 
     try {
-      const rejected = await rejectPendingSync({ pendingId: pendingId as UUID, campaignId: campaignId as UUID })
+      const rejected = await rejectPendingSync({
+        pendingId: pendingId as UUID,
+        campaignId: campaignId as UUID,
+      })
       if (!rejected) {
-        return res.status(404).json({ code: 'NOT_FOUND', message: 'Pending sync not found or expired' })
+        return res
+          .status(404)
+          .json({ code: 'NOT_FOUND', message: 'Pending sync not found or expired' })
       }
       return res.status(204).send()
     } catch (err) {
-      logger.error('inventory-sync.routes', 'Failed to reject pending sync', { campaignId, pendingId, err })
-      return res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to reject pending sync' })
+      logger.error('inventory-sync.routes', 'Failed to reject pending sync', {
+        campaignId,
+        pendingId,
+        err,
+      })
+      return res
+        .status(500)
+        .json({ code: 'INTERNAL_ERROR', message: 'Failed to reject pending sync' })
     }
   }
 )

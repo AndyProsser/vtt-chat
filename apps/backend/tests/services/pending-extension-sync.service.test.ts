@@ -150,7 +150,11 @@ describe('pending-extension-sync.service', () => {
 
     expect(result).toEqual({ ok: true, kind: 'CURRENCY', wallet: { id: 'wallet-1', gp: 10 } })
     expect(mocks.mockSetExternalCurrencyWallet).toHaveBeenCalledWith(
-      expect.objectContaining({ campaignId: CAMPAIGN_ID, ownerId: CHARACTER_ID, wallet: { gp: 10 } })
+      expect.objectContaining({
+        campaignId: CAMPAIGN_ID,
+        ownerId: CHARACTER_ID,
+        wallet: { gp: 10 },
+      })
     )
     expect(mocks.mockDeletePendingExtensionSyncRecord).toHaveBeenCalledWith(PENDING_ID)
   })
@@ -172,7 +176,10 @@ describe('pending-extension-sync.service', () => {
   it('rejectPendingSync deletes the record and returns true', async () => {
     mocks.mockFindPendingExtensionSyncById.mockResolvedValueOnce(buildRow())
 
-    const rejected = await rejectPendingSync({ pendingId: PENDING_ID as any, campaignId: CAMPAIGN_ID as any })
+    const rejected = await rejectPendingSync({
+      pendingId: PENDING_ID as any,
+      campaignId: CAMPAIGN_ID as any,
+    })
 
     expect(rejected).toBe(true)
     expect(mocks.mockDeletePendingExtensionSyncRecord).toHaveBeenCalledWith(PENDING_ID)
@@ -183,7 +190,10 @@ describe('pending-extension-sync.service', () => {
   it('rejectPendingSync returns false for a missing or expired pending sync', async () => {
     mocks.mockFindPendingExtensionSyncById.mockResolvedValueOnce(null)
 
-    const rejected = await rejectPendingSync({ pendingId: PENDING_ID as any, campaignId: CAMPAIGN_ID as any })
+    const rejected = await rejectPendingSync({
+      pendingId: PENDING_ID as any,
+      campaignId: CAMPAIGN_ID as any,
+    })
 
     expect(rejected).toBe(false)
     expect(mocks.mockDeletePendingExtensionSyncRecord).not.toHaveBeenCalled()

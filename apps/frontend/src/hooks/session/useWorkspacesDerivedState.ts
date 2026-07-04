@@ -187,10 +187,7 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
         ? {
             ...user,
             campaignMembershipRole: selectedCampaign?.memberRole as
-              | 'DM'
-              | 'PLAYER'
-              | 'SPECTATOR'
-              | undefined,
+              'DM' | 'PLAYER' | 'SPECTATOR' | undefined,
           }
         : {
             ...user,
@@ -198,9 +195,7 @@ export function useWorkspacesDerivedState(params: UseWorkspacesDerivedStateParam
             username: takeoverDisplayName,
             role: effectiveSessionRole,
             campaignMembershipRole: effectiveSessionRole as unknown as
-              | 'DM'
-              | 'PLAYER'
-              | 'SPECTATOR',
+              'DM' | 'PLAYER' | 'SPECTATOR',
           },
     [
       activeTakeoverUserId,

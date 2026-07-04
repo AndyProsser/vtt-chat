@@ -140,8 +140,7 @@ export interface CampaignDmTransferInitiatedPayload {
   expiresAt: number // Unix ms
 }
 
-export type CampaignDmTransferInitiatedEvent =
-  EventEnvelope<CampaignDmTransferInitiatedPayload>
+export type CampaignDmTransferInitiatedEvent = EventEnvelope<CampaignDmTransferInitiatedPayload>
 
 // ---------------------------------------------------------------------------
 // CAMPAIGN:DM_TRANSFER_RESPONDED
@@ -155,8 +154,7 @@ export interface CampaignDmTransferRespondedPayload {
   respondedAt: number // Unix ms
 }
 
-export type CampaignDmTransferRespondedEvent =
-  EventEnvelope<CampaignDmTransferRespondedPayload>
+export type CampaignDmTransferRespondedEvent = EventEnvelope<CampaignDmTransferRespondedPayload>
 
 // ---------------------------------------------------------------------------
 // CAMPAIGN:DM_TRANSFER_CANCELLED
@@ -169,8 +167,7 @@ export interface CampaignDmTransferCancelledPayload {
   cancelledAt: number // Unix ms
 }
 
-export type CampaignDmTransferCancelledEvent =
-  EventEnvelope<CampaignDmTransferCancelledPayload>
+export type CampaignDmTransferCancelledEvent = EventEnvelope<CampaignDmTransferCancelledPayload>
 
 // ---------------------------------------------------------------------------
 // CAMPAIGN:DM_TRANSFERRED

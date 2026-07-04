@@ -1752,9 +1752,7 @@ async function handleLootSplitCommand({
 
   const presence = await getSessionPresence(sessionId)
   const playerIds = [
-    ...new Set(
-      presence.filter((p) => p.role === Role.PLAYER).map((p) => p.userId as UUID)
-    ),
+    ...new Set(presence.filter((p) => p.role === Role.PLAYER).map((p) => p.userId as UUID)),
   ]
 
   if (playerIds.length === 0) {

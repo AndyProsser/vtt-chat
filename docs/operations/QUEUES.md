@@ -39,15 +39,15 @@ The backend retains an in-process cleanup scheduler as a safety fallback by defa
 
 ### Queue tuning
 
-| Variable                        | Default          | Description                                                                   |
-| ------------------------------- | ---------------- | ----------------------------------------------------------------------------- |
-| `QUEUES_PORT`                   | `3001`           | HTTP port for admin + enqueue API                                             |
-| `QUEUE_ADMIN_SECRET`            | _(empty = open)_ | Bearer token for admin API. Set in production.                                |
-| `QUEUE_MAX_ATTEMPTS`            | `5`              | Retry attempts before DLQ promotion                                           |
-| `QUEUE_BASE_DELAY_MS`           | `5000`           | Initial exponential backoff delay (ms)                                        |
-| `QUEUE_CLEANUP_CRON`            | `*/5 * * * *`    | Cron for the repeatable lifecycle sweep                                       |
-| `QUEUE_DIGEST_CRON`             | `0 9 * * 1`      | Cron for the weekly campaign digest email (Monday 09:00 UTC)                  |
-| `SESSION_REMINDER_HOURS_BEFORE` | `1`              | Hours before `Session.scheduledAt` to send the session reminder email         |
+| Variable                        | Default          | Description                                                           |
+| ------------------------------- | ---------------- | --------------------------------------------------------------------- |
+| `QUEUES_PORT`                   | `3001`           | HTTP port for admin + enqueue API                                     |
+| `QUEUE_ADMIN_SECRET`            | _(empty = open)_ | Bearer token for admin API. Set in production.                        |
+| `QUEUE_MAX_ATTEMPTS`            | `5`              | Retry attempts before DLQ promotion                                   |
+| `QUEUE_BASE_DELAY_MS`           | `5000`           | Initial exponential backoff delay (ms)                                |
+| `QUEUE_CLEANUP_CRON`            | `*/5 * * * *`    | Cron for the repeatable lifecycle sweep                               |
+| `QUEUE_DIGEST_CRON`             | `0 9 * * 1`      | Cron for the weekly campaign digest email (Monday 09:00 UTC)          |
+| `SESSION_REMINDER_HOURS_BEFORE` | `1`              | Hours before `Session.scheduledAt` to send the session reminder email |
 
 ### SMTP (email worker)
 
@@ -83,16 +83,16 @@ SMTP_FROM_NAME=VTT-Chat
 
 #### Variable reference
 
-| Variable          | Used by          | Description                                                   |
-| ----------------- | ---------------- | ------------------------------------------------------------- |
-| `SMTP_SERVICE`    | Option A         | Nodemailer well-known service name, e.g. `Gmail`, `Outlook365` |
-| `SMTP_HOST`       | Option B         | SMTP server hostname                                          |
-| `SMTP_PORT`       | Option B         | SMTP port (default: 587)                                      |
-| `SMTP_SECURE`     | Option B         | `1` for TLS, `0` for STARTTLS                                 |
-| `SMTP_USER`       | both             | SMTP auth username                                            |
-| `SMTP_PASS`       | both             | SMTP auth password / app-specific password                    |
-| `SMTP_FROM_EMAIL` | both             | Sender address                                                |
-| `SMTP_FROM_NAME`  | both             | Sender display name (default: VTT-Chat)                       |
+| Variable          | Used by  | Description                                                    |
+| ----------------- | -------- | -------------------------------------------------------------- |
+| `SMTP_SERVICE`    | Option A | Nodemailer well-known service name, e.g. `Gmail`, `Outlook365` |
+| `SMTP_HOST`       | Option B | SMTP server hostname                                           |
+| `SMTP_PORT`       | Option B | SMTP port (default: 587)                                       |
+| `SMTP_SECURE`     | Option B | `1` for TLS, `0` for STARTTLS                                  |
+| `SMTP_USER`       | both     | SMTP auth username                                             |
+| `SMTP_PASS`       | both     | SMTP auth password / app-specific password                     |
+| `SMTP_FROM_EMAIL` | both     | Sender address                                                 |
+| `SMTP_FROM_NAME`  | both     | Sender display name (default: VTT-Chat)                        |
 
 Without SMTP config in non-production, email jobs succeed silently (logged as skipped).
 In production with no SMTP config (`SMTP_SERVICE` or `SMTP_HOST` missing), email jobs fail and retry.
@@ -101,12 +101,12 @@ In production with no SMTP config (`SMTP_SERVICE` or `SMTP_HOST` missing), email
 
 DKIM (DomainKeys Identified Mail) is a DNS-level signature that proves an email legitimately originated from your domain. Whether you need to configure it depends on how you're sending:
 
-| Sending method                 | DKIM required?                                                                     |
-| ------------------------------ | ---------------------------------------------------------------------------------- |
-| `SMTP_SERVICE=Gmail` (personal `@gmail.com` sender) | No — Google signs outbound mail automatically. No DNS changes needed. |
+| Sending method                                          | DKIM required?                                                                                                                                                    |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SMTP_SERVICE=Gmail` (personal `@gmail.com` sender)     | No — Google signs outbound mail automatically. No DNS changes needed.                                                                                             |
 | `SMTP_SERVICE=Gmail` (Google Workspace / custom domain) | Recommended — enable via Google Workspace Admin → Apps → Gmail → Authenticate email. Google provides the public key; you add a `TXT` record to your domain's DNS. |
-| `SMTP_SERVICE=Outlook365` (Microsoft 365)           | Recommended — enable via Microsoft 365 Admin Center → Settings → Email authentication. Same DNS `TXT` record approach. |
-| Option B (your own SMTP server or third-party relay) | Required for good deliverability. Your mail server or relay (e.g. SendGrid, Mailgun, Postmark) will provide the public key and DNS record to add. |
+| `SMTP_SERVICE=Outlook365` (Microsoft 365)               | Recommended — enable via Microsoft 365 Admin Center → Settings → Email authentication. Same DNS `TXT` record approach.                                            |
+| Option B (your own SMTP server or third-party relay)    | Required for good deliverability. Your mail server or relay (e.g. SendGrid, Mailgun, Postmark) will provide the public key and DNS record to add.                 |
 
 **Without DKIM**, messages from a custom domain are more likely to land in spam, especially for new or low-volume senders. For a `@gmail.com` sender address it doesn't matter — Google's own DKIM covers it.
 

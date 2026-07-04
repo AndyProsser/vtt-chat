@@ -2,7 +2,10 @@ import { useRef } from 'react'
 import type { Role, UUID } from '@shared'
 import { useStore } from '@/hooks/useStore'
 import type { WhisperRecipientOption } from '@/types/chat'
-import { EMPTY_SESSION_PRESENCE, EMPTY_WHISPER_RECIPIENTS } from '@/constants/chatComposer.constants'
+import {
+  EMPTY_SESSION_PRESENCE,
+  EMPTY_WHISPER_RECIPIENTS,
+} from '@/constants/chatComposer.constants'
 
 interface UseWhisperRecipientsParams {
   sessionId: UUID | undefined

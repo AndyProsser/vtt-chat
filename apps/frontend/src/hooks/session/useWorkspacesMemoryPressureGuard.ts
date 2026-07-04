@@ -21,10 +21,7 @@ type UseWorkspacesMemoryPressureGuardParams = {
 type BrowserMemoryReading = {
   bytes: number
   source:
-    | 'measureUserAgentSpecificMemory'
-    | 'performance.memory'
-    | 'heuristic.storeGrowth'
-    | 'simulated'
+    'measureUserAgentSpecificMemory' | 'performance.memory' | 'heuristic.storeGrowth' | 'simulated'
   simulated: boolean
 }
 

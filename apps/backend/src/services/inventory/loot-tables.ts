@@ -6,14 +6,7 @@
  */
 
 export type LootRarity =
-  | 'none'
-  | 'mundane'
-  | 'common'
-  | 'uncommon'
-  | 'rare'
-  | 'very-rare'
-  | 'legendary'
-  | 'artifact'
+  'none' | 'mundane' | 'common' | 'uncommon' | 'rare' | 'very-rare' | 'legendary' | 'artifact'
 
 export interface LootTableItem {
   name: string

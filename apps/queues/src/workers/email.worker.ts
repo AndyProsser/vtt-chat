@@ -15,7 +15,10 @@ export function startEmailWorker(connection: IORedis, dlq: Queue): Worker {
     QUEUE_NAMES.EMAIL,
     async (job: Job) => {
       if (job.name !== JOB_TYPES.SEND_EMAIL) {
-        logger.warn('email-worker', 'Unknown job type — discarding', { jobName: job.name, jobId: job.id })
+        logger.warn('email-worker', 'Unknown job type — discarding', {
+          jobName: job.name,
+          jobId: job.id,
+        })
         return
       }
 

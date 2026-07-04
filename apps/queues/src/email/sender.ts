@@ -77,7 +77,9 @@ export async function sendEmail(payload: SendEmailPayload): Promise<void> {
 
   if (!transportConfig || !fromEmail) {
     if (config.nodeEnv === 'production') {
-      throw new Error('SMTP not configured — cannot send email in production (set SMTP_SERVICE or SMTP_HOST)')
+      throw new Error(
+        'SMTP not configured — cannot send email in production (set SMTP_SERVICE or SMTP_HOST)'
+      )
     }
     logger.warn('email-sender', 'SMTP not configured — email skipped (dev mode)', {
       to: payload.to,

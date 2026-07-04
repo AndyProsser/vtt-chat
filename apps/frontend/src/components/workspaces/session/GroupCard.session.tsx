@@ -46,8 +46,8 @@ function getMetaLine(member: RoomUser): string {
     return 'Dungeon Master'
   }
 
-  const values = [member.characterClass, member.characterRace].filter(
-    (value): value is string => Boolean(value)
+  const values = [member.characterClass, member.characterRace].filter((value): value is string =>
+    Boolean(value)
   )
 
   if (typeof member.level === 'number') {
@@ -437,7 +437,9 @@ const SessionGroupCard: React.FC<SessionGroupCardProps> = ({
                             <span key={label} className="session-groups-member-card__stat">
                               <span>{label}</span>
                               <strong>{value}</strong>
-                              <span className="session-groups-member-card__stat-mod">{modifier}</span>
+                              <span className="session-groups-member-card__stat-mod">
+                                {modifier}
+                              </span>
                             </span>
                           ))}
                         </div>

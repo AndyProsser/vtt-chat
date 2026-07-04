@@ -394,17 +394,19 @@
  */
 
 /* Shared card frame */
-.md-editor__content .ProseMirror pre:has(
-  code.language-npc,
-  code.language-monster,
-  code.language-encounter,
-  code.language-loot,
-  code.language-spell,
-  code.language-session,
-  code.language-roll,
-  code.language-map,
-  code.language-timeline
-) {
+.md-editor__content
+  .ProseMirror
+  pre:has(
+    code.language-npc,
+    code.language-monster,
+    code.language-encounter,
+    code.language-loot,
+    code.language-spell,
+    code.language-session,
+    code.language-roll,
+    code.language-map,
+    code.language-timeline
+  ) {
   --dmdx-accent: #60a5fa;
   border: 1px solid color-mix(in srgb, var(--dmdx-accent) 40%, var(--color-border-soft));
   border-radius: 8px;
@@ -418,28 +420,48 @@
 }
 
 /* Per-type accent colors */
-.md-editor__content .ProseMirror pre:has(code.language-npc)       { --dmdx-accent: #818cf8; }
-.md-editor__content .ProseMirror pre:has(code.language-monster)   { --dmdx-accent: #f87171; }
-.md-editor__content .ProseMirror pre:has(code.language-encounter) { --dmdx-accent: #fb923c; }
-.md-editor__content .ProseMirror pre:has(code.language-loot)      { --dmdx-accent: #facc15; }
-.md-editor__content .ProseMirror pre:has(code.language-spell)     { --dmdx-accent: #a78bfa; }
-.md-editor__content .ProseMirror pre:has(code.language-session)   { --dmdx-accent: #34d399; }
-.md-editor__content .ProseMirror pre:has(code.language-roll)      { --dmdx-accent: #f472b6; }
-.md-editor__content .ProseMirror pre:has(code.language-map)       { --dmdx-accent: #38bdf8; }
-.md-editor__content .ProseMirror pre:has(code.language-timeline)  { --dmdx-accent: #a3e635; }
+.md-editor__content .ProseMirror pre:has(code.language-npc) {
+  --dmdx-accent: #818cf8;
+}
+.md-editor__content .ProseMirror pre:has(code.language-monster) {
+  --dmdx-accent: #f87171;
+}
+.md-editor__content .ProseMirror pre:has(code.language-encounter) {
+  --dmdx-accent: #fb923c;
+}
+.md-editor__content .ProseMirror pre:has(code.language-loot) {
+  --dmdx-accent: #facc15;
+}
+.md-editor__content .ProseMirror pre:has(code.language-spell) {
+  --dmdx-accent: #a78bfa;
+}
+.md-editor__content .ProseMirror pre:has(code.language-session) {
+  --dmdx-accent: #34d399;
+}
+.md-editor__content .ProseMirror pre:has(code.language-roll) {
+  --dmdx-accent: #f472b6;
+}
+.md-editor__content .ProseMirror pre:has(code.language-map) {
+  --dmdx-accent: #38bdf8;
+}
+.md-editor__content .ProseMirror pre:has(code.language-timeline) {
+  --dmdx-accent: #a3e635;
+}
 
 /* Colored header banner via ::before — one per type for the label */
-.md-editor__content .ProseMirror pre:has(
-  code.language-npc,
-  code.language-monster,
-  code.language-encounter,
-  code.language-loot,
-  code.language-spell,
-  code.language-session,
-  code.language-roll,
-  code.language-map,
-  code.language-timeline
-)::before {
+.md-editor__content
+  .ProseMirror
+  pre:has(
+    code.language-npc,
+    code.language-monster,
+    code.language-encounter,
+    code.language-loot,
+    code.language-spell,
+    code.language-session,
+    code.language-roll,
+    code.language-map,
+    code.language-timeline
+  )::before {
   display: block;
   padding: 0.38rem 0.7rem;
   background: linear-gradient(
@@ -460,28 +482,49 @@
   user-select: none;
 }
 
-.md-editor__content .ProseMirror pre:has(code.language-npc)::before       { content: "✦  NPC — editing"; }
-.md-editor__content .ProseMirror pre:has(code.language-monster)::before   { content: "✦  Monster — editing"; }
-.md-editor__content .ProseMirror pre:has(code.language-encounter)::before { content: "✦  Encounter — editing"; }
-.md-editor__content .ProseMirror pre:has(code.language-loot)::before      { content: "✦  Loot — editing"; }
-.md-editor__content .ProseMirror pre:has(code.language-spell)::before     { content: "✦  Spell — editing"; }
-.md-editor__content .ProseMirror pre:has(code.language-session)::before   { content: "✦  Session — editing"; }
-.md-editor__content .ProseMirror pre:has(code.language-roll)::before      { content: "✦  Roll — editing"; }
-.md-editor__content .ProseMirror pre:has(code.language-map)::before       { content: "✦  Map — editing"; }
-.md-editor__content .ProseMirror pre:has(code.language-timeline)::before  { content: "✦  Timeline — editing"; }
+.md-editor__content .ProseMirror pre:has(code.language-npc)::before {
+  content: '✦  NPC — editing';
+}
+.md-editor__content .ProseMirror pre:has(code.language-monster)::before {
+  content: '✦  Monster — editing';
+}
+.md-editor__content .ProseMirror pre:has(code.language-encounter)::before {
+  content: '✦  Encounter — editing';
+}
+.md-editor__content .ProseMirror pre:has(code.language-loot)::before {
+  content: '✦  Loot — editing';
+}
+.md-editor__content .ProseMirror pre:has(code.language-spell)::before {
+  content: '✦  Spell — editing';
+}
+.md-editor__content .ProseMirror pre:has(code.language-session)::before {
+  content: '✦  Session — editing';
+}
+.md-editor__content .ProseMirror pre:has(code.language-roll)::before {
+  content: '✦  Roll — editing';
+}
+.md-editor__content .ProseMirror pre:has(code.language-map)::before {
+  content: '✦  Map — editing';
+}
+.md-editor__content .ProseMirror pre:has(code.language-timeline)::before {
+  content: '✦  Timeline — editing';
+}
 
 /* Reset the <code> element inside DMDX blocks — override the inline-code defaults */
-.md-editor__content .ProseMirror pre:has(
-  code.language-npc,
-  code.language-monster,
-  code.language-encounter,
-  code.language-loot,
-  code.language-spell,
-  code.language-session,
-  code.language-roll,
-  code.language-map,
-  code.language-timeline
-) > code {
+.md-editor__content
+  .ProseMirror
+  pre:has(
+    code.language-npc,
+    code.language-monster,
+    code.language-encounter,
+    code.language-loot,
+    code.language-spell,
+    code.language-session,
+    code.language-roll,
+    code.language-map,
+    code.language-timeline
+  )
+  > code {
   display: block;
   background: transparent;
   border: none;

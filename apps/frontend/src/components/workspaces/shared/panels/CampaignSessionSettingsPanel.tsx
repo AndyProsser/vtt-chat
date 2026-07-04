@@ -112,9 +112,7 @@ export const CampaignSessionSettingsPanel = memo(function CampaignSessionSetting
   const [isScheduleExpanded, setIsScheduleExpanded] = useState(false)
 
   const outgoingTransfer = useStore((s) =>
-    props.campaignId
-      ? s.outgoingDmTransfers[props.campaignId as import('@shared').UUID]
-      : undefined
+    props.campaignId ? s.outgoingDmTransfers[props.campaignId as import('@shared').UUID] : undefined
   )
   const durationMin = 60
   const durationMax = 720
@@ -374,9 +372,7 @@ export const CampaignSessionSettingsPanel = memo(function CampaignSessionSetting
 
           {isScheduleExpanded && (
             <div className="csp-card-collapsible-body">
-              <SessionSchedulePicker
-                campaignId={props.campaignId as import('@shared').UUID}
-              />
+              <SessionSchedulePicker campaignId={props.campaignId as import('@shared').UUID} />
             </div>
           )}
         </div>

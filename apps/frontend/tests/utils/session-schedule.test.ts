@@ -31,7 +31,9 @@ describe('formatScheduleLabel', () => {
   })
 
   it('formats a biweekly schedule', () => {
-    const label = formatScheduleLabel(makeSchedule({ type: SessionScheduleType.BIWEEKLY, dayOfWeek: 0 }))
+    const label = formatScheduleLabel(
+      makeSchedule({ type: SessionScheduleType.BIWEEKLY, dayOfWeek: 0 })
+    )
     expect(label).toMatch(/every other Sunday/i)
   })
 
@@ -67,7 +69,10 @@ describe('calculateNextOccurrence', () => {
   it('returns the correct weekday for weekly', () => {
     // Reference: Wednesday 2025-01-01 (day 3). Next Saturday should be 2025-01-04.
     const after = new Date('2025-01-01T00:00:00Z')
-    const next = calculateNextOccurrence(makeSchedule({ dayOfWeek: 6, hour: 19, minute: 0, timezone: 'UTC' }), after)
+    const next = calculateNextOccurrence(
+      makeSchedule({ dayOfWeek: 6, hour: 19, minute: 0, timezone: 'UTC' }),
+      after
+    )
     expect(next.getUTCDay()).toBe(6) // Saturday
     expect(next.getUTCHours()).toBe(19)
   })
@@ -76,8 +81,14 @@ describe('calculateNextOccurrence', () => {
     // Reference: Saturday 2025-01-04. Next biweekly Saturday should be 2025-01-18.
     const after = new Date('2025-01-04T20:00:00Z') // past 19:00 so next occurrence is 2 weeks ahead
     const next = calculateNextOccurrence(
-      makeSchedule({ type: SessionScheduleType.BIWEEKLY, dayOfWeek: 6, hour: 19, minute: 0, timezone: 'UTC' }),
-      after,
+      makeSchedule({
+        type: SessionScheduleType.BIWEEKLY,
+        dayOfWeek: 6,
+        hour: 19,
+        minute: 0,
+        timezone: 'UTC',
+      }),
+      after
     )
     expect(next.getUTCDay()).toBe(6)
     const diffDays = Math.round((next.getTime() - after.getTime()) / 86_400_000)
@@ -88,8 +99,15 @@ describe('calculateNextOccurrence', () => {
     // 2nd Sunday of January 2025 is 2025-01-12
     const after = new Date('2025-01-01T00:00:00Z')
     const next = calculateNextOccurrence(
-      makeSchedule({ type: SessionScheduleType.MONTHLY_NTH, dayOfWeek: 0, nth: 2, hour: 19, minute: 0, timezone: 'UTC' }),
-      after,
+      makeSchedule({
+        type: SessionScheduleType.MONTHLY_NTH,
+        dayOfWeek: 0,
+        nth: 2,
+        hour: 19,
+        minute: 0,
+        timezone: 'UTC',
+      }),
+      after
     )
     expect(next.getUTCDay()).toBe(0) // Sunday
     expect(next.getUTCDate()).toBe(12)
@@ -100,8 +118,15 @@ describe('calculateNextOccurrence', () => {
     // 2nd Sunday of January 2025 was 2025-01-12. After that, it should go to 2025-02-09.
     const after = new Date('2025-01-12T20:00:00Z')
     const next = calculateNextOccurrence(
-      makeSchedule({ type: SessionScheduleType.MONTHLY_NTH, dayOfWeek: 0, nth: 2, hour: 19, minute: 0, timezone: 'UTC' }),
-      after,
+      makeSchedule({
+        type: SessionScheduleType.MONTHLY_NTH,
+        dayOfWeek: 0,
+        nth: 2,
+        hour: 19,
+        minute: 0,
+        timezone: 'UTC',
+      }),
+      after
     )
     expect(next.getUTCDay()).toBe(0) // Sunday
     expect(next.getUTCMonth()).toBe(1) // February
@@ -114,7 +139,7 @@ describe('calculateNextOccurrence', () => {
     const after = new Date('2025-01-01T00:00:00Z')
     const next = calculateNextOccurrence(
       makeSchedule({ dayOfWeek: 6, hour: 19, minute: 0, timezone: 'America/New_York' }),
-      after,
+      after
     )
     // Should resolve to Saturday 2025-01-04 at 19:00 ET = 2025-01-05T00:00:00Z
     expect(next.getUTCDay()).toBe(0) // 00:00 UTC Sunday = Saturday night ET ✓

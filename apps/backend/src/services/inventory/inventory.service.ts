@@ -815,8 +815,14 @@ export async function transferCurrency(params: {
   }
 
   const [updatedFrom, updatedTo] = await prisma.$transaction([
-    prisma.currencyWallet.update({ where: { id: fromRow.id }, data: { ...fromBalance, updatedAt: now } }),
-    prisma.currencyWallet.update({ where: { id: toRow.id }, data: { ...toBalance, updatedAt: now } }),
+    prisma.currencyWallet.update({
+      where: { id: fromRow.id },
+      data: { ...fromBalance, updatedAt: now },
+    }),
+    prisma.currencyWallet.update({
+      where: { id: toRow.id },
+      data: { ...toBalance, updatedAt: now },
+    }),
   ])
 
   const historyBase = {
@@ -902,7 +908,7 @@ export async function syncExternalInventoryItems(params: {
   // Items that are referenced as containers by other items in this batch — used to correctly
   // set isContainer regardless of name (covers non-SRD containers like "Bag of Holding").
   const referencedAsContainerIds = new Set(
-    params.items.flatMap((i) => (i.containerExternalId ? [i.containerExternalId] : [])),
+    params.items.flatMap((i) => (i.containerExternalId ? [i.containerExternalId] : []))
   )
 
   // Process containers before their contents so upserted results are in dependency order,
@@ -915,8 +921,13 @@ export async function syncExternalInventoryItems(params: {
   })
 
   for (const item of orderedItems) {
-    const autoIsContainer = isKnownContainerType(item.name, item.srdKey) || referencedAsContainerIds.has(item.externalId)
-    const { row, created: wasCreated, changed: wasChanged } = await upsertExternalInventoryItem({
+    const autoIsContainer =
+      isKnownContainerType(item.name, item.srdKey) || referencedAsContainerIds.has(item.externalId)
+    const {
+      row,
+      created: wasCreated,
+      changed: wasChanged,
+    } = await upsertExternalInventoryItem({
       campaignId: params.campaignId,
       ownerId: params.ownerId,
       ownerType,
@@ -1019,7 +1030,14 @@ export async function syncExternalInventoryItems(params: {
     }
   }
 
-  return { upserted: results, wasCreated: createdFlags, wasChanged: changedFlags, created, updated, containerLinksApplied }
+  return {
+    upserted: results,
+    wasCreated: createdFlags,
+    wasChanged: changedFlags,
+    created,
+    updated,
+    containerLinksApplied,
+  }
 }
 
 export interface DeletedExternalItemResult {
@@ -1126,7 +1144,11 @@ export async function setExternalCurrencyWallet(params: {
   }
 
   const now = new Date()
-  const updated = await updateCurrencyWalletRecord({ id: existing.id, ...newBalance, updatedAt: now })
+  const updated = await updateCurrencyWalletRecord({
+    id: existing.id,
+    ...newBalance,
+    updatedAt: now,
+  })
 
   await createInventoryHistoryRecord({
     id: randomUUID() as UUID,

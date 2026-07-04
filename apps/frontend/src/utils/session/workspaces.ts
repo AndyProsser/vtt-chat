@@ -137,29 +137,34 @@ export function buildCharacterDraft(character: UserCharacterRecord | null): Play
       1,
       Math.min(
         20,
-        Math.round(
-          Number(
-            typeof entry.level === 'number' ? entry.level : entry.classLevel
-          ) || 1
-        )
+        Math.round(Number(typeof entry.level === 'number' ? entry.level : entry.classLevel) || 1)
       )
     )
     return name ? { name, level } : null
   }
 
   const rawClasses = Array.isArray(character.classes) ? character.classes : []
-  const normalizedClasses = rawClasses.map(normalizeClassEntry).filter(Boolean) as CharacterClassEntry[]
+  const normalizedClasses = rawClasses
+    .map(normalizeClassEntry)
+    .filter(Boolean) as CharacterClassEntry[]
 
-  const characterClasses: CharacterClassEntry[] = normalizedClasses.length > 0
-    ? normalizedClasses
-    : character.class
-      ? [{ name: [character.class, character.subclass].filter(Boolean).join(' / '), level: Math.max(1, Math.min(20, Number(metadata.level) || 1)) }]
-      : [{ name: 'Fighter', level: 1 }]
+  const characterClasses: CharacterClassEntry[] =
+    normalizedClasses.length > 0
+      ? normalizedClasses
+      : character.class
+        ? [
+            {
+              name: [character.class, character.subclass].filter(Boolean).join(' / '),
+              level: Math.max(1, Math.min(20, Number(metadata.level) || 1)),
+            },
+          ]
+        : [{ name: 'Fighter', level: 1 }]
 
   const primaryClassName = characterClasses[0]?.name ?? character.class ?? 'Fighter'
-  const totalLevel = characterClasses.length > 1
-    ? characterClasses.reduce((sum, c) => sum + c.level, 0)
-    : Math.max(1, Math.min(20, Number(metadata.level) || 1))
+  const totalLevel =
+    characterClasses.length > 1
+      ? characterClasses.reduce((sum, c) => sum + c.level, 0)
+      : Math.max(1, Math.min(20, Number(metadata.level) || 1))
 
   return {
     name: character.name || '',

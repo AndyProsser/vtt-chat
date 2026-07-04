@@ -40,8 +40,9 @@ function relativeTime(ts: number): string {
 function describeCurrencyDelta(delta: InventoryHistoryEntry['currencyDelta']): string {
   if (!delta) return ''
   const COINS = ['pp', 'gp', 'ep', 'sp', 'cp'] as const
-  const parts = COINS.filter((k) => delta[k] && delta[k] !== 0)
-    .map((k) => `${(delta[k] as number) > 0 ? '+' : ''}${delta[k]}${k}`)
+  const parts = COINS.filter((k) => delta[k] && delta[k] !== 0).map(
+    (k) => `${(delta[k] as number) > 0 ? '+' : ''}${delta[k]}${k}`
+  )
   return parts.join(' ')
 }
 
@@ -163,7 +164,9 @@ export function InventoryHistoryOverlay({
         >
           <option value="ALL">All actions</option>
           {ALL_ACTIONS.map((a) => (
-            <option key={a} value={a}>{ACTION_LABELS[a]}</option>
+            <option key={a} value={a}>
+              {ACTION_LABELS[a]}
+            </option>
           ))}
         </select>
 
@@ -177,7 +180,9 @@ export function InventoryHistoryOverlay({
           >
             <option value="ALL">All owners</option>
             {ownerOptions.map((o) => (
-              <option key={ownerKey(o)} value={ownerKey(o)}>{o.label}</option>
+              <option key={ownerKey(o)} value={ownerKey(o)}>
+                {o.label}
+              </option>
             ))}
           </select>
         )}
@@ -204,7 +209,10 @@ export function InventoryHistoryOverlay({
               type="button"
               className="inventory-history__date-clear"
               aria-label="Clear date range"
-              onClick={() => { setDateFrom(null); setDateTo(null) }}
+              onClick={() => {
+                setDateFrom(null)
+                setDateTo(null)
+              }}
             >
               <Icon name="close" />
             </button>
@@ -222,12 +230,17 @@ export function InventoryHistoryOverlay({
         ) : (
           <ul className="inventory-history__list">
             {filtered.map((entry) => (
-              <li key={entry.id} className={`inventory-history__entry inventory-history__entry--${entry.actionType.toLowerCase().replace('_', '-')}`}>
+              <li
+                key={entry.id}
+                className={`inventory-history__entry inventory-history__entry--${entry.actionType.toLowerCase().replace('_', '-')}`}
+              >
                 <span className="inventory-history__entry-badge">
                   {ACTION_LABELS[entry.actionType] ?? entry.actionType}
                 </span>
                 <span className="inventory-history__entry-desc">{describeAction(entry)}</span>
-                <span className="inventory-history__entry-time">{relativeTime(entry.createdAt)}</span>
+                <span className="inventory-history__entry-time">
+                  {relativeTime(entry.createdAt)}
+                </span>
               </li>
             ))}
           </ul>

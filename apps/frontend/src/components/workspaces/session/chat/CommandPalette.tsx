@@ -62,7 +62,9 @@ function CommandPaletteComponent({ commands, onSelect, onDismiss, compact }: Com
             }}
           >
             <span className="chat-command-palette__item-slash">{cmd.slash}</span>
-            <span className="chat-command-palette__item-syntax">{cmd.syntax.slice(cmd.slash.length).trim()}</span>
+            <span className="chat-command-palette__item-syntax">
+              {cmd.syntax.slice(cmd.slash.length).trim()}
+            </span>
             {!compact && (
               <span className="chat-command-palette__item-description">{cmd.description}</span>
             )}

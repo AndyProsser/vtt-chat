@@ -92,7 +92,10 @@ const CLASS_POOL: Array<{ name: string; subclass?: string }> = [
   { name: 'Barbarian', subclass: 'Totem Warrior' },
 ]
 
-function buildClassEntry(entry: { name: string; subclass?: string }, level: number): CharacterClassEntry {
+function buildClassEntry(
+  entry: { name: string; subclass?: string },
+  level: number
+): CharacterClassEntry {
   return { name: entry.subclass ? `${entry.name} / ${entry.subclass}` : entry.name, level }
 }
 
@@ -164,10 +167,7 @@ export function generateMockParty(): MockPartyMember[] {
       const [primary, secondary] = pickUnique(CLASS_POOL, 2)
       const primaryLevel = Math.max(1, Math.floor(totalLevel / 2))
       const secondaryLevel = Math.max(1, totalLevel - primaryLevel)
-      classes = [
-        buildClassEntry(primary, primaryLevel),
-        buildClassEntry(secondary, secondaryLevel),
-      ]
+      classes = [buildClassEntry(primary, primaryLevel), buildClassEntry(secondary, secondaryLevel)]
     } else {
       classes = [buildClassEntry(pick(CLASS_POOL), totalLevel)]
     }

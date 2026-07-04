@@ -424,18 +424,18 @@ The command registry (`shared/types/chatCommands.ts`) is the canonical source of
 
 ### **9.3 Command Registry**
 
-| Command | Syntax | Who | Output |
-| ------- | ------ | --- | ------ |
-| `/roll` | `/roll [dice]` e.g. `/roll 1d20+5` | DM + Players | Styled roll card in chat (visible to all in room). Supports standard dice notation (`NdX[+/-M]`). |
-| `/me` | `/me [action]` | DM + Players | Italic emote line: `* {player} draws their sword *`. Styled as IC, scoped to current room. |
-| `/whisper` | `/whisper @{player} [message]` | DM + Players | Shortcut for whisper targeting; same privacy rules as a direct whisper. |
-| `/OOC` | `/OOC [message]` | DM + Players | Forces OOC message styling and tag regardless of the current IC/OOC mode toggle. |
-| `/dm` | `/dm [message]` | Players | Player-to-DM only whisper. Equivalent to whispering `@DM`. DM sees the message; no other players see it. |
-| `/take` | `/take [item] [qty?]` | Players (campaign setting) | Transfer item from Party Inventory to own character. Logs to inventory history. |
-| `/give` | `/give @{player\|party} [item] [qty?]` | Players | Transfer item from own character to target player or Party Inventory. |
-| `/loot` | `/loot [item] [qty?]` | DM only | Add item to Party Inventory. Generates a loot system message in chat. |
-| `/loot-split` | `/loot-split [item] [qty?]` | DM only | Propose a loot distribution card; players accept their share in one click. |
-| `/drop` | `/drop [item] [qty?]` | DM + Players | Remove item from own inventory (or party inventory for DM). Logs to inventory history. |
+| Command       | Syntax                                 | Who                        | Output                                                                                                   |
+| ------------- | -------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `/roll`       | `/roll [dice]` e.g. `/roll 1d20+5`     | DM + Players               | Styled roll card in chat (visible to all in room). Supports standard dice notation (`NdX[+/-M]`).        |
+| `/me`         | `/me [action]`                         | DM + Players               | Italic emote line: `* {player} draws their sword *`. Styled as IC, scoped to current room.               |
+| `/whisper`    | `/whisper @{player} [message]`         | DM + Players               | Shortcut for whisper targeting; same privacy rules as a direct whisper.                                  |
+| `/OOC`        | `/OOC [message]`                       | DM + Players               | Forces OOC message styling and tag regardless of the current IC/OOC mode toggle.                         |
+| `/dm`         | `/dm [message]`                        | Players                    | Player-to-DM only whisper. Equivalent to whispering `@DM`. DM sees the message; no other players see it. |
+| `/take`       | `/take [item] [qty?]`                  | Players (campaign setting) | Transfer item from Party Inventory to own character. Logs to inventory history.                          |
+| `/give`       | `/give @{player\|party} [item] [qty?]` | Players                    | Transfer item from own character to target player or Party Inventory.                                    |
+| `/loot`       | `/loot [item] [qty?]`                  | DM only                    | Add item to Party Inventory. Generates a loot system message in chat.                                    |
+| `/loot-split` | `/loot-split [item] [qty?]`            | DM only                    | Propose a loot distribution card; players accept their share in one click.                               |
+| `/drop`       | `/drop [item] [qty?]`                  | DM + Players               | Remove item from own inventory (or party inventory for DM). Logs to inventory history.                   |
 
 Inventory commands are documented fully in `docs/subsystems/INVENTORY-SYSTEM.md`.
 

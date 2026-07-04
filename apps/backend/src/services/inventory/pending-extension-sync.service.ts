@@ -98,7 +98,9 @@ export async function queuePendingCurrencyConflict(params: {
   return row.id as UUID
 }
 
-export async function listPendingSyncsForCampaign(campaignId: UUID): Promise<PendingExtensionSyncDto[]> {
+export async function listPendingSyncsForCampaign(
+  campaignId: UUID
+): Promise<PendingExtensionSyncDto[]> {
   const rows = await listPendingExtensionSyncs(campaignId)
   return rows.map(mapRow)
 }
@@ -159,7 +161,10 @@ export async function approvePendingSync(params: {
 }
 
 /** Discards a pending sync without applying it. Returns false if not found (or already expired). */
-export async function rejectPendingSync(params: { pendingId: UUID; campaignId: UUID }): Promise<boolean> {
+export async function rejectPendingSync(params: {
+  pendingId: UUID
+  campaignId: UUID
+}): Promise<boolean> {
   const row = await findPendingExtensionSyncById(params.pendingId, params.campaignId)
   if (!row) return false
   await deletePendingExtensionSyncRecord(row.id)

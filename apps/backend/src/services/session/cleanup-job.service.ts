@@ -154,15 +154,13 @@ async function transitionCooldownToEnded(session: {
 
   // Auto-advance the campaign's next session date from the recurrence rule (no-op if no schedule).
   if (session.campaignId) {
-    await advanceSessionScheduleOnEnded(
-      session.campaignId as UUID,
-      session.dmId as UUID,
-    ).catch((err) =>
-      logger.warn('session-cleanup-job', 'Failed to advance session schedule on ENDED', {
-        sessionId: session.id,
-        campaignId: session.campaignId,
-        err,
-      })
+    await advanceSessionScheduleOnEnded(session.campaignId as UUID, session.dmId as UUID).catch(
+      (err) =>
+        logger.warn('session-cleanup-job', 'Failed to advance session schedule on ENDED', {
+          sessionId: session.id,
+          campaignId: session.campaignId,
+          err,
+        })
     )
   }
 }

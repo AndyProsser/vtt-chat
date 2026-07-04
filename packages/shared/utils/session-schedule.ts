@@ -14,7 +14,15 @@ import { addDays, addWeeks } from 'date-fns'
 import { toZonedTime, fromZonedTime } from 'date-fns-tz'
 import { SessionScheduleType } from '../types'
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+const DAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const
 const NTH_LABELS = ['', '1st', '2nd', '3rd', '4th'] as const
 
 export interface SessionSchedule {
@@ -110,7 +118,10 @@ function _nextWeekly(schedule: SessionSchedule, after: Date, stepWeeks: number):
 
   // Same weekday but the target time has already passed → advance by stepWeeks
   if (result <= after) {
-    return fromZonedTime(new Date(y, mo, d + daysUntil + 7 * stepWeeks, hour, minute, 0, 0), timezone)
+    return fromZonedTime(
+      new Date(y, mo, d + daysUntil + 7 * stepWeeks, hour, minute, 0, 0),
+      timezone
+    )
   }
   return result
 }
@@ -124,14 +135,16 @@ function _nextMonthlyNth(schedule: SessionSchedule, after: Date): Date {
       dayOfWeek,
       nth,
       monthOffset,
-      timezone,
+      timezone
     )
     if (!candidate) continue
     const result = _applyTime(candidate, hour, minute, timezone)
     if (result > after) return result
   }
 
-  throw new Error(`calculateNextOccurrence: could not find monthly occurrence for ${JSON.stringify(schedule)}`)
+  throw new Error(
+    `calculateNextOccurrence: could not find monthly occurrence for ${JSON.stringify(schedule)}`
+  )
 }
 
 /**
@@ -146,7 +159,7 @@ function _nthWeekdayOfMonth(
   dayOfWeek: number,
   nth: number,
   monthOffset: number,
-  timezone: string,
+  timezone: string
 ): Date | null {
   const year = zonedBase.getFullYear()
   const rawMonth = zonedBase.getMonth() + monthOffset

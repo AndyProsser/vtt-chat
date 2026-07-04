@@ -66,7 +66,9 @@ export async function listCampaignInventoryItems(campaignId: string): Promise<In
 }
 
 export async function findInventoryItemById(id: string): Promise<InventoryItemRow | null> {
-  return prisma.inventoryItem.findUnique({ where: { id } }) as unknown as Promise<InventoryItemRow | null>
+  return prisma.inventoryItem.findUnique({
+    where: { id },
+  }) as unknown as Promise<InventoryItemRow | null>
 }
 
 export async function createInventoryItemRecord(params: {
@@ -158,7 +160,7 @@ export async function upsertExternalInventoryItem(params: {
       byExternalId.name !== params.name ||
       byExternalId.quantity !== params.quantity ||
       (byExternalId.notes ?? null) !== (params.notes ?? null) ||
-      (params.metadata !== undefined)
+      params.metadata !== undefined
 
     if (!isChanged) return { row: byExternalId, created: false, changed: false }
 
@@ -289,7 +291,9 @@ export async function updateInventoryItemRecord(params: {
 
 /** Finds all items whose containerId matches the given container item ID. */
 export async function findItemsInContainer(containerId: string): Promise<InventoryItemRow[]> {
-  return prisma.inventoryItem.findMany({ where: { containerId } }) as unknown as Promise<InventoryItemRow[]>
+  return prisma.inventoryItem.findMany({ where: { containerId } }) as unknown as Promise<
+    InventoryItemRow[]
+  >
 }
 
 /** Deletes a container item and all items contained within it atomically. */
@@ -365,7 +369,9 @@ export async function transferContainerWithContentsRecord(params: {
 
 // ─── Currency Wallets ────────────────────────────────────────────────────────
 
-export async function listCampaignCurrencyWallets(campaignId: string): Promise<CurrencyWalletRow[]> {
+export async function listCampaignCurrencyWallets(
+  campaignId: string
+): Promise<CurrencyWalletRow[]> {
   return prisma.currencyWallet.findMany({ where: { campaignId } })
 }
 

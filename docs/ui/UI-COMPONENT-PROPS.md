@@ -29,13 +29,13 @@ No component mutates state directly.
 
 ### **2.1 `<Toolbar />`**
 
-| Prop               | Type                   | Description                    |
+| Prop | Type | Description |
 | ------------------ | ---------------------- | ------------------------------ | --------------- | --------------------- |
-| `audioDevices`     | `AudioDevice[]`        | Available input/output devices |
-| `selectedDevice`   | `string`               | Current device ID              |
-| `onSelectDevice`   | `(id: string) => void` | Event: user selects device     |
-| `theme`            | `'light'               | 'dark'`                        | Current theme   |
-| `onToggleTheme`    | `() => void`           | Event: toggle theme            |
+| `audioDevices` | `AudioDevice[]` | Available input/output devices |
+| `selectedDevice` | `string` | Current device ID |
+| `onSelectDevice` | `(id: string) => void` | Event: user selects device |
+| `theme` | `'light'               | 'dark'` | Current theme |
+| `onToggleTheme` | `() => void` | Event: toggle theme |
 | `connectionStatus` | `'connected'           | 'connecting'                   | 'disconnected'` | Live connection state |
 
 ---
@@ -125,13 +125,13 @@ No component mutates state directly.
 
 ### **3.3 `<PlayerOverrides />` (DM Only)**
 
-| Prop             | Type                                                     | Description      |
+| Prop | Type | Description |
 | ---------------- | -------------------------------------------------------- | ---------------- | ---------------------- |
-| `player`         | `Player`                                                 | Target player    |
-| `onSetGain`      | `(playerId: string, gain: number) => void`               | DM audio control |
-| `onToggleMute`   | `(playerId: string) => void`                             | DM mute          |
-| `onSetCondition` | `(playerId: string, condition: Condition                 | null) => void`   | Apply/remove condition |
-| `onSetDistance`  | `(playerId: string, distance: DistanceCategory) => void` | Set distance     |
+| `player` | `Player` | Target player |
+| `onSetGain` | `(playerId: string, gain: number) => void` | DM audio control |
+| `onToggleMute` | `(playerId: string) => void` | DM mute |
+| `onSetCondition` | `(playerId: string, condition: Condition                 | null) => void` | Apply/remove condition |
+| `onSetDistance` | `(playerId: string, distance: DistanceCategory) => void` | Set distance |
 
 ---
 
@@ -152,10 +152,10 @@ No component mutates state directly.
 
 ### **4.2 `<ChatNotesToggle />`**
 
-| Prop         | Type           | Description       |
+| Prop | Type | Description |
 | ------------ | -------------- | ----------------- | ------------ |
-| `activeView` | `'chat'        | 'notes'`          | Current view |
-| `onChange`   | `(view: 'chat' | 'notes') => void` | Toggle event |
+| `activeView` | `'chat'        | 'notes'` | Current view |
+| `onChange` | `(view: 'chat' | 'notes') => void` | Toggle event |
 
 ---
 
@@ -341,15 +341,15 @@ No component mutates state directly.
 
 ### **7.6 `<HistoryPanel />`**
 
-| Prop                         | Type                          | Description                                                                      |
-| ---------------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
-| `sessions`                   | `SessionHistoryItem[]`        | Reverse-chronological session list                                               |
-| `query`                      | `string`                      | Session/history filter query                                                     |
-| `onQueryChange`              | `(q: string) => void`         | Updates session filter                                                           |
-| `onOpenSession`              | `(sessionId: string) => void` | Opens chat log for selected session                                              |
-| `summaryProcessingInstalled` | `boolean`                     | Deployment capability gate from platform capabilities                            |
-| `summaryEnabled`             | `boolean`                     | Campaign summary toggle; requires `summaryProcessingInstalled=true`              |
-| `readOnly`                   | `boolean`                     | Player/Spectator read-only behavior                                              |
+| Prop                         | Type                          | Description                                                         |
+| ---------------------------- | ----------------------------- | ------------------------------------------------------------------- |
+| `sessions`                   | `SessionHistoryItem[]`        | Reverse-chronological session list                                  |
+| `query`                      | `string`                      | Session/history filter query                                        |
+| `onQueryChange`              | `(q: string) => void`         | Updates session filter                                              |
+| `onOpenSession`              | `(sessionId: string) => void` | Opens chat log for selected session                                 |
+| `summaryProcessingInstalled` | `boolean`                     | Deployment capability gate from platform capabilities               |
+| `summaryEnabled`             | `boolean`                     | Campaign summary toggle; requires `summaryProcessingInstalled=true` |
+| `readOnly`                   | `boolean`                     | Player/Spectator read-only behavior                                 |
 
 ---
 

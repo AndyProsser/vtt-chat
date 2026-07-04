@@ -130,7 +130,9 @@ export function filterCommandsForAutocomplete(
   }
 
   if (!partial) return commands
-  return commands.filter((cmd) => cmd.name.startsWith(partial) || cmd.slash.toLowerCase().includes(partial))
+  return commands.filter(
+    (cmd) => cmd.name.startsWith(partial) || cmd.slash.toLowerCase().includes(partial)
+  )
 }
 
 /** True if the input begins with "/" (triggers autocomplete or help). */

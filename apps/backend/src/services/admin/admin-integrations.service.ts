@@ -8,9 +8,7 @@ type IntegrationMutationSuccess = {
   system: ReturnType<typeof listExternalSystems>[number]
   audit: {
     action:
-      | 'INTEGRATION_SYSTEM_AUTHORIZE'
-      | 'INTEGRATION_SYSTEM_BLOCK'
-      | 'INTEGRATION_SYSTEM_UPDATE'
+      'INTEGRATION_SYSTEM_AUTHORIZE' | 'INTEGRATION_SYSTEM_BLOCK' | 'INTEGRATION_SYSTEM_UPDATE'
     targetType: 'EXTERNAL_SYSTEM'
     targetId: string
     metadata: Record<string, unknown>

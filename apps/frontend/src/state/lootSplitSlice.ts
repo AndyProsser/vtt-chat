@@ -81,9 +81,7 @@ export const createLootSplitSlice: StateCreator<LootSplitSlice> = (set) => ({
           ...state.activeLootSplits,
           [p.splitId]: {
             ...split,
-            shares: split.shares.map((s) =>
-              s.userId === p.userId ? { ...s, accepted: true } : s
-            ),
+            shares: split.shares.map((s) => (s.userId === p.userId ? { ...s, accepted: true } : s)),
           },
         },
       }

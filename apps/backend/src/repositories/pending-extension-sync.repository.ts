@@ -49,7 +49,9 @@ export async function createPendingExtensionSyncRecord(params: {
  * Expired rows are filtered out here (TTL-on-read, same convention as DeviceCredential) —
  * there is no separate sweep job.
  */
-export async function listPendingExtensionSyncs(campaignId: string): Promise<PendingExtensionSyncRow[]> {
+export async function listPendingExtensionSyncs(
+  campaignId: string
+): Promise<PendingExtensionSyncRow[]> {
   return prisma.pendingExtensionSync.findMany({
     where: { campaignId, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'asc' },

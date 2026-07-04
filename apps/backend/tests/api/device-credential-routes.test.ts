@@ -166,10 +166,14 @@ describe('device credential routes', () => {
   })
 
   describe('GET /extension/credentials', () => {
-    it('returns only the authenticated user\'s active credentials', async () => {
+    it("returns only the authenticated user's active credentials", async () => {
       const app = buildApp()
       mocks.mockExtractTokenFromHeader.mockReturnValue('valid-token')
-      mocks.mockVerifyToken.mockReturnValue({ userId: 'user-1', username: 'aragorn', role: 'PLAYER' })
+      mocks.mockVerifyToken.mockReturnValue({
+        userId: 'user-1',
+        username: 'aragorn',
+        role: 'PLAYER',
+      })
       mocks.mockDeviceCredentialFindMany.mockResolvedValueOnce([
         {
           id: 'cred-1',
@@ -205,7 +209,11 @@ describe('device credential routes', () => {
   describe('DELETE /extension/credentials/:credentialId', () => {
     beforeEach(() => {
       mocks.mockExtractTokenFromHeader.mockReturnValue('valid-token')
-      mocks.mockVerifyToken.mockReturnValue({ userId: 'user-1', username: 'aragorn', role: 'PLAYER' })
+      mocks.mockVerifyToken.mockReturnValue({
+        userId: 'user-1',
+        username: 'aragorn',
+        role: 'PLAYER',
+      })
     })
 
     it('lets a user revoke their own credential', async () => {
@@ -224,9 +232,12 @@ describe('device credential routes', () => {
       })
     })
 
-    it('rejects revoking another user\'s credential without admin access', async () => {
+    it("rejects revoking another user's credential without admin access", async () => {
       const app = buildApp()
-      mocks.mockDeviceCredentialFindUnique.mockResolvedValueOnce({ id: 'cred-2', userId: 'someone-else' })
+      mocks.mockDeviceCredentialFindUnique.mockResolvedValueOnce({
+        id: 'cred-2',
+        userId: 'someone-else',
+      })
       mocks.mockGetUserAuthContext.mockResolvedValueOnce({ hasAdminAccess: false })
 
       const response = await request(app)
@@ -238,9 +249,12 @@ describe('device credential routes', () => {
       expect(mocks.mockDeviceCredentialUpdate).not.toHaveBeenCalled()
     })
 
-    it('lets an admin revoke another user\'s credential', async () => {
+    it("lets an admin revoke another user's credential", async () => {
       const app = buildApp()
-      mocks.mockDeviceCredentialFindUnique.mockResolvedValueOnce({ id: 'cred-3', userId: 'someone-else' })
+      mocks.mockDeviceCredentialFindUnique.mockResolvedValueOnce({
+        id: 'cred-3',
+        userId: 'someone-else',
+      })
       mocks.mockGetUserAuthContext.mockResolvedValueOnce({ hasAdminAccess: true })
 
       const response = await request(app)

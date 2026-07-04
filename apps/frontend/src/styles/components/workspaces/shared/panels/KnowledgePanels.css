@@ -2501,8 +2501,15 @@
 }
 
 @keyframes history-loading-pulse {
-  0%, 100% { opacity: 0.35; transform: scale(1); }
-  50%       { opacity: 1;    transform: scale(1.1); }
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
 }
 
 .history-panel-loading__message {
@@ -2533,8 +2540,16 @@
 }
 
 @keyframes history-dot-bounce {
-  0%, 60%, 100% { opacity: 0.2; transform: translateY(0); }
-  30%           { opacity: 0.75; transform: translateY(-3px); }
+  0%,
+  60%,
+  100% {
+    opacity: 0.2;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 0.75;
+    transform: translateY(-3px);
+  }
 }
 
 /* ── Hashtag autocomplete ───────────────────────────────────────────────── */

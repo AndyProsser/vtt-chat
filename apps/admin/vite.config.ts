@@ -23,7 +23,10 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: '@', replacement: path.resolve(import.meta.dirname, 'src') },
-      { find: '@shared', replacement: path.resolve(import.meta.dirname, '../../packages/shared/index.ts') },
+      {
+        find: '@shared',
+        replacement: path.resolve(import.meta.dirname, '../../packages/shared/index.ts'),
+      },
       {
         find: /^@shared\/(.*)$/,
         replacement: path.resolve(import.meta.dirname, '../../packages/shared/$1'),

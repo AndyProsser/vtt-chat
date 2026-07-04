@@ -31,9 +31,13 @@ export function splitLootList(raw: string): string[] {
   let current = ''
   let depth = 0
   for (const ch of raw) {
-    if (ch === '(') { depth++; current += ch }
-    else if (ch === ')') { depth = Math.max(0, depth - 1); current += ch }
-    else if (ch === ',' && depth === 0) {
+    if (ch === '(') {
+      depth++
+      current += ch
+    } else if (ch === ')') {
+      depth = Math.max(0, depth - 1)
+      current += ch
+    } else if (ch === ',' && depth === 0) {
       const trimmed = current.trim()
       if (trimmed) result.push(trimmed)
       current = ''
@@ -99,7 +103,10 @@ export function parseLootList(raw: string): LootListResult {
 
   for (const token of tokens) {
     const t = token.trim()
-    if (!t) { skipped++; continue }
+    if (!t) {
+      skipped++
+      continue
+    }
 
     const currencyMatch = t.match(PURE_CURRENCY_RE)
     if (currencyMatch) {
