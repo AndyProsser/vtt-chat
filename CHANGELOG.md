@@ -33,6 +33,8 @@ All notable changes to this project are documented here. One entry per version c
 
 ### Fixed — Tooling
 
+- **Removed stale committed `.d.ts` artifacts from `packages/shared`**: eleven declaration files (e.g. `events/session.d.ts`) were committed once during the monorepo restructure and never regenerated — `session.d.ts` still described the pre-COOLDOWN event union. Apps resolve `@shared` straight to the `.ts` sources so typechecking was unaffected, but `package.json` `types`/`exports` pointed at the stale `index.d.ts`; both now point at `index.ts`. Also deleted a stray root-level `backend/prisma/migrations/` folder that duplicated an existing migration in `apps/backend/prisma/migrations/`.
+- **Stale `SessionInit.tsx` references updated**: `CLAUDE.md`, `.github/copilot-instructions.md`, and `audioPresetsSlice.ts` comments still pointed at the long-removed `SessionInit.tsx` for the environment-sync effect — it now lives in `hooks/session/useWorkspacesAudioProjection.ts`. Also corrected the documented `useWebSocket` dependency array (`onAuthFailure` is consumed via a ref) and the frontend WS-handler test path (`apps/frontend/tests/state/`).
 - **ESLint was broken for all sub-apps**: `apps/{frontend,admin,backend}/eslint.config.mjs` imported the shared config from `../eslint.config.mjs` (`apps/eslint.config.mjs`, which does not exist) instead of the repo-root `../../eslint.config.mjs` — a stale path missed in the rs-05 config restructure. `npx eslint` now resolves in every app.
 
 ---

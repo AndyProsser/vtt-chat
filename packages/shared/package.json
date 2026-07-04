@@ -5,10 +5,10 @@
   "description": "Shared types, events, permissions, and validators for VTT-Chat",
   "type": "module",
   "main": "./index.ts",
-  "types": "./index.d.ts",
+  "types": "./index.ts",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
+      "types": "./index.ts",
       "default": "./index.ts"
     },
     "./*": "./*"

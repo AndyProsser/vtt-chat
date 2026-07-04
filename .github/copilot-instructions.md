@@ -385,7 +385,7 @@ When the DM sets a group's environment:
 3. POST to `/api/audio/environments/apply`
 4. Backend broadcasts `AUDIO:ENVIRONMENT_SET` to all session members
 5. Frontend `handleEnvironmentSet` updates `roomEnvironmentNames` in Zustand for ALL clients
-6. `SessionInit` env-sync effect applies the new environment for players currently in that room
+6. The `useWorkspacesAudioProjection` env-sync effect applies the new environment for players currently in that room
 7. AudioPanel shows updated environment immediately — no refresh required
 
 ---
@@ -487,7 +487,7 @@ Transcript/summary processing rule:
 
 ### handleEnvironmentSet Must Always Update roomEnvironmentNames
 
-The `handleEnvironmentSet` WS handler in `audioPresetsSlice.ts` must update `roomEnvironmentNames` even when `parameters` is absent. `roomEnvironmentNames` drives the environment sync effect in `SessionInit.tsx`.
+The `handleEnvironmentSet` WS handler in `audioPresetsSlice.ts` must update `roomEnvironmentNames` even when `parameters` is absent. `roomEnvironmentNames` drives the environment sync effect in `apps/frontend/src/hooks/session/useWorkspacesAudioProjection.ts`.
 
 ### Leaf-Isolation Pattern for High-Frequency Per-User UI Bits
 
@@ -561,7 +561,7 @@ Naming conventions for split files:
 | Backend route          | `resource.routes.ts` (one per resource) |
 | Backend service        | `resource.service.ts`                   |
 
-`SessionInit.tsx` at 3,500+ lines is the canonical example of what must not happen and is a priority refactor target.
+The old `SessionInit.tsx` grew past 3,500 lines before being split into the `workspaces` component tree and `hooks/session/*` orchestration hooks — it remains the canonical example of what must not happen.
 
 ### Componentisation Rules
 

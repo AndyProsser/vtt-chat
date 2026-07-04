@@ -27,8 +27,9 @@ export interface AudioPresetsSlice {
   currentICPreset?: ICPreset
   /**
    * Maps roomId → environment name. Campaign-scoped: survives session boundaries
-   * and is intentionally excluded from resetSessionAudioState. SessionInit.tsx
-   * reads this map on session hydration to restore group environment icons.
+   * and is intentionally excluded from resetSessionAudioState. The workspace audio
+   * projection (useWorkspacesAudioProjection) and Groups Panel read this map to
+   * restore group environment icons on session hydration.
    */
   roomEnvironmentNames: Record<UUID, string>
 
@@ -48,7 +49,7 @@ export interface AudioPresetsSlice {
   /**
    * Clears per-session audio presets (env, condition, distance, voice, IC).
    * Does NOT clear roomEnvironmentNames — that map is campaign-scoped and drives
-   * environment icon restore in SessionInit on next session start.
+   * environment icon restore on next session start.
    */
   resetSessionAudioState: () => void
 
@@ -159,7 +160,7 @@ export const createAudioPresetsSlice: StateCreator<AudioPresetsSlice, [], [], Au
       parameters?: Record<string, any>
     }
 
-    // Always update the room→name map (drives Groups Panel icons and SessionInit restore).
+    // Always update the room→name map (drives Groups Panel icons and environment restore).
     set((state) => ({
       roomEnvironmentNames: {
         ...state.roomEnvironmentNames,

@@ -102,7 +102,7 @@ When this occurs, these must happen in order:
 3. New WS client connects with new `sessionId` in auth payload
 4. WS event handlers fire properly
 
-**Dependency array must be:** `[enabled, onAuthFailure, sessionId, token, url]`
+**Dependency array must be:** `[enabled, sessionId, token, url]` (`onAuthFailure` is consumed via a ref so callback identity changes don't tear down the socket)
 
 **Auto-rebind:** `handleSessionStateChanged` must call `setCurrentSession(event.sessionId)` when `state === 'ACTIVE'` and `currentSessionId !== event.sessionId`.
 
@@ -176,7 +176,7 @@ Audio environment/effects are driven by the user's actual connected voice room (
 
 ### handleEnvironmentSet Always Updates roomEnvironmentNames
 
-Even when `parameters` is absent — `roomEnvironmentNames` drives the environment sync in `SessionInit.tsx`.
+Even when `parameters` is absent — `roomEnvironmentNames` drives the environment sync in `apps/frontend/src/hooks/session/useWorkspacesAudioProjection.ts`.
 
 ### UI Errors via Toast
 
@@ -243,7 +243,7 @@ No source file > 400 lines (excluding blank lines and imports). Split by logical
 | Backend route   | `resource.routes.ts`       |
 | Backend service | `resource.service.ts`      |
 
-`SessionInit.tsx` at 3,500+ lines is what must never be repeated — it is a priority refactor target.
+The old `SessionInit.tsx` grew past 3,500 lines before being split into the `workspaces` component tree and `hooks/session/*` orchestration hooks — that is what must never be repeated.
 
 ### Componentisation
 
@@ -291,7 +291,7 @@ No source file > 400 lines (excluding blank lines and imports). Split by logical
 
 ## Testing
 
-- Every new WS event handler → unit test in `src/tests/state/`
+- Every new WS event handler → unit test in `apps/frontend/tests/state/`
 - Every session lifecycle transition → integration test
 - New audio effect type → add to `effectItems` in `AudioPanel.tsx`
 - State cleanup (clear on session end) → test required
