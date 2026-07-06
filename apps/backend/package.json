@@ -30,7 +30,7 @@
     "livekit-server-sdk": "^2.15.0",
     "nodemailer": "^9.0.3",
     "pg": "^8.20.0",
-    "redis": "^5.11.0",
+    "redis": "^6.1.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
