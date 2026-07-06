@@ -202,8 +202,9 @@ describe('buildCharacterDraft', () => {
     const draft = buildCharacterDraft(character as any)
     expect(draft.name).toBe('Aldric')
     expect(draft.race).toBe('Elf')
-    expect(draft.className).toBe('Wizard')
-    expect(draft.subclass).toBe('School of Evocation')
+    // Legacy class+subclass columns are folded into a single multiclass entry name.
+    expect(draft.className).toBe('Wizard / School of Evocation')
+    expect(draft.classes).toEqual([{ name: 'Wizard / School of Evocation', level: 5 }])
     expect(draft.level).toBe(5)
     expect(draft.strength).toBe(10)
     expect(draft.intelligence).toBe(18)
@@ -599,11 +600,12 @@ describe('createCharacterSettingsController', () => {
       expect(onError).toHaveBeenCalledWith('Validation error')
     })
 
-    it('sends null for blank subclass and avatarUrl', async () => {
+    it('sends null subclass when a classes array is present, and null for blank avatarUrl', async () => {
       fetchWithAuthGuard.mockResolvedValueOnce({ ok: true })
       const controller = createCharacterSettingsController(ctx)
       await controller.saveCharacterSettings(CAMPAIGN_ID, '', {
         ...draft,
+        classes: [{ name: 'Wizard', level: 5 }],
         subclass: '',
         avatarUrl: '',
       })

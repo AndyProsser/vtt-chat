@@ -1,11 +1,23 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { PresenceState, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AvatarOverlay } from '../../src/components/workspaces/session/rooms/AvatarOverlay'
 import { GroupsPanel as RoomSelector } from '../../src/components/workspaces/session/rooms/GroupsPanel'
+import { TooltipProvider } from '../../src/components/ui'
 import { useStore } from '../../src/hooks/useStore'
 import { getUserDMOverride } from '@/utils/audioOverrides'
+
+// The room-presence tree renders Radix Tooltips, which require a TooltipProvider ancestor.
+const render: typeof rtlRender = (ui, options) =>
+  rtlRender(ui, { wrapper: TooltipProvider, ...options })
 
 const asUuid = (value: string) => value as UUID
 

@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   mockCampaignMembershipFindUnique: vi.fn(),
   mockCharacterFindFirst: vi.fn(),
   mockCharacterUpdate: vi.fn(),
+  mockCharacterUpdateMany: vi.fn(),
+  mockQueryRaw: vi.fn(),
   mockAdminAuditLogCreate: vi.fn(),
   mockCampaignFindUnique: vi.fn(),
   mockCampaignExternalLinkFindMany: vi.fn(),
@@ -23,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   mockAppendSessionAuditEvent: vi.fn(),
   mockBroadcastPresenceProfileUpdate: vi.fn(),
   mockInventoryItemFindFirst: vi.fn(),
+  mockInventoryItemFindMany: vi.fn(),
   mockInventoryItemCreate: vi.fn(),
   mockInventoryItemUpdate: vi.fn(),
   mockCurrencyWalletFindFirst: vi.fn(),
@@ -37,14 +40,19 @@ vi.mock('@/services/auth.service', () => ({
   verifyToken: (...args: unknown[]) => mocks.mockVerifyToken(...args),
 }))
 
-vi.mock('@/infra/db', () => ({
-  getPrismaClient: () => ({
+vi.mock('@/infra/db', () => {
+  const client: any = {
+    // Run transactional callbacks against the same mocked client so the
+    // per-method spies still observe calls made inside $transaction blocks.
+    $transaction: (fn: (tx: typeof client) => unknown) => fn(client),
+    $queryRaw: mocks.mockQueryRaw,
     campaignMembership: {
       findUnique: mocks.mockCampaignMembershipFindUnique,
     },
     character: {
       findFirst: mocks.mockCharacterFindFirst,
       update: mocks.mockCharacterUpdate,
+      updateMany: mocks.mockCharacterUpdateMany,
     },
     adminAuditLog: {
       create: mocks.mockAdminAuditLogCreate,
@@ -60,6 +68,7 @@ vi.mock('@/infra/db', () => ({
     },
     inventoryItem: {
       findFirst: mocks.mockInventoryItemFindFirst,
+      findMany: mocks.mockInventoryItemFindMany,
       create: mocks.mockInventoryItemCreate,
       update: mocks.mockInventoryItemUpdate,
     },
@@ -74,8 +83,9 @@ vi.mock('@/infra/db', () => ({
     pendingExtensionSync: {
       create: mocks.mockPendingExtensionSyncCreate,
     },
-  }),
-}))
+  }
+  return { getPrismaClient: () => client }
+})
 
 vi.mock('@/repositories/campaign.repository', () => ({
   createCampaignForUser: vi.fn(),
@@ -128,6 +138,9 @@ function buildApp() {
 describe('external integration endpoints', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
+    mocks.mockInventoryItemFindMany.mockResolvedValue([])
+    mocks.mockQueryRaw.mockResolvedValue([])
 
     mocks.mockExtractTokenFromHeader.mockImplementation((authHeader?: string) => {
       if (!authHeader) return null
@@ -365,8 +378,12 @@ describe('external integration endpoints', () => {
 
     mocks.mockCharacterFindFirst.mockResolvedValueOnce({
       id: CHARACTER_ID,
+      userId: USER_ID,
+      isActive: true,
       metadata: { previous: true },
     })
+    // Row-locked metadata read inside the sync transaction (SELECT ... FOR UPDATE)
+    mocks.mockQueryRaw.mockResolvedValueOnce([{ metadata: { previous: true } }])
 
     mocks.mockCharacterUpdate.mockResolvedValueOnce({ id: CHARACTER_ID })
     mocks.mockGetSessionPresence.mockResolvedValueOnce([{ userId: USER_ID }])
@@ -405,6 +422,7 @@ describe('external integration endpoints', () => {
         metadata: { previous: true, level: 7 },
         class: 'Ranger',
         subclass: 'Hunter',
+        isActive: true,
       },
     })
 

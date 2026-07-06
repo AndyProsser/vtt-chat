@@ -509,6 +509,7 @@ describe('audio-state persistence and recovery soak', () => {
     expect(muteState).toEqual({
       userMuted: false,
       dmMuted: true,
+      silenced: false,
       enforcedMuted: true,
     })
   })
@@ -529,6 +530,7 @@ describe('audio-state persistence and recovery soak', () => {
     expect(muteState).toEqual({
       userMuted: true,
       dmMuted: false,
+      silenced: false,
       enforcedMuted: true,
     })
   })

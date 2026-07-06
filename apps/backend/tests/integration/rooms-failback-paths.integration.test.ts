@@ -56,6 +56,33 @@ vi.mock('@/services/dev-mock/simulation.service', () => ({
   purgeMockSimulationSessionState: vi.fn(),
 }))
 
+vi.mock('@/repositories/audio.repository', () => ({
+  listAudioDMOverridesBySession: vi.fn(async () => []),
+}))
+
+vi.mock('@/services/audio/audio-state', () => ({
+  removeDMOverrideState: vi.fn(),
+}))
+
+vi.mock('@/services/system-messages.service', () => ({
+  emitConditionSystemMessage: vi.fn(),
+}))
+
+vi.mock('@/services/session/stats.service', () => ({
+  broadcastSessionStatsSnapshot: vi.fn(),
+}))
+
+vi.mock('@/services/dev-mock/takeover.service', () => ({
+  getMockTakeoverSnapshot: vi.fn(async (params: { actorUserId: string }) => ({
+    active: false,
+    actorUserId: params.actorUserId,
+    effectiveUserId: params.actorUserId,
+    assumedUserId: null,
+    assumedDisplayName: null,
+    startedAt: null,
+  })),
+}))
+
 vi.mock('@/services/room.service', () => ({
   closeRoom: mocks.closeRoom,
   createRoom: mocks.createRoom,

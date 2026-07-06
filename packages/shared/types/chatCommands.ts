@@ -72,7 +72,10 @@ export const CHAT_COMMANDS: ChatCommandDefinition[] = [
     description: 'Send an out-of-character message regardless of the current IC/OOC mode toggle.',
     example: '/OOC brb two minutes',
     roles: [Role.DM, Role.PLAYER],
-    availableInStates: [SessionState.ACTIVE],
+    // OOC must work during breaks and the post-session spectator window:
+    // PAUSED is the "brb" case, and COOLDOWN explicitly enables OOC chat
+    // (see CLAUDE.md session state machine).
+    availableInStates: [SessionState.ACTIVE, SessionState.PAUSED, SessionState.COOLDOWN],
   },
   {
     name: 'whisper',

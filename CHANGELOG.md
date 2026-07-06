@@ -6,7 +6,18 @@ All notable changes to this project are documented here. One entry per version c
 
 ## [Unreleased]
 
-### Fixed — Inventory
+### Fixed — Chat
+
+- **`/OOC` now works during PAUSED and COOLDOWN**: the shared command definition only listed `ACTIVE`, so `/OOC brb` during a break — and OOC chat in the post-session cooldown window, which `docs/CONTRACTS.md` explicitly allows — was rejected with `UNAVAILABLE_IN_STATE`. `availableInStates` now includes `PAUSED` and `COOLDOWN`.
+
+### Fixed — Backend
+
+- **Route 500s are no longer silent**: `rooms.routes.ts`, `session.routes.ts`, and the guest-login handler swallowed exceptions (`catch {}` → generic 500) with no log line, making failures undiagnosable. `internalErrorResponse` now accepts the error and logs message + stack via the structured logger before responding.
+
+### Fixed — Tests (90 pre-existing failures → all suites green)
+
+- **Backend (18 failures across 9 files)**: all were tests that drifted from evolved code — prisma-client mocks missing newer methods (`$transaction`, `$queryRaw`, `inventoryItem.findMany`, `character.findUnique`/`updateMany`, `campaign.findUnique` for the `supportedPlatforms` gate), module mocks missing newer exports (`openMainRoomMessageHistory`, `getMockTakeoverSnapshot`, `eventBroadcaster.isReady`), and stale assertions (`deviceCredential` is `{ credential, deviceId }` per CONTRACTS.md; mute-state gained `silenced`; character stats use canonical `hpMax`; sync approval resolves the character's `userId` as `ownerId`; character sync stamps `isActive: true` and merges metadata via the row-locked read).
+- **Frontend (72 failures across 9 files)**: the dominant cause (54 tests) was Radix `Tooltip` components crashing the tree because tests render workspaces without the app-level `TooltipProvider` (`App.tsx` provides it in production) — test renders are now wrapped. The rest were stale expectations: the right rail gained the `inventory` tab; `INVENTORY:ITEM_UPDATED` replaced merge-style `ITEM_EDITED` (atomic full-item payload); legacy class+subclass folded into multiclass entries; the ENDED-state toolbar action is now `Reset` (reset → provision → Start); journal editing became parent-driven (`autoEdit`) with `/api/journals/:sessionId`; the notes rail opens details on click; the condition chat marker and DM details row were redesigned.
 
 - **DDB/SRD item data now renders correctly in the detail card**: extended metadata (type, subtype, weight, cost, damage, properties, description) was largely empty. Three root causes fixed: (1) `normalizeFromSrd` only read the 2014 SRD schema, so the default 2024 ruleset (`equipment_categories[]` array, `description` not `desc`, a 5 ft melee `range`) produced empty metadata — it now handles both schemas and de-duplicates enriched properties (`Versatile (1d10)` replaces bare `Versatile`); (2) the DnD Beyond extension's live payload uses different field names than the documented contract (`type`/`subtype`/`cost`, split `damage`+`damageType`, comma-separated `properties` string) — `normalizeExternalItemMetadata` now maps these (and still accepts the canonical names); (3) HTML descriptions from DDB are now stripped to plain text at ingestion (`stripHtml`).
 - **SRD ↔ DDB reconciliation**: a manually-added SRD/CUSTOM item is now **converted in place** when a DnD Beyond item with the same name (exact, case-insensitive) syncs — the row is stamped with `externalId`/`externalSource`, `source` becomes `EXTERNAL` (so previously-CUSTOM items render their new metadata), and `srdKey` is preserved. Unmatched SRD/CUSTOM items (null `externalId`) are **never deleted** by a sync. See `docs/subsystems/INVENTORY-SYSTEM.md` §12.1.

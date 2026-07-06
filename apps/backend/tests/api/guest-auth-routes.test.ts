@@ -429,8 +429,10 @@ describe('guest auth routes', () => {
       })
 
     expect(response.status).toBe(200)
-    expect(typeof response.body.deviceCredential).toBe('string')
-    expect(response.body.deviceCredential.length).toBeGreaterThan(0)
+    // Contract (docs/CONTRACTS.md): deviceCredential is { credential, deviceId }
+    expect(response.body.deviceCredential).toMatchObject({ deviceId: 'device-abc' })
+    expect(typeof response.body.deviceCredential.credential).toBe('string')
+    expect(response.body.deviceCredential.credential.length).toBeGreaterThan(0)
     expect(mocks.mockDeviceCredentialUpsert).toHaveBeenCalledTimes(1)
   })
 

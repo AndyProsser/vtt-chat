@@ -1,8 +1,14 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { TooltipProvider } from '../../src/components/ui'
 import { WorkspaceInitialization as Workspaces } from '../../src/components/workspaces'
+
+// In production App.tsx wraps the workspace in a global TooltipProvider; the
+// workspace tree renders Radix Tooltips, so tests must provide one too.
+const render: typeof rtlRender = (ui, options) =>
+  rtlRender(ui, { wrapper: TooltipProvider, ...options })
 import { MessageList } from '../../src/components/workspaces/session/chat/MessageList'
 import { useStore } from '../../src/state/store'
 
@@ -344,6 +350,15 @@ function createDefaultFetchMock(options: {
     }
 
     if (
+      url === `http://localhost:3000/api/session/${CURRENT_SESSION_ID}/reset` &&
+      init?.method === 'POST'
+    ) {
+      // ENDED → CLEANUP → fresh IDLE provisioning happens server-side; the
+      // frontend follows up with POST /sessions/start.
+      return { ok: true, json: async () => ({ ok: true }) }
+    }
+
+    if (
       url === `http://localhost:3000/api/campaigns/${CAMPAIGN_ID}/sessions/start` &&
       init?.method === 'POST'
     ) {
@@ -429,10 +444,14 @@ describe('Session bookend integration', { timeout: 20000 }, () => {
     )
 
     await screen.findByText('Adventures')
-    const launchButton = screen.queryByRole('button', { name: /launch campaign/i })
-    if (launchButton) {
-      fireEvent.click(launchButton)
-    }
+    // The campaign card renders once the campaigns fetch resolves — wait for it
+    // instead of a synchronous query, otherwise the click is silently skipped.
+    const launchButton = await screen.findByRole(
+      'button',
+      { name: /launch campaign/i },
+      { timeout: 5000 }
+    )
+    fireEvent.click(launchButton)
     await screen.findByTestId('session-toolbar', {}, { timeout: 5000 })
 
     const cancelCooldownButton = screen.queryByRole('button', { name: /cancel cooldown/i })
@@ -446,7 +465,7 @@ describe('Session bookend integration', { timeout: 20000 }, () => {
         } as any)
       })
     }
-    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    fireEvent.click(screen.getByRole('button', { name: /^(Start|Reset)$/ }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -735,7 +754,7 @@ describe('Session bookend integration', { timeout: 20000 }, () => {
       fireEvent.click(launchButton)
     }
     await screen.findByTestId('session-toolbar', {}, { timeout: 5000 })
-    await screen.findByRole('button', { name: 'Start' }, { timeout: 5000 })
+    await screen.findByRole('button', { name: /^(Start|Reset)$/ }, { timeout: 5000 })
 
     act(() => {
       useStore.getState().addMessage(CURRENT_SESSION_ID, {
@@ -750,7 +769,7 @@ describe('Session bookend integration', { timeout: 20000 }, () => {
       } as any)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    fireEvent.click(screen.getByRole('button', { name: /^(Start|Reset)$/ }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -777,6 +796,15 @@ describe('Session bookend integration', { timeout: 20000 }, () => {
         } as any)
       })
     }
+
+    // ENDED sessions show a Reset action: clicking it resets the old session and
+    // provisions the next IDLE one, which then gets its own Start action.
+    await screen.findByRole('button', { name: /^(Start|Reset)$/ }, { timeout: 5000 })
+    fireEvent.click(screen.getByRole('button', { name: /^(Start|Reset)$/ }))
+
+    await waitFor(() => {
+      expect(useStore.getState().currentSessionId).toBe(NEXT_SESSION_ID)
+    })
 
     await screen.findByRole('button', { name: 'Start' }, { timeout: 5000 })
     fireEvent.click(screen.getByRole('button', { name: 'Start' }))
@@ -842,8 +870,8 @@ describe('Session bookend integration', { timeout: 20000 }, () => {
     await screen.findByTestId('session-toolbar', {}, { timeout: 5000 })
 
     // Cycle 1
-    await screen.findByRole('button', { name: 'Start' }, { timeout: 5000 })
-    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    await screen.findByRole('button', { name: /^(Start|Reset)$/ }, { timeout: 5000 })
+    fireEvent.click(screen.getByRole('button', { name: /^(Start|Reset)$/ }))
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         `http://localhost:3000/api/session/${CURRENT_SESSION_ID}/state`,
@@ -869,11 +897,15 @@ describe('Session bookend integration', { timeout: 20000 }, () => {
         } as any)
       })
     }
-    await screen.findByRole('button', { name: 'Start' }, { timeout: 5000 })
-    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    // Reset the ENDED session, wait for the fresh IDLE session, then start it.
+    await screen.findByRole('button', { name: /^(Start|Reset)$/ }, { timeout: 5000 })
+    fireEvent.click(screen.getByRole('button', { name: /^(Start|Reset)$/ }))
     await waitFor(() => {
       expect(useStore.getState().currentSessionId).toBe(NEXT_SESSION_ID)
     })
+
+    await screen.findByRole('button', { name: 'Start' }, { timeout: 5000 })
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

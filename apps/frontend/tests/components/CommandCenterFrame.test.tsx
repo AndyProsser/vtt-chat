@@ -44,6 +44,7 @@ describe('getRightRailTabsForRole', () => {
     expect(getRightRailTabsForRole(Role.DM)).toEqual([
       'information',
       'party',
+      'inventory',
       'rooms',
       'journal',
       'notes',
@@ -56,6 +57,7 @@ describe('getRightRailTabsForRole', () => {
     expect(getRightRailTabsForRole(Role.PLAYER)).toEqual([
       'information',
       'party',
+      'inventory',
       'journal',
       'notes',
       'history',
@@ -67,6 +69,7 @@ describe('getRightRailTabsForRole', () => {
     expect(getRightRailTabsForRole(Role.SPECTATOR)).toEqual([
       'information',
       'party',
+      'inventory',
       'journal',
       'notes',
       'history',

@@ -37,6 +37,7 @@ import { dmLinkAccount } from '@/services/auth/dm-link.service'
 import { dmCampaignSync } from '@/services/dm-campaign-sync.service'
 import { DEVICE_CREDENTIAL_EXCHANGE_RATE_LIMIT } from '@/constants/auth.constants'
 import { isValidUUID } from '@shared'
+import { logger } from '@/utils/logger'
 import type { UUID } from '@shared'
 import { getPrismaClient } from '@/infra/db'
 import { listSessionsByCampaign } from '@/repositories/session.repository'
@@ -255,6 +256,10 @@ router.post('/extension/guest-login', async (req: Request, res: Response) => {
       }
     }
 
+    logger.error('auth-extension', 'Unhandled error in guest-login', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
     return res.status(500).json({
       code: 'GUEST_AUTH_FAILED',
       message: 'Guest authentication failed',

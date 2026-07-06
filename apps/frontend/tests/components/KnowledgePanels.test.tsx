@@ -40,6 +40,12 @@ describe('knowledge panels', () => {
 
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input)
+      if (url.includes('/api/journals/status')) {
+        return { ok: true, json: async () => ({ statuses: {} }) }
+      }
+      if (url.includes('/api/journals/')) {
+        return { ok: true, json: async () => ({ journal: journalNote }) }
+      }
       if (url.includes('/api/notes/')) {
         return {
           ok: true,
@@ -50,7 +56,8 @@ describe('knowledge panels', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    // Focused mode renders a journal editor/viewer for DM without the compact browser edit toggle.
+    // Edit mode is parent-driven (autoEdit / isEditingOverride) — there is no
+    // inline edit toggle. DM with autoEdit gets the editable markdown editor.
     const { unmount: unmountDm } = render(
       <JournalPanel
         apiUrl="http://localhost:3000"
@@ -59,16 +66,19 @@ describe('knowledge panels', () => {
         sessionName="Chapter One"
         role={Role.DM}
         userId={PLAYER_ID}
+        autoEdit
       />
     )
 
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
     expect(screen.queryByLabelText('Edit journal')).toBeNull()
-    expect(screen.getByTestId('markdown-editor')).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByTestId('markdown-editor')).toBeTruthy()
+    })
 
     unmountDm()
 
-    // Player sees read-only editor, no Edit button
+    // Player sees a read-only rendered journal — never the editable editor.
     render(
       <JournalPanel
         apiUrl="http://localhost:3000"
@@ -80,7 +90,8 @@ describe('knowledge panels', () => {
     )
 
     expect(await screen.findByTestId('journal-panel')).toBeTruthy()
-    expect(screen.getByTestId('markdown-editor')).toBeTruthy()
+    expect(await screen.findByText('The party descended into the vault.')).toBeTruthy()
+    expect(screen.queryByTestId('markdown-editor')).toBeNull()
     expect(screen.queryByLabelText('Edit journal')).toBeNull()
   })
 
@@ -168,9 +179,9 @@ describe('knowledge panels', () => {
     expect(await screen.findByText('The Emerald Crown #29 - 24 May 2026')).toBeTruthy()
     expect(screen.getByText('The Emerald Crown #28 - 17 May 2026')).toBeTruthy()
 
-    // The editor for the selected session is rendered
-    const editors = await screen.findAllByTestId('markdown-editor')
-    expect(editors.length).toBeGreaterThan(0)
+    // The selected session's journal content renders inside the expanded card
+    // (players get the read-only renderer, never the editable markdown editor).
+    expect(await screen.findByText('The party descended into the vault.')).toBeTruthy()
 
     // Verify the session #1 journal was fetched
     await waitFor(() => {
@@ -552,8 +563,9 @@ describe('knowledge panels', () => {
       />
     )
 
-    // Wait for the journal editor to be rendered for the selected session
-    expect(await screen.findAllByTestId('markdown-editor')).toBeTruthy()
+    // Wait for the selected session's journal content to render (the embedded
+    // browser editor is read-only until editing is explicitly toggled).
+    expect(await screen.findByText('The wards held through dawn.')).toBeTruthy()
 
     await waitFor(() => {
       const journalCalls = fetchMock.mock.calls.filter(([input]) =>
@@ -617,8 +629,10 @@ describe('knowledge panels', () => {
       />
     )
 
-    expect(await screen.findAllByText('Quiet ingress route')).toHaveLength(2)
+    // The rail lists the handout; opening it reveals the content in the detail view.
+    const rowTitle = await screen.findByText('Quiet ingress route')
+    fireEvent.click(rowTitle)
 
-    expect(screen.getByText('Use the eastern tunnel and avoid lanterns.')).toBeTruthy()
+    expect(await screen.findByText('Use the eastern tunnel and avoid lanterns.')).toBeTruthy()
   })
 })

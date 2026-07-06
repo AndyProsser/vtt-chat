@@ -173,23 +173,35 @@ describe('inventorySlice — handleInventoryItemRemoved', () => {
   })
 })
 
-// ─── handleInventoryItemEdited ────────────────────────────────────────────────
+// ─── handleInventoryItemUpdated ────────────────────────────────────────────────
 
-describe('inventorySlice — handleInventoryItemEdited', () => {
+describe('inventorySlice — handleInventoryItemUpdated', () => {
   beforeEach(() => {
     useStore.setState({ inventoryItems: {}, currencyWallets: {} })
     seedItem()
   })
 
-  it('updates name, quantity, notes, and updatedAt', () => {
-    useStore.getState().handleInventoryItemEdited(
-      makeEnvelope('INVENTORY:ITEM_EDITED', {
-        campaignId: CAMPAIGN_ID,
-        itemId: ITEM_ID,
+  // INVENTORY:ITEM_UPDATED carries the full updated item so clients replace it
+  // atomically — there is no partial-merge behavior (see shared/events/inventory.ts).
+  const fullUpdatePayload = {
+    campaignId: CAMPAIGN_ID,
+    itemId: ITEM_ID,
+    ownerType: 'party' as const,
+    ownerId: null,
+    isContainer: false,
+    containerId: null,
+    metadata: null,
+    updatedByUserId: USER_ID,
+  }
+
+  it('replaces name, quantity, notes, and updatedAt from the full payload', () => {
+    useStore.getState().handleInventoryItemUpdated(
+      makeEnvelope('INVENTORY:ITEM_UPDATED', {
+        ...fullUpdatePayload,
         name: 'Shortsword +1',
         quantity: 5,
         notes: 'Found in the tomb',
-        editedAt: NOW + 500,
+        updatedAt: NOW + 500,
       })
     )
 
@@ -200,42 +212,43 @@ describe('inventorySlice — handleInventoryItemEdited', () => {
     expect(item?.updatedAt).toBe(NOW + 500)
   })
 
-  it('preserves existing notes when payload notes is undefined', () => {
+  it('replaces notes atomically (null payload notes clears them)', () => {
+    const seeded = useStore.getState().inventoryItems[CAMPAIGN_ID]?.[ITEM_ID]
+    if (!seeded) throw new Error('expected seeded inventory item')
     useStore.setState({
       inventoryItems: {
         [CAMPAIGN_ID]: {
           [ITEM_ID]: {
-            ...useStore.getState().inventoryItems[CAMPAIGN_ID]?.[ITEM_ID]!,
+            ...seeded,
             notes: 'Pre-existing note',
           },
         },
       },
     })
 
-    useStore.getState().handleInventoryItemEdited(
-      makeEnvelope('INVENTORY:ITEM_EDITED', {
-        campaignId: CAMPAIGN_ID,
-        itemId: ITEM_ID,
+    useStore.getState().handleInventoryItemUpdated(
+      makeEnvelope('INVENTORY:ITEM_UPDATED', {
+        ...fullUpdatePayload,
         name: 'Shortsword',
         quantity: 2,
-        editedAt: NOW + 100,
+        notes: null,
+        updatedAt: NOW + 100,
       })
     )
 
-    expect(useStore.getState().inventoryItems[CAMPAIGN_ID]?.[ITEM_ID]?.notes).toBe(
-      'Pre-existing note'
-    )
+    expect(useStore.getState().inventoryItems[CAMPAIGN_ID]?.[ITEM_ID]?.notes).toBeNull()
   })
 
   it('is a no-op for an unknown itemId', () => {
     const before = { ...useStore.getState().inventoryItems }
-    useStore.getState().handleInventoryItemEdited(
-      makeEnvelope('INVENTORY:ITEM_EDITED', {
-        campaignId: CAMPAIGN_ID,
+    useStore.getState().handleInventoryItemUpdated(
+      makeEnvelope('INVENTORY:ITEM_UPDATED', {
+        ...fullUpdatePayload,
         itemId: '00000000-dead-0000-0000-000000000000' as UUID,
         name: 'Ghost Item',
         quantity: 1,
-        editedAt: NOW,
+        notes: null,
+        updatedAt: NOW,
       })
     )
 

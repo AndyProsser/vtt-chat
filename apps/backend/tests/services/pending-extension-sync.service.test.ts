@@ -14,6 +14,13 @@ const mocks = vi.hoisted(() => ({
   mockDeletePendingExtensionSyncRecord: vi.fn(),
   mockSyncExternalInventoryItems: vi.fn(),
   mockSetExternalCurrencyWallet: vi.fn(),
+  mockCharacterFindUnique: vi.fn(),
+}))
+
+vi.mock('@/infra/db', () => ({
+  getPrismaClient: () => ({
+    character: { findUnique: mocks.mockCharacterFindUnique },
+  }),
 }))
 
 vi.mock('@/repositories/pending-extension-sync.repository', () => ({
@@ -107,6 +114,7 @@ describe('pending-extension-sync.service', () => {
 
   it('approvePendingSync applies an ITEM pending sync and deletes the record', async () => {
     mocks.mockFindPendingExtensionSyncById.mockResolvedValueOnce(buildRow())
+    mocks.mockCharacterFindUnique.mockResolvedValueOnce({ userId: USER_ID })
     mocks.mockSyncExternalInventoryItems.mockResolvedValueOnce({
       upserted: [{ id: 'item-1', name: 'Longsword' }],
       created: 0,
@@ -128,7 +136,7 @@ describe('pending-extension-sync.service', () => {
     expect(mocks.mockSyncExternalInventoryItems).toHaveBeenCalledWith(
       expect.objectContaining({
         campaignId: CAMPAIGN_ID,
-        ownerId: CHARACTER_ID,
+        ownerId: USER_ID,
         externalSource: 'dndbeyond',
         items: [{ externalId: 'ddb-item-1', name: 'Longsword', quantity: 1 }],
       })
@@ -140,6 +148,7 @@ describe('pending-extension-sync.service', () => {
     mocks.mockFindPendingExtensionSyncById.mockResolvedValueOnce(
       buildRow({ kind: 'CURRENCY', externalId: 'currency', incomingPayload: { gp: 10 } })
     )
+    mocks.mockCharacterFindUnique.mockResolvedValueOnce({ userId: USER_ID })
     mocks.mockSetExternalCurrencyWallet.mockResolvedValueOnce({ id: 'wallet-1', gp: 10 })
 
     const result = await approvePendingSync({
@@ -152,7 +161,7 @@ describe('pending-extension-sync.service', () => {
     expect(mocks.mockSetExternalCurrencyWallet).toHaveBeenCalledWith(
       expect.objectContaining({
         campaignId: CAMPAIGN_ID,
-        ownerId: CHARACTER_ID,
+        ownerId: USER_ID,
         wallet: { gp: 10 },
       })
     )

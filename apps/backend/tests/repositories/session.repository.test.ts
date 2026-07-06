@@ -170,7 +170,7 @@ describe('session repository', () => {
         class: 'Rogue',
         subclass: 'Arcane Trickster',
         avatarUrl: 'char.png',
-        metadata: { level: 7, hp: 33 },
+        metadata: { level: 7, hpMax: 33 },
         isActive: true,
         updatedAt: new Date('2026-05-01T00:00:00.000Z'),
       },
@@ -192,7 +192,7 @@ describe('session repository', () => {
       playerName: 'Alpha Name',
       characterName: 'Char Alpha',
       level: 7,
-      characterStats: { level: 7, hp: 33 },
+      characterStats: { level: 7, hpMax: 33 },
     })
     expect(profiles['u-2']).toMatchObject({
       playerName: 'beta',

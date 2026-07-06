@@ -116,11 +116,15 @@ describe('audio repository', () => {
       })
     )
 
-    await removeAudioDMOverrideRecord({
+    mocks.deleteManyOverride.mockResolvedValue({ count: 1 })
+
+    const removedCount = await removeAudioDMOverrideRecord({
       sessionId: SESSION_ID,
       targetUserId: USER_ID,
       overrideType: 'MUTE',
     })
+
+    expect(removedCount).toBe(1)
 
     expect(mocks.deleteManyOverride).toHaveBeenCalledWith({
       where: {

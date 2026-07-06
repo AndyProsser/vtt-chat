@@ -11,15 +11,21 @@ const mocks = vi.hoisted(() => ({
   mockResolveCooldownControlAuthorization: vi.fn(),
   mockCountSessionCooldownExtensions: vi.fn(),
   mockLogSessionCooldownExtended: vi.fn(),
-  mockGetPrismaClient: vi.fn(),
+  mockSessionFindUnique: vi.fn(),
   mockApplySessionStateRoomTransition: vi.fn(),
   mockGetSessionUsers: vi.fn(),
   mockLogSessionStateChange: vi.fn(),
   mockClearRoomMessages: vi.fn(),
 }))
 
+// getPrismaClient is called at module scope by session.routes.ts, so the mock
+// must return a usable client from the factory itself (not from beforeEach).
 vi.mock('@/infra/db', () => ({
-  getPrismaClient: mocks.mockGetPrismaClient,
+  getPrismaClient: () => ({
+    session: {
+      findUnique: mocks.mockSessionFindUnique,
+    },
+  }),
 }))
 
 vi.mock('@/services/auth.service', () => ({
@@ -85,6 +91,7 @@ vi.mock('@/services/audio/audio-state', () => ({
 
 vi.mock('@/services/chat.service', () => ({
   clearRoomMessages: mocks.mockClearRoomMessages,
+  openMainRoomMessageHistory: vi.fn(),
 }))
 
 vi.mock('@/services/runtime/runtime-streams.service', () => ({
@@ -134,11 +141,7 @@ describe('cooldown extend handoff', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mocks.mockGetPrismaClient.mockReturnValue({
-      session: {
-        findUnique: vi.fn(async () => null),
-      },
-    })
+    mocks.mockSessionFindUnique.mockResolvedValue(null)
 
     mocks.mockExtractTokenFromHeader.mockReturnValue('token')
     mocks.mockClearRoomMessages.mockResolvedValue(0)

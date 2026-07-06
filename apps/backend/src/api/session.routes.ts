@@ -71,6 +71,7 @@ import { appendSessionAuditEvent } from '@/services/runtime/runtime-streams.serv
 import { advanceSessionScheduleOnEnded } from '@/services/campaign-schedule.service'
 import { resolveCooldownControlAuthorization } from '@/services/session/cooldown-authz.service'
 import { broadcastLobbyStatsUpdated } from '@/services/lobby/lobby-stats.service'
+import { logger } from '@/utils/logger'
 import {
   isSessionActiveOrPaused,
   SESSION_COOLDOWN_EXTENSION_MAX_MS,
@@ -327,7 +328,13 @@ function requireDM(req: Request, res: Response, next: NextFunction) {
   next()
 }
 
-function internalErrorResponse(res: Response) {
+function internalErrorResponse(res: Response, error?: unknown) {
+  if (error !== undefined) {
+    logger.error('session', 'Unhandled error in session route', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+  }
   return res.status(500).json({
     code: ErrorCode.INTERNAL_ERROR,
     message: 'Internal server error',
@@ -507,8 +514,8 @@ async function listSessionMembersHandler(req: Request, res: Response) {
     return res.status(200).json({
       users: result.users,
     })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -843,8 +850,8 @@ async function joinSessionHandler(req: Request, res: Response) {
         role: u.role,
       })),
     })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -1090,8 +1097,8 @@ async function leaveSessionHandler(req: Request, res: Response) {
         role: u.role,
       })),
     })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -1128,8 +1135,8 @@ router.post('/', requireAuth, requireDM, async (req: Request, res: Response) => 
     })
 
     res.status(201).json(session)
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 })
 
@@ -1141,8 +1148,8 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const sessions = await getAllSessions()
     res.status(200).json(sessions)
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 })
 
@@ -1183,8 +1190,8 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
       cooldownExpiresAt,
       userCount: users.length,
     })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 })
 
@@ -1239,8 +1246,8 @@ router.get('/:id/logs', requireAuth, async (req: Request, res: Response) => {
     }
 
     return res.status(200).json({ logs: result.logs })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 })
 
@@ -1624,7 +1631,7 @@ router.put('/:id/state', requireAuth, async (req: Request, res: Response) => {
     if (err.code === ErrorCode.INVALID_STATE_TRANSITION) {
       return res.status(409).json(err)
     }
-    return internalErrorResponse(res)
+    return internalErrorResponse(res, err)
   }
 })
 
@@ -1756,7 +1763,7 @@ router.post('/:id/cooldown/extend', requireAuth, async (req: Request, res: Respo
     if (err.code === ErrorCode.FORBIDDEN) {
       return res.status(403).json(err)
     }
-    return internalErrorResponse(res)
+    return internalErrorResponse(res, err)
   }
 })
 
@@ -1933,7 +1940,7 @@ router.post('/:id/reset', requireAuth, async (req: Request, res: Response) => {
     if (err.code === ErrorCode.FORBIDDEN) {
       return res.status(403).json(err)
     }
-    return internalErrorResponse(res)
+    return internalErrorResponse(res, err)
   }
 })
 
@@ -2142,7 +2149,7 @@ router.post('/:id/cooldown/end', requireAuth, async (req: Request, res: Response
     if (err.code === ErrorCode.FORBIDDEN) {
       return res.status(403).json(err)
     }
-    return internalErrorResponse(res)
+    return internalErrorResponse(res, err)
   }
 })
 
@@ -2226,7 +2233,7 @@ router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
       })
     }
 
-    return internalErrorResponse(res)
+    return internalErrorResponse(res, error)
   }
 })
 
@@ -2296,7 +2303,7 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
     if (err.code === ErrorCode.FORBIDDEN) {
       return res.status(403).json(err)
     }
-    return internalErrorResponse(res)
+    return internalErrorResponse(res, err)
   }
 })
 

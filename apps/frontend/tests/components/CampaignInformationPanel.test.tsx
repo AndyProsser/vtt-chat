@@ -134,7 +134,7 @@ describe('CampaignInformationPanel', () => {
     })
   })
 
-  it('renders a subtle DM details trigger and hides inline status rows', () => {
+  it('renders the DM details row and hides inline status rows', () => {
     render(
       <CampaignInformationPanel
         campaign={{
@@ -150,7 +150,8 @@ describe('CampaignInformationPanel', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: 'DM details' })).toBeTruthy()
+    expect(screen.getByRole('listitem', { name: 'DM details' })).toBeTruthy()
+    expect(screen.getByText('Morgan')).toBeTruthy()
     expect(screen.queryByText('Last session')).toBeNull()
   })
 

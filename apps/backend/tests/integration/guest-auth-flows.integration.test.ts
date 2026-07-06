@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => ({
   mockSpectatorWaitlistFindFirst: vi.fn(),
   mockSpectatorWaitlistCount: vi.fn(),
   mockCampaignFindMany: vi.fn(),
+  mockCampaignFindUnique: vi.fn(),
   mockGetLobbyStatsSnapshot: vi.fn(),
 }))
 
@@ -54,6 +55,7 @@ vi.mock('@/infra/db', () => ({
     },
     campaign: {
       count: mocks.mockCampaignCount,
+      findUnique: mocks.mockCampaignFindUnique,
       findFirst: mocks.mockCampaignFindFirst,
       findMany: mocks.mockCampaignFindMany,
       update: mocks.mockCampaignUpdate,
@@ -177,6 +179,7 @@ describe('guest and spectator multi-step flows', () => {
     mocks.mockSpectatorWaitlistCount.mockResolvedValue(1)
     mocks.mockPresenceSnapshotFindMany.mockResolvedValue([])
     mocks.mockCampaignFindMany.mockResolvedValue([])
+    mocks.mockCampaignFindUnique.mockResolvedValue({ supportedPlatforms: ['ANY'] })
     mocks.mockGetLobbyStatsSnapshot.mockResolvedValue({
       activeCampaigns: 5,
       pausedCampaigns: 0,
@@ -226,6 +229,7 @@ describe('guest and spectator multi-step flows', () => {
       .mockResolvedValueOnce({
         id: 'campaign-1',
         currentDmId: 'old-dm',
+        supportedPlatforms: ['ANY'],
         externalLinks: [],
       })
 

@@ -595,7 +595,7 @@ describe('ChatWindow timeline behavior', () => {
     expect(screen.queryByText('Old body')).toBeNull()
   })
 
-  it('renders condition messages inline with a small avatar and condition icon', () => {
+  it('renders condition messages as an inline marker with the preset label', () => {
     renderWithTooltip(
       <MessageList
         currentUserId={String(USER_ID)}
@@ -625,8 +625,10 @@ describe('ChatWindow timeline behavior', () => {
       />
     )
 
-    expect(screen.getByText('E')).toBeTruthy()
-    expect(screen.getByText('Elysia is Confused')).toBeTruthy()
+    // The marker renders as `{name} is <strong>{label}</strong>` — text is split
+    // across elements, so match the pieces separately.
+    expect(screen.getByText(/Elysia is/)).toBeTruthy()
+    expect(screen.getByText('Confused')).toBeTruthy()
   })
 
   it('renders day separators for editorial timeline grouping', () => {

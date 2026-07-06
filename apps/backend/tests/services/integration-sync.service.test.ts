@@ -21,11 +21,11 @@ const mocks = vi.hoisted(() => ({
   mockCurrencyWalletUpdate: vi.fn(),
   mockInventoryHistoryEntryCreate: vi.fn(),
   mockPendingExtensionSyncCreate: vi.fn(),
+  mockInventoryItemFindMany: vi.fn(),
   mockEventBroadcasterSendToUser: vi.fn(),
 }))
 
 vi.mock('@/infra/db', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client: any = {
     $executeRaw: mocks.mockExecuteRaw,
     $queryRaw: mocks.mockQueryRaw,
@@ -45,6 +45,7 @@ vi.mock('@/infra/db', () => {
     },
     inventoryItem: {
       findFirst: mocks.mockInventoryItemFindFirst,
+      findMany: mocks.mockInventoryItemFindMany,
       create: mocks.mockInventoryItemCreate,
       update: mocks.mockInventoryItemUpdate,
     },
@@ -66,6 +67,8 @@ vi.mock('@/infra/db', () => {
 vi.mock('@/ws/event-broadcaster', () => ({
   default: {
     sendToUser: mocks.mockEventBroadcasterSendToUser,
+    broadcastToSession: vi.fn(),
+    isReady: () => true,
   },
 }))
 
@@ -128,6 +131,7 @@ describe('integration-sync.service', () => {
     vi.resetAllMocks()
     mocks.mockExecuteRaw.mockResolvedValue(1)
     mocks.mockQueryRaw.mockResolvedValue([])
+    mocks.mockInventoryItemFindMany.mockResolvedValue([])
     mocks.mockCharacterUpdate.mockResolvedValue({})
     mocks.mockCharacterUpdateMany.mockResolvedValue({ count: 0 })
     mocks.mockInventoryItemFindFirst.mockResolvedValue(null)

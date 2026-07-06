@@ -1,9 +1,22 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { PresenceState, Role, RoomType, SessionState } from '@shared'
 import type { UUID } from '@shared'
 import { ConnectionState } from 'livekit-client'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { TooltipProvider } from '../../src/components/ui'
 import { WorkspaceInitialization as Workspaces } from '../../src/components/workspaces'
+
+// In production App.tsx wraps the workspace in a global TooltipProvider; the
+// workspace tree renders Radix Tooltips, so tests must provide one too.
+const render: typeof rtlRender = (ui, options) =>
+  rtlRender(ui, { wrapper: TooltipProvider, ...options })
 import { buildLiveKitConnectionKey } from '../../src/hooks/useLiveKit'
 import { useStore } from '../../src/state/store'
 import { getUserDMOverride } from '@/utils/audioOverrides'

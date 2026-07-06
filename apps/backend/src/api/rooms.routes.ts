@@ -34,7 +34,7 @@ import { removeDMOverrideState } from '@/services/audio/audio-state'
 import { emitConditionSystemMessage } from '@/services/system-messages.service'
 import type { WebSocketManager } from '@/ws'
 import { getMockTakeoverSnapshot } from '@/services/dev-mock/takeover.service'
-import { isGreenRoomName } from '@/utils'
+import { isGreenRoomName, logger } from '@/utils'
 
 const router = Router()
 
@@ -66,7 +66,13 @@ function parseRoomType(value: unknown): RoomType | null {
   return null
 }
 
-function internalErrorResponse(res: Response) {
+function internalErrorResponse(res: Response, error?: unknown) {
+  if (error !== undefined) {
+    logger.error('rooms', 'Unhandled error in rooms route', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+  }
   return res.status(500).json({ code: ErrorCode.INTERNAL_ERROR, message: 'Internal server error' })
 }
 
@@ -243,8 +249,8 @@ async function listSessionRoomsHandler(req: Request, res: Response) {
 
     const rooms = await getRooms(sessionId as UUID)
     return res.status(200).json({ rooms })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -341,8 +347,8 @@ async function createRoomHandler(req: Request, res: Response) {
     }
 
     return res.status(201).json({ room })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -432,8 +438,8 @@ async function joinRoomHandler(req: Request, res: Response) {
     }
 
     return res.status(200).json({ ok: true, presence })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -517,8 +523,8 @@ async function leaveRoomHandler(req: Request, res: Response) {
     }
 
     return res.status(200).json({ ok: true, presence })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -823,8 +829,8 @@ async function moveRoomMemberHandler(req: Request, res: Response) {
       movedToRoomId: room.id,
       presence: updatedPresence,
     })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -984,8 +990,8 @@ async function endWhisperHandler(req: Request, res: Response) {
         toRoomId: entry.toRoomId,
       })),
     })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -1010,8 +1016,8 @@ async function listRoomMembersHandler(req: Request, res: Response) {
 
     const members = await getRoomMemberIds(room.sessionId, room.id)
     return res.status(200).json({ roomId: room.id, members })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -1223,8 +1229,8 @@ async function deleteRoomHandler(req: Request, res: Response) {
     }
 
     return res.status(200).json({ ok: true, deletedRoomId: room.id })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
@@ -1409,8 +1415,8 @@ async function closeRoomHandler(req: Request, res: Response) {
         toGroupId: mainRoom.id,
       })),
     })
-  } catch {
-    return internalErrorResponse(res)
+  } catch (error) {
+    return internalErrorResponse(res, error)
   }
 }
 
